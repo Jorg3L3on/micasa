@@ -145,10 +145,15 @@ export function ReceivePayrollButton({
           applicable.map((t) => {
             const existing =
               incomes.find((i) => i.income_template_id === t.id) ?? null;
+            const notYetCredited = existing?.wallet_credited !== true;
             const entryWallet =
-              existing?.wallet_id != null
-                ? String(existing.wallet_id)
-                : defaultWallet;
+              notYetCredited && t.walletId != null
+                ? String(t.walletId)
+                : existing?.wallet_id != null
+                  ? String(existing.wallet_id)
+                  : t.walletId != null
+                    ? String(t.walletId)
+                    : defaultWallet;
             const defaultCategoryId = pickDefaultIncomeCategoryId({
               existingCategoryId: existing?.category_id,
               templateCategoryId: t.categoryId,
@@ -237,22 +242,12 @@ export function ReceivePayrollButton({
           const entryCategoryId = parseInt(entry.categoryId, 10);
 
           if (entry.existingIncome) {
-            const existingAmount = Number(entry.existingIncome.amount);
-            const existingWalletId = entry.existingIncome.wallet_id;
-            const sameWalletAndAmount =
-              existingWalletId != null &&
-              entryWalletId === existingWalletId &&
-              amount === existingAmount;
-            const shouldForceWalletCredit =
-              existingWalletId != null || sameWalletAndAmount;
-
             await updateIncomeAmount(
               entry.existingIncome.id,
               amount,
               context,
               {
                 wallet_id: entryWalletId,
-                force_wallet_credit: shouldForceWalletCredit,
                 category_id: entryCategoryId,
               },
             );
@@ -312,7 +307,7 @@ export function ReceivePayrollButton({
       open={open}
       onOpenChange={onOpenChange}
       title="Recibir quincena"
-      description={`${periodTitle} — ${periodLabel}. Confirma los montos y la billetera donde se depositó el pago.`}
+      description={`${periodTitle} — ${periodLabel}. El monto se suma a la billetera de la plantilla.`}
       busy={submitting}
     >
       {({ handleSelectOpenChange }) => (

@@ -10,6 +10,10 @@ import {
   assertOwnedCategoryOfKind,
   CategoryServiceError,
 } from '@/lib/finance/category.service';
+import {
+  assertIncomeFundingWallet,
+  IncomeServiceError,
+} from '@/lib/finance/income.service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,6 +51,7 @@ export async function GET(request: NextRequest) {
         : null,
       source: template.source,
       categoryId: template.category_id,
+      walletId: template.wallet_id,
       categoryName: template.category?.name ?? null,
       categoryIcon: template.category?.icon ?? null,
       appliesFirstFortnight: template.applies_first_fortnight,
@@ -83,6 +88,14 @@ export async function POST(request: NextRequest) {
       'INCOME',
     );
 
+    if (validatedData.walletId != null) {
+      const wallet = await prisma.wallet.findFirst({
+        where: { id: validatedData.walletId, ...context.ownerFilter },
+        select: { id: true, type: true },
+      });
+      assertIncomeFundingWallet(wallet);
+    }
+
     const template = await prisma.incomeTemplate.create({
       data: {
         name: validatedData.name,
@@ -91,6 +104,7 @@ export async function POST(request: NextRequest) {
           : null,
         source: validatedData.source ?? null,
         category_id: validatedData.categoryId,
+        wallet_id: validatedData.walletId ?? null,
         applies_first_fortnight: validatedData.appliesFirstFortnight,
         applies_second_fortnight: validatedData.appliesSecondFortnight,
         active: validatedData.active ?? true,
@@ -124,6 +138,7 @@ export async function POST(request: NextRequest) {
           : null,
         source: template.source,
         categoryId: template.category_id,
+        walletId: template.wallet_id,
         categoryName: template.category?.name ?? null,
         categoryIcon: template.category?.icon ?? null,
         appliesFirstFortnight: template.applies_first_fortnight,
@@ -135,7 +150,7 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    if (error instanceof CategoryServiceError) {
+    if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status },
@@ -228,6 +243,16 @@ export async function PUT(request: NextRequest) {
       updateData.source = validatedData.source;
     if (validatedData.categoryId !== undefined)
       updateData.category_id = validatedData.categoryId;
+    if (validatedData.walletId !== undefined) {
+      if (validatedData.walletId != null) {
+        const wallet = await prisma.wallet.findFirst({
+          where: { id: validatedData.walletId, ...ownerFilter },
+          select: { id: true, type: true },
+        });
+        assertIncomeFundingWallet(wallet);
+      }
+      updateData.wallet_id = validatedData.walletId;
+    }
     if (validatedData.appliesFirstFortnight !== undefined)
       updateData.applies_first_fortnight = validatedData.appliesFirstFortnight;
     if (validatedData.appliesSecondFortnight !== undefined)
@@ -235,8 +260,8 @@ export async function PUT(request: NextRequest) {
         validatedData.appliesSecondFortnight;
     if (validatedData.active !== undefined)
       updateData.active = validatedData.active;
-    if (validatedData.userId !== undefined)
-      updateData.user_id = validatedData.userId;
+    // House templates keep house_id and a null user_id. Writing a member id
+    // here violates income_template_single_owner_check. Ownership stays as created.
 
     const template = await prisma.incomeTemplate.update({
       where: { id: templateId },
@@ -267,6 +292,7 @@ export async function PUT(request: NextRequest) {
           : null,
         source: template.source,
         categoryId: template.category_id,
+        walletId: template.wallet_id,
         categoryName: template.category?.name ?? null,
         categoryIcon: template.category?.icon ?? null,
         appliesFirstFortnight: template.applies_first_fortnight,
@@ -278,7 +304,7 @@ export async function PUT(request: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
-    if (error instanceof CategoryServiceError) {
+    if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status },

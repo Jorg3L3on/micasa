@@ -11,22 +11,52 @@ import {
   assertOwnedCategoryOfKind,
   CategoryServiceError,
 } from '@/lib/finance/category.service';
+import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import {
   assertIncomeFundingWallet,
   IncomeServiceError,
   resolveIncomeWalletId,
 } from '@/lib/finance/income.service';
 
-const createIncomeSchema = z.object({
-  fortnight_id: z.number().int().positive(),
-  amount: z.number().positive('Amount must be greater than 0'),
-  source: z.string().optional().nullable(),
-  received_at: dateStringSchema,
-  transfer_from_user_id: z.number().int().positive().optional(),
-  income_template_id: z.number().int().positive().optional().nullable(),
-  wallet_id: z.number().int().positive('La billetera es requerida'),
-  category_id: z.number().int().positive('La categoría es requerida'),
-});
+const createIncomeSchema = z
+  .object({
+    fortnight_id: z.number().int().positive().optional(),
+    amount: z.number().positive('Amount must be greater than 0'),
+    source: z.string().optional().nullable(),
+    received_at: dateStringSchema,
+    transfer_from_user_id: z.number().int().positive().optional(),
+    income_template_id: z.number().int().positive().optional().nullable(),
+    wallet_id: z.number().int().positive().optional(),
+    category_id: z.number().int().positive('La categoría es requerida'),
+    /** Fortnight income only. Stores the wallet and leaves its balance unchanged. */
+    planned: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.planned === true) {
+      if (data.wallet_id == null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'La billetera es requerida',
+          path: ['wallet_id'],
+        });
+      }
+      return;
+    }
+    if (data.fortnight_id == null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'fortnight_id is required',
+        path: ['fortnight_id'],
+      });
+    }
+    if (data.wallet_id == null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'La billetera es requerida',
+        path: ['wallet_id'],
+      });
+    }
+  });
 
 const updateIncomeAmountSchema = z.object({
   amount: z.number().min(0, 'El monto debe ser mayor o igual a 0'),
@@ -45,6 +75,7 @@ function serializeIncome(i: {
   fortnight_id: number;
   income_template_id: number | null;
   wallet_id: number | null;
+  wallet_credited?: boolean;
   category_id: number | null;
 }) {
   return {
@@ -55,6 +86,7 @@ function serializeIncome(i: {
     fortnight_id: i.fortnight_id,
     income_template_id: i.income_template_id,
     wallet_id: i.wallet_id,
+    wallet_credited: i.wallet_credited === true,
     category_id: i.category_id,
   };
 }
@@ -123,14 +155,6 @@ export async function PUT(request: NextRequest) {
 
     const oldAmount = Number(income.amount);
     const newAmount = validated.amount;
-    const oldWalletId = income.wallet_id;
-    const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
-
-    const fundingWallet = await prisma.wallet.findFirst({
-      where: { id: newWalletId, ...ownerFilter },
-      select: { id: true, type: true },
-    });
-    assertIncomeFundingWallet(fundingWallet);
 
     let nextCategoryId = income.category_id;
     if (validated.category_id !== undefined) {
@@ -152,10 +176,22 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const oldWalletId = income.wallet_id;
+    const wasCredited =
+      income.wallet_credited === true ||
+      (income.wallet_credited == null && oldWalletId != null);
+    const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
+
+    const fundingWallet = await prisma.wallet.findFirst({
+      where: { id: newWalletId, ...ownerFilter },
+      select: { id: true, type: true },
+    });
+    assertIncomeFundingWallet(fundingWallet);
+
     const updated = await prisma.$transaction(async (tx) => {
-      if (oldWalletId === null && newWalletId != null) {
+      if (!wasCredited && newWalletId != null) {
         await applyWalletAmountDelta(tx, newWalletId, newAmount);
-      } else if (oldWalletId != null && newWalletId != null) {
+      } else if (wasCredited && oldWalletId != null && newWalletId != null) {
         if (oldWalletId === newWalletId) {
           if (validated.force_wallet_credit === true) {
             await applyWalletAmountDelta(tx, newWalletId, newAmount);
@@ -174,6 +210,7 @@ export async function PUT(request: NextRequest) {
         data: {
           amount: newAmount,
           wallet_id: newWalletId,
+          wallet_credited: true,
           category_id: nextCategoryId,
         },
       });
@@ -187,7 +224,7 @@ export async function PUT(request: NextRequest) {
         { status: error.status },
       );
     }
-    if (error instanceof CategoryServiceError) {
+    if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status },
@@ -211,7 +248,7 @@ export async function POST(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    const { ownerType, ownerId, ownerFilter } = context;
 
     const ownerData: { user_id?: number | null; house_id?: number | null } =
       ownerType === 'user'
@@ -229,8 +266,56 @@ export async function POST(request: NextRequest) {
       'INCOME',
     );
 
+    if (validated.planned === true) {
+      const plannedWalletId = validated.wallet_id;
+      if (plannedWalletId == null) {
+        return NextResponse.json(
+          { error: 'La billetera es requerida' },
+          { status: 400 },
+        );
+      }
+      const plannedWallet = await prisma.wallet.findFirst({
+        where: { id: plannedWalletId, ...ownerFilter },
+        select: { id: true, type: true },
+      });
+      assertIncomeFundingWallet(plannedWallet);
+
+      const ref = getCalendarFortnightRefForYmd(validated.received_at);
+      const fortnight = await resolveOrCreateFortnight({
+        ownerType,
+        ownerId,
+        year: ref.year,
+        month: ref.month,
+        period: ref.period,
+      });
+      const created = await prisma.income.create({
+        data: {
+          fortnight_id: fortnight.id,
+          amount: validated.amount,
+          source:
+            validated.source && validated.source.length > 0
+              ? validated.source
+              : null,
+          received_at: coerceToCalendarDate(validated.received_at),
+          category_id: validated.category_id,
+          wallet_id: plannedWalletId,
+          ...ownerFilter,
+        },
+      });
+      return NextResponse.json(serializeIncome(created), { status: 201 });
+    }
+
+    const fortnightId = validated.fortnight_id;
+    const walletIdRequired = validated.wallet_id;
+    if (fortnightId == null || walletIdRequired == null) {
+      return NextResponse.json(
+        { error: 'La quincena y la billetera son requeridas' },
+        { status: 400 },
+      );
+    }
+
     const fortnight = await prisma.fortnight.findUnique({
-      where: { id: validated.fortnight_id },
+      where: { id: fortnightId },
       select: {
         id: true,
         user_id: true,
@@ -302,14 +387,14 @@ export async function POST(request: NextRequest) {
         houseId: ownerId,
         amount: validated.amount,
         userFortnightId: userFortnight.id,
-        houseFortnightId: validated.fortnight_id,
+        houseFortnightId: fortnightId,
         note:
           validated.source && validated.source.length > 0
             ? validated.source
             : null,
         date: coerceToCalendarDate(validated.received_at),
         userWalletId: null,
-        houseWalletId: validated.wallet_id,
+        houseWalletId: walletIdRequired,
       });
 
       type TransferWithHouseIncome = {
@@ -348,12 +433,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const walletId = validated.wallet_id;
+    const walletId = walletIdRequired;
 
     const created = await prisma.$transaction(async (tx) => {
       const income = await tx.income.create({
         data: {
-          fortnight_id: validated.fortnight_id,
+          fortnight_id: fortnightId,
           amount: validated.amount,
           source:
             validated.source && validated.source.length > 0
@@ -362,6 +447,7 @@ export async function POST(request: NextRequest) {
           received_at: coerceToCalendarDate(validated.received_at),
           income_template_id: validated.income_template_id ?? null,
           wallet_id: walletId,
+          wallet_credited: true,
           category_id: validated.category_id,
           ...ownerData,
         },
@@ -374,7 +460,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(serializeIncome(created), { status: 201 });
   } catch (error) {
-    if (error instanceof CategoryServiceError) {
+    if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status },

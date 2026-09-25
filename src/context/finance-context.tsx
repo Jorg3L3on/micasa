@@ -37,6 +37,22 @@ function persist(context: FinanceContextType, userId: number): void {
   );
 }
 
+function readPersisted(userId: number): FinanceContextType | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredFinance;
+    if (parsed.userId !== userId) return null;
+    const stored = parsed.context;
+    if (stored?.type !== 'user' && stored?.type !== 'house') return null;
+    if (!Number.isFinite(stored.id) || stored.id <= 0) return null;
+    return stored;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Pin the context object on globalThis so layout and page client chunks share
  * one instance. Duplicate module evaluations otherwise make useFinanceContext()
@@ -101,16 +117,18 @@ function FinanceProviderSync({
       }
     }
 
-    const userContext: FinanceContextType = { type: 'user', id: userId };
-    setContext(userContext);
-    persist(userContext, userId);
-    if (!hasSyncedUrlRef.current) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('ownerType', 'user');
-      params.set('ownerId', String(userId));
-      const query = params.toString();
-      router.replace(`${pathname}${query ? `?${query}` : ''}`);
-    }
+    const stored = readPersisted(userId);
+    const nextContext: FinanceContextType = stored ?? {
+      type: 'user',
+      id: userId,
+    };
+    setContext(nextContext);
+    persist(nextContext, userId);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('ownerType', nextContext.type);
+    params.set('ownerId', String(nextContext.id));
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ''}`);
     hasSyncedUrlRef.current = true;
   }, [session?.user?.id, searchParams, pathname, router, setContext, currentUserIdRef, hasSyncedUrlRef]);
 

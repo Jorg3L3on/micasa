@@ -13,15 +13,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
+import { useFinanceContext } from '@/context/finance-context';
+import { getPaymentMethodOptions } from '@/lib/api/wallets';
+import { isGoalWalletType } from '@/domain/payment-method';
+import type { PaymentMethodOption } from '@/types/catalog';
+import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import {
   createOverrideAmountFormSchema,
   OverrideAmountFormValues,
 } from '@/schemas/fortnight.schema';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
-import { WalletIdentity } from '@/components/wallets/WalletIdentity';
-import { getPaymentMethodOptions } from '@/lib/api/wallets';
-import { useFinanceContext } from '@/context/finance-context';
-import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
+import type { CategoryOption } from '@/types/catalog';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   FormAmountRow,
@@ -41,9 +43,9 @@ type EditFortnightAmountDialogProps = {
   requireCategory?: boolean;
   categories?: CategoryOption[];
   defaultCategoryId?: number | null;
-  /** Cash/debit wallet is required when editing a stored income. */
-  requireWallet?: boolean;
   defaultWalletId?: number | null;
+  /** True when this line comes from an income template. */
+  updatesIncomeTemplate?: boolean;
 };
 
 export default function EditFortnightAmountDialog({
@@ -56,22 +58,28 @@ export default function EditFortnightAmountDialog({
   requireCategory = false,
   categories = [],
   defaultCategoryId = null,
-  requireWallet = false,
   defaultWalletId = null,
+  updatesIncomeTemplate = false,
 }: EditFortnightAmountDialogProps) {
   const { context } = useFinanceContext();
-  const [fundingWallets, setFundingWallets] = useState<PaymentMethodOption[]>(
-    [],
-  );
-  const [walletsLoading, setWalletsLoading] = useState(false);
-
+  const [wallets, setWallets] = useState<PaymentMethodOption[]>([]);
   const schema = useMemo(
     () =>
       createOverrideAmountFormSchema({
         requireCategory,
-        requireWallet,
+        requireWallet: updatesIncomeTemplate,
       }),
-    [requireCategory, requireWallet],
+    [requireCategory, updatesIncomeTemplate],
+  );
+
+  const fundingWallets = useMemo(
+    () =>
+      wallets.filter(
+        (wallet) =>
+          !isGoalWalletType(wallet.type) &&
+          (wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD'),
+      ),
+    [wallets],
   );
 
   const form = useForm<OverrideAmountFormValues>({
@@ -98,65 +106,47 @@ export default function EditFortnightAmountDialog({
     defaultWalletId,
     form,
     requireCategory,
-    requireWallet,
+    updatesIncomeTemplate,
   ]);
 
   useEffect(() => {
-    if (!open || !requireWallet) return;
+    if (!open || !updatesIncomeTemplate) return;
     let cancelled = false;
-    const loadWallets = async () => {
-      try {
-        setWalletsLoading(true);
-        const methods = await getPaymentMethodOptions(context);
-        if (cancelled) return;
-        const funding = methods.filter(
-          (wallet) => wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD',
-        );
-        setFundingWallets(funding);
-        const current = form.getValues('walletId');
-        const currentIsFunding = funding.some((wallet) => wallet.id === current);
-        if (!currentIsFunding) {
-          form.setValue(
-            'walletId',
-            funding.length === 1 ? funding[0].id : undefined,
-            { shouldValidate: funding.length === 1 },
-          );
-        }
-      } catch (err) {
-        console.error('Error fetching funding wallets:', err);
-        if (!cancelled) setFundingWallets([]);
-      } finally {
-        if (!cancelled) setWalletsLoading(false);
-      }
-    };
-    void loadWallets();
+    getPaymentMethodOptions(context)
+      .then((data) => {
+        if (!cancelled) setWallets(data);
+      })
+      .catch(() => {
+        if (!cancelled) setWallets([]);
+      });
     return () => {
       cancelled = true;
     };
-  }, [open, requireWallet, context, form]);
+  }, [open, updatesIncomeTemplate, context]);
 
   const handleSubmit = async (data: OverrideAmountFormValues) => {
     await onSave(data);
     onOpenChange(false);
   };
 
-  const selectedWalletId = form.watch('walletId');
-
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) form.reset();
     onOpenChange(nextOpen);
   };
 
+  const title = updatesIncomeTemplate
+    ? 'Modificar plantilla'
+    : 'Modificar ingresos';
+  const description = updatesIncomeTemplate
+    ? 'Cambia el monto, la categoría y la billetera de la plantilla. El saldo no se mueve.'
+    : `Modificar ingresos de ${fortnightLabel}. Monto actual: ${formatCurrency(defaultAmount)}. Este monto solo aplica a esta quincena.`;
+
   return (
     <ResponsiveOverlay
       open={open}
       onOpenChange={handleOpenChange}
-      title={requireWallet ? 'Modificar ingreso' : 'Modificar ingresos'}
-      description={
-        requireWallet
-          ? `Actualiza el monto y la billetera de efectivo o débito. Quincena: ${fortnightLabel}.`
-          : `Modificar ingresos de ${fortnightLabel}. Monto actual: ${formatCurrency(defaultAmount)}. Este monto solo aplica a esta quincena.`
-      }
+      title={title}
+      description={description}
       busy={form.formState.isSubmitting}
     >
       {({ handleSelectOpenChange }) => (
@@ -187,7 +177,35 @@ export default function EditFortnightAmountDialog({
                   />
                 )}
               />
-              {requireWallet ? (
+              {requireCategory ? (
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormGroupedRow label="Categoría">
+                      <CategoryGroupedSelect
+                        categories={categories}
+                        value={
+                          field.value != null && field.value > 0
+                            ? field.value
+                            : undefined
+                        }
+                        onValueChange={field.onChange}
+                        onOpenChange={handleSelectOpenChange}
+                        includeCategoryId={
+                          field.value != null && field.value > 0
+                            ? field.value
+                            : defaultCategoryId
+                        }
+                        placeholder="Selecciona"
+                        ariaLabel="Categoría"
+                        triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
+                      />
+                    </FormGroupedRow>
+                  )}
+                />
+              ) : null}
+              {updatesIncomeTemplate ? (
                 <FormField
                   control={form.control}
                   name="walletId"
@@ -207,12 +225,11 @@ export default function EditFortnightAmountDialog({
                           onValueChange={(value) =>
                             field.onChange(parseInt(value, 10))
                           }
-                          disabled={walletsLoading}
                         >
                           <FormControl>
                             <SelectTrigger
                               className={OVERLAY_ROW_TRIGGER_CLASS}
-                              aria-label="Billetera de efectivo o débito"
+                              aria-label="Billetera de la plantilla"
                             >
                               <SelectValue placeholder="Selecciona">
                                 {selected ? (
@@ -245,52 +262,16 @@ export default function EditFortnightAmountDialog({
                   }}
                 />
               ) : null}
-              {requireCategory ? (
-                <FormField
-                  control={form.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <FormGroupedRow label="Categoría">
-                      <CategoryGroupedSelect
-                        categories={categories}
-                        value={
-                          field.value != null && field.value > 0
-                            ? field.value
-                            : undefined
-                        }
-                        onValueChange={field.onChange}
-                        onOpenChange={handleSelectOpenChange}
-                        includeCategoryId={
-                          field.value != null && field.value > 0
-                            ? field.value
-                            : defaultCategoryId
-                        }
-                        placeholder="Selecciona"
-                        ariaLabel="Categoría"
-                        triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
-                      />
-                    </FormGroupedRow>
-                  )}
-                />
-              ) : null}
             </div>
-            {requireWallet ? (
+            {updatesIncomeTemplate ? (
               <p className="px-1 text-xs text-muted-foreground">
-                {fundingWallets.length === 0 && !walletsLoading
-                  ? 'No hay billeteras de efectivo o débito. Crea una en Billeteras antes de guardar.'
-                  : 'Elige la billetera de efectivo o débito donde entra este ingreso.'}
+                La plantilla guarda esta billetera. El saldo no cambia hasta
+                que uses Recibir quincena.
               </p>
             ) : null}
             <Button
               type="submit"
-              disabled={
-                form.formState.isSubmitting ||
-                (requireWallet &&
-                  (walletsLoading ||
-                    fundingWallets.length === 0 ||
-                    selectedWalletId == null ||
-                    selectedWalletId <= 0))
-              }
+              disabled={form.formState.isSubmitting}
               className={OVERLAY_PRIMARY_BUTTON_CLASS}
             >
               {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}

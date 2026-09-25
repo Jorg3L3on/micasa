@@ -11,6 +11,7 @@ export type FortnightIncomeDto = {
   fortnight_id: number;
   income_template_id: number | null;
   wallet_id: number | null;
+  wallet_credited: boolean;
   category_id: number | null;
 };
 
@@ -20,6 +21,7 @@ export type IncomeTemplateDto = {
   suggestedAmount: number | null;
   source: string | null;
   categoryId: number | null;
+  walletId: number | null;
   categoryName: string | null;
   categoryIcon: string | null;
   appliesFirstFortnight: boolean;
@@ -117,12 +119,30 @@ export async function updateIncomeAmount(
   }, context);
 }
 
+/** Fortnight income that does not credit a wallet. */
+export async function createPlannedIncome(
+  data: {
+    amount: number;
+    source: string;
+    received_at: string;
+    category_id: number;
+    wallet_id: number;
+  },
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi('/api/incomes', {
+    method: 'POST',
+    body: JSON.stringify({ ...data, planned: true }),
+  }, context);
+}
+
 export async function createIncomeTemplate(
   data: {
     name: string;
     suggestedAmount?: number | null;
     source?: string | null;
     categoryId: number;
+    walletId?: number | null;
     appliesFirstFortnight: boolean;
     appliesSecondFortnight: boolean;
     active?: boolean;
@@ -143,6 +163,7 @@ export async function updateIncomeTemplate(
     suggestedAmount?: number | null;
     source?: string | null;
     categoryId?: number;
+    walletId?: number | null;
     appliesFirstFortnight?: boolean;
     appliesSecondFortnight?: boolean;
     active?: boolean;

@@ -218,6 +218,7 @@ export async function POST(request: Request) {
             user_id: userId,
             house_id: null,
             category_id: defaultIncomeCategoryId,
+            wallet_id: walletIdMap.get(income.walletId) ?? null,
           })),
         });
       }

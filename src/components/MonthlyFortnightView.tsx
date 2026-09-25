@@ -44,6 +44,10 @@ type FortnightSummary = {
     userName: string | null;
     templateName: string | null;
     categoryId: number | null;
+    incomeTemplateId: number | null;
+    templateSuggestedAmount: number | null;
+    templateCategoryId: number | null;
+    templateWalletId: number | null;
     walletId: number | null;
   }>;
   planningExpenseCount?: number;

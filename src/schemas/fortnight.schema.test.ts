@@ -3,34 +3,42 @@ import { createOverrideAmountFormSchema } from '@/schemas/fortnight.schema';
 
 const incomeEditSchema = createOverrideAmountFormSchema({
   requireCategory: true,
-  requireWallet: true,
 });
 
 describe('createOverrideAmountFormSchema income edit', () => {
-  it('blocks save when the wallet is empty', () => {
+  it('blocks save when the category is empty', () => {
     const result = incomeEditSchema.safeParse({
       amount: 12000,
-      categoryId: 3,
-      walletId: null,
+      categoryId: null,
     });
 
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(
         result.error.issues.some((issue) =>
-          issue.message.includes('billetera de efectivo o débito'),
+          issue.message.includes('categoría es requerida'),
         ),
       ).toBe(true);
     }
   });
 
-  it('accepts amount and a funding wallet together', () => {
-    const result = incomeEditSchema.safeParse({
+  it('requires a wallet on the template edit', () => {
+    const schema = createOverrideAmountFormSchema({
+      requireCategory: true,
+      requireWallet: true,
+    });
+    const missing = schema.safeParse({
       amount: 12500,
       categoryId: 3,
-      walletId: 9,
+      walletId: null,
     });
+    expect(missing.success).toBe(false);
 
-    expect(result.success).toBe(true);
+    const saved = schema.safeParse({
+      amount: 12500,
+      categoryId: 3,
+      walletId: 7,
+    });
+    expect(saved.success).toBe(true);
   });
 });

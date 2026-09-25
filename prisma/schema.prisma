@@ -459,6 +459,8 @@ model Income {
   fortnight_id       Int
   income_template_id Int?
   wallet_id          Int?
+  /// True when `amount` has already been added to `wallet_id`. A planned income can name the wallet before Recibir quincena.
+  wallet_credited    Boolean  @default(false)
   category_id        Int?
   created_at         DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
@@ -491,6 +493,8 @@ model IncomeTemplate {
   user_id     Int?
   house_id    Int?
   category_id Int?
+  /// Cartera de efectivo o débito donde caerá el ingreso. No mueve el saldo al guardar la plantilla.
+  wallet_id   Int?
 
   created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
@@ -500,10 +504,12 @@ model IncomeTemplate {
   user          User?    @relation(fields: [user_id], references: [id])
   house         House?   @relation(fields: [house_id], references: [id])
   category      Category? @relation(fields: [category_id], references: [id])
+  wallet        Wallet?   @relation(fields: [wallet_id], references: [id])
 
   @@index([user_id])
   @@index([house_id])
   @@index([category_id])
+  @@index([wallet_id])
 }
 
 model House {
@@ -594,6 +600,7 @@ model Wallet {
 
   expenses                      Expense[]
   expense_templates             ExpenseTemplate[]
+  income_templates              IncomeTemplate[]
   incomes                       Income[]
   credit_card_payments          CreditCardPayment[]         @relation("CreditCardWalletPayments")
   source_card_payments          CreditCardPayment[]         @relation("CreditCardSourceWalletPayments")

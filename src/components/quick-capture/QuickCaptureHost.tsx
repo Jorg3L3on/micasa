@@ -10,12 +10,19 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { QuickCaptureChooser } from '@/components/quick-capture/QuickCaptureChooser';
 import { QuickExpenseSheet } from '@/components/quick-capture/QuickExpenseSheet';
-import type { QuickExpenseFormValues } from '@/schemas/transaction.schema';
+import { QuickIncomeSheet } from '@/components/quick-capture/QuickIncomeSheet';
+import { createPlannedIncome } from '@/lib/api/incomes';
+import type {
+  QuickExpenseFormValues,
+  QuickIncomeFormValues,
+} from '@/schemas/transaction.schema';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
 type QuickCaptureContextValue = {
+  open: () => void;
   openExpense: () => void;
 };
 
@@ -45,20 +52,36 @@ type QuickCaptureHostProps = {
  * Mount once under the authenticated app shell.
  */
 export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [incomeOpen, setIncomeOpen] = useState(false);
+  const [expenseError, setExpenseError] = useState<string | null>(null);
+  const [incomeError, setIncomeError] = useState<string | null>(null);
   const router = useRouter();
   const { context } = useFinanceContext();
 
-  const openExpense = useCallback(() => {
-    setError(null);
-    setOpen(true);
+  const open = useCallback(() => {
+    setExpenseError(null);
+    setIncomeError(null);
+    setChooserOpen(true);
   }, []);
 
-  const value = useMemo(() => ({ openExpense }), [openExpense]);
+  const openExpense = useCallback(() => {
+    setExpenseError(null);
+    setChooserOpen(false);
+    setExpenseOpen(true);
+  }, []);
 
-  const handleSave = async (values: QuickExpenseFormValues) => {
-    setError(null);
+  const openIncome = useCallback(() => {
+    setIncomeError(null);
+    setChooserOpen(false);
+    setIncomeOpen(true);
+  }, []);
+
+  const value = useMemo(() => ({ open, openExpense }), [open, openExpense]);
+
+  const handleSaveExpense = async (values: QuickExpenseFormValues) => {
+    setExpenseError(null);
     try {
       await clientFetchFromApi(
         '/api/expenses',
@@ -80,13 +103,41 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
         },
         context,
       );
-      setOpen(false);
+      setExpenseOpen(false);
       toast.success(values.isPaid ? 'Gasto registrado' : 'Gasto planificado');
       router.refresh();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'No se pudo guardar el gasto';
-      setError(message);
+      setExpenseError(message);
+      throw err;
+    }
+  };
+
+  const handleSaveIncome = async (values: QuickIncomeFormValues) => {
+    setIncomeError(null);
+    if (values.paymentMethodId == null) {
+      setIncomeError('Selecciona la billetera de efectivo o débito');
+      return;
+    }
+    try {
+      await createPlannedIncome(
+        {
+          amount: values.amount,
+          source: values.name,
+          received_at: values.date,
+          category_id: values.categoryId,
+          wallet_id: values.paymentMethodId,
+        },
+        context,
+      );
+      setIncomeOpen(false);
+      toast.success('Ingreso de la quincena registrado');
+      router.refresh();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'No se pudo guardar el ingreso';
+      setIncomeError(message);
       throw err;
     }
   };
@@ -94,14 +145,29 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
   return (
     <QuickCaptureContext.Provider value={value}>
       {children}
+      <QuickCaptureChooser
+        open={chooserOpen}
+        onOpenChange={setChooserOpen}
+        onChooseExpense={openExpense}
+        onChooseIncome={openIncome}
+      />
       <QuickExpenseSheet
-        open={open}
+        open={expenseOpen}
         onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) setError(null);
+          setExpenseOpen(next);
+          if (!next) setExpenseError(null);
         }}
-        onSave={handleSave}
-        error={error}
+        onSave={handleSaveExpense}
+        error={expenseError}
+      />
+      <QuickIncomeSheet
+        open={incomeOpen}
+        onOpenChange={(next) => {
+          setIncomeOpen(next);
+          if (!next) setIncomeError(null);
+        }}
+        onSave={handleSaveIncome}
+        error={incomeError}
       />
     </QuickCaptureContext.Provider>
   );

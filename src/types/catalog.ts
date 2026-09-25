@@ -153,6 +153,7 @@ export type IncomeTemplateListItem = {
   suggestedAmount: number | null;
   source: string | null;
   categoryId: number | null;
+  walletId: number | null;
   categoryName: string | null;
   categoryIcon: string | null;
   appliesFirstFortnight: boolean;

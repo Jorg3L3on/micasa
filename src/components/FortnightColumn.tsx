@@ -62,7 +62,10 @@ import {
   getPlannerDuePayments,
 } from '@/lib/api/card-payment-plans';
 import { createExpenseTemplate } from '@/lib/api/expense-templates';
-import { createWalletIncome, updateIncomeAmount } from '@/lib/api/incomes';
+import {
+  createWalletIncome,
+  updateIncomeTemplate,
+} from '@/lib/api/incomes';
 import {
   createExpenseTransaction,
   updateFortnightOverrideAmount,
@@ -107,6 +110,10 @@ type IncomeItemBySource = {
   userName: string | null;
   templateName: string | null;
   categoryId: number | null;
+  incomeTemplateId: number | null;
+  templateSuggestedAmount: number | null;
+  templateCategoryId: number | null;
+  templateWalletId: number | null;
   walletId: number | null;
 };
 
@@ -185,9 +192,11 @@ export default function FortnightColumn({
     useState<DuePaymentItem[]>(initialCardDueItems);
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [overrideError, setOverrideError] = useState<string | null>(null);
-  const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null);
   const [editingIncomeAmount, setEditingIncomeAmount] = useState(0);
   const [editingIncomeCategoryId, setEditingIncomeCategoryId] = useState<
+    number | null
+  >(null);
+  const [editingIncomeTemplateId, setEditingIncomeTemplateId] = useState<
     number | null
   >(null);
   const [editingIncomeWalletId, setEditingIncomeWalletId] = useState<
@@ -277,7 +286,7 @@ export default function FortnightColumn({
   }, [initialCardDueItems]);
 
   useEffect(() => {
-    if (editingIncomeId == null || !overrideDialogOpen || context.id === 0) {
+    if (editingIncomeTemplateId == null || !overrideDialogOpen || context.id === 0) {
       return;
     }
     let cancelled = false;
@@ -295,7 +304,7 @@ export default function FortnightColumn({
     return () => {
       cancelled = true;
     };
-  }, [editingIncomeId, overrideDialogOpen, context]);
+  }, [editingIncomeTemplateId, overrideDialogOpen, context]);
 
   useEffect(() => {
     try {
@@ -546,23 +555,27 @@ export default function FortnightColumn({
   const handleOverrideAmount = async (data: OverrideAmountFormValues) => {
     try {
       setOverrideError(null);
-      if (editingIncomeId != null) {
-        await updateIncomeAmount(editingIncomeId, data.amount, context, {
-          category_id:
-            data.categoryId != null && data.categoryId > 0
-              ? data.categoryId
-              : undefined,
-          wallet_id:
-            data.walletId != null && data.walletId > 0
-              ? data.walletId
-              : undefined,
-        });
-        await refreshData();
+      if (editingIncomeTemplateId != null) {
+        await updateIncomeTemplate(
+          editingIncomeTemplateId,
+          {
+            suggestedAmount: data.amount,
+            ...(data.categoryId != null && data.categoryId > 0
+              ? { categoryId: data.categoryId }
+              : {}),
+            ...(data.walletId != null && data.walletId > 0
+              ? { walletId: data.walletId }
+              : {}),
+          },
+          context,
+        );
         setOverrideDialogOpen(false);
-        setEditingIncomeId(null);
         setEditingIncomeCategoryId(null);
         setEditingIncomeWalletId(null);
-        toast.success('Monto del ingreso actualizado.');
+        setEditingIncomeTemplateId(null);
+        toast.success(
+          'Plantilla de ingreso actualizada. Esta quincena conserva su monto.',
+        );
       } else {
         await updateFortnightOverrideAmount(
           fortnightId,
@@ -587,23 +600,23 @@ export default function FortnightColumn({
   };
 
   const handleOpenOverrideDialog = () => {
-    setEditingIncomeId(null);
     setEditingIncomeCategoryId(null);
     setEditingIncomeWalletId(null);
+    setEditingIncomeTemplateId(null);
     setOverrideError(null);
     setOverrideDialogOpen(true);
   };
 
   const handleOpenEditIncomeSource = (
-    id: number,
+    incomeTemplateId: number,
     amount: number,
     categoryId: number | null,
     walletId: number | null,
   ) => {
-    setEditingIncomeId(id);
     setEditingIncomeAmount(amount);
     setEditingIncomeCategoryId(categoryId);
     setEditingIncomeWalletId(walletId);
+    setEditingIncomeTemplateId(incomeTemplateId);
     setOverrideError(null);
     setOverrideDialogOpen(true);
   };
@@ -1231,23 +1244,23 @@ export default function FortnightColumn({
         onOpenChange={(open) => {
           setOverrideDialogOpen(open);
           if (!open) {
-            setEditingIncomeId(null);
             setEditingIncomeCategoryId(null);
             setEditingIncomeWalletId(null);
+            setEditingIncomeTemplateId(null);
           }
           setOverrideError(null);
         }}
         onSave={handleOverrideAmount}
         defaultAmount={
-          editingIncomeId != null ? editingIncomeAmount : tenemos
+          editingIncomeTemplateId != null ? editingIncomeAmount : tenemos
         }
         fortnightLabel={label}
         error={overrideError && overrideDialogOpen ? overrideError : null}
-        requireCategory={editingIncomeId != null}
+        requireCategory={editingIncomeTemplateId != null}
         categories={incomeCategories}
         defaultCategoryId={editingIncomeCategoryId}
-        requireWallet={editingIncomeId != null}
         defaultWalletId={editingIncomeWalletId}
+        updatesIncomeTemplate={editingIncomeTemplateId != null}
       />
 
       {/* Add Expense Dialog */}
