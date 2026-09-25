@@ -5,6 +5,7 @@ import {
 } from '@/lib/finance/template.service';
 import { generatePeriodsForMonth } from '@/lib/finance/budget-period.service';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { planningMonthCreateError } from '@/lib/finance/planning-month';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { FortnightPeriod } from '@/generated/prisma/client';
 
@@ -66,18 +67,9 @@ export async function createMonthFortnightsForOwner(
 ) {
   const { ownerType, ownerId, ownerFilter, year, month } = input;
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-
-  if (year !== currentYear) {
-    throw new Error('Solo se pueden crear meses del año en curso');
-  }
-
-  if (month < currentMonth) {
-    throw new Error(
-      'No se pueden crear meses ya pasados. Solo el mes actual o futuros.',
-    );
+  const monthError = planningMonthCreateError(year, month);
+  if (monthError) {
+    throw new Error(monthError);
   }
 
   const monthName = MONTH_NAMES[month - 1] ?? '';

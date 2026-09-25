@@ -10,6 +10,10 @@ import { Label } from '@/components/ui/label';
 import { useFinanceContext } from '@/context/finance-context';
 import { createMonthFortnights, getCreatedMonths } from '@/lib/api/fortnights';
 import { formatMonth } from '@/lib/utils';
+import {
+  PLANNING_MONTH_MAX_YEAR,
+  planningMonthCreateError,
+} from '@/lib/finance/planning-month';
 import { z } from 'zod';
 
 const createMonthSchema = z.object({
@@ -53,18 +57,21 @@ export default function CreateMonthForm({
       year: number;
       month: number;
     }[] = [];
-    for (let m = currentMonth; m <= 12; m++) {
-      const key = `${currentYear}-${m}`;
-      if (!createdSet.has(key)) {
+    for (let year = currentYear; year <= PLANNING_MONTH_MAX_YEAR; year += 1) {
+      const startMonth = year === currentYear ? currentMonth : 1;
+      for (let month = startMonth; month <= 12; month += 1) {
+        if (planningMonthCreateError(year, month)) continue;
+        const key = `${year}-${month}`;
+        if (createdSet.has(key)) continue;
         options.push({
           value: key,
-          label: `${formatMonth(m)} ${currentYear}`,
-          year: currentYear,
-          month: m,
+          label: `${formatMonth(month)} ${year}`,
+          year,
+          month,
         });
       }
     }
-    options.sort((a, b) => a.month - b.month);
+    options.sort((a, b) => a.year - b.year || a.month - b.month);
     return options;
   }, [createdMonths]);
 
@@ -148,7 +155,7 @@ export default function CreateMonthForm({
   const getSelectPlaceholder = (): string => {
     if (loadingMonths) return 'Cargando...';
     if (availableOptions.length === 0) {
-      return `No hay meses por crear en ${currentYear}`;
+      return 'No hay meses por crear';
     }
     return 'Selecciona un mes';
   };

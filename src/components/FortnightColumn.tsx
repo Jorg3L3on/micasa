@@ -678,6 +678,9 @@ export default function FortnightColumn({
             is_paid: data.isPaid,
             payment_date: data.date ?? null,
             expense_template_id: fromTemplateId,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );
@@ -692,6 +695,9 @@ export default function FortnightColumn({
             payment_method_id: data.paymentMethodId,
             is_paid: data.isPaid,
             payment_date: data.date ?? null,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );
@@ -733,6 +739,9 @@ export default function FortnightColumn({
             is_paid: data.isPaid,
             payment_date: data.date ?? null,
             expense_template_id: template.id,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );
@@ -783,6 +792,9 @@ export default function FortnightColumn({
             is_paid: data.isPaid,
             payment_date: data.date ?? null,
             expense_template_id: template.id,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );
@@ -799,6 +811,9 @@ export default function FortnightColumn({
             is_paid: data.isPaid,
             payment_date: otherDate ?? null,
             expense_template_id: template.id,
+            ...(data.applyWalletDelta === false
+              ? { apply_wallet_delta: false }
+              : {}),
           },
           context,
         );

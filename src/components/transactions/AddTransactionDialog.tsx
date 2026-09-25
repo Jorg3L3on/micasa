@@ -39,6 +39,11 @@ import {
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { isGoalWalletType, isTransferableWalletType } from '@/domain/payment-method';
+import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-balance';
+import {
+  InsufficientWalletExpenseDialog,
+  InsufficientWalletExpenseNotice,
+} from '@/components/expenses/insufficient-wallet-expense';
 import { cn, formatCurrency } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
@@ -218,11 +223,6 @@ export default function AddTransactionDialog({
     selectedExpenseWallet?.type === 'CREDIT_CARD' ||
     selectedExpenseWallet?.type === 'DEPARTMENT_STORE_CARD';
 
-  const isFundingPaymentMethod =
-    selectedExpenseWallet?.type === 'CASH' ||
-    selectedExpenseWallet?.type === 'DEBIT_CARD' ||
-    isGoalWalletType(selectedExpenseWallet?.type);
-
   const projectedCardDebt = useMemo(() => {
     if (!isCreditCardPaymentMethod) return null;
     const currentDebt = Number(selectedExpenseWallet?.amount ?? 0);
@@ -251,11 +251,14 @@ export default function AddTransactionDialog({
     projectedAvailableCredit < 0;
 
   const fundingBalance = Number(selectedExpenseWallet?.amount ?? 0);
-  const exceedsFundingBalance =
-    isFundingPaymentMethod &&
-    isPaidWatch &&
-    Number.isFinite(fundingBalance) &&
-    Number(selectedExpenseAmount || 0) > fundingBalance + 1e-9;
+  const exceedsFundingBalance = paidExpenseExceedsWalletBalance({
+    walletType: selectedExpenseWallet?.type,
+    balance: fundingBalance,
+    amount: Number(selectedExpenseAmount || 0),
+    isPaid: Boolean(isPaidWatch),
+  });
+  const [confirmWithoutDelta, setConfirmWithoutDelta] = useState(false);
+  const acceptWithoutDeltaRef = useRef(false);
 
   useEffect(() => {
     if (!isCreditCardPaymentMethod) return;
@@ -265,9 +268,18 @@ export default function AddTransactionDialog({
   }, [expenseForm, isCreditCardPaymentMethod]);
 
   const submitExpense = expenseForm.handleSubmit(async (values) => {
+    if (exceedsFundingBalance && !acceptWithoutDeltaRef.current) {
+      setConfirmWithoutDelta(true);
+      return;
+    }
+    acceptWithoutDeltaRef.current = false;
     try {
       setIsSubmitting(true);
-      await onSaveExpense(values);
+      await onSaveExpense({
+        ...values,
+        applyWalletDelta: exceedsFundingBalance ? false : values.applyWalletDelta,
+      });
+      setConfirmWithoutDelta(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -290,9 +302,10 @@ export default function AddTransactionDialog({
   const saveDisabled =
     isSubmitting ||
     loading ||
-    (tab === 'expense' && (exceedsCreditLimit || exceedsFundingBalance));
+    (tab === 'expense' && exceedsCreditLimit);
 
   return (
+    <>
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
@@ -450,6 +463,13 @@ export default function AddTransactionDialog({
                 />
               </div>
 
+              {exceedsFundingBalance && selectedExpenseWallet ? (
+                <InsufficientWalletExpenseNotice
+                  walletName={selectedExpenseWallet.name}
+                  balance={fundingBalance}
+                  amount={Number(selectedExpenseAmount || 0)}
+                />
+              ) : null}
               <ToggleField
                 layout="row"
                 className="px-3"
@@ -646,6 +666,19 @@ export default function AddTransactionDialog({
         </div>
       )}
     </ResponsiveOverlay>
+    <InsufficientWalletExpenseDialog
+      open={confirmWithoutDelta}
+      onOpenChange={setConfirmWithoutDelta}
+      walletName={selectedExpenseWallet?.name ?? 'La billetera'}
+      balance={fundingBalance}
+      amount={Number(selectedExpenseAmount || 0)}
+      busy={isSubmitting}
+      onAccept={() => {
+        acceptWithoutDeltaRef.current = true;
+        void submitExpense();
+      }}
+    />
+    </>
   );
 }
 
