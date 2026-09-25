@@ -18,7 +18,9 @@ import {
   clientFetchFromApi,
   isOwnerContextPending,
 } from '@/lib/api/client-fetch';
-import { fetchMonthlyPanelSnapshot } from '@/lib/api/monthly-panel';
+import { getPlannerDuePayments } from '@/lib/api/card-payment-plans';
+import { getPlannerLoanPayments } from '@/lib/api/loans';
+import { fetchFortnightPanelSlice } from '@/lib/api/monthly-panel';
 import type {
   DuePaymentItem,
   PlannerCardChargesSummary,
@@ -152,28 +154,59 @@ export default function MonthlyFortnightView({
   }, [first, second, wallets, budgetPanel, ownerKey]);
 
   const refreshPanelData = useCallback(async () => {
-    const snapshot = await fetchMonthlyPanelSnapshot<FortnightSummary>(
-      year,
-      month,
-      context,
-    );
-    setFirstBundle((current) => ({
-      ...current,
-      transactions: snapshot.first.transactions,
-      summary: snapshot.first.summary,
-      cardDueItems: snapshot.cardDues.first,
-      loanDueItems: snapshot.loanDues.first,
-    }));
-    setSecondBundle((current) => ({
-      ...current,
-      transactions: snapshot.second.transactions,
-      summary: snapshot.second.summary,
-      cardDueItems: snapshot.cardDues.second,
-      loanDueItems: snapshot.loanDues.second,
-    }));
-    setPanelBudget(snapshot.budgetPanel);
-    setPanelWallets(snapshot.wallets);
-  }, [context, month, year]);
+    const patchFortnight = (
+      target: FortnightPeriod,
+      patch: Partial<
+        Pick<
+          FortnightBundle,
+          'transactions' | 'summary' | 'cardDueItems' | 'loanDueItems'
+        >
+      >,
+    ) => {
+      const setBundle = target === 'FIRST' ? setFirstBundle : setSecondBundle;
+      setBundle((current) => ({ ...current, ...patch }));
+    };
+
+    const [firstSlice, secondSlice, budget, walletList, cardDues, loanDues] =
+      await Promise.allSettled([
+        fetchFortnightPanelSlice<FortnightSummary>(year, month, 'FIRST', context),
+        fetchFortnightPanelSlice<FortnightSummary>(year, month, 'SECOND', context),
+        clientFetchFromApi<MonthlyBudgetPanelResult>(
+          `/api/monthly/${year}/${String(month).padStart(2, '0')}/budget-panel`,
+          undefined,
+          context,
+        ),
+        clientFetchFromApi<WalletListItem[]>('/api/wallets', undefined, context),
+        getPlannerDuePayments(year, month, context),
+        getPlannerLoanPayments(year, month, context),
+      ]);
+
+    if (firstSlice.status === 'fulfilled') {
+      patchFortnight('FIRST', firstSlice.value);
+    }
+    if (secondSlice.status === 'fulfilled') {
+      patchFortnight('SECOND', secondSlice.value);
+    }
+    if (budget.status === 'fulfilled') {
+      setPanelBudget(budget.value);
+    }
+    if (walletList.status === 'fulfilled') {
+      setPanelWallets(walletList.value.filter((wallet) => wallet.active));
+    }
+    if (cardDues.status === 'fulfilled') {
+      patchFortnight('FIRST', { cardDueItems: cardDues.value.first });
+      patchFortnight('SECOND', { cardDueItems: cardDues.value.second });
+    }
+    if (loanDues.status === 'fulfilled') {
+      patchFortnight('FIRST', { loanDueItems: loanDues.value.first });
+      patchFortnight('SECOND', { loanDueItems: loanDues.value.second });
+    }
+
+    const visibleSlice = period === 'FIRST' ? firstSlice : secondSlice;
+    if (visibleSlice.status === 'rejected') {
+      throw visibleSlice.reason;
+    }
+  }, [context, month, period, year]);
 
   useRegisterMonthlyPanelRefresh(loading ? null : refreshPanelData);
 

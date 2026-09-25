@@ -24,7 +24,8 @@ import {
   isProviderCardDarkSurface,
 } from '@/lib/provider-card-style';
 import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
-import { formatCurrency, cn } from '@/lib/utils';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
+import { cn } from '@/lib/utils';
 import { CreditCard, GripVertical, Landmark, Wallet } from 'lucide-react';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
@@ -556,19 +557,20 @@ const WalletBalanceStrip = ({
                       >
                         {wallet.name}
                       </p>
-                      <p
-                        className={cn(
-                          'font-mono text-[13px] font-black tabular-nums leading-none sm:text-sm',
-                          effectiveAmount < 0
-                            ? onDarkSurface
-                              ? 'text-red-100'
-                              : 'text-destructive'
-                            : onDarkSurface
-                              ? 'text-white'
-                              : 'text-foreground',
-                        )}
-                      >
-                        {formatCurrency(effectiveAmount)}
+                      <p className="leading-none">
+                        <CurrencyTicker
+                          value={effectiveAmount}
+                          className={cn(
+                            'text-[13px] font-black sm:text-sm',
+                            effectiveAmount < 0
+                              ? onDarkSurface
+                                ? 'text-red-100'
+                                : 'text-destructive'
+                              : onDarkSurface
+                                ? 'text-white'
+                                : 'text-foreground',
+                          )}
+                        />
                       </p>
                       <div
                         className={cn(

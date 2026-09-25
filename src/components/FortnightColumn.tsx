@@ -368,6 +368,9 @@ export default function FortnightColumn({
       await onPanelRefresh();
     } catch (error) {
       console.error('Error refreshing data:', error);
+      toast.error(
+        'No se pudo refrescar el panel. Recarga si los montos no cambiaron.',
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -801,9 +804,9 @@ export default function FortnightColumn({
         );
       }
 
-      await refreshData();
-
+      toast.success(data.isPaid ? 'Gasto registrado' : 'Gasto planificado');
       setAddExpenseDialogOpen(false);
+      await refreshData();
     } catch (err) {
       const base =
         err instanceof Error ? err.message : 'Error al crear el gasto';

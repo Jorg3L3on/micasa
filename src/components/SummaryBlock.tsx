@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { formatCurrency, cn } from '@/lib/utils';
 import {
   Wallet,
@@ -324,8 +325,11 @@ export default function SummaryBlock({
                     </Button>
                   ) : null}
                 </div>
-                <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
-                  {formatCurrency(tenemos)}
+                <p className="leading-tight">
+                  <CurrencyTicker
+                    value={tenemos}
+                    className="text-sm font-black text-foreground sm:text-base"
+                  />
                 </p>
                 {hasUserIncome || incomeItems.length > 0 ? (
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
@@ -353,8 +357,11 @@ export default function SummaryBlock({
                     Pagado
                   </span>
                 </div>
-                <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
-                  {formatCurrency(pagado)}
+                <p className="leading-tight">
+                  <CurrencyTicker
+                    value={pagado}
+                    className="text-sm font-black text-foreground sm:text-base"
+                  />
                 </p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">
                   {expenseCount > 0
@@ -380,8 +387,11 @@ export default function SummaryBlock({
                     Pendiente
                   </span>
                 </div>
-                <p className="font-mono text-sm font-black tabular-nums leading-tight text-foreground sm:text-base">
-                  {formatCurrency(pendiente)}
+                <p className="leading-tight">
+                  <CurrencyTicker
+                    value={pendiente}
+                    className="text-sm font-black text-foreground sm:text-base"
+                  />
                 </p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">
                   {expenseCount > 0
@@ -661,9 +671,10 @@ export default function SummaryBlock({
                     <span className="text-muted-foreground">
                       Balance actual (efectivo + débito)
                     </span>
-                    <span className="font-mono font-semibold tabular-nums text-foreground">
-                      {formatCurrency(displayFundingWalletTotal)}
-                    </span>
+                    <CurrencyTicker
+                      value={displayFundingWalletTotal}
+                      className="text-xs font-semibold text-foreground"
+                    />
                   </div>
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">
@@ -697,16 +708,15 @@ export default function SummaryBlock({
                     <span className="text-emerald-800 dark:text-emerald-300">
                       = Liquidez actual
                     </span>
-                    <span
+                    <CurrencyTicker
+                      value={displayFundingNet}
                       className={cn(
-                        'font-mono tabular-nums',
+                        'text-xs font-semibold',
                         displayFundingNet >= 0
                           ? 'text-emerald-700 dark:text-emerald-300'
                           : 'text-destructive',
                       )}
-                    >
-                      {formatCurrency(displayFundingNet)}
-                    </span>
+                    />
                   </div>
                 </div>
               </div>

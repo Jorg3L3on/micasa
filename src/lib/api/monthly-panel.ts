@@ -28,7 +28,7 @@ export type MonthlyPanelSnapshot<TSummary> = {
   loanDues: PlannerLoanPaymentsResponse;
 };
 
-const fetchFortnightSlice = async <TSummary>(
+export const fetchFortnightPanelSlice = async <TSummary>(
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
@@ -59,8 +59,8 @@ export const fetchMonthlyPanelSnapshot = async <TSummary>(
   const ym = String(month).padStart(2, '0');
   const [first, second, budgetPanel, walletList, cardDues, loanDues] =
     await Promise.all([
-      fetchFortnightSlice<TSummary>(year, month, 'FIRST', context),
-      fetchFortnightSlice<TSummary>(year, month, 'SECOND', context),
+      fetchFortnightPanelSlice<TSummary>(year, month, 'FIRST', context),
+      fetchFortnightPanelSlice<TSummary>(year, month, 'SECOND', context),
       clientFetchFromApi<MonthlyBudgetPanelResult>(
         `/api/monthly/${year}/${ym}/budget-panel`,
         undefined,
