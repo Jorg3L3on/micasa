@@ -47,7 +47,7 @@ Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** acce
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): rounded M, blue `#1E63EC` → violet `#5D46E6`, with a light gloss on the upper-right stem. Source SVG: `public/brand/mark.svg`. App icons sit on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
+Brand mark (`MicasaMark`): the official artwork in `public/brand/mark.png`. Do not redraw it. App icons place that file on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 
