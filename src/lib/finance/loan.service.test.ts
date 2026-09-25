@@ -204,30 +204,36 @@ describe('createLoanForOwner', () => {
       ),
     }));
 
-    const loan = await createLoanForOwner('user', 1, ownerFilter, baseInput);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-01T18:00:00.000Z'));
+    try {
+      const loan = await createLoanForOwner('user', 1, ownerFilter, baseInput);
 
-    expect(createLoan).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          user_id: 1,
-          house_id: null,
-          lender: 'DiDi',
-          lender_id: 99,
-          source_wallet_id: 10,
-          payments: {
-            create: expect.arrayContaining([
-              expect.objectContaining({ sequence: 1 }),
-              expect.objectContaining({ sequence: 6 }),
-            ]),
-          },
+      expect(createLoan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            user_id: 1,
+            house_id: null,
+            lender: 'DiDi',
+            lender_id: 99,
+            source_wallet_id: 10,
+            payments: {
+              create: expect.arrayContaining([
+                expect.objectContaining({
+                  sequence: 1,
+                  due_date: new Date('2026-06-01T00:00:00.000Z'),
+                }),
+                expect.objectContaining({ sequence: 6 }),
+              ]),
+            },
+          }),
         }),
-      }),
-    );
-    expect(loan.payments).toHaveLength(6);
-    const surfaced = loan.overduePayment ?? loan.nextPayment;
-    expect(surfaced?.dueDate).toBe('2026-06-01');
-    if (loan.overduePayment && loan.nextPayment) {
-      expect(loan.overduePayment.dueDate < loan.nextPayment.dueDate).toBe(true);
+      );
+      expect(loan.payments).toHaveLength(6);
+      expect(loan.nextPayment?.dueDate).toBe('2026-06-01');
+      expect(loan.overduePayment).toBeNull();
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

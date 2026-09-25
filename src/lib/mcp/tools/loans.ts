@@ -13,6 +13,7 @@ import {
   listLendersByOwner,
   payLenderForOwner,
 } from '@/lib/finance/lender.service';
+import type { LenderListItem } from '@/types/lenders';
 import { createLoanSchema, updateLoanPaymentSchema } from '@/schemas/loan.schema';
 import {
   confirmSchema,
@@ -31,6 +32,49 @@ const ownerArgs = {
 const dateYmdSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato requerido: YYYY-MM-DD');
+
+const activeLoanPayments = (
+  loans: LenderListItem['loans'],
+  pick: 'overduePayment' | 'nextPayment',
+) =>
+  loans
+    .filter((loan) => loan.status === 'ACTIVE')
+    .map((loan) => loan[pick])
+    .filter((payment): payment is NonNullable<typeof payment> => payment != null);
+
+/** MCP list_lenders row. Existing nextPayment* fields stay the pay window. */
+export const mapLenderForMcpList = (lender: LenderListItem) => {
+  const overdue = activeLoanPayments(lender.loans, 'overduePayment').sort((a, b) =>
+    a.dueDate.localeCompare(b.dueDate),
+  );
+  const upcoming = activeLoanPayments(lender.loans, 'nextPayment').sort((a, b) =>
+    a.dueDate.localeCompare(b.dueDate),
+  );
+
+  return {
+    id: lender.id,
+    name: lender.name,
+    remainingPrincipal: lender.remainingPrincipal,
+    activeContractCount: lender.activeContractCount,
+    payrollOnly: lender.payrollOnly,
+    nextPaymentAmount: lender.payWindow.amount,
+    nextPaymentDate: lender.payWindow.commitmentDate,
+    nextPaymentDateEnd: lender.payWindow.commitmentDateEnd,
+    canPayAmount: lender.payWindow.amount,
+    canPay: lender.payWindow.canPay,
+    overduePaymentAmount: overdue.reduce((sum, payment) => sum + payment.amount, 0),
+    overduePaymentDate: overdue[0]?.dueDate ?? null,
+    upcomingPaymentAmount: upcoming.reduce((sum, payment) => sum + payment.amount, 0),
+    upcomingPaymentDate: upcoming[0]?.dueDate ?? null,
+    loans: lender.loans.map((loan) => ({
+      id: loan.id,
+      name: loan.name,
+      status: loan.status,
+      remainingAmount: loan.remainingAmount,
+      paymentSource: loan.paymentSource,
+    })),
+  };
+};
 
 export function registerLoanTools(server: McpServer) {
   server.registerTool(
@@ -112,7 +156,7 @@ export function registerLoanTools(server: McpServer) {
     {
       title: 'Listar prestamistas',
       description:
-        'Prestamistas del contexto con capital pendiente. overduePayment* es la cuota impaga vencida; nextPayment* es la siguiente cuota futura sin pagar. canPayAmount es lo que cubre Pagar.',
+        'Prestamistas del contexto con capital pendiente. nextPaymentAmount y canPayAmount son la ventana de pago. overduePayment* suma cuotas vencidas de préstamos activos. upcomingPayment* es la siguiente cuota futura sin pagar de préstamos activos.',
       inputSchema: z.object({
         ownerType: ownerTypeSchema,
         ownerId: ownerIdSchema,
@@ -123,39 +167,7 @@ export function registerLoanTools(server: McpServer) {
       runAgentTool('list_lenders', ctx as McpToolContext, args, 'read', async (agent) => {
         const lenders = await listLendersByOwner(agent.ownerFilter);
         return {
-          lenders: lenders.map((lender) => ({
-            id: lender.id,
-            name: lender.name,
-            remainingPrincipal: lender.remainingPrincipal,
-            activeContractCount: lender.activeContractCount,
-            payrollOnly: lender.payrollOnly,
-            overduePaymentAmount: lender.loans.reduce((sum, loan) => {
-              const payment = loan.overduePayment;
-              return payment ? sum + payment.amount : sum;
-            }, 0),
-            overduePaymentDate: lender.loans
-              .map((loan) => loan.overduePayment?.dueDate)
-              .filter((dueDate): dueDate is string => dueDate != null)
-              .sort()[0] ?? null,
-            nextPaymentAmount: lender.loans.reduce((sum, loan) => {
-              const payment = loan.nextPayment;
-              return payment && loan.status === 'ACTIVE' ? sum + payment.amount : sum;
-            }, 0),
-            nextPaymentDate: lender.loans
-              .filter((loan) => loan.status === 'ACTIVE')
-              .map((loan) => loan.nextPayment?.dueDate)
-              .filter((dueDate): dueDate is string => dueDate != null)
-              .sort()[0] ?? null,
-            canPayAmount: lender.payWindow.amount,
-            canPay: lender.payWindow.canPay,
-            loans: lender.loans.map((loan) => ({
-              id: loan.id,
-              name: loan.name,
-              status: loan.status,
-              remainingAmount: loan.remainingAmount,
-              paymentSource: loan.paymentSource,
-            })),
-          })),
+          lenders: lenders.map(mapLenderForMcpList),
         };
       }),
   );
