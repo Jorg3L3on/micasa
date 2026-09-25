@@ -1,5 +1,13 @@
 import { ImageResponse } from 'next/og';
 
+import {
+  MICASA_MARK_GRADIENT_FROM,
+  MICASA_MARK_GRADIENT_TO,
+  MICASA_MARK_PATH,
+  MICASA_MARK_STROKE_WIDTH,
+  MICASA_MARK_VIEWBOX,
+} from '@/components/brand/micasa-mark-geometry';
+
 export const runtime = 'edge';
 export const alt = 'MiCasa — Planifica tu dinero por quincenas';
 export const size = { width: 1200, height: 630 };
@@ -33,14 +41,26 @@ export default function OpenGraphImage() {
             letterSpacing: '-0.03em',
           }}
         >
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              backgroundImage: 'linear-gradient(135deg, #2E8DF5, #AC3DF3)',
-            }}
-          />
+          <svg
+            width={56}
+            height={56}
+            viewBox={MICASA_MARK_VIEWBOX}
+            fill="none"
+          >
+            <defs>
+              <linearGradient id="ogFill" x1="0%" y1="50%" x2="100%" y2="50%">
+                <stop offset="0%" stopColor={MICASA_MARK_GRADIENT_FROM} />
+                <stop offset="100%" stopColor={MICASA_MARK_GRADIENT_TO} />
+              </linearGradient>
+            </defs>
+            <path
+              d={MICASA_MARK_PATH}
+              stroke="url(#ogFill)"
+              strokeWidth={MICASA_MARK_STROKE_WIDTH}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
           MiCasa
         </div>
 

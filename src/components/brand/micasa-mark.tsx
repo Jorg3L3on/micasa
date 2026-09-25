@@ -3,8 +3,8 @@
 import { useId } from 'react';
 
 import {
-  MICASA_MARK_NODE_R,
-  MICASA_MARK_NODES,
+  MICASA_MARK_GRADIENT_FROM,
+  MICASA_MARK_GRADIENT_TO,
   MICASA_MARK_PATH,
   MICASA_MARK_STROKE_WIDTH,
   MICASA_MARK_VIEWBOX,
@@ -17,7 +17,7 @@ type MicasaMarkProps = {
   title?: string;
 };
 
-/** Brand isotipo: rooftop zigzag with round nodes, Zigzag/Workia gradient + gloss. */
+/** Brand isotipo: filled rounded M, blue to violet, with a light gloss. */
 export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
   const reactId = useId();
   const uid = reactId.replace(/:/g, '');
@@ -35,14 +35,13 @@ export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
     >
       {title ? <title>{title}</title> : null}
       <defs>
-        <linearGradient id={fillId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#6d8bff" />
-          <stop offset="38%" stopColor="#3a37fc" />
-          <stop offset="100%" stopColor="#ee477a" />
+        <linearGradient id={fillId} x1="0%" y1="50%" x2="100%" y2="50%">
+          <stop offset="0%" stopColor={MICASA_MARK_GRADIENT_FROM} />
+          <stop offset="100%" stopColor={MICASA_MARK_GRADIENT_TO} />
         </linearGradient>
-        <linearGradient id={glossId} x1="0%" y1="0%" x2="55%" y2="90%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
-          <stop offset="42%" stopColor="#ffffff" stopOpacity="0" />
+        <linearGradient id={glossId} x1="78%" y1="0%" x2="100%" y2="28%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.38" />
+          <stop offset="70%" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path
@@ -53,9 +52,6 @@ export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {MICASA_MARK_NODES.map(([cx, cy]) => (
-        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={MICASA_MARK_NODE_R} fill={`url(#${fillId})`} />
-      ))}
       <path
         d={MICASA_MARK_PATH}
         fill="none"

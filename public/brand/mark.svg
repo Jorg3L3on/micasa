@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" role="img" aria-labelledby="micasaLockupTitle">
-  <title id="micasaLockupTitle">MiCasa</title>
-  <svg x="8" y="8" width="144" height="144" viewBox="0 0 512 512">
-    <defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="micasaMarkTitle">
+  <title id="micasaMarkTitle">MiCasa</title>
+  <defs>
   <linearGradient id="fill" x1="0%" y1="50%" x2="100%" y2="50%">
     <stop offset="0%" stop-color="#1E63EC"/>
     <stop offset="100%" stop-color="#5D46E6"/>
@@ -12,10 +11,8 @@
     <stop offset="70%" stop-color="#ffffff" stop-opacity="0"/>
   </linearGradient>
 </defs>
-    
+  
   <path d="M 88 418 L 88 79 L 254 271 L 424 79 L 424 418" fill="none" stroke="url(#fill)" stroke-width="136" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M 88 418 L 88 79 L 254 271 L 424 79 L 424 418" fill="none" stroke="url(#gloss)" stroke-width="136" stroke-linecap="round" stroke-linejoin="round"/>
 
-  </svg>
-  <text x="176" y="104" fill="#0A0B10" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="84" font-weight="600" letter-spacing="-1.5">MiCasa</text>
 </svg>
