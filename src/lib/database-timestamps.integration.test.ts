@@ -19,6 +19,9 @@ import { formatStoredDateOnly, parseDateOnly } from '@/lib/calendar-dates'
 import { formatLoanDueYmd, loanDueDateForStorage } from '@/lib/finance/loan-schedule'
 import prisma from '@/lib/prisma'
 
+/** Cold Neon compute can exceed Vitest's 5s default on the first full-suite run. */
+const INTEGRATION_TIMEOUT_MS = 30_000
+
 const CIVIL_DAY = '2026-09-12'
 
 const databaseUrl = process.env.DATABASE_URL ?? ''
@@ -179,19 +182,24 @@ const roundTripLoanDueDate = async () => {
   }
 }
 
-describe('planned payment DATE columns through Prisma', () => {
-  it.skipIf(!databaseConfigured)(
-    'keeps the civil day under UTC and America/Mexico_City',
-    async () => {
-      expect(await canReachDatabase()).toBe(true)
-      await roundTripDateColumns('UTC')
-      await roundTripDateColumns('America/Mexico_City')
-      await roundTripLoanDueDate()
-    },
-  )
+describe(
+  'planned payment DATE columns through Prisma',
+  { timeout: INTEGRATION_TIMEOUT_MS },
+  () => {
+    it.skipIf(!databaseConfigured)(
+      'keeps the civil day under UTC and America/Mexico_City',
+      async () => {
+        expect(await canReachDatabase()).toBe(true)
+        await roundTripDateColumns('UTC')
+        await roundTripDateColumns('America/Mexico_City')
+        await roundTripLoanDueDate()
+      },
+      INTEGRATION_TIMEOUT_MS,
+    )
 
-  afterAll(async () => {
-    if (!databaseConfigured) return
-    await prisma.$disconnect()
-  })
-})
+    afterAll(async () => {
+      if (!databaseConfigured) return
+      await prisma.$disconnect()
+    }, INTEGRATION_TIMEOUT_MS)
+  },
+)
