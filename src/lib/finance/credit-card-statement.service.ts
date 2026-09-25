@@ -4,6 +4,10 @@ import prisma from '@/lib/prisma';
 import { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { resolveFortnightIdForDate } from '@/lib/finance/credit-card-payment-plan.service';
+import {
+  isStalePastDueGap,
+  plannerAsOfForCardMonth,
+} from '@/lib/finance/card-obligation-cycle';
 import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
 import {
   getCardPeriodObligation,
@@ -1510,15 +1514,13 @@ async function getDuePaymentsForPlannerMonthImpl(
   const asOfForVisibleDueDate = (card: {
     due_day: number;
     cutoff_day: number;
-  }) => {
-    const dueDay = clampDayToMonth(year, month, card.due_day);
-    // Same-day corte/pago: asOf on the due day is already the cutoff, so the
-    // statement window rolls the due date into next month. Step back one day
-    // to keep this month's payment in the fortnight that contains due_day.
-    const asOfDay =
-      card.cutoff_day === card.due_day && dueDay > 1 ? dueDay - 1 : dueDay;
-    return createCalendarDate(year, month, asOfDay);
-  };
+  }) =>
+    plannerAsOfForCardMonth({
+      year,
+      month,
+      cutoffDay: card.cutoff_day,
+      dueDay: card.due_day,
+    });
 
   // Fallback only; planner rows use each card's visible due date so cards with
   // due day before cutoff stay on the statement that is actually due this month.
@@ -1585,9 +1587,21 @@ async function getDuePaymentsForPlannerMonthImpl(
     scheduled.second,
   );
 
+  const dropStaleGap = (item: (typeof firstWithCalendar)[number]) =>
+    !isStalePastDueGap({
+      statementDueDate: item.statementDueDate,
+      cutoffDay: item.cutoff_day,
+      dueDay: item.dueDay,
+      plannerStatus: item.plannerStatus,
+      paymentsAppliedToStatement: item.paymentsAppliedToStatement,
+      paymentsAppliedToFortnight: item.paymentsAppliedToFortnight,
+      nextDuePayment: item.nextDuePayment,
+      periodObligation: item.periodObligation,
+    });
+
   return {
-    first: firstWithCalendar.filter(hasPlannerRelevantCardActivity),
-    second: secondWithCalendar.filter(hasPlannerRelevantCardActivity),
+    first: firstWithCalendar.filter(hasPlannerRelevantCardActivity).filter(dropStaleGap),
+    second: secondWithCalendar.filter(hasPlannerRelevantCardActivity).filter(dropStaleGap),
   };
 }
 

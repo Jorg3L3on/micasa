@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import {
+  dateOnlyFieldNames,
+  dateOnlyFieldNamesFromSchema,
   toDatabaseTimestamp,
+  transformPrismaReadResult,
   transformPrismaWriteArgs,
   transformWriteDates,
 } from '@/lib/database-timestamps'
@@ -76,5 +82,56 @@ describe('database timestamp conversion', () => {
     expect(args.data.nested.updateMany.data.paid_at.toISOString()).toBe(
       '2026-06-04T00:46:25.681Z',
     )
+  })
+
+  it('derives every @db.Date column from the schema and does not shift it', () => {
+    const schema = readFileSync(join(process.cwd(), 'prisma/schema.prisma'), 'utf8')
+    const fromSchema = dateOnlyFieldNamesFromSchema(schema)
+    expect(fromSchema.has('anchor_statement_end')).toBe(true)
+    expect(fromSchema.has('valid_until')).toBe(true)
+    expect(dateOnlyFieldNames()).toEqual(fromSchema)
+
+    const anchor = new Date('2026-09-12T00:00:00.000Z')
+    const createdAt = new Date('2026-06-04T06:46:25.681Z')
+    const args = transformPrismaWriteArgs(
+      {
+        data: {
+          anchor_statement_end: anchor,
+          valid_until: anchor,
+          created_at: createdAt,
+        },
+      },
+      'create',
+      'CreditCardPaymentPlan',
+    ) as {
+      data: {
+        anchor_statement_end: Date
+        valid_until: Date
+        created_at: Date
+      }
+    }
+
+    expect(args.data.anchor_statement_end.toISOString()).toBe('2026-09-12T00:00:00.000Z')
+    expect(args.data.valid_until.toISOString()).toBe('2026-09-12T00:00:00.000Z')
+    expect(args.data.created_at.toISOString()).toBe('2026-06-04T00:46:25.681Z')
+  })
+
+  it('reads DATE columns back on the same UTC civil day', () => {
+    const read = transformPrismaReadResult(
+      {
+        anchor_statement_end: new Date('2026-09-12T00:00:00.000Z'),
+        valid_until: new Date('2026-10-20T06:00:00.000Z'),
+        created_at: new Date('2026-06-04T06:46:25.681Z'),
+      },
+      'findMany',
+    ) as {
+      anchor_statement_end: Date
+      valid_until: Date
+      created_at: Date
+    }
+
+    expect(read.anchor_statement_end.toISOString()).toBe('2026-09-12T00:00:00.000Z')
+    expect(read.valid_until.toISOString()).toBe('2026-10-20T00:00:00.000Z')
+    expect(read.created_at.toISOString()).toBe('2026-06-04T06:46:25.681Z')
   })
 })
