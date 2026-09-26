@@ -15,6 +15,7 @@ import { deleteIncomeTemplate } from '@/lib/api/incomes';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { IncomeTemplateListItem } from '@/types/catalog';
+import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 
 export default function IncomeTemplatesPage() {
   const { context } = useFinanceContext();
@@ -182,37 +183,30 @@ export default function IncomeTemplatesPage() {
     [handleEdit, openDeleteDialog]
   );
 
+  const handleCreateTemplate = useCallback(() => {
+    router.push(
+      `/settings/income-templates/new${queryString ? `?${queryString}` : ''}`,
+    );
+  }, [queryString, router]);
+
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  useRegisterToolbarActions({
+    primaryAction: {
+      label: 'Nueva plantilla de ingreso',
+      onClick: handleCreateTemplate,
+      icon: primaryActionIcon,
+    },
+  });
+
   return (
     <>
-      <div
-        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
-        aria-label="Plantillas de ingresos"
-      >
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold leading-tight">
-            Plantillas de ingresos
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Ingresos recurrentes y montos sugeridos por quincena en tu contexto.
-          </p>
-        </div>
-        <Button
-          className="h-9 shrink-0 rounded-xl"
-          onClick={() =>
-            router.push(
-              `/settings/income-templates/new${queryString ? `?${queryString}` : ''}`,
-            )
-          }
-          aria-label="Agregar plantilla de ingresos"
-        >
-          <Plus data-icon="inline-start" className="h-4 w-4" aria-hidden />
-          Agregar plantilla
-        </Button>
-      </div>
-
-      <div className="relative z-0">
+      <div className="space-y-5">
       {error && !deleteDialogOpen && (
-        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
         </div>
       )}

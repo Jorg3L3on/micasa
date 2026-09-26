@@ -4,14 +4,8 @@ import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
 import {
   Form,
   FormControl,
@@ -107,19 +101,21 @@ export default function CategoryForm({
     onOpenChange(newOpen);
   };
 
+  const isSubmitting = form.formState.isSubmitting;
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {mode === 'create' ? 'Agregar categoría' : 'Editar categoría'}
-          </DialogTitle>
-          <DialogDescription>
-            {mode === 'create'
-              ? 'Puedes crear una categoría raíz o una subcategoría bajo un padre existente.'
-              : 'Actualiza el nombre, ícono o descripción. El padre no se puede cambiar al editar.'}
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={mode === 'create' ? 'Nueva categoría' : 'Editar categoría'}
+      description={
+        mode === 'create'
+          ? 'Puedes crear una categoría raíz o una subcategoría bajo un padre existente.'
+          : 'Actualiza el nombre, ícono o descripción. El padre no se puede cambiar al editar.'
+      }
+      busy={isSubmitting}
+    >
+      {({ handleSelectOpenChange }) => (
         <Form {...form} key={`${mode}-${existingIcon ?? 'new'}-${open}`}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
@@ -144,6 +140,7 @@ export default function CategoryForm({
                       onValueChange={(v) =>
                         field.onChange(v === 'none' ? null : parseInt(v, 10))
                       }
+                      onOpenChange={handleSelectOpenChange}
                     >
                       <FormControl>
                         <SelectTrigger aria-label="Categoría padre">
@@ -222,30 +219,26 @@ export default function CategoryForm({
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" data-icon="inline-start" />
-                    {mode === 'create' ? 'Creando...' : 'Actualizando...'}
-                  </>
-                ) : mode === 'create' ? (
-                  'Crear'
-                ) : (
-                  'Actualizar'
-                )}
-              </Button>
-            </DialogFooter>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className={OVERLAY_PRIMARY_BUTTON_CLASS}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" aria-hidden />
+                  {mode === 'create' ? 'Creando…' : 'Guardando…'}
+                </>
+              ) : mode === 'create' ? (
+                'Crear'
+              ) : (
+                'Guardar'
+              )}
+            </Button>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      )}
+    </ResponsiveOverlay>
   );
 }

@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import EmptyState from '@/components/EmptyState';
 import CategoryForm from '@/components/CategoryForm';
@@ -20,12 +19,11 @@ import { Eye, EyeOff, Plus } from 'lucide-react';
 import type { CategoryOption } from '@/types/catalog';
 import { CategoryTreeRow } from '@/components/categories/CategoryTreeRow';
 import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  useRegisterToolbarActions,
+  type ToolbarOverflowItem,
+} from '@/context/toolbar-actions-context';
 import { cn } from '@/lib/utils';
 
 export default function CategoriesPage() {
@@ -218,88 +216,74 @@ export default function CategoriesPage() {
     setOpenSwipeId(null);
   };
 
+  const openCreate = useCallback(() => {
+    setFormError(null);
+    setCreateDialogOpen(true);
+  }, []);
+
+  const handleToggleShowInactive = useCallback(() => {
+    setShowInactive((value) => !value);
+  }, []);
+
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  const overflowItems = useMemo<ToolbarOverflowItem[]>(
+    () => [
+      {
+        key: 'toggle-inactive',
+        label: showInactive ? 'Ocultar inactivas' : 'Mostrar inactivas',
+        onClick: handleToggleShowInactive,
+        icon: showInactive ? (
+          <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+        ) : (
+          <Eye className="h-4 w-4 shrink-0" aria-hidden />
+        ),
+      },
+    ],
+    [showInactive, handleToggleShowInactive],
+  );
+
+  useRegisterToolbarActions({
+    primaryAction: {
+      label: 'Nueva categoría',
+      onClick: openCreate,
+      icon: primaryActionIcon,
+    },
+    overflow: { items: overflowItems },
+  });
+
   return (
     <>
-      <div
-        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
-        aria-label="Categorías"
-      >
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold leading-tight">Categorías</h2>
-          <p className="text-xs text-muted-foreground">
-            {isIncomeTab
-              ? 'Padres y subcategorías para clasificar ingresos. Desactivar las oculta al asignar.'
-              : 'Padres y subcategorías para clasificar gastos. Desactivar las oculta al asignar.'}
-            {!loading && visibleCount > 0 ? (
-              <span className="text-muted-foreground/80">
-                {' '}
-                · {visibleCount} visibles
-              </span>
-            ) : null}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-9"
-                onClick={() => setShowInactive((v) => !v)}
-                aria-pressed={showInactive}
-                aria-label={
-                  showInactive
-                    ? 'Ocultar categorías inactivas'
-                    : 'Mostrar categorías inactivas'
-                }
-              >
-                {showInactive ? (
-                  <EyeOff className="h-4 w-4" data-icon="inline-start" />
-                ) : (
-                  <Eye className="h-4 w-4" data-icon="inline-start" />
-                )}
-                <span className="hidden sm:inline">
-                  {showInactive ? 'Ocultar inactivas' : 'Mostrar inactivas'}
-                </span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="sm:hidden">
-              {showInactive ? 'Ocultar inactivas' : 'Mostrar inactivas'}
-            </TooltipContent>
-          </Tooltip>
-          <Button
-            className="h-9 shrink-0"
-            onClick={() => {
-              setCreateDialogOpen(true);
-              setFormError(null);
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Tabs
+            value={kindTab}
+            onValueChange={(value) => {
+              if (value === 'expense' || value === 'income') {
+                setKindTab(value);
+              }
             }}
-            aria-label="Agregar categoría"
+            className="w-full max-w-[22rem] gap-0"
           >
-            <Plus data-icon="inline-start" className="h-4 w-4" aria-hidden />
-            Agregar categoría
-          </Button>
+            <TabsList
+              variant="segmented"
+              aria-label="Tipo de categoría"
+              className="w-full touch-manipulation"
+            >
+              <TabsTrigger value="expense">Gastos</TabsTrigger>
+              <TabsTrigger value="income">Ingresos</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {!loading && visibleCount > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {visibleCount} visibles
+              {showInactive ? ' · incluye inactivas' : null}
+            </p>
+          ) : null}
         </div>
-      </div>
-
-      <div className="relative z-0 space-y-4">
-        <Tabs
-          value={kindTab}
-          onValueChange={(value) => {
-            if (value === 'expense' || value === 'income') {
-              setKindTab(value);
-            }
-          }}
-          className="gap-0"
-        >
-          <TabsList
-            variant="segmented"
-            aria-label="Tipo de categoría"
-            className="w-full max-w-[22rem] touch-manipulation"
-          >
-            <TabsTrigger value="expense">Gastos</TabsTrigger>
-            <TabsTrigger value="income">Ingresos</TabsTrigger>
-          </TabsList>
-        </Tabs>
 
         {error && !deleteDialogOpen ? (
           <div
@@ -334,11 +318,8 @@ export default function CategoriesPage() {
                     : `Se crean por defecto al registrar; puedes agregar padres o subcategorías de ${kindNoun}.`
                 }
                 action={{
-                  label: 'Agregar categoría',
-                  onClick: () => {
-                    setCreateDialogOpen(true);
-                    setFormError(null);
-                  },
+                  label: 'Nueva categoría',
+                  onClick: openCreate,
                 }}
               />
             ) : (
