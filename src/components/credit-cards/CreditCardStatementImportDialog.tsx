@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ChevronDown, Download, FileText, Undo2, Upload } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Download, FileText, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,14 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { ToggleField } from '@/components/ui/toggle';
 import {
   Select,
   SelectContent,
@@ -39,6 +32,13 @@ import type {
   StatementImportPreviewMovement,
 } from '@/types/catalog';
 import { CategorySelectGroups } from '@/components/categories/CategoryGroupedSelect';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import {
+  GroupedRow,
+  OVERLAY_GROUPED_CARD_CLASS,
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+} from '@/components/overlay/overlay-form';
 
 type Provider = 'MERCADO_PAGO' | 'CA_DEPARTAMENTAL' | 'CA_EFECTIVO' | 'DIDI_CARD' | 'LIVERPOOL';
 
@@ -271,59 +271,50 @@ const CreditCardStatementImportDialog = ({
   const paymentCount = previewMovements.filter((m) => m.kind === 'payment').length;
   const msiCount = previewMovements.filter((m) => m.kind === 'msi_installment').length;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(92dvh,36rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="shrink-0 space-y-0 border-b border-border/60 px-4 py-3 text-left">
-          <div className="flex items-center gap-2.5">
-            {step === 'preview' ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={() => setStep('upload')}
-                disabled={submitting}
-                aria-label="Volver a subir archivo"
-              >
-                <ArrowLeft className="h-4 w-4" aria-hidden />
-              </Button>
-            ) : (
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 dark:bg-sky-500/15">
-                <Upload
-                  className="h-4 w-4 text-sky-600 dark:text-sky-400"
-                  aria-hidden
-                  data-icon="inline-start"
-                />
-              </span>
-            )}
-            <div className="min-w-0">
-              <DialogTitle className="text-base font-semibold leading-tight">
-                {step === 'preview' ? 'Revisar importación' : 'Importar estado de cuenta'}
-              </DialogTitle>
-              {walletName ? (
-                <p className="truncate text-xs text-muted-foreground">{walletName}</p>
-              ) : null}
-            </div>
-          </div>
-        </DialogHeader>
+  const title =
+    step === 'preview' ? 'Revisar importación' : 'Importar estado de cuenta';
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+  return (
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={`Sube el PDF del estado de cuenta${walletName ? ` de ${walletName}` : ''}, revisa los movimientos y confirma la importación.`}
+      busy={submitting}
+    >
+      {({ handleSelectOpenChange }) => (
+        <div className="flex flex-col gap-4">
+          {step === 'preview' ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 self-start px-2 text-xs"
+              onClick={() => setStep('upload')}
+              disabled={submitting}
+            >
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden data-icon="inline-start" />
+              Cambiar archivo
+            </Button>
+          ) : walletName ? (
+            <p className="truncate text-center text-xs text-muted-foreground">
+              {walletName}
+            </p>
+          ) : null}
+
           {step === 'upload' ? (
             <>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="statement-provider" className="text-xs font-medium">
-                    Proveedor
-                  </Label>
+              <div className={OVERLAY_GROUPED_CARD_CLASS}>
+                <GroupedRow label="Proveedor">
                   <Select
                     value={provider}
+                    onOpenChange={handleSelectOpenChange}
                     onValueChange={(v) => setProvider(v as Provider)}
                     disabled={submitting}
                   >
                     <SelectTrigger
                       id="statement-provider"
-                      className="h-10 w-full"
+                      className={OVERLAY_ROW_TRIGGER_CLASS}
                       aria-label="Seleccionar proveedor"
                     >
                       <SelectValue />
@@ -336,12 +327,32 @@ const CreditCardStatementImportDialog = ({
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </GroupedRow>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="statement-pdf-file" className="text-xs font-medium">
-                    Archivo PDF
-                  </Label>
+                <GroupedRow label="Categoría">
+                  <Select
+                    value={importCategoryId || '__default__'}
+                    onOpenChange={handleSelectOpenChange}
+                    onValueChange={(v) =>
+                      setImportCategoryId(v === '__default__' ? '' : v)
+                    }
+                    disabled={submitting}
+                  >
+                    <SelectTrigger
+                      id="statement-category"
+                      className={OVERLAY_ROW_TRIGGER_CLASS}
+                      aria-label="Seleccionar categoría (opcional)"
+                    >
+                      <SelectValue placeholder="Predeterminada" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__default__">Predeterminada</SelectItem>
+                      <CategorySelectGroups categories={categoryOptions} />
+                    </SelectContent>
+                  </Select>
+                </GroupedRow>
+
+                <div className="px-3 py-2.5">
                   <input
                     id="statement-pdf-file"
                     key={fileInputKey}
@@ -394,32 +405,6 @@ const CreditCardStatementImportDialog = ({
                     </span>
                   </button>
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="statement-category" className="text-xs font-medium">
-                    Categoría
-                    <span className="font-normal text-muted-foreground"> (opcional)</span>
-                  </Label>
-                  <Select
-                    value={importCategoryId || '__default__'}
-                    onValueChange={(v) =>
-                      setImportCategoryId(v === '__default__' ? '' : v)
-                    }
-                    disabled={submitting}
-                  >
-                    <SelectTrigger
-                      id="statement-category"
-                      className="h-10 w-full"
-                      aria-label="Seleccionar categoría"
-                    >
-                      <SelectValue placeholder="Predeterminada" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__default__">Predeterminada</SelectItem>
-                      <CategorySelectGroups categories={categoryOptions} />
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
               <Collapsible open={optionsOpen} onOpenChange={setOptionsOpen}>
@@ -448,47 +433,29 @@ const CreditCardStatementImportDialog = ({
                     />
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-3 pt-1">
-                  <label
-                    htmlFor="store-pdf-dialog"
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5"
-                  >
-                    <Checkbox
-                      id="store-pdf-dialog"
+                <CollapsibleContent className="pt-1">
+                  <div className={cn(OVERLAY_GROUPED_CARD_CLASS, 'py-1')}>
+                    <ToggleField
+                      layout="row"
+                      className="px-3"
+                      label="Guardar PDF"
+                      helper="Podrás descargarlo después desde esta tarjeta"
                       checked={storePdf}
-                      onCheckedChange={(v) => setStorePdf(v === true)}
+                      onCheckedChange={setStorePdf}
                       disabled={submitting}
-                      className="mt-0.5"
+                      aria-label="Guardar PDF"
                     />
-                    <span className="min-w-0 space-y-0.5">
-                      <span className="block text-sm font-medium leading-none">
-                        Guardar PDF
-                      </span>
-                      <span className="block text-[10px] text-muted-foreground">
-                        Podrás descargarlo después desde esta tarjeta
-                      </span>
-                    </span>
-                  </label>
-                  <label
-                    htmlFor="skip-dup-dialog"
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5"
-                  >
-                    <Checkbox
-                      id="skip-dup-dialog"
+                    <ToggleField
+                      layout="row"
+                      className="px-3"
+                      label="Omitir duplicados"
+                      helper="Misma fecha, monto y descripción"
                       checked={skipDuplicates}
-                      onCheckedChange={(v) => setSkipDuplicates(v === true)}
+                      onCheckedChange={setSkipDuplicates}
                       disabled={submitting}
-                      className="mt-0.5"
+                      aria-label="Omitir duplicados"
                     />
-                    <span className="min-w-0 space-y-0.5">
-                      <span className="block text-sm font-medium leading-none">
-                        Omitir duplicados
-                      </span>
-                      <span className="block text-[10px] text-muted-foreground">
-                        Misma fecha, monto y descripción
-                      </span>
-                    </span>
-                  </label>
+                  </div>
                 </CollapsibleContent>
               </Collapsible>
             </>
@@ -590,27 +557,18 @@ const CreditCardStatementImportDialog = ({
                     </span>
                   </span>
                 </label>
-                <label
-                  htmlFor="adjust-debt"
-                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 px-3 py-2.5"
-                >
-                  <Checkbox
-                    id="adjust-debt"
-                    checked={adjustWalletDebt}
-                    onCheckedChange={(v) => setAdjustWalletDebt(v === true)}
-                    disabled={submitting}
-                    className="mt-0.5"
-                  />
-                  <span className="min-w-0 space-y-0.5">
-                    <span className="block text-sm font-medium leading-none">
-                      Ajustar deuda de la tarjeta
-                    </span>
-                    <span className="block text-[10px] text-muted-foreground">
-                      Desactiva para importar solo como bitácora sin mover saldos
-                    </span>
-                  </span>
-                </label>
               </div>
+
+              <ToggleField
+                layout="row"
+                className="px-3"
+                label="Ajustar deuda de la tarjeta"
+                helper="Desactiva para importar solo como bitácora sin mover saldos"
+                checked={adjustWalletDebt}
+                onCheckedChange={setAdjustWalletDebt}
+                disabled={submitting}
+                aria-label="Ajustar deuda de la tarjeta"
+              />
 
               {previewMovements.length > 0 ? (
                 <div
@@ -717,24 +675,13 @@ const CreditCardStatementImportDialog = ({
               </ul>
             </div>
           ) : null}
-        </div>
 
-        <DialogFooter className="shrink-0 gap-2 border-t border-border/60 px-4 py-3 sm:flex-row">
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-10 flex-1 sm:flex-none"
-            onClick={() => onOpenChange(false)}
-            disabled={submitting}
-          >
-            Cancelar
-          </Button>
           {step === 'upload' ? (
             <Button
               type="button"
               onClick={() => void handlePreview()}
               disabled={submitting || !importFile}
-              className="h-10 flex-1 rounded-xl sm:flex-none sm:min-w-[8.5rem]"
+              className={OVERLAY_PRIMARY_BUTTON_CLASS}
             >
               {submitting ? 'Analizando…' : 'Analizar PDF'}
             </Button>
@@ -743,14 +690,14 @@ const CreditCardStatementImportDialog = ({
               type="button"
               onClick={() => void handleImport()}
               disabled={submitting}
-              className="h-10 flex-1 rounded-xl sm:flex-none sm:min-w-[8.5rem]"
+              className={OVERLAY_PRIMARY_BUTTON_CLASS}
             >
               {submitting ? 'Importando…' : 'Confirmar importación'}
             </Button>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      )}
+    </ResponsiveOverlay>
   );
 };
 

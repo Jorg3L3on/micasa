@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -20,18 +14,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -46,6 +28,15 @@ import { todayCalendarDate } from '@/lib/calendar-dates';
 import { isGoalWalletType, isTransferableWalletType } from '@/domain/payment-method';
 import { cn, formatCurrency } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import {
+  GroupedRow,
+  OVERLAY_AMOUNT_INPUT_CLASS,
+  OVERLAY_GROUPED_CARD_CLASS,
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_INPUT_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+} from '@/components/overlay/overlay-form';
 import type { FinanceContextType } from '@/types/finance-context';
 
 export type WalletTransferOption = {
@@ -66,32 +57,6 @@ export type WalletTransferDialogProps = {
   onSuccess: () => Promise<void> | void;
 };
 
-const rowTriggerClass =
-  'h-11 w-full max-w-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent';
-
-const rowInputClass =
-  'h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0';
-
-const groupedLabelClass =
-  'w-[5rem] shrink-0 text-sm font-medium leading-none text-foreground';
-
-function GroupedRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-1 px-3 py-1.5">
-      <div className="flex min-h-11 items-center gap-3">
-        <span className={groupedLabelClass}>{label}</span>
-        <div className="min-w-0 flex-1">{children}</div>
-      </div>
-    </div>
-  );
-}
-
 const DIALOG_DESCRIPTION =
   'Mueve saldo entre efectivo y débito del mismo contexto. No crea ingresos ni gastos en el panel.';
 
@@ -104,8 +69,6 @@ const WalletTransferDialog = ({
   onSuccess,
 }: WalletTransferDialogProps) => {
   const isMobile = useIsMobile();
-  const nestedSelectOpenRef = useRef(false);
-  const blockDismissUntilRef = useRef(0);
 
   const fundingWallets = useMemo(
     () =>
@@ -142,31 +105,6 @@ const WalletTransferDialog = ({
     const toCandidate = fundingWallets.find((w) => w.id !== preferredFrom);
     setToWalletId(toCandidate != null ? String(toCandidate.id) : '');
   }, [open, defaultFromWalletId, fundingWallets]);
-
-  const handleSelectOpenChange = (nextOpen: boolean) => {
-    nestedSelectOpenRef.current = nextOpen;
-    if (!nextOpen) {
-      // Swallow the same touch that dismissed the list (iOS ghost click).
-      blockDismissUntilRef.current = Date.now() + 500;
-    }
-  };
-
-  const shouldBlockDismiss = () =>
-    nestedSelectOpenRef.current || Date.now() < blockDismissUntilRef.current;
-
-  const handleRootOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && shouldBlockDismiss()) return;
-    if (!nextOpen && submitting) return;
-    onOpenChange(nextOpen);
-  };
-
-  const preventDismissWhileSelectOpen = (event: {
-    preventDefault: () => void;
-  }) => {
-    if (shouldBlockDismiss()) event.preventDefault();
-  };
-
-  const handleCancel = () => handleRootOpenChange(false);
 
   const fromWallet = fundingWallets.find((w) => String(w.id) === fromWalletId);
   const toOptions = fundingWallets.filter((w) => String(w.id) !== fromWalletId);
@@ -252,43 +190,9 @@ const WalletTransferDialog = ({
 
   const canTransfer = fundingWallets.length >= 2;
 
-  const cancelButton = (
-    <Button
-      type="button"
-      variant="ghost"
-      className="absolute left-0 h-9 px-2 text-primary-text"
-      onClick={handleCancel}
-      disabled={submitting}
-    >
-      Cancelar
-    </Button>
-  );
-
-  const dialogHeader = (
-    <div className="relative flex min-h-10 items-center justify-center">
-      {cancelButton}
-      <DialogTitle className="text-base font-semibold">
-        Transferir saldo
-      </DialogTitle>
-      <DialogDescription className="sr-only">
-        {DIALOG_DESCRIPTION}
-      </DialogDescription>
-    </div>
-  );
-
-  const sheetHeader = (
-    <div className="relative flex min-h-10 items-center justify-center">
-      {cancelButton}
-      <SheetTitle className="text-base font-semibold">
-        Transferir saldo
-      </SheetTitle>
-      <SheetDescription className="sr-only">
-        {DIALOG_DESCRIPTION}
-      </SheetDescription>
-    </div>
-  );
-
-  const formBody = (
+  const renderFormBody = (
+    handleSelectOpenChange: (nextOpen: boolean) => void,
+  ) => (
     <div className={cn('flex flex-col gap-3', isMobile && 'pb-1')}>
       {!canTransfer ? (
         <p className="text-sm text-muted-foreground">
@@ -297,7 +201,7 @@ const WalletTransferDialog = ({
         </p>
       ) : (
         <>
-          <div className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card">
+          <div className={OVERLAY_GROUPED_CARD_CLASS}>
             <div className="space-y-1 px-3 py-2">
               <span className="text-sm font-medium text-foreground">Monto</span>
               <div className="flex items-center gap-2">
@@ -315,7 +219,7 @@ const WalletTransferDialog = ({
                   onChange={(val) => setAmount(val === 0 ? '' : String(val))}
                   disabled={submitting}
                   placeholder="0.00"
-                  className="h-10 border-0 bg-transparent px-0 font-mono text-2xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-12 md:text-4xl"
+                  className={OVERLAY_AMOUNT_INPUT_CLASS}
                   enterKeyHint="next"
                   aria-label="Monto a transferir"
                 />
@@ -343,7 +247,7 @@ const WalletTransferDialog = ({
                   readOnly
                   aria-label="Billetera origen"
                   className={cn(
-                    rowInputClass,
+                    OVERLAY_ROW_INPUT_CLASS,
                     'disabled:cursor-default disabled:opacity-100',
                   )}
                 />
@@ -364,7 +268,7 @@ const WalletTransferDialog = ({
                 >
                   <SelectTrigger
                     aria-label="Billetera origen"
-                    className={rowTriggerClass}
+                    className={OVERLAY_ROW_TRIGGER_CLASS}
                   >
                     <SelectValue placeholder="Selecciona" />
                   </SelectTrigger>
@@ -388,7 +292,7 @@ const WalletTransferDialog = ({
               >
                 <SelectTrigger
                   aria-label="Billetera destino"
-                  className={rowTriggerClass}
+                  className={OVERLAY_ROW_TRIGGER_CLASS}
                 >
                   <SelectValue placeholder="Selecciona" />
                 </SelectTrigger>
@@ -409,7 +313,7 @@ const WalletTransferDialog = ({
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Opcional"
                 disabled={submitting}
-                className={rowInputClass}
+                className={OVERLAY_ROW_INPUT_CLASS}
                 autoCapitalize="sentences"
                 enterKeyHint="next"
               />
@@ -422,7 +326,7 @@ const WalletTransferDialog = ({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 disabled={submitting}
-                className={rowInputClass}
+                className={OVERLAY_ROW_INPUT_CLASS}
               />
             </GroupedRow>
           </div>
@@ -444,7 +348,7 @@ const WalletTransferDialog = ({
               <p className="px-1 text-xs font-medium text-muted-foreground">
                 Comisión
               </p>
-              <div className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card">
+              <div className={OVERLAY_GROUPED_CARD_CLASS}>
                 <div className="space-y-1 px-3 py-2">
                   <span className="text-sm font-medium text-foreground">
                     Monto
@@ -466,7 +370,7 @@ const WalletTransferDialog = ({
                       }
                       disabled={submitting}
                       placeholder="0.00"
-                      className="h-10 border-0 bg-transparent px-0 font-mono text-2xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-12 md:text-4xl"
+                      className={OVERLAY_AMOUNT_INPUT_CLASS}
                       enterKeyHint="done"
                       aria-label="Comisión de transferencia"
                     />
@@ -495,47 +399,26 @@ const WalletTransferDialog = ({
         type="button"
         onClick={handleSubmitClick}
         disabled={submitting || !canTransfer}
-        className="h-11 w-full rounded-xl"
+        className={OVERLAY_PRIMARY_BUTTON_CLASS}
       >
         {submitting ? 'Transferiendo…' : 'Transferir'}
       </Button>
     </div>
   );
 
-  const overlay = isMobile ? (
-    <Sheet open={open} onOpenChange={handleRootOpenChange}>
-      <SheetContent
-        side="bottom"
-        showCloseButton={false}
-        className="flex max-h-[92vh] flex-col gap-0 rounded-t-xl p-0"
-        onPointerDownOutside={preventDismissWhileSelectOpen}
-        onFocusOutside={preventDismissWhileSelectOpen}
-        onInteractOutside={preventDismissWhileSelectOpen}
-      >
-        <div className="border-b border-border/50 px-4 py-3">{sheetHeader}</div>
-        <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          {open ? formBody : null}
-        </div>
-      </SheetContent>
-    </Sheet>
-  ) : (
-    <Dialog open={open} onOpenChange={handleRootOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="max-w-md w-full gap-4 p-5"
-        onPointerDownOutside={preventDismissWhileSelectOpen}
-        onFocusOutside={preventDismissWhileSelectOpen}
-        onInteractOutside={preventDismissWhileSelectOpen}
-      >
-        {dialogHeader}
-        {open ? formBody : null}
-      </DialogContent>
-    </Dialog>
-  );
-
   return (
     <>
-      {overlay}
+      <ResponsiveOverlay
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Transferir saldo"
+        description={DIALOG_DESCRIPTION}
+        busy={submitting}
+      >
+        {({ handleSelectOpenChange }) =>
+          open ? renderFormBody(handleSelectOpenChange) : null
+        }
+      </ResponsiveOverlay>
 
       <AlertDialog
         open={confirmNegativeOpen}

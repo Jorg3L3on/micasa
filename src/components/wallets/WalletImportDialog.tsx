@@ -1,19 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Download, Upload } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import {
+  OVERLAY_GROUPED_CARD_CLASS,
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+} from '@/components/overlay/overlay-form';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { downloadWalletImportCsvTemplate } from '@/lib/finance/wallet-movements-csv';
 import type { FinanceContextType } from '@/types/finance-context';
@@ -97,36 +94,36 @@ const WalletImportDialog = ({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-              <Upload className="h-4 w-4 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
-            </span>
-            <div className="min-w-0 space-y-1.5">
-              <DialogTitle className="text-left text-base">
-                Importar movimientos
-              </DialogTitle>
-              <DialogDescription className="text-left text-xs leading-relaxed">
-                Sube un CSV con columnas{' '}
-                <code className="font-mono text-[11px]">
-                  date,description,amount,category,type
-                </code>
-                . La columna <code className="font-mono text-[11px]">type</code>{' '}
-                debe ser <code className="font-mono text-[11px]">expense</code>{' '}
-                o <code className="font-mono text-[11px]">income</code>. Los
-                gastos se registran como pagados con esta billetera y los
-                ingresos aumentan el saldo.
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+  const hasResult = result != null;
 
-        <div className="space-y-4 pt-1">
-          <div className="space-y-2">
-            <Label htmlFor="wallet-import-file" className="text-xs">
+  return (
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Importar movimientos"
+      description="Sube un CSV de gastos e ingresos para registrarlos en esta billetera."
+      busy={submitting}
+      cancelLabel={hasResult ? 'Cerrar' : 'Cancelar'}
+    >
+      <div className="flex flex-col gap-4">
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Sube un CSV con columnas{' '}
+          <code className="font-mono text-[11px]">
+            date,description,amount,category,type
+          </code>
+          . La columna <code className="font-mono text-[11px]">type</code>{' '}
+          debe ser <code className="font-mono text-[11px]">expense</code> o{' '}
+          <code className="font-mono text-[11px]">income</code>. Los gastos se
+          registran como pagados con esta billetera y los ingresos aumentan el
+          saldo.
+        </p>
+
+        <div className={OVERLAY_GROUPED_CARD_CLASS}>
+          <div className="space-y-2 px-3 py-2.5">
+            <Label
+              htmlFor="wallet-import-file"
+              className="text-sm font-medium text-foreground"
+            >
               Archivo CSV
             </Label>
             <Input
@@ -149,76 +146,67 @@ const WalletImportDialog = ({
               }}
             />
           </div>
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-2 text-xs"
-            onClick={() => downloadWalletImportCsvTemplate()}
-          >
-            <Download
-              className="h-3.5 w-3.5"
-              aria-hidden
-              data-icon="inline-start"
-            />
-            Descargar plantilla
-          </Button>
-
-          {result && (
-            <div
-              className="rounded-lg border border-border/60 p-3 text-xs"
-              role="status"
-              aria-live="polite"
+          <div className="px-1.5 py-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-2 text-xs"
+              onClick={() => downloadWalletImportCsvTemplate()}
             >
-              <p className="font-medium">
-                Importados: {result.imported} · Omitidos: {result.skipped}
-              </p>
-              {result.errors.length > 0 && (
-                <div
-                  className="mt-2 space-y-1"
-                  role="alert"
-                  id="wallet-import-field-errors"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Errores
-                  </p>
-                  <ul className="max-h-40 overflow-y-auto space-y-0.5 pl-4 list-disc text-[11px] text-destructive">
-                    {result.errors.slice(0, 50).map((e, idx) => (
-                      <li key={idx}>
-                        Línea {e.line}: {e.message}
-                      </li>
-                    ))}
-                    {result.errors.length > 50 && (
-                      <li>… y {result.errors.length - 50} más</li>
-                    )}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
+              <Download
+                className="h-3.5 w-3.5"
+                aria-hidden
+                data-icon="inline-start"
+              />
+              Descargar plantilla
+            </Button>
+          </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={submitting}
+        {result ? (
+          <div
+            className="rounded-xl border border-border/60 bg-card p-3 text-xs"
+            role="status"
+            aria-live="polite"
           >
-            Cerrar
-          </Button>
+            <p className="font-medium">
+              Importados: {result.imported} · Omitidos: {result.skipped}
+            </p>
+            {result.errors.length > 0 ? (
+              <div
+                className="mt-2 space-y-1"
+                role="alert"
+                id="wallet-import-field-errors"
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Errores
+                </p>
+                <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-4 text-[11px] text-destructive">
+                  {result.errors.slice(0, 50).map((e, idx) => (
+                    <li key={idx}>
+                      Línea {e.line}: {e.message}
+                    </li>
+                  ))}
+                  {result.errors.length > 50 ? (
+                    <li>… y {result.errors.length - 50} más</li>
+                  ) : null}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : (
           <Button
             type="button"
             onClick={handleImport}
             disabled={submitting || !file}
-            className="rounded-xl"
+            className={OVERLAY_PRIMARY_BUTTON_CLASS}
           >
             {submitting ? 'Importando…' : 'Importar CSV'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        )}
+      </div>
+    </ResponsiveOverlay>
   );
 };
 
