@@ -21,6 +21,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   ToolbarFiltersPortal,
   useRegisterToolbarActions,
+  useToolbarFiltersSelectOpenChange,
 } from '@/context/toolbar-actions-context';
 import { formatDate, formatCurrencySigned, cn } from '@/lib/utils';
 import type { TransactionRow } from '@/types/catalog';
@@ -163,6 +164,8 @@ export default function TransactionsDataTable({
       `/transactions${next.toString() ? `?${next.toString()}` : ''}`,
     );
   }, [router, searchParams]);
+
+  const handleFiltersSelectOpenChange = useToolbarFiltersSelectOpenChange();
 
   useRegisterToolbarActions({
     search: {
@@ -337,6 +340,7 @@ export default function TransactionsDataTable({
               <Select
                 value={month || ALL_VALUE}
                 onValueChange={(v) => handleServerFilter('month', v)}
+                onOpenChange={handleFiltersSelectOpenChange}
               >
                 <SelectTrigger className="w-full" aria-label="Filtrar por mes">
                   <SelectValue placeholder="Mes" />
@@ -358,6 +362,7 @@ export default function TransactionsDataTable({
               <Select
                 value={year || ALL_VALUE}
                 onValueChange={(v) => handleServerFilter('year', v)}
+                onOpenChange={handleFiltersSelectOpenChange}
               >
                 <SelectTrigger className="w-full" aria-label="Filtrar por año">
                   <SelectValue placeholder="Año" />
@@ -382,6 +387,7 @@ export default function TransactionsDataTable({
               <Select
                 value={period || ALL_VALUE}
                 onValueChange={(v) => handleServerFilter('period', v)}
+                onOpenChange={handleFiltersSelectOpenChange}
               >
                 <SelectTrigger className="w-full" aria-label="Filtrar por quincena">
                   <SelectValue placeholder="Quincena" />
@@ -400,7 +406,11 @@ export default function TransactionsDataTable({
               <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Categoría
               </p>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <Select
+                value={categoryFilter}
+                onValueChange={setCategoryFilter}
+                onOpenChange={handleFiltersSelectOpenChange}
+              >
                 <SelectTrigger className="w-full" aria-label="Filtrar por categoría">
                   <SelectValue placeholder="Categoría" />
                 </SelectTrigger>
@@ -424,6 +434,7 @@ export default function TransactionsDataTable({
               <Select
                 value={paymentMethodFilter}
                 onValueChange={setPaymentMethodFilter}
+                onOpenChange={handleFiltersSelectOpenChange}
               >
                 <SelectTrigger
                   className="w-full"
