@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import '@/lib/polyfills';
 import { Geist, Geist_Mono, Manrope } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
@@ -56,6 +56,12 @@ export const metadata: Metadata = {
     description:
       'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

@@ -790,7 +790,7 @@ export default function ExpenseTable({
                           )}
                           aria-label={e.is_paid ? 'Pagado' : 'Pendiente'}
                         >
-                          {e.is_paid ? <ExpensePaidCheckIcon /> : null}
+                          <ExpensePaidCheckIcon />
                         </span>
                       ) : (
                         <Checkbox
@@ -801,9 +801,7 @@ export default function ExpenseTable({
                               ? `Deshacer pago de ${e.description}`
                               : `Marcar ${e.description} como pagado`
                           }
-                          indicator={
-                            e.is_paid ? <ExpensePaidCheckIcon /> : undefined
-                          }
+                          indicator={<ExpensePaidCheckIcon />}
                           boxClassName={expenseStatusBoxClass(e.is_paid, true)}
                           onCheckedChange={(nextPaid) => {
                             if (nextPaid) {

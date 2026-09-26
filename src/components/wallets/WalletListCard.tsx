@@ -31,6 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useFinanceContext } from '@/context/finance-context';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
@@ -40,6 +41,7 @@ import {
   walletCardViewTransitionName,
   WALLET_LIST_CARD_SHELL_CLASS,
 } from '@/lib/ui/wallet-card-view-transition';
+import { prefetchWalletDetailApis } from '@/lib/ui/wallet-detail-prefetch';
 
 const getEffectiveCreditLimit = ({
   credit_limit,
@@ -74,6 +76,7 @@ export const WalletListCard = ({
   onOpenBalance,
 }: WalletListCardProps) => {
   const router = useRouter();
+  const { context } = useFinanceContext();
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
   const canTransfer =
@@ -131,6 +134,11 @@ export const WalletListCard = ({
       ? `Corte ${wallet.cutoff_day} · Pago ${wallet.due_day}`
       : null;
 
+  const handlePrefetchDetail = () => {
+    router.prefetch(detailHref);
+    prefetchWalletDetailApis(wallet.id, isCard, context);
+  };
+
   const handleOpenDetail = (event: MouseEvent<HTMLAnchorElement>) => {
     if (
       event.defaultPrevented ||
@@ -156,6 +164,8 @@ export const WalletListCard = ({
       utilizationPct: usagePercent,
       style: cardStyle,
     });
+    // Kick APIs immediately on tap (hover may not fire on mobile).
+    prefetchWalletDetailApis(wallet.id, isCard, context);
     navigateWithTransitionType(detailHref, 'nav-forward', (href) =>
       router.push(href),
     );
@@ -200,8 +210,8 @@ export const WalletListCard = ({
           className={cn(
             'relative w-full min-w-0 overflow-hidden rounded-[1.375rem] border border-white/15 text-white',
             'shadow-[0_12px_32px_-14px_rgba(0,0,0,0.62),0_4px_12px_-6px_rgba(0,0,0,0.4)]',
-            'transition-transform duration-200 ease-out motion-reduce:transition-none',
-            'active:scale-[0.985] md:hover:-translate-y-1',
+            'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
+            'active:scale-[0.985]',
             WALLET_LIST_CARD_SHELL_CLASS,
             hasAlert && 'ring-2 ring-inset ring-rose-400/70',
           )}
@@ -211,6 +221,8 @@ export const WalletListCard = ({
           <Link
             href={detailHref}
             onClick={handleOpenDetail}
+            onPointerEnter={handlePrefetchDetail}
+            onFocus={handlePrefetchDetail}
             className="absolute inset-0 z-0 rounded-[1.375rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
             aria-label={`Abrir ${wallet.name}`}
           />

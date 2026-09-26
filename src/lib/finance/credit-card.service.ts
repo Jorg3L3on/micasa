@@ -146,14 +146,23 @@ export async function getCreditCardByOwner(
   id: number,
   ownerFilter: OwnerFilter,
 ) {
-  const wallet = await prisma.wallet.findFirst({
-    where: {
-      id,
-      ...ownerFilter,
-      ...creditCardWalletWhere,
-    },
-    include: CREDIT_CARD_ASSIGNEE_INCLUDE,
-  });
+  const [wallet, spentAgg] = await Promise.all([
+    prisma.wallet.findFirst({
+      where: {
+        id,
+        ...ownerFilter,
+        ...creditCardWalletWhere,
+      },
+      include: CREDIT_CARD_ASSIGNEE_INCLUDE,
+    }),
+    prisma.expense.aggregate({
+      where: {
+        wallet_id: id,
+        is_paid: false,
+      },
+      _sum: { amount: true },
+    }),
+  ]);
 
   if (!wallet) {
     const error = new Error('Tarjeta no encontrada');
@@ -161,13 +170,6 @@ export async function getCreditCardByOwner(
     throw error;
   }
 
-  const spentAgg = await prisma.expense.aggregate({
-    where: {
-      wallet_id: id,
-      is_paid: false,
-    },
-    _sum: { amount: true },
-  });
   const spent = Number(spentAgg._sum.amount ?? 0);
 
   return mapWalletToCreditCardDto(wallet, spent);

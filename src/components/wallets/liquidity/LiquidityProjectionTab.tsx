@@ -171,35 +171,6 @@ export function LiquidityProjectionTab({
 
       {data ? (
         <>
-          {(data.summary.unresolved_card_obligation_count ?? 0) > 0 ? (
-            <div
-              className="rounded-xl border border-border/60 border-l-[3px] border-l-amber-500/60 bg-card px-4 py-3"
-              role="status"
-            >
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                Falta el pago del corte
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {data.summary.unresolved_card_obligation_count === 1
-                  ? '1 tarjeta con deuda y fecha de pago no entra en los totales. Ese hueco no es $0.'
-                  : `${data.summary.unresolved_card_obligation_count} tarjetas con deuda y fecha de pago no entran en los totales. Ese hueco no es $0.`}
-              </p>
-              {(data.summary.unresolved_card_obligations ?? []).length > 0 ? (
-                <ul className="mt-2 space-y-1 text-xs text-foreground">
-                  {(data.summary.unresolved_card_obligations ?? []).map((card) => (
-                    <li key={`${card.wallet_id}-${card.statement_due_date}`}>
-                      {card.wallet_name}
-                      <span className="text-muted-foreground">
-                        {' '}
-                        · vence {card.statement_due_date}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-
           <LiquiditySectionGroup aria-label="Proyección mensual">
             <LiquidityPanelConnector>
               <LiquidityFutureTimeline

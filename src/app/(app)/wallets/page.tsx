@@ -75,8 +75,8 @@ import type { LenderListItem } from '@/types/lenders';
 import { listLenders } from '@/lib/api/lenders';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletListCard } from '@/components/wallets/WalletListCard';
+import { WalletCardsList } from '@/components/wallets/WalletCardsList';
 import { LenderRail } from '@/components/wallets/LenderRail';
-import { WalletKindRail } from '@/components/wallets/WalletKindRail';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import {
@@ -89,7 +89,6 @@ import {
   setWalletListCache,
   walletListOwnerKey,
 } from '@/lib/ui/wallet-list-cache';
-import { WALLET_LIST_STACK_OVERLAP_CLASS } from '@/lib/ui/wallet-card-view-transition';
 import { cn } from '@/lib/utils';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
@@ -497,20 +496,6 @@ export default function WalletsPage() {
     if (!query) return active;
     return active.filter((lender) => lender.name.toLowerCase().includes(query));
   }, [context, lenders, searchQuery]);
-
-  const fundingRailWallets = useMemo(
-    () =>
-      displayWallets.filter(
-        (wallet) => wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD',
-      ),
-    [displayWallets],
-  );
-  const creditRailWallets = useMemo(
-    () => displayWallets.filter((wallet) => isCreditType(wallet.type)),
-    [displayWallets],
-  );
-  const showIdentityRails =
-    kindFilter === 'all' && typeFilter === TYPE_FILTER_ALL;
 
   /** Conteos para chips: aplica búsqueda y todos los filtros excepto la dimensión del chip. */
   const statusChipCounts = useMemo(() => {
@@ -1462,61 +1447,25 @@ export default function WalletsPage() {
                   <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
                     {kindFilter === 'lenders' ? (
                       <LenderRail lenders={visibleLenders} />
-                    ) : showIdentityRails ? (
-                      <div className="grid gap-5 xl:grid-cols-3">
-                        <WalletKindRail
-                          label="Efectivo y débito"
-                          wallets={fundingRailWallets}
-                          ownerQueryString={ownerQueryString}
-                          isHouseContext={isHouseContext}
-                          onEdit={openEditDialog}
-                          onTransfer={openTransferDialog}
-                          onDelete={openDeleteDialog}
-                          onOpenBalance={setBalanceWallet}
-                        />
-                        <WalletKindRail
-                          label="Tarjetas"
-                          wallets={creditRailWallets}
-                          ownerQueryString={ownerQueryString}
-                          isHouseContext={isHouseContext}
-                          onEdit={openEditDialog}
-                          onTransfer={openTransferDialog}
-                          onDelete={openDeleteDialog}
-                          onOpenBalance={setBalanceWallet}
-                        />
-                        <LenderRail lenders={visibleLenders} />
-                      </div>
                     ) : displayWallets.length === 0 ? (
                       <p className="py-8 text-center text-muted-foreground">
                         Ninguna billetera coincide con los filtros.
                       </p>
                     ) : (
-                      <ul
-                        className="isolate flex w-full list-none flex-col p-0 md:grid md:grid-cols-2 md:gap-5 md:py-1 @min-[1045px]:!grid-cols-3"
-                        role="list"
-                        aria-label="Billeteras"
-                      >
-                        {displayWallets.map((wallet, index) => (
-                          <li
-                            key={wallet.id}
-                            className={cn(
-                              'relative min-w-0 md:mt-0',
-                              index > 0 && WALLET_LIST_STACK_OVERLAP_CLASS,
-                            )}
-                            style={{ zIndex: index + 1 }}
-                          >
-                            <WalletListCard
-                              wallet={wallet}
-                              ownerQueryString={ownerQueryString}
-                              isHouseContext={isHouseContext}
-                              onEdit={openEditDialog}
-                              onTransfer={openTransferDialog}
-                              onDelete={openDeleteDialog}
-                              onOpenBalance={setBalanceWallet}
-                            />
-                          </li>
-                        ))}
-                      </ul>
+                      <WalletCardsList
+                        wallets={displayWallets}
+                        renderCard={(wallet) => (
+                          <WalletListCard
+                            wallet={wallet}
+                            ownerQueryString={ownerQueryString}
+                            isHouseContext={isHouseContext}
+                            onEdit={openEditDialog}
+                            onTransfer={openTransferDialog}
+                            onDelete={openDeleteDialog}
+                            onOpenBalance={setBalanceWallet}
+                          />
+                        )}
+                      />
                     )}
 
                     <div

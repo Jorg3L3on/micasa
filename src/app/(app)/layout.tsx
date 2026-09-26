@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import {
   AppSidebarDynamic,
   AppHeaderToolbarDynamic,
+  MobileBottomDockDynamic,
 } from '@/components/app-shell-dynamic';
 import { AppToolbarShell } from '@/components/app-toolbar-shell';
 import { AppTooltipProvider } from '@/components/AppTooltipProvider';
@@ -48,13 +49,14 @@ export default async function AppLayout({
               >
                 <AppHeaderToolbarDynamic />
               </header>
-              <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 dark:bg-transparent">
+              <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 pb-[calc(5rem+env(safe-area-inset-bottom))] dark:bg-transparent md:pb-6">
                 <div className="container mx-auto min-w-0 overflow-x-clip">
                   <Suspense fallback={<AppLoading />}>
                     <ContentEnter>{children}</ContentEnter>
                   </Suspense>
                 </div>
               </div>
+              <MobileBottomDockDynamic />
             </QuickCaptureHost>
           </SidebarInset>
         </SidebarProvider>

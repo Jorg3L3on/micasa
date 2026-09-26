@@ -157,7 +157,8 @@ export const CreditCardCycleSpendingBar = ({
 
 type VisualHeroProps = {
   card: CreditCardListItem;
-  statement: CreditCardStatementResponse;
+  /** When null/undefined, hero uses list-card amounts so morph isn't blocked. */
+  statement?: CreditCardStatementResponse | null;
   utilizationPct: number | null;
   isCurrentCycle?: boolean;
 };
@@ -173,7 +174,14 @@ export const CreditCardVisualHero = ({
     [card.provider_icon_key, card.type],
   );
 
-  const limit = statement.credit_limit ?? 0;
+  const outstandingBalance = statement?.outstanding_balance ?? card.amount;
+  const availableCredit =
+    statement?.available_credit ?? card.available_credit ?? null;
+  const limit =
+    statement?.credit_limit ??
+    card.temporary_credit_limit ??
+    card.credit_limit ??
+    0;
 
   return (
     <div
@@ -240,7 +248,7 @@ export const CreditCardVisualHero = ({
                 Deuda total
               </p>
               <p className="text-3xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-4xl">
-                {formatCurrency(statement.outstanding_balance)}
+                {formatCurrency(outstandingBalance)}
               </p>
             </div>
 
@@ -252,12 +260,12 @@ export const CreditCardVisualHero = ({
                 <p
                   className={cn(
                     'font-mono text-sm font-semibold tabular-nums leading-snug',
-                    (statement.available_credit ?? 0) < 0 && 'text-red-200',
+                    (availableCredit ?? 0) < 0 && 'text-red-200',
                   )}
                 >
-                  {statement.available_credit == null
+                  {availableCredit == null
                     ? 'Sin línea'
-                    : formatCurrency(statement.available_credit)}
+                    : formatCurrency(availableCredit)}
                 </p>
               </div>
               {limit > 0 ? (

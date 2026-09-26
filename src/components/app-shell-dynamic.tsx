@@ -39,10 +39,22 @@ const HeaderToolbarClient = dynamic(
   },
 );
 
+const MobileBottomDockClient = dynamic(
+  () =>
+    import('@/components/mobile-bottom-dock').then((mod) => ({
+      default: mod.MobileBottomDock,
+    })),
+  { ssr: false },
+);
+
 export function AppSidebarDynamic() {
   return <AppSidebarClient />;
 }
 
 export function AppHeaderToolbarDynamic() {
   return <HeaderToolbarClient />;
+}
+
+export function MobileBottomDockDynamic() {
+  return <MobileBottomDockClient />;
 }

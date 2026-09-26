@@ -35,6 +35,15 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
+import {
+  hasWalletVtStash,
+  seedWalletDetail,
+} from '@/lib/ui/wallet-detail-seed';
+import {
+  takeWarmed,
+  walletDetailWarmKey,
+  walletMovementsWarmKey,
+} from '@/lib/ui/wallet-detail-prefetch';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   useRegisterToolbarActions,
@@ -141,9 +150,13 @@ export default function WalletDetailPage() {
   const { context } = useFinanceContext();
   const walletId = Number(params.id);
 
-  const [wallet, setWallet] = useState<WalletDetail | null>(null);
+  const [wallet, setWallet] = useState<WalletDetail | null>(() =>
+    seedWalletDetail(walletId, null),
+  );
   const [data, setData] = useState<WalletMovementsResponse | null>(null);
-  const [heroLoading, setHeroLoading] = useState(true);
+  const [heroLoading, setHeroLoading] = useState(
+    () => !hasWalletVtStash(walletId) && seedWalletDetail(walletId, null) == null,
+  );
   const [bodyLoading, setBodyLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<{ from: string; to: string }>(() => {
@@ -216,13 +229,17 @@ export default function WalletDetailPage() {
       return null;
     }
     try {
-      setHeroLoading(true);
+      // Keep stashed/seeded hero visible — don't flip back to a full-page skeleton.
       setError(null);
-      const detail = await clientFetchFromApi<WalletDetail>(
-        `/api/wallets/${walletId}`,
-        undefined,
-        context,
-      );
+      const warmKey = walletDetailWarmKey(walletId, context);
+      const warmed = await takeWarmed<WalletDetail>(warmKey);
+      const detail =
+        warmed ??
+        (await clientFetchFromApi<WalletDetail>(
+          `/api/wallets/${walletId}`,
+          undefined,
+          context,
+        ));
       if (detail.type === 'GOAL') {
         setWallet(detail);
         setHeroLoading(false);
@@ -249,11 +266,20 @@ export default function WalletDetailPage() {
     if (context.id === 0 || !Number.isFinite(walletId)) return;
     try {
       setBodyLoading(true);
-      const movements = await clientFetchFromApi<WalletMovementsResponse>(
-        `/api/wallets/${walletId}/movements?from=${range.from}&to=${range.to}`,
-        undefined,
+      const warmKey = walletMovementsWarmKey(
+        walletId,
+        range.from,
+        range.to,
         context,
       );
+      const warmed = await takeWarmed<WalletMovementsResponse>(warmKey);
+      const movements =
+        warmed ??
+        (await clientFetchFromApi<WalletMovementsResponse>(
+          `/api/wallets/${walletId}/movements?from=${range.from}&to=${range.to}`,
+          undefined,
+          context,
+        ));
       setData(movements);
     } catch (err) {
       setError(
@@ -318,9 +344,21 @@ export default function WalletDetailPage() {
   }, [loadWallet, loadMovements, loadSecondary]);
 
   useEffect(() => {
+    if (wallet) return;
+    const seeded = seedWalletDetail(walletId, context);
+    if (!seeded) return;
+    setWallet(seeded);
+    setHeroLoading(false);
+  }, [context, wallet, walletId]);
+
+  useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const detail = await loadWallet();
+      const [detail] = await Promise.all([
+        loadWallet(),
+        // Warm movements in parallel; loadMovements no-ops until context ready
+        loadMovements(),
+      ]);
       if (cancelled || !detail) return;
       void loadSecondary(detail);
     })();
@@ -612,11 +650,13 @@ export default function WalletDetailPage() {
     overflow: overflowItems.length > 0 ? { items: overflowItems } : null,
   });
 
-  if (context.id === 0 || (heroLoading && !wallet)) {
+  const stashReady = hasWalletVtStash(walletId);
+
+  if (context.id === 0 || (heroLoading && !wallet && !stashReady)) {
     return <WalletDetailSkeleton walletId={walletId} />;
   }
 
-  if ((error && !wallet) || !wallet) {
+  if ((error && !wallet && !stashReady) || (!wallet && !stashReady)) {
     return (
       <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
         {error ?? 'No se pudo cargar la billetera'}
@@ -629,18 +669,22 @@ export default function WalletDetailPage() {
   return (
     <DirectionalTransition>
     <div className="relative">
-      <WalletHeroZone wallet={wallet}>
+      <WalletHeroZone wallet={wallet ?? undefined}>
         <ViewTransition
-          name={walletCardViewTransitionName(wallet.id)}
+          name={walletCardViewTransitionName(walletId)}
           share="morph"
           default="none"
         >
-          <WalletVisualHero wallet={wallet} />
+          {wallet ? (
+            <WalletVisualHero wallet={wallet} />
+          ) : (
+            <WalletCardVtPlaceholder walletId={walletId} variant="funding" />
+          )}
         </ViewTransition>
       </WalletHeroZone>
 
       <div className="relative">
-      {bodyPending ? (
+      {bodyPending || !wallet ? (
         <div
           className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm"
           role="status"
@@ -755,6 +799,8 @@ export default function WalletDetailPage() {
         />
       )}
 
+      {wallet ? (
+        <>
       <WalletBalanceDialog
         open={balanceOpen}
         onOpenChange={setBalanceOpen}
@@ -812,6 +858,8 @@ export default function WalletDetailPage() {
         }}
         error={editError && editOpen ? editError : null}
       />
+        </>
+      ) : null}
 
       {isCreditWallet ? (
         <CreditCardPaymentDialog
