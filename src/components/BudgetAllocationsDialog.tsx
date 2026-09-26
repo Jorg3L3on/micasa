@@ -5,14 +5,8 @@ import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
 import {
   Form,
   FormControl,
@@ -230,16 +224,19 @@ export default function BudgetAllocationsDialog({
     });
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Editar asignaciones: {budget.name}</DialogTitle>
-          <DialogDescription>
-            Modifica la distribución del presupuesto entre carteras y categorías.
-          </DialogDescription>
-        </DialogHeader>
+  const isBusy = form.formState.isSubmitting || disabled;
 
+  return (
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Editar asignaciones: ${budget.name}`}
+      description="Modifica la distribución del presupuesto entre carteras y categorías."
+      busy={isBusy}
+      contentClassName="md:max-w-2xl"
+    >
+      {({ handleSelectOpenChange }) => (
+      <div className="flex flex-col gap-4">
         {error ? (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
@@ -275,7 +272,7 @@ export default function BudgetAllocationsDialog({
               </Alert>
             ) : null}
 
-            <div ref={scrollRef} className="max-h-60 space-y-3 overflow-y-auto pr-1">
+            <div ref={scrollRef} className="max-h-[min(50vh,22rem)] space-y-3 overflow-y-auto pr-1 md:max-h-60">
               {loadingOptions ? (
                 <div className="space-y-3" aria-busy="true" aria-label="Cargando opciones">
                   {Array.from({ length: 2 }).map((_, index) => (
@@ -302,21 +299,22 @@ export default function BudgetAllocationsDialog({
                 fields.map((field, index) => (
                   <div
                     key={field.id}
-                    className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-start gap-3 rounded-lg border border-border/60 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_2.5rem]"
+                    className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-start gap-3 rounded-lg border border-border/60 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_2.5rem]"
                   >
                     <FormField
                       control={form.control}
                       name={`allocations.${index}.wallet_id`}
                       render={({ field: f }) => (
-                        <FormItem className="col-span-2 min-w-0 sm:col-span-1">
+                        <FormItem className="col-span-2 min-w-0 md:col-span-1">
                           <FormLabel className="text-xs">Cartera</FormLabel>
                           <Select
                             onValueChange={(v) => f.onChange(selectValueToWalletId(v))}
+                            onOpenChange={handleSelectOpenChange}
                             value={walletIdToSelectValue(f.value)}
                           >
                             <FormControl>
                               <SelectTrigger
-                                className="h-11 w-full text-sm sm:h-8 sm:text-xs"
+                                className="h-11 w-full text-sm md:h-8 md:text-xs"
                                 aria-label={`Cartera de la asignación ${index + 1}`}
                               >
                                 <SelectValue placeholder="Cartera" />
@@ -347,16 +345,17 @@ export default function BudgetAllocationsDialog({
                       control={form.control}
                       name={`allocations.${index}.category_id`}
                       render={({ field: f }) => (
-                        <FormItem className="col-span-2 min-w-0 sm:col-span-1">
+                        <FormItem className="col-span-2 min-w-0 md:col-span-1">
                           <FormLabel className="text-xs">Categoría</FormLabel>
                           <CategoryGroupedSelect
                             categories={categories}
                             value={f.value ? Number(f.value) : undefined}
                             onValueChange={f.onChange}
+                            onOpenChange={handleSelectOpenChange}
                             includeCategoryId={
                               f.value ? Number(f.value) : null
                             }
-                            triggerClassName="h-11 w-full text-sm sm:h-8 sm:text-xs"
+                            triggerClassName="h-11 w-full text-sm md:h-8 md:text-xs"
                             placeholder="Categoría"
                             ariaLabel={`Categoría de la asignación ${index + 1}`}
                           />
@@ -375,7 +374,7 @@ export default function BudgetAllocationsDialog({
                             <CurrencyInput
                               value={f.value}
                               onChange={f.onChange}
-                              className="h-11 text-sm sm:h-8 sm:text-xs"
+                              className="h-11 text-sm md:h-8 md:text-xs"
                               placeholder="0"
                               aria-label={`Monto de la asignación ${index + 1}`} data-icon="inline-start" />
                           </FormControl>
@@ -389,7 +388,7 @@ export default function BudgetAllocationsDialog({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="size-11 text-destructive hover:text-destructive sm:size-8"
+                        className="size-11 text-destructive hover:text-destructive md:size-8"
                         onClick={() => remove(index)}
                         disabled={fields.length === 1}
                         aria-label="Eliminar asignación"
@@ -406,7 +405,7 @@ export default function BudgetAllocationsDialog({
               type="button"
               variant="outline"
               size="sm"
-              className="h-11 w-full sm:h-8"
+              className="h-11 w-full md:h-8"
               onClick={handleAppend}
               disabled={loadingOptions || Boolean(optionsError)}
             >
@@ -414,39 +413,29 @@ export default function BudgetAllocationsDialog({
               Agregar asignación
             </Button>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 sm:h-9"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                className="h-11 sm:h-9"
-                disabled={
-                  !isFullyAllocated ||
-                  form.formState.isSubmitting ||
-                  disabled ||
-                  loadingOptions ||
-                  Boolean(optionsError)
-                }
-              >
-                {form.formState.isSubmitting || disabled ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
-                    Guardando…
-                  </>
-                ) : (
-                  'Guardar cambios'
-                )}
-              </Button>
-            </DialogFooter>
+            <Button
+              type="submit"
+              className={OVERLAY_PRIMARY_BUTTON_CLASS}
+              disabled={
+                !isFullyAllocated ||
+                isBusy ||
+                loadingOptions ||
+                Boolean(optionsError)
+              }
+            >
+              {isBusy ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
+                  Guardando…
+                </>
+              ) : (
+                'Guardar cambios'
+              )}
+            </Button>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </div>
+      )}
+    </ResponsiveOverlay>
   );
 }
