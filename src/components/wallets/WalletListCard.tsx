@@ -200,8 +200,8 @@ export const WalletListCard = ({
           className={cn(
             'relative w-full min-w-0 overflow-hidden rounded-[1.375rem] border border-white/15 text-white',
             'shadow-[0_12px_32px_-14px_rgba(0,0,0,0.62),0_4px_12px_-6px_rgba(0,0,0,0.4)]',
-            'transition-transform duration-200 ease-out motion-reduce:transition-none',
-            'active:scale-[0.985] md:hover:-translate-y-1',
+            'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
+            'active:scale-[0.985]',
             WALLET_LIST_CARD_SHELL_CLASS,
             hasAlert && 'ring-2 ring-inset ring-rose-400/70',
           )}
