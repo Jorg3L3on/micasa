@@ -86,12 +86,6 @@ import type { LoanDuePaymentItem } from '@/types/loans';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import { cn } from '@/lib/utils';
 
-/** Altura del panel con scroll (gastos / tarjeta / préstamos). Móvil usa dvh por la barra del navegador. */
-const FORTNIGHT_TAB_PANEL_HEIGHT_CLASS =
-  'h-[min(72dvh,40rem)] min-h-[12rem] sm:h-[min(58vh,36rem)] lg:h-[min(72vh,56rem)]';
-const FORTNIGHT_TAB_PANEL_MAX_HEIGHT_CLASS =
-  'max-h-[min(72dvh,40rem)] sm:max-h-[min(58vh,36rem)] lg:max-h-[min(72vh,56rem)]';
-
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
   `micasa.planificacion.fortnightTab.${p}`;
 
@@ -885,6 +879,20 @@ export default function FortnightColumn({
   );
 
   const compactTabs = dualColumnLayout;
+  const plannerTabTriggerClass = cn(
+    '@container min-h-9 px-1.5 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2 sm:py-1.5 xl:px-2.5 xl:py-2 xl:text-sm',
+    compactTabs && 'min-h-8 px-1 py-1 text-xs xl:px-1.5 xl:py-1 xl:text-xs',
+  );
+  const plannerTabLabelClass = cn(
+    'inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5',
+    compactTabs && 'gap-1',
+  );
+  const plannerTabBadgeClass = (isActive: boolean, hasPending: boolean) =>
+    cn(
+      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5',
+      compactTabs && 'h-4 min-w-4 px-1 xl:h-4 xl:min-w-4 xl:px-1',
+      isActive && hasPending && 'bg-primary-foreground/20 text-primary-foreground',
+    );
 
   return (
     <>
@@ -950,25 +958,21 @@ export default function FortnightColumn({
             <TabsList
               aria-label="Secciones de la quincena"
               wrapperClassName="min-w-0 flex-1"
-              className="gap-0.5 bg-transparent p-0 sm:gap-1"
+              className="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
             >
               <TabsTrigger
                 value="expenses"
-                className={cn(
-                  'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2.5 sm:py-1.5 sm:text-xs xl:min-h-0 xl:px-3.5 xl:py-2 xl:text-sm',
-                  compactTabs && 'min-h-8 px-2 py-1 text-xs sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
-                )}
+                stretch
+                className={plannerTabTriggerClass}
                 aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
               >
-                <span className={cn('inline-flex items-center gap-1 sm:gap-1.5 xl:gap-2', compactTabs && 'gap-1')}>
+                <span className={plannerTabLabelClass}>
                   Gastos
                   <Badge
                     variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
-                    className={cn(
-                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-xs xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-xs',
-                      compactTabs && 'h-4 min-w-4 px-1 text-xs xl:h-4 xl:min-w-4 xl:px-1 xl:text-xs',
-                      columnTab === 'expenses' && unpaidExpenseCount > 0 &&
-                        'bg-primary-foreground/20 text-primary-foreground',
+                    className={plannerTabBadgeClass(
+                      columnTab === 'expenses',
+                      unpaidExpenseCount > 0,
                     )}
                     aria-hidden
                   >
@@ -978,24 +982,19 @@ export default function FortnightColumn({
               </TabsTrigger>
               <TabsTrigger
                 value="cards"
-                className={cn(
-                  'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2.5 sm:py-1.5 sm:text-xs xl:min-h-0 xl:px-3.5 xl:py-2 xl:text-sm',
-                  compactTabs && 'min-h-8 px-2 py-1 text-xs sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
-                )}
+                stretch
+                className={plannerTabTriggerClass}
                 aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
               >
-                <span className={cn('inline-flex items-center gap-1 sm:gap-1.5 xl:gap-2', compactTabs && 'gap-1')}>
-                  <span className={compactTabs ? 'inline' : 'xl:hidden'}>Tarjeta</span>
-                  <span className={compactTabs ? 'hidden' : 'hidden xl:inline'}>Pagos tarjeta</span>
+                <span className={plannerTabLabelClass}>
+                  Tarjeta
                   <Badge
                     variant={
                       pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
                     }
-                    className={cn(
-                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-xs xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-xs',
-                      compactTabs && 'h-4 min-w-4 px-1 text-xs xl:h-4 xl:min-w-4 xl:px-1 xl:text-xs',
-                      columnTab === 'cards' && pendingCardPaymentsCount > 0 &&
-                        'bg-primary-foreground/20 text-primary-foreground',
+                    className={plannerTabBadgeClass(
+                      columnTab === 'cards',
+                      pendingCardPaymentsCount > 0,
                     )}
                     aria-hidden
                   >
@@ -1005,24 +1004,22 @@ export default function FortnightColumn({
               </TabsTrigger>
               <TabsTrigger
                 value="loans"
-                className={cn(
-                  'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2.5 sm:py-1.5 sm:text-xs xl:min-h-0 xl:px-3.5 xl:py-2 xl:text-sm',
-                  compactTabs && 'min-h-8 px-2 py-1 text-xs sm:min-h-8 sm:px-2 sm:py-1 sm:text-xs xl:px-2 xl:py-1 xl:text-xs',
-                )}
+                stretch
+                className={plannerTabTriggerClass}
                 aria-label={`Préstamos, ${pendingLoanPaymentsCount} pendientes`}
               >
-                <span className={cn('inline-flex items-center gap-1 sm:gap-1.5 xl:gap-2', compactTabs && 'gap-1')}>
-                  <span className={compactTabs ? 'inline' : 'xl:hidden'}>Prest.</span>
-                  <span className={compactTabs ? 'hidden' : 'hidden xl:inline'}>Préstamos</span>
+                <span className={plannerTabLabelClass}>
+                  <span className="@min-[6.25rem]:hidden">Prest.</span>
+                  <span className="hidden @min-[6.25rem]:inline">
+                    Préstamos
+                  </span>
                   <Badge
                     variant={
                       pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
                     }
-                    className={cn(
-                      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none sm:h-4 sm:min-w-4 sm:px-1 sm:text-xs xl:h-5 xl:min-w-5.5 xl:px-1.5 xl:text-xs',
-                      compactTabs && 'h-4 min-w-4 px-1 text-xs xl:h-4 xl:min-w-4 xl:px-1 xl:text-xs',
-                      columnTab === 'loans' && pendingLoanPaymentsCount > 0 &&
-                        'bg-primary-foreground/20 text-primary-foreground',
+                    className={plannerTabBadgeClass(
+                      columnTab === 'loans',
+                      pendingLoanPaymentsCount > 0,
                     )}
                     aria-hidden
                   >
@@ -1098,83 +1095,62 @@ export default function FortnightColumn({
           </div>
 
           <TabsContent value="expenses" className="mt-0 outline-none">
-            <div
-              className={cn(
-                'flex flex-col overflow-hidden',
-                FORTNIGHT_TAB_PANEL_HEIGHT_CLASS,
-              )}
-            >
-              {sortedTransactions.length === 0 ? (
-                <EmptyState
-                  message="Sin gastos en esta quincena"
-                  description="Empieza con un gasto para ver totales y el estado del mes."
-                  action={{
-                    label: 'Agregar transacción',
-                    onClick: () => setAddExpenseDialogOpen(true),
-                    variant: 'default',
-                  }}
-                />
-              ) : (
-                <ExpenseTable
-                  expenses={sortedTransactions}
-                  onExpenseUpdate={handleExpenseUpdate}
-                  totalIncome={tenemos}
-                  year={year}
-                  month={month}
-                  period={period}
-                  density={tableDensity}
-                  wallets={wallets}
-                  pinTotalsToBottom
-                  sortMode={listSortMode}
-                  sortDir={listSortDir}
-                />
-              )}
-            </div>
+            {sortedTransactions.length === 0 ? (
+              <EmptyState
+                message="Sin gastos en esta quincena"
+                description="Empieza con un gasto para ver totales y el estado del mes."
+                action={{
+                  label: 'Agregar transacción',
+                  onClick: () => setAddExpenseDialogOpen(true),
+                  variant: 'default',
+                }}
+              />
+            ) : (
+              <ExpenseTable
+                expenses={sortedTransactions}
+                onExpenseUpdate={handleExpenseUpdate}
+                totalIncome={tenemos}
+                year={year}
+                month={month}
+                period={period}
+                density={tableDensity}
+                wallets={wallets}
+                pinTotalsToBottom
+                sortMode={listSortMode}
+                sortDir={listSortDir}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="cards" className="mt-0 outline-none">
-            <div
-              className={cn(
-                'overflow-y-auto scrollbar-hide',
-                FORTNIGHT_TAB_PANEL_MAX_HEIGHT_CLASS,
-              )}
-            >
-              <FortnightCardPaymentsPanel
-                items={cardDueItems}
-                ownerQueryString={ownerQueryString}
-                fortnightLabel={label}
-                fortnightId={fortnightId}
-                plannerYear={year}
-                plannerMonth={month}
-                plannerPeriod={period}
-                isCompact={tableDensity === 'compact'}
-                sortMode={listSortMode}
-                sortDir={listSortDir}
-                onPayCard={
-                  context.id !== 0 ? handlePlannerOpenPayCard : undefined
-                }
-                payingWalletId={plannerPayCardLoadingId}
-                onPlanUpdated={refreshData}
-              />
-            </div>
+            <FortnightCardPaymentsPanel
+              items={cardDueItems}
+              ownerQueryString={ownerQueryString}
+              fortnightLabel={label}
+              fortnightId={fortnightId}
+              plannerYear={year}
+              plannerMonth={month}
+              plannerPeriod={period}
+              isCompact={tableDensity === 'compact'}
+              sortMode={listSortMode}
+              sortDir={listSortDir}
+              onPayCard={
+                context.id !== 0 ? handlePlannerOpenPayCard : undefined
+              }
+              payingWalletId={plannerPayCardLoadingId}
+              onPlanUpdated={refreshData}
+            />
           </TabsContent>
 
           <TabsContent value="loans" className="mt-0 outline-none">
-            <div
-              className={cn(
-                'overflow-y-auto scrollbar-hide',
-                FORTNIGHT_TAB_PANEL_MAX_HEIGHT_CLASS,
-              )}
-            >
-              <FortnightLoanPaymentsPanel
-                items={loanDueItems}
-                fortnightLabel={label}
-                isCompact={tableDensity === 'compact'}
-                sortMode={listSortMode}
-                sortDir={listSortDir}
-                onUpdated={refreshData}
-              />
-            </div>
+            <FortnightLoanPaymentsPanel
+              items={loanDueItems}
+              fortnightLabel={label}
+              isCompact={tableDensity === 'compact'}
+              sortMode={listSortMode}
+              sortDir={listSortDir}
+              onUpdated={refreshData}
+            />
           </TabsContent>
         </Tabs>
       </div>

@@ -39,7 +39,7 @@ export default async function AppLayout({
       <AppToolbarShell>
         <SidebarProvider>
           <AppSidebarDynamic />
-          <SidebarInset className="relative min-w-0 overflow-x-clip dark:bg-transparent">
+          <SidebarInset className="relative min-w-0 dark:bg-transparent">
             <QuickCaptureHost>
               <AppAtmosphere />
               <header
@@ -49,7 +49,7 @@ export default async function AppLayout({
                 <AppHeaderToolbarDynamic />
               </header>
               <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 dark:bg-transparent">
-                <div className="container mx-auto">
+                <div className="container mx-auto min-w-0 overflow-x-clip">
                   <Suspense fallback={<AppLoading />}>
                     <ContentEnter>{children}</ContentEnter>
                   </Suspense>

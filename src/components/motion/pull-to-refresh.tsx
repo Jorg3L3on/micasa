@@ -508,7 +508,9 @@ export const PullToRefresh = ({
         if (gestureRef.current.pointerId === event.pointerId) finishPull();
       }}
       className={cn(
-        'relative w-full overflow-y-auto overscroll-contain bg-background',
+        // Page scroll must own vertical movement. overflow-y-auto +
+        // overscroll-contain here trapped the wheel and fought the expense list.
+        'relative w-full bg-background',
         TOUCH_GESTURE_CONTENT_CLASS,
         status === 'pulling' || status === 'ready'
           ? 'cursor-grabbing select-none'

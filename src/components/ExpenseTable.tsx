@@ -19,7 +19,13 @@ import {
   updateExpensePaidStatus,
 } from '@/lib/api/transactions';
 import { Checkbox } from '@/components/motion/checkbox';
+import {
+  SwipeableRow,
+  type SwipeAction,
+  type SwipeableListValue,
+} from '@/components/motion/swipeable-list';
 import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-balance';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
@@ -96,6 +102,33 @@ const expenseCardShellClass = ({
   return 'border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-card to-blue-500/2 hover:from-blue-500/12 dark:from-blue-500/14 dark:via-card/60 dark:to-blue-500/4';
 };
 
+const expenseStatusBoxClass = (isPaid: boolean, interactive: boolean) =>
+  cn(
+    'inline-flex h-8 w-8 items-center justify-center rounded-full border [&>svg]:block',
+    isPaid
+      ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm'
+      : cn(
+          'border-dashed border-border/60 bg-card text-muted-foreground/40',
+          interactive && 'hover:border-emerald-500/60 hover:text-emerald-600',
+        ),
+  );
+
+const ExpensePaidCheckIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={3}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M5 13l4 4L19 7" />
+  </svg>
+);
+
 type ExpenseWalletLabelProps = {
   expense: TransactionRow;
   walletsById: Map<number, WalletListItem>;
@@ -127,7 +160,8 @@ const ExpenseWalletLabel = ({
             isCompact ? 'h-3 w-3' : 'h-3.5 w-3.5',
           )}
           iconClassName={isCompact ? 'h-3 w-3' : 'h-3.5 w-3.5'}
-          showTooltipLabel={false} data-icon="inline-start" />
+          showTooltipLabel={false}
+        />
       ) : null}
       <span className="truncate text-muted-foreground/65">{walletLabel}</span>
     </span>
@@ -200,7 +234,7 @@ type ExpenseTableProps = {
   period?: 'FIRST' | 'SECOND';
   density?: ExpenseTableDensity;
   wallets?: WalletListItem[];
-  /** When true (planificación por quincena), totals stay fixed under the list scroll area */
+  /** When true (planificación por quincena), totals follow the full list in page flow. */
   pinTotalsToBottom?: boolean;
   /** How to order rows when syncing from props (default: mayor monto). */
   sortMode?: PlannerListSortMode;
@@ -221,12 +255,18 @@ export default function ExpenseTable({
   sortDir = 'desc',
 }: ExpenseTableProps) {
   const isCompact = density === 'compact';
+  const isMobile = useIsMobile();
   const { context } = useFinanceContext();
   const [dropdownMounted, setDropdownMounted] = useState(false);
+  const [openSwipe, setOpenSwipe] = useState<SwipeableListValue | null>(null);
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
 
   // Defer DropdownMenu render until after hydration to avoid Radix useId mismatch
   useEffect(() => setDropdownMounted(true), []);
+
+  useEffect(() => {
+    if (!isMobile) setOpenSwipe(null);
+  }, [isMobile]);
   const [localExpenses, setLocalExpenses] = useState<TransactionRow[]>(expenses);
   const [editingExpense, setEditingExpense] = useState<TransactionRow | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -236,6 +276,10 @@ export default function ExpenseTable({
   const [payingExpense, setPayingExpense] = useState<TransactionRow | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [insufficientPayOpen, setInsufficientPayOpen] = useState(false);
+  const [unpayingExpense, setUnpayingExpense] = useState<TransactionRow | null>(
+    null,
+  );
+  const [unpayDialogOpen, setUnpayDialogOpen] = useState(false);
   const walletsById = useMemo(
     () => new Map(wallets.map((wallet) => [wallet.id, wallet])),
     [wallets],
@@ -261,6 +305,12 @@ export default function ExpenseTable({
     }
     setPayDialogOpen(true);
   }, [walletsById]);
+
+  const handleOpenUnpayConfirm = useCallback((expense: TransactionRow) => {
+    setUnpayingExpense(expense);
+    setUnpayDialogOpen(true);
+    setOpenSwipe(null);
+  }, []);
 
   const handlePaidToggle = useCallback(async (
     expense: TransactionRow,
@@ -620,10 +670,7 @@ export default function ExpenseTable({
   return (
     <>
       <div
-        className={cn(
-          'px-1 pb-1',
-          pinTotalsToBottom && 'flex h-full min-h-0 flex-col',
-        )}
+        className="px-1 pb-1"
         role="region"
         aria-label="Gastos de la quincena"
       >
@@ -632,7 +679,7 @@ export default function ExpenseTable({
           className={cn(
             'flex flex-col gap-1.5 [&>li]:shrink-0',
             pinTotalsToBottom
-              ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2 scrollbar-hide'
+              ? 'pb-2'
               : isCompact
                 ? 'max-h-[min(380px,55vh)] overflow-y-auto pb-2'
                 : 'max-h-[380px] overflow-y-auto pb-2',
@@ -657,44 +704,106 @@ export default function ExpenseTable({
                   showCountdown,
                   badgeColor,
                 } = getDueInfo(e);
+                const isReadOnlyStatus =
+                  isIncomeRow || isCardPay || isLoanPay;
+                const rowKey = `${e.planning_row_kind ?? 'expense'}-${e.id}`;
+                const swipeEnabled = isMobile && !isReadOnlyStatus;
+                const leftActions: SwipeAction[] = swipeEnabled
+                  ? [
+                      {
+                        id: e.is_paid ? 'unpay' : 'pay',
+                        label: e.is_paid ? 'Deshacer pago' : 'Marcar pagado',
+                        tone: 'success',
+                        disabled: isUpdating,
+                        icon: (
+                          <CheckCircle2
+                            className="h-4 w-4"
+                            aria-hidden
+                            data-icon="inline-start"
+                          />
+                        ),
+                        onClick: () => {
+                          if (e.is_paid) {
+                            handleOpenUnpayConfirm(e);
+                            return;
+                          }
+                          handleOpenPayConfirm(e);
+                        },
+                      },
+                    ]
+                  : [];
+                const rightActions: SwipeAction[] = swipeEnabled
+                  ? [
+                      {
+                        id: 'edit',
+                        label: 'Modificar',
+                        tone: 'neutral',
+                        disabled: isUpdating,
+                        icon: (
+                          <Pencil
+                            className="h-4 w-4"
+                            aria-hidden
+                            data-icon="inline-start"
+                          />
+                        ),
+                        onClick: () => handleEditAmount(e),
+                      },
+                      ...(!e.is_paid
+                        ? [
+                            {
+                              id: 'delete',
+                              label: 'Eliminar',
+                              tone: 'danger' as const,
+                              disabled: isUpdating,
+                              icon: (
+                                <Trash2
+                                  className="h-4 w-4"
+                                  aria-hidden
+                                  data-icon="inline-start"
+                                />
+                              ),
+                              onClick: () => {
+                                setDeletingExpense(e);
+                                setDeleteDialogOpen(true);
+                              },
+                            } satisfies SwipeAction,
+                          ]
+                        : []),
+                    ]
+                  : [];
                 return (
-                  <li
-                    key={`${e.planning_row_kind ?? 'expense'}-${e.id}`}
-                    className={cn(
-                      'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
-                      'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
-                      isCompact ? 'py-2.5' : 'py-3',
-                      expenseCardShellClass({
-                        isPaid: e.is_paid,
-                        isCardCharge,
-                        daysRemaining,
-                        hasDue,
-                      }),
-                    )}
-                  >
+                  <li key={rowKey}>
+                    <SwipeableRow
+                      id={rowKey}
+                      enabled={swipeEnabled}
+                      leftActions={leftActions}
+                      rightActions={rightActions}
+                      openValue={openSwipe}
+                      onOpenChange={setOpenSwipe}
+                      surfaceClassName={cn(
+                        'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border bg-card px-3 transition-all',
+                        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+                        isCompact ? 'py-2.5' : 'py-3',
+                        expenseCardShellClass({
+                          isPaid: e.is_paid,
+                          isCardCharge,
+                          daysRemaining,
+                          hasDue,
+                        }),
+                      )}
+                    >
                     {/* Status / pay toggle */}
                     <div className="shrink-0">
-                      {isIncomeRow || isCardPay || isLoanPay ? (
-                        e.is_paid ? (
-                          <span
-                            className={cn(
-                              'inline-flex h-8 w-8 items-center justify-center rounded-full ring-1 shadow-sm',
-                              isCardPay
-                                ? 'bg-green-500/15 ring-green-500/30 text-green-600 dark:text-green-400'
-                                : 'bg-emerald-500/15 ring-emerald-500/30 text-emerald-600 dark:text-emerald-400',
-                            )}
-                            aria-label="Pagado"
-                          >
-                            <CheckCircle2 className="h-5 w-5" data-icon="inline-start" />
-                          </span>
-                        ) : (
-                          <span
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted/30 text-xs text-muted-foreground/50 ring-1 ring-border/40"
-                            aria-hidden
-                          >
-                            —
-                          </span>
-                        )
+                      {isReadOnlyStatus ? (
+                        <span
+                          className={cn(
+                            'inline-flex items-center justify-center',
+                            expenseStatusBoxClass(e.is_paid, false),
+                          )}
+                          aria-label={e.is_paid ? 'Pagado' : 'Pendiente'}
+                        >
+                          {e.is_paid ? <ExpensePaidCheckIcon /> : null}
+                        </span>
                       ) : (
                         <Checkbox
                           checked={e.is_paid}
@@ -704,18 +813,13 @@ export default function ExpenseTable({
                               ? `Deshacer pago de ${e.description}`
                               : `Marcar ${e.description} como pagado`
                           }
-                          boxClassName={cn(
-                            'h-8 w-8 rounded-full border',
-                            e.is_paid
-                              ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm'
-                              : 'border-dashed border-border/60 bg-transparent text-muted-foreground/40 hover:border-emerald-500/60 hover:text-emerald-600',
-                          )}
+                          boxClassName={expenseStatusBoxClass(e.is_paid, true)}
                           onCheckedChange={(nextPaid) => {
                             if (nextPaid) {
                               handleOpenPayConfirm(e);
                               return;
                             }
-                            void handlePaidToggle(e, false);
+                            handleOpenUnpayConfirm(e);
                           }}
                         />
                       )}
@@ -737,7 +841,6 @@ export default function ExpenseTable({
                               : 'text-foreground/70',
                           )}
                           iconClassName={isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'}
-                          data-icon="inline-start"
                         />
                         <span
                           className={cn(
@@ -833,8 +936,13 @@ export default function ExpenseTable({
                       {formatCurrency(toDisplayAmount(e.amount))}
                     </span>
 
-                    {/* Actions menu */}
-                    <div className="-mr-1 shrink-0">
+                    {/* Actions menu — desktop only; mobile uses swipe */}
+                    <div
+                      className={cn(
+                        '-mr-1 shrink-0',
+                        swipeEnabled && 'hidden',
+                      )}
+                    >
                       {isIncomeRow || isCardPay || isLoanPay ? (
                         <span
                           className="inline-flex h-8 w-8 items-center justify-center text-xs text-muted-foreground/30"
@@ -875,7 +983,7 @@ export default function ExpenseTable({
                             </DropdownMenuItem>
                             {e.is_paid ? (
                               <DropdownMenuItem
-                                onClick={() => handlePaidToggle(e, false)}
+                                onClick={() => handleOpenUnpayConfirm(e)}
                                 disabled={isUpdating}
                               >
                                 <CheckCircle2 className="mr-2 h-4 w-4" data-icon="inline-start" />
@@ -898,6 +1006,7 @@ export default function ExpenseTable({
                         </DropdownMenu>
                       )}
                     </div>
+                    </SwipeableRow>
                   </li>
                 );
               })}
@@ -982,6 +1091,29 @@ export default function ExpenseTable({
           itemName={deletingExpense.description}
         />
       )}
+
+      {unpayingExpense ? (
+        <ConfirmDeleteDialog
+          open={unpayDialogOpen}
+          onOpenChange={(open) => {
+            setUnpayDialogOpen(open);
+            if (!open) {
+              setUnpayingExpense(null);
+            }
+          }}
+          onConfirm={async () => {
+            await handlePaidToggle(unpayingExpense, false);
+            setUnpayDialogOpen(false);
+            setUnpayingExpense(null);
+          }}
+          title="Deshacer pago"
+          description="¿Estás seguro de que deseas marcar este gasto como no pagado? Se actualizarán los totales de la quincena."
+          itemName={`${unpayingExpense.description} · ${formatCurrency(toDisplayAmount(unpayingExpense.amount))}`}
+          confirmLabel="Deshacer pago"
+          loadingLabel="Deshaciendo…"
+          tone="default"
+        />
+      ) : null}
 
       {/* Pay Expense Confirmation Dialog */}
       {payingExpense && (

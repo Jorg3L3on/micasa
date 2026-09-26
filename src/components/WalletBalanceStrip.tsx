@@ -379,7 +379,7 @@ const WalletBalanceStrip = ({
           <div
             ref={listRef}
             className={cn(
-              'flex items-stretch gap-2 overflow-x-auto py-0.5 pr-1 scrollbar-hide px-1',
+              'flex items-stretch gap-2 overflow-x-auto overflow-y-hidden py-0.5 pr-1 scrollbar-hide px-1',
               draggingId != null && 'touch-none',
             )}
           >
