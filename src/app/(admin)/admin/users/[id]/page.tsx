@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import {
   ArrowLeft,
@@ -20,6 +21,17 @@ import { AdminSetTempPasswordDialog } from '@/components/admin/AdminSetTempPassw
 type AdminUserDetailPageProps = {
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({
+  params,
+}: AdminUserDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const userId = Number(id);
+  if (!Number.isFinite(userId)) return { title: 'Usuario' };
+
+  const user = await getAdminUserDetail(userId);
+  return { title: user?.name ?? 'Usuario' };
+}
 
 export default async function AdminUserDetailPage({
   params,

@@ -1,9 +1,8 @@
-import type { Metadata } from 'next';
+import { documentTitle } from '@/lib/document-title';
 
-export const metadata: Metadata = {
-  title: 'Transacciones | MiCasa',
+export const metadata = documentTitle('Transacciones', {
   description: 'Historial de transacciones y operaciones.',
-};
+});
 
 export default function TransactionsLayout({
   children,

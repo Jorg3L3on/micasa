@@ -1,9 +1,8 @@
-import type { Metadata } from 'next';
+import { documentTitle } from '@/lib/document-title';
 
-export const metadata: Metadata = {
-  title: 'Categorías | MiCasa',
+export const metadata = documentTitle('Categorías', {
   description: 'Gestiona categorías para clasificar gastos.',
-};
+});
 
 export default function CategoriesLayout({
   children,

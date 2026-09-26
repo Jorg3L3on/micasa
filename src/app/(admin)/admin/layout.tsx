@@ -1,13 +1,12 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Shield } from 'lucide-react';
 import { auth } from '@/lib/auth';
+import { documentTitle } from '@/lib/document-title';
 import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 import { requireAdmin } from '@/lib/server/require-admin';
 
-export const metadata: Metadata = {
-  title: 'Admin · MiCasa',
+export const metadata = documentTitle('Admin', {
   robots: {
     index: false,
     follow: false,
@@ -16,7 +15,7 @@ export const metadata: Metadata = {
       follow: false,
     },
   },
-};
+});
 
 export default async function AdminLayout({
   children,

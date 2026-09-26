@@ -1,9 +1,8 @@
-import type { Metadata } from 'next';
+import { documentTitle } from '@/lib/document-title';
 
-export const metadata: Metadata = {
-  title: 'Plantillas de ingresos | MiCasa',
+export const metadata = documentTitle('Plantillas de ingresos', {
   description: 'Plantillas de ingresos recurrentes por quincena.',
-};
+});
 
 export default function IncomeTemplatesLayout({
   children,

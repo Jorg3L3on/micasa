@@ -1,7 +1,12 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
+
+export const metadata: Metadata = {
+  title: 'Página no encontrada',
+};
 
 export default function NotFound() {
   return (

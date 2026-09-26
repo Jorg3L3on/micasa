@@ -5,6 +5,8 @@ import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
 import { ReceivePayrollTrigger } from '@/components/ReceivePayrollButton';
+import type { Metadata } from 'next';
+import { formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
 import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
@@ -113,6 +115,33 @@ async function getSummary(
       fundingWalletBreakdown: [],
     };
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ year: string; month: string; period: string }>;
+}): Promise<Metadata> {
+  const {
+    year: yearParam,
+    month: monthParam,
+    period: periodParam,
+  } = await params;
+  const year = Number.parseInt(yearParam, 10);
+  const month = Number.parseInt(monthParam, 10);
+  const period = periodParam.toUpperCase();
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    (period !== 'FIRST' && period !== 'SECOND')
+  ) {
+    return { title: 'Quincena' };
+  }
+
+  const ordinal = period === 'FIRST' ? '1ª' : '2ª';
+  return {
+    title: `${ordinal} quincena · ${formatFortnightDateRangeLabel(year, month, period)}`,
+  };
 }
 
 export default async function FortnightPage({

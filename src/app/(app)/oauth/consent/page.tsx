@@ -6,7 +6,7 @@ import { resolveOAuthClient } from '@/lib/server/mcp-oauth/clients';
 import OAuthConsentForm from '@/components/oauth/OAuthConsentForm';
 
 export const metadata: Metadata = {
-  title: 'Autorizar conexión | MiCasa',
+  title: 'Autorizar conexión',
   description: 'Aprueba el acceso OAuth de un cliente MCP a tu cuenta MiCasa.',
 };
 

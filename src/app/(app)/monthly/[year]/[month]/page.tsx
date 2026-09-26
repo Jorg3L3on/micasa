@@ -65,14 +65,14 @@ export async function generateMetadata({
   const parsedParams = parseMonthlyRouteParams(yearParam, monthParam);
   if (!parsedParams.ok) {
     return {
-      title: 'Panel financiero | MiCasa',
+      title: 'Panel financiero',
       description: 'Planifica ingresos y gastos por quincena.',
     };
   }
   const { year, month } = parsedParams.value;
   const monthName = getMonthName(month);
   return {
-    title: `${monthName} ${year} | MiCasa`,
+    title: `${monthName} ${year}`,
     description: 'Panel financiero: planifica ingresos y gastos por quincena.',
   };
 }

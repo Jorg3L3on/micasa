@@ -1,9 +1,8 @@
-import type { Metadata } from 'next';
+import { documentTitle } from '@/lib/document-title';
 
-export const metadata: Metadata = {
-  title: 'Plantillas de gastos | MiCasa',
+export const metadata = documentTitle('Plantillas de gastos', {
   description: 'Plantillas de gastos recurrentes y suscritos.',
-};
+});
 
 export default function ExpenseTemplatesLayout({
   children,

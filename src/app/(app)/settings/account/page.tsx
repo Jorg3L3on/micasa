@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth';
 import AccountProfile from '@/components/AccountProfile';
 
 export const metadata: Metadata = {
-  title: 'Cuenta | MiCasa',
+  title: 'Cuenta',
   description: 'Configura tu perfil y preferencias de cuenta.',
 };
 

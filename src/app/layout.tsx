@@ -8,6 +8,7 @@ import { SessionProvider } from '@/components/session-provider';
 import { FinanceProvider } from '@/context/finance-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from 'sonner';
+import { DOCUMENT_TITLE_TEMPLATE, SITE_NAME } from '@/lib/document-title';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -28,15 +29,14 @@ const display = Manrope({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
   title: {
-    default: 'MiCasa',
-    template: '%s',
+    default: SITE_NAME,
+    template: DOCUMENT_TITLE_TEMPLATE,
   },
   description:
     'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
   icons: {
     icon: [
       { url: '/icons/icon-32.png', type: 'image/png', sizes: '32x32' },
-      { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
       { url: '/favicon.ico', sizes: 'any' },
     ],
     apple: [{ url: '/icons/apple-touch-icon.png', type: 'image/png', sizes: '180x180' }],

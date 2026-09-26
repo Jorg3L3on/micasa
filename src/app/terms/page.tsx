@@ -9,12 +9,12 @@ import {
 } from '@/lib/legal';
 
 export const metadata: Metadata = {
-  title: 'Términos de uso | MiCasa',
+  title: 'Términos de uso',
   description:
     'Términos de uso de MiCasa: cuentas, uso aceptable, finanzas informativas, archivos subidos y responsabilidad.',
   alternates: { canonical: '/terms' },
   openGraph: {
-    title: 'Términos de uso | MiCasa',
+    title: 'MiCasa | Términos de uso',
     description:
       'Términos de uso de MiCasa: cuentas, uso aceptable, finanzas informativas, archivos subidos y responsabilidad.',
     type: 'website',

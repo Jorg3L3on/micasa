@@ -9,12 +9,12 @@ import {
 } from '@/lib/legal';
 
 export const metadata: Metadata = {
-  title: 'Aviso de privacidad | MiCasa',
+  title: 'Aviso de privacidad',
   description:
     'Aviso de privacidad de MiCasa conforme a la LFPDPPP: datos tratados, finalidades, conservación, transferencias y derechos ARCO.',
   alternates: { canonical: '/privacy' },
   openGraph: {
-    title: 'Aviso de privacidad | MiCasa',
+    title: 'MiCasa | Aviso de privacidad',
     description:
       'Aviso de privacidad de MiCasa conforme a la LFPDPPP: datos tratados, finalidades, conservación, transferencias y derechos ARCO.',
     type: 'website',

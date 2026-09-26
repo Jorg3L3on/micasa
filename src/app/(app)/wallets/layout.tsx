@@ -1,9 +1,8 @@
-import type { Metadata } from 'next';
+import { documentTitle } from '@/lib/document-title';
 
-export const metadata: Metadata = {
-  title: 'Carteras | MiCasa',
-  description: 'Gestiona carteras y métodos de pago.',
-};
+export const metadata = documentTitle('Billeteras', {
+  description: 'Gestiona billeteras y métodos de pago.',
+});
 
 export default function WalletsLayout({
   children,

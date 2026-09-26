@@ -9,7 +9,7 @@ import ConnectionsPanel, {
 } from '@/components/settings/ConnectionsPanel';
 
 export const metadata: Metadata = {
-  title: 'Conexiones | MiCasa',
+  title: 'Conexiones',
   description:
     'Administra las llaves de acceso para agentes y clientes MCP (Grok, Claude, Cursor, ChatGPT).',
 };

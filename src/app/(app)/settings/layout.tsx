@@ -1,10 +1,9 @@
-import type { Metadata } from 'next';
 import { SettingsShell } from '@/components/settings/SettingsShell';
+import { documentTitle } from '@/lib/document-title';
 
-export const metadata: Metadata = {
-  title: 'Configuración | MiCasa',
+export const metadata = documentTitle('Configuración', {
   description: 'Catálogos, automatizaciones y cuenta.',
-};
+});
 
 export default function SettingsLayout({
   children,

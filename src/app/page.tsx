@@ -13,12 +13,12 @@ const landingSans = Nunito({
   display: 'swap',
 });
 
-const SITE_TITLE = 'MiCasa — Planifica tu dinero por quincenas';
+const SITE_TITLE = 'MiCasa | Planifica tu dinero por quincenas';
 const SITE_DESCRIPTION =
   'Gestión financiera para México: organiza ingresos, gastos, billeteras y obligaciones por quincenas. Personal o casa compartida.';
 
 export const metadata: Metadata = {
-  title: SITE_TITLE,
+  title: { absolute: SITE_TITLE },
   description: SITE_DESCRIPTION,
   alternates: { canonical: '/' },
   openGraph: {
