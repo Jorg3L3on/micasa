@@ -20,17 +20,14 @@ import {
 import {
   ArrowDownCircle,
   ArrowUpCircle,
-  Calendar,
-  ChartLine,
   MoreHorizontal,
   Plus,
-  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 
+import { getDockDestinations } from '@/components/nav-destinations';
 import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
 import { useSidebar } from '@/components/ui/sidebar';
-import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 import { cn } from '@/lib/utils';
 
 const PILL_SPRING: Transition = {
@@ -63,29 +60,16 @@ type DockTab = {
   isActive: (pathname: string) => boolean;
 };
 
-const getDockTabs = (): DockTab[] => [
-  {
-    title: 'Panel',
-    href: getCurrentMonthlyPanelHref(),
-    icon: Calendar,
-    isActive: (path) => path.startsWith('/monthly/'),
-  },
-  {
-    title: 'Billeteras',
-    href: '/wallets',
-    icon: Wallet,
-    isActive: (path) =>
-      path === '/wallets' ||
-      (path.startsWith('/wallets/') && !path.startsWith('/wallets/liquidity')) ||
-      path.startsWith('/credit-cards'),
-  },
-  {
-    title: 'Análisis',
-    href: '/wallets/liquidity',
-    icon: ChartLine,
-    isActive: (path) => path.startsWith('/wallets/liquidity'),
-  },
-];
+const getDockTabs = (): DockTab[] =>
+  getDockDestinations().map((destination) => ({
+    title: destination.dockTitle ?? destination.title,
+    href: destination.getHref(),
+    icon: destination.icon,
+    isActive: destination.isActive,
+  }));
+
+const DOCK_ITEM_ACTIVE_CLASS = 'text-foreground';
+const DOCK_ITEM_IDLE_CLASS = 'text-muted-foreground hover:text-foreground';
 
 const hrefWithOwnerParams = (url: string, queryString: string) =>
   queryString ? `${url}?${queryString}` : url;
@@ -118,9 +102,7 @@ const DockTabLink = ({
         aria-label={title}
         className={cn(
           'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors',
-          active
-            ? 'text-primary'
-            : 'text-muted-foreground hover:text-foreground',
+          active ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
         )}
       >
         {active ? (
@@ -371,9 +353,7 @@ function MobileBottomDockInner() {
               onKeyDown={handleMoreKeyDown}
               className={cn(
                 'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors',
-                moreActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground',
+                moreActive ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
               )}
             >
               {moreActive ? (
