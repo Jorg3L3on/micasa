@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
 import { LiquidityProjectionTab } from '@/components/wallets/liquidity/LiquidityProjectionTab';
@@ -18,10 +18,12 @@ export const LiquidityWorkspace = () => {
     setSelectedMonthKey,
   } = useLiquidityProjection();
 
-  const handlePullRefresh = useCallback(
-    () => reload({ silent: true }),
-    [reload],
-  );
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const handlePullRefresh = useCallback(async () => {
+    await reload({ silent: true });
+    setRefreshToken((token) => token + 1);
+  }, [reload]);
 
   return (
     <MobilePullToRefresh
@@ -60,6 +62,7 @@ export const LiquidityWorkspace = () => {
           onReload={() => void reload()}
           selectedMonthKey={selectedMonthKey}
           onSelectedMonthKeyChange={setSelectedMonthKey}
+          refreshToken={refreshToken}
         />
       </TabsContent>
       <TabsContent value="plan" className="mt-0 outline-none">

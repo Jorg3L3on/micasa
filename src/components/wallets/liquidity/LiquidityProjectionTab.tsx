@@ -69,6 +69,8 @@ export type LiquidityProjectionTabProps = {
   onReload: () => void;
   selectedMonthKey: string;
   onSelectedMonthKeyChange: (monthKey: string) => void;
+  /** Bumped after a pull-to-refresh so self-loading sections reload too. */
+  refreshToken?: number;
 };
 
 export function LiquidityProjectionTab({
@@ -78,6 +80,7 @@ export function LiquidityProjectionTab({
   onReload,
   selectedMonthKey,
   onSelectedMonthKeyChange,
+  refreshToken = 0,
 }: LiquidityProjectionTabProps) {
   const [chartRange, setChartRange] = useState<LiquidityChartRangeId>(() =>
     readStoredChartRange(),
@@ -210,11 +213,12 @@ export function LiquidityProjectionTab({
               onChanged={onReload}
               actions={<LiquidityFundingWalletsMenu onChanged={onReload} />}
               sectionIcon={CreditCard}
+              refreshToken={refreshToken}
             />
           </LiquiditySectionGroup>
 
           <LiquiditySectionGroup aria-label="Gastos por categoría">
-            <LiquiditySpendingCategories sectionIcon={PieChart} />
+            <LiquiditySpendingCategories sectionIcon={PieChart} refreshToken={refreshToken} />
           </LiquiditySectionGroup>
         </>
       ) : null}

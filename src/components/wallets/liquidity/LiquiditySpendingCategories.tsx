@@ -27,10 +27,13 @@ type CategoryReportRow = {
 
 type LiquiditySpendingCategoriesProps = {
   sectionIcon?: LucideIcon;
+  /** Bumped by the workspace pull-to-refresh to reload this section. */
+  refreshToken?: number;
 };
 
 export const LiquiditySpendingCategories = ({
   sectionIcon: SectionIcon,
+  refreshToken = 0,
 }: LiquiditySpendingCategoriesProps) => {
   const { context } = useFinanceContext();
   const [categories, setCategories] = useState<CategoryReportRow[]>([]);
@@ -61,7 +64,7 @@ export const LiquiditySpendingCategories = ({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshToken]);
 
   const topCategories = useMemo(
     () => [...categories].sort((a, b) => b.total - a.total).slice(0, 5),

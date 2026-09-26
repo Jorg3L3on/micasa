@@ -37,6 +37,8 @@ type LiquidityAccountsTodayProps = {
   actions?: ReactNode;
   fundingTotal?: number;
   sectionIcon?: LucideIcon;
+  /** Bumped by the workspace pull-to-refresh to reload this section. */
+  refreshToken?: number;
 };
 
 const badgeToneClass = (tone: AccountTodayBadge['tone']): string =>
@@ -235,6 +237,7 @@ export const LiquidityAccountsToday = ({
   actions,
   fundingTotal,
   sectionIcon: SectionIcon,
+  refreshToken = 0,
 }: LiquidityAccountsTodayProps) => {
   const { context } = useFinanceContext();
   const router = useRouter();
@@ -288,7 +291,7 @@ export const LiquidityAccountsToday = ({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshToken]);
 
   const rows = useMemo(() => buildAccountsToday(wallets, loans), [loans, wallets]);
   const views = useMemo(() => rows.map(toAccountTodayView), [rows]);
