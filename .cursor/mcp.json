@@ -6,9 +6,6 @@
       "args": [
         "${workspaceFolder}/scripts/micasa-mcp-postgres.mjs"
       ]
-    },
-    "Sentry": {
-      "url": "https://mcp.sentry.dev/mcp/ziglabs/javascript-nextjs"
     }
   }
 }

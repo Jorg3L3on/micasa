@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import {
-  reportApiError,
-  setOwnerSentryContext,
-} from '@/lib/observability/report-error';
+import { reportApiError } from '@/lib/observability/report-error';
 import {
   createLenderForOwner,
   listLendersByOwner,
@@ -13,20 +10,23 @@ import { createLenderSchema } from '@/schemas/lender.schema';
 
 export async function GET(request: NextRequest) {
   const route = 'GET /api/lenders';
+  let owner:
+    | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
+    | undefined;
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    setOwnerSentryContext({
+    owner = {
       userId: context.userId,
       ownerType: context.ownerType,
       ownerId: context.ownerId,
-    });
+    };
 
     const lenders = await listLendersByOwner(context.ownerFilter);
     return NextResponse.json(lenders, { status: 200 });
   } catch (error) {
     console.error('Error fetching lenders:', error);
-    reportApiError(error, { route, status: 500 });
+    reportApiError(error, { route, status: 500, owner });
     return NextResponse.json(
       { error: 'Error al obtener los prestamistas' },
       { status: 500 },
@@ -47,8 +47,6 @@ export async function POST(request: NextRequest) {
       ownerType: context.ownerType,
       ownerId: context.ownerId,
     };
-    setOwnerSentryContext(owner);
-
     const body = await request.json();
     const input = createLenderSchema.parse(body);
     const lender = await createLenderForOwner(

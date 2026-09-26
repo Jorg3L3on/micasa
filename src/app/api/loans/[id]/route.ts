@@ -4,10 +4,7 @@ import {
   deleteLoanForOwner,
   updateLoanForOwner,
 } from '@/lib/finance/loan.service';
-import {
-  reportApiError,
-  setOwnerSentryContext,
-} from '@/lib/observability/report-error';
+import { reportApiError } from '@/lib/observability/report-error';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { updateLoanSchema } from '@/schemas/loan.schema';
 
@@ -27,8 +24,6 @@ export async function PATCH(
       ownerType: context.ownerType,
       ownerId: context.ownerId,
     };
-    setOwnerSentryContext(owner);
-
     const { id } = await params;
     const loanId = Number(id);
     if (!Number.isInteger(loanId) || loanId <= 0) {
@@ -77,8 +72,6 @@ export async function DELETE(
       ownerType: context.ownerType,
       ownerId: context.ownerId,
     };
-    setOwnerSentryContext(owner);
-
     const { id } = await params;
     const loanId = Number(id);
     if (!Number.isInteger(loanId) || loanId <= 0) {

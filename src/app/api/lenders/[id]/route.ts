@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import {
-  reportApiError,
-  setOwnerSentryContext,
-} from '@/lib/observability/report-error';
+import { reportApiError } from '@/lib/observability/report-error';
 import { getLenderByIdForOwner } from '@/lib/finance/lender.service';
 
 export async function GET(
@@ -11,14 +8,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const route = 'GET /api/lenders/[id]';
+  let owner:
+    | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
+    | undefined;
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    setOwnerSentryContext({
+    owner = {
       userId: context.userId,
       ownerType: context.ownerType,
       ownerId: context.ownerId,
-    });
+    };
 
     const { id } = await params;
     const lenderId = Number(id);
@@ -43,7 +43,7 @@ export async function GET(
       return NextResponse.json({ error: message }, { status: 404 });
     }
     console.error('Error fetching lender:', error);
-    reportApiError(error, { route, status: 500 });
+    reportApiError(error, { route, status: 500, owner });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

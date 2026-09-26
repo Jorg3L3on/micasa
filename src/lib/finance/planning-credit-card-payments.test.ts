@@ -3,6 +3,7 @@ import {
   formatCardPaymentDescription,
   linkedCardPaymentExpenseIds,
   mapCreditCardPaymentToTransactionRow,
+  type CardPaymentPlanningRow,
 } from '@/lib/finance/planning-credit-card-payments';
 import { PaymentMethodType } from '@/generated/prisma/client';
 
@@ -44,7 +45,7 @@ describe('mapCreditCardPaymentToTransactionRow', () => {
       credit_card_wallet_id: 7,
       credit_card_wallet: { name: 'Mercado Pago' },
       source_wallet: { name: 'Débito BBVA', type: PaymentMethodType.DEBIT_CARD },
-    });
+    } as unknown as CardPaymentPlanningRow);
 
     expect(row).toMatchObject({
       id: 5,

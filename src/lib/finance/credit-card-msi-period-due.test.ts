@@ -115,7 +115,7 @@ describe('resolveCardPeriodDue', () => {
       msi: [msi(500, 4500)],
     });
     const split = splitAggregatedDueAndInstallment({
-      aggregatedDue: period.periodDue,
+      aggregatedDue: period.periodDue ?? 0,
       installmentDue: period.installmentDue,
     });
 

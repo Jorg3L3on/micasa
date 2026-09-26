@@ -77,8 +77,13 @@ const visaRow = {
 };
 
 const setupWalletMock = (
-  funding: typeof fundingRow[],
-  cards: typeof visaRow[],
+  funding: Array<{
+    id: number;
+    name: string;
+    type: PaymentMethodType;
+    amount: string;
+  }>,
+  cards: Array<typeof visaRow & { amount?: string }>,
 ) => {
   findManyWallet.mockImplementation(
     async (args: { where: { type?: { in: string[] } } }) => {

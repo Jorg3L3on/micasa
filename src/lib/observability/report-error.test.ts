@@ -1,43 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-const sentryMocks = vi.hoisted(() => {
-  const setTags = vi.fn();
-  return {
-    setUser: vi.fn(),
-    setTags,
-    withScope: vi.fn(
-      (
-        cb: (scope: {
-          setTag: typeof setTags;
-          setFingerprint: ReturnType<typeof vi.fn>;
-          setExtra: ReturnType<typeof vi.fn>;
-        }) => void,
-      ) => {
-        cb({
-          setTag: setTags,
-          setFingerprint: vi.fn(),
-          setExtra: vi.fn(),
-        });
-      },
-    ),
-    captureException: vi.fn(),
-    captureMessage: vi.fn(),
-  };
-});
-
-vi.mock('@sentry/nextjs', () => sentryMocks);
-
-import {
-  getErrorCode,
-  reportApiError,
-  setOwnerSentryContext,
-  shouldReportApiError,
-} from './report-error';
+import { getErrorCode, reportApiError, shouldReportApiError } from './report-error';
 
 describe('report-error', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('getErrorCode', () => {
@@ -69,34 +37,24 @@ describe('report-error', () => {
       expect(shouldReportApiError(new Error('conflict'), { status: 409 })).toBe(false);
     });
 
-    it('captures 500s and status-omitted unexpected errors', () => {
+    it('logs 500s and status-omitted unexpected errors', () => {
       expect(shouldReportApiError(new Error('boom'), { status: 500 })).toBe(true);
       expect(shouldReportApiError(new Error('boom'), {})).toBe(true);
     });
   });
 
-  describe('setOwnerSentryContext', () => {
-    it('sets user id and owner tags without PII', () => {
-      setOwnerSentryContext({ userId: 7, ownerType: 'house', ownerId: 3 });
-      expect(sentryMocks.setUser).toHaveBeenCalledWith({ id: '7' });
-      expect(sentryMocks.setTags).toHaveBeenCalledWith({
-        owner_type: 'house',
-        owner_id: '3',
-      });
-    });
-  });
-
   describe('reportApiError', () => {
-    it('does not capture skippable errors', () => {
+    it('does not log skippable errors', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       reportApiError(Object.assign(new Error('empty'), { code: 'NO_MOVEMENTS' }), {
         route: 'POST /api/credit-cards/[id]/statement-imports',
         status: 422,
       });
-      expect(sentryMocks.captureException).not.toHaveBeenCalled();
-      expect(sentryMocks.captureMessage).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
     });
 
-    it('captures unexpected errors with stable route fingerprint', () => {
+    it('logs unexpected errors with route and owner ids', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const err = new Error('pdf parse failed');
       reportApiError(err, {
         route: 'POST /api/credit-cards/[id]/statement-imports',
@@ -104,9 +62,17 @@ describe('report-error', () => {
         owner: { userId: 1, ownerType: 'user', ownerId: 1 },
       });
 
-      expect(sentryMocks.setUser).toHaveBeenCalledWith({ id: '1' });
-      expect(sentryMocks.captureException).toHaveBeenCalledWith(err, {
-        tags: { route: 'POST /api/credit-cards/[id]/statement-imports' },
+      expect(errorSpy).toHaveBeenCalledOnce();
+      const line = JSON.parse(String(errorSpy.mock.calls[0]?.[0]));
+      expect(line).toMatchObject({
+        severity: 'error',
+        event: 'api.unexpected_error',
+        route: 'POST /api/credit-cards/[id]/statement-imports',
+        http_status: 500,
+        user_id: 1,
+        owner_type: 'user',
+        owner_id: 1,
+        error_message: 'pdf parse failed',
       });
     });
   });

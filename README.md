@@ -52,7 +52,7 @@ The default UI is **Orion dark**: navy canvas (`#060914`), glass cards, orange p
 | UI | Tailwind CSS v4, Radix UI, TanStack Table, Recharts |
 | Validation | Zod v4, react-hook-form |
 | Quality | Vitest (unit + coverage gate + isolation), ESLint |
-| Ops | Optional Sentry + Upstash Redis rate limiting |
+| Ops | Upstash Redis rate limiting in production |
 
 ## Getting started
 
@@ -96,15 +96,13 @@ Optional:
 | --- | --- |
 | `MICASA_ADMIN_EMAILS` | Comma-separated emails granted `/admin` (plus `User.is_admin`) |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Distributed rate limits in production; omit both for in-memory local limiting |
-| `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` | Sentry DSN (active only in production) |
-| `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT` | Source maps on Vercel builds |
 
 ## Scripts
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` | Dev server (webpack) |
-| `npm run dev:turbo` | Dev server (Turbopack) |
+| `npm run dev` | Dev server (Turbopack) |
+| `npm run dev:webpack` | Dev server (Webpack fallback) |
 | `npm run build` / `npm start` | Production build / serve |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest unit suite |

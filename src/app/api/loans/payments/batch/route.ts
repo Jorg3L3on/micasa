@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { batchUpdateLoanPaymentsForOwner } from '@/lib/finance/loan.service';
-import {
-  reportApiError,
-  setOwnerSentryContext,
-} from '@/lib/observability/report-error';
+import { reportApiError } from '@/lib/observability/report-error';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { batchUpdateLoanPaymentsSchema } from '@/schemas/loan.schema';
 
@@ -21,8 +18,6 @@ export async function POST(request: NextRequest) {
       ownerType: context.ownerType,
       ownerId: context.ownerId,
     };
-    setOwnerSentryContext(owner);
-
     const body = await request.json();
     const input = batchUpdateLoanPaymentsSchema.parse(body);
     const payments = await batchUpdateLoanPaymentsForOwner(context.ownerFilter, {

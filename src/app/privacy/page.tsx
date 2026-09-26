@@ -153,11 +153,6 @@ export default function PrivacyPage() {
           Base de datos PostgreSQL en la nube (p. ej. Neon u otro proveedor
           equivalente según el entorno).
         </li>
-        <li>
-          Monitoreo de errores (p. ej. Sentry), con contexto técnico limitado
-          (ids de usuario/owner; sin contraseñas ni títulos con datos
-          financieros libres).
-        </li>
       </ul>
       <p>
         Algunos proveedores pueden estar ubicados fuera de México. En esos

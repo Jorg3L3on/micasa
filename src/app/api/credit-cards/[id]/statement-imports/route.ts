@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import {
-  reportApiError,
-  setOwnerSentryContext,
-} from '@/lib/observability/report-error';
+import { reportApiError } from '@/lib/observability/report-error';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 import prisma from '@/lib/prisma';
 import { StatementImportProvider } from '@/generated/prisma/client';
@@ -28,14 +25,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const route = 'GET /api/credit-cards/[id]/statement-imports';
+  let owner:
+    | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
+    | undefined;
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    setOwnerSentryContext({
+    owner = {
       userId: context.userId,
       ownerType: context.ownerType,
       ownerId: context.ownerId,
-    });
+    };
 
     const { id } = await params;
     const walletId = Number(id);
@@ -95,7 +95,7 @@ export async function GET(
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     console.error('statement-imports GET', error);
-    reportApiError(error, { route, status: 500 });
+    reportApiError(error, { route, status: 500, owner });
     return NextResponse.json(
       { error: 'No se pudieron cargar las importaciones' },
       { status: 500 },
@@ -119,8 +119,6 @@ export async function POST(
       ownerType: context.ownerType,
       ownerId: context.ownerId,
     };
-    setOwnerSentryContext(owner);
-
     const session = await auth();
     const createdBy = session?.user?.id ? Number(session.user.id) : NaN;
     if (Number.isNaN(createdBy)) {

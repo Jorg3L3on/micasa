@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { updateLoanPaymentForOwner } from '@/lib/finance/loan.service';
-import {
-  reportApiError,
-  setOwnerSentryContext,
-} from '@/lib/observability/report-error';
+import { reportApiError } from '@/lib/observability/report-error';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { updateLoanPaymentSchema } from '@/schemas/loan.schema';
 
@@ -24,8 +21,6 @@ export async function PATCH(
       ownerType: context.ownerType,
       ownerId: context.ownerId,
     };
-    setOwnerSentryContext(owner);
-
     const { id } = await params;
     const paymentId = Number(id);
     if (!Number.isInteger(paymentId) || paymentId <= 0) {

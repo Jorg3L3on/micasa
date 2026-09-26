@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import {
-  reportApiError,
-  setOwnerSentryContext,
-} from '@/lib/observability/report-error';
+import { reportApiError } from '@/lib/observability/report-error';
 import { undoLenderPaymentForOwner } from '@/lib/finance/lender.service';
 
 export async function DELETE(
@@ -22,8 +19,6 @@ export async function DELETE(
       ownerType: context.ownerType,
       ownerId: context.ownerId,
     };
-    setOwnerSentryContext(owner);
-
     const { id, paymentId: paymentIdParam } = await params;
     const lenderId = Number(id);
     const paymentId = Number(paymentIdParam);

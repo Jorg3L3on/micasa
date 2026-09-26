@@ -16,6 +16,7 @@ vi.mock('@/lib/finance/expense.service', () => ({
 }));
 
 import { createCreditCardPurchase } from '@/lib/finance/credit-card.service';
+import type { CreateCreditCardPurchaseInput } from '@/schemas/credit-card.schema';
 
 const ownerFilter = { user_id: 1, house_id: null } as const;
 
@@ -78,7 +79,7 @@ describe('createCreditCardPurchase already_in_card_balance', () => {
       description: 'Legacy payload',
       amount: 50,
       payment_date: '2026-08-10',
-    });
+    } as CreateCreditCardPurchaseInput);
 
     expect(createExpense).toHaveBeenCalledWith(
       expect.objectContaining({

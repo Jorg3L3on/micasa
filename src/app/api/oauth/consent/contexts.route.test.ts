@@ -40,6 +40,7 @@ vi.mock('@/lib/server/agent-allowed-contexts', async (importOriginal) => {
   };
 });
 
+import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/oauth/consent/route';
 import { AgentAuthError } from '@/lib/server/agent-auth-error';
 
@@ -72,7 +73,7 @@ describe('POST /api/oauth/consent contexts', () => {
     );
 
     const response = await POST(
-      new Request('https://micasa.example/api/oauth/consent', {
+      new NextRequest('https://micasa.example/api/oauth/consent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -89,7 +90,7 @@ describe('POST /api/oauth/consent contexts', () => {
 
   it('passes allowed contexts to createAuthorizationCode', async () => {
     const response = await POST(
-      new Request('https://micasa.example/api/oauth/consent', {
+      new NextRequest('https://micasa.example/api/oauth/consent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(CONSENT_FIELDS),
@@ -119,7 +120,7 @@ describe('POST /api/oauth/consent contexts', () => {
     body.append('context_owner_id', '10');
 
     const response = await POST(
-      new Request('https://micasa.example/api/oauth/consent', {
+      new NextRequest('https://micasa.example/api/oauth/consent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body,

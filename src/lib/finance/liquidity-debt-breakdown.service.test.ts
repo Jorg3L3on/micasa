@@ -130,7 +130,7 @@ describe('getLiquidityDebtBreakdown', () => {
     const didi = breakdown.accounts.find((account) => account.id === 'wallet-7');
     expect(didi?.plazosTotal).toBe(2200);
     expect(didi?.restoTotal).toBe(3644);
-    expect(didi?.plazosTotal + didi!.restoTotal).toBe(didi?.debt);
+    expect((didi?.plazosTotal ?? 0) + (didi?.restoTotal ?? 0)).toBe(didi?.debt);
     expect(didi?.blocks.map((block) => block.key)).toEqual(['plazos', 'resto']);
     expect(didi?.preview).toContain('2 plazos');
 

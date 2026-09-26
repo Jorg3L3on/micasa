@@ -239,4 +239,4 @@ To re-seed: `npx prisma db seed` (destructive — clears all data first).
 - **Prisma client output** is `src/generated/prisma` (non-default). Always import from there or via `src/lib/prisma.ts`.
 - After schema changes, run `npx prisma generate` before starting the dev server.
 - The `npm run ci` script runs: `validate:metric-strips` → `validate:prisma-imports` → `validate:calendar-dates` → `prisma generate` → `vitest run --coverage` (≈70% floor on `src/lib/finance/**`) → isolation tests → `next build`.
-- The dev server uses `--webpack` mode by default (`npm run dev`). Turbopack mode is available via `npm run dev:turbo`.
+- The dev server uses Turbopack by default (`npm run dev`). Webpack mode is available via `npm run dev:webpack`.

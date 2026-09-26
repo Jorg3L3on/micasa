@@ -24,19 +24,4 @@ Agents open slice PRs into `feat/<slug>`, **merge those slice PRs** once CI is g
 
 Keep **Production Branch = `main`**.
 
-## Error monitoring (Sentry)
-
-Runtime init requires a DSN **and** `NODE_ENV=production` (`NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN`). Local `npm run dev` does not send events even if those vars are set in `.env.local`. Without a DSN the app runs normally and does not send events.
-
-After creating a Sentry project for MiCasa:
-
-1. Add on Vercel (**Preview** + **Production**):
-   - `NEXT_PUBLIC_SENTRY_DSN` and/or `SENTRY_DSN`
-   - `SENTRY_AUTH_TOKEN` (org token with `project:releases` / source maps)
-   - `SENTRY_ORG` and `SENTRY_PROJECT`
-2. Deploy and confirm source maps under **Sentry → Releases** (build uploads only when `SENTRY_AUTH_TOKEN` is set).
-3. Create an alert for an **error-rate spike** (e.g. error count above a threshold in 5–10 minutes) → email or Slack: [Sentry Alerts](https://docs.sentry.io/product/alerts/).
-
-Tags on finance API failures: `owner_type`, `owner_id`, `route` (user id only — no email/PII in titles).
-
-Client events tunnel through `/monitoring` (excluded from auth proxy) to reduce ad-blocker drops.
+Unexpected API failures log a JSON line (`event: api.unexpected_error`) with `route`, `owner_type`, and `owner_id`. User id only — no email in the line. Vercel runtime logs are the place to read them.
