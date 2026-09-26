@@ -43,7 +43,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-(--motion-panel) ease-(--ease-out-soft) motion-reduce:animate-none fixed inset-0 z-50 bg-black/50",
         className
       )}
       {...props}
@@ -93,7 +93,7 @@ function DialogContent({
             : style
         }
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid w-full max-w-[calc(100%-2rem)] gap-4 overflow-y-auto overscroll-y-contain rounded-lg border p-6 shadow-lg duration-200 outline-none [-webkit-overflow-scrolling:touch] sm:max-w-lg",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid w-full max-w-[calc(100%-2rem)] gap-4 overflow-y-auto overscroll-y-contain rounded-lg border p-6 shadow-lg duration-(--motion-panel) ease-(--ease-out-soft) motion-reduce:animate-none outline-none [-webkit-overflow-scrolling:touch] sm:max-w-lg",
           viewportLayout &&
             "data-[keyboard-open]:animate-none data-[keyboard-open]:zoom-in-100",
           !viewportLayout &&

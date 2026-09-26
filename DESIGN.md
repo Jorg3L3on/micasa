@@ -86,6 +86,62 @@ Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914
 
 ---
 
+## Logged-in UI contract
+
+Panel financiero is the reference for **tokens, glass, overlay chrome, and operate motion** — not a layout to paste onto Configuración or onto wallet and goal card faces. These decisions are locked; do not invent a second pattern.
+
+### Page archetypes
+
+Every logged-in route is one of four archetypes:
+
+| Archetype | Purpose | Routes | Surface |
+| --- | --- | --- | --- |
+| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
+| **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell |
+| **Detail** | One object, back to its collection | Billetera, estado de cuenta (tarjeta), meta | Same as collection; card faces stay solid |
+| **Settings** | Quiet catalogs and account | Configuración (cuenta, categorías, plantillas, usuarios, conexiones) | Calm `bg-card` cards — **never** glass |
+
+The quincena route stays for deep links and adopts planner chrome. It is **not** in the sidebar or the mobile dock.
+
+### Chrome (toolbar-first)
+
+- The **app header** owns the route title, search, filters, and the **one primary action** — register them with `useRegisterToolbarActions` (`src/context/toolbar-actions-context.tsx`). Rare actions go in the header overflow (`overflow` / `useRegisterToolbarOverflow`).
+- Do **not** repeat the header title with an in-page heading. Do **not** add an in-page sticky action bar.
+- Page rhythm under the header is **`space-y-5`**.
+- The month name in the planner glass band stays — that band is the period control, not a second page title.
+- Glass uses the single planner shell. Wallet and goal card faces stay solid. Do not glass-wash Configuración.
+- Do not revive the unused `PageHeader` component. Do not put a grid or a tinted wash on glass panels.
+
+### Mobile map
+
+- **Dock** stays five slots: **Panel**, **Billeteras**, **Liquidez**, the **plus** button, **Más**.
+- The third tab is labeled **Liquidez** (never “Análisis”) and opens the same page as the sidebar item **Liquidez y análisis**.
+- **Más** opens the sidebar sheet.
+- **Sidebar order** (canonical): Panel financiero, Billeteras, Liquidez y análisis, Metas, Préstamos, Operaciones, Presupuestos, then Configuración. Configuración is in that list **and** stays in the team switcher.
+- The active dock label uses readable foreground text (`text-foreground`), not the electric-blue fill color.
+
+### Motion allow-list
+
+Tokens first (see **Motion tokens**). Dialog and sheet open/close use `--motion-panel` + `--ease-out-soft`. Operate motion stays ≤ 320ms. Honor `prefers-reduced-motion` everywhere.
+
+Apply **only**:
+
+| Motion | Where |
+| --- | --- |
+| Currency ticker | Hero money amounts (planner summary, liquidez hero, préstamos / metas / presupuestos totals). **Not** table cells or list rows |
+| Motion tabs | In-page choice of two or three views (quincena toggle, Presupuestos vs Plantillas, budget status views) |
+| Pull to refresh (mobile only) | Planner, Billeteras, Metas, Préstamos, Operaciones, Presupuestos, Liquidez. **Not** Configuración |
+| Shared-element morph | Billeteras and tarjetas only. Do not add one for metas or préstamos |
+| Swipe to delete | Below `md` only, then `ConfirmDeleteDialog` (see **Viewport delete**). Billeteras, metas, préstamos, plantillas, categorías, expense rows |
+
+Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy summary accordion, and the animated summary badge.
+
+### Out of scope
+
+Marketing landing, login, admin, the tasks route, and OAuth consent keep their own surfaces. Orange pills stay on the landing page.
+
+---
+
 ## Layout and controls
 
 Keep chrome **sparse**. One dominant labeled control per block; rare actions in `DropdownMenu`.
@@ -136,7 +192,7 @@ CSS variables in `globals.css` (respect `prefers-reduced-motion`):
 | `--ease-out-soft` | cubic-bezier(0.22, 1, 0.36, 1) | Continuity |
 | `--ease-spring` | cubic-bezier(0.16, 1, 0.3, 1) | Snappy micro feedback |
 
-Utilities: `.motion-fade-in`, `.motion-slide-up`. Route transitions use View Transitions + a short mobile page settle. Operate surfaces stay ≤ ~300ms; no scroll-reveal theater on the planner.
+Utilities: `.motion-fade-in` (`--motion-base`) and `.motion-slide-up` (`--motion-panel`); both are disabled under reduced motion. Tailwind usage: `duration-(--motion-panel) ease-(--ease-out-soft) motion-reduce:animate-none` (as in `src/components/ui/dialog.tsx` / `sheet.tsx`). Route transitions use View Transitions + a short mobile page settle. Operate surfaces stay ≤ 320ms; no scroll-reveal theater on the planner. What may animate is fixed by the **Motion allow-list** above.
 
 ### Light mode inventory (known gaps)
 
@@ -152,7 +208,9 @@ Fix these when touching light parity (do not leave new hardcoded dark-only chrom
 
 ## Overlays (Dialog / Sheet)
 
-New **multi-field** create/edit (and similar form) overlays must present differently by breakpoint:
+**Every** multi-field create or edit uses the shared **`ResponsiveOverlay`** (`src/components/overlay/responsive-overlay.tsx`): centered dialog from 768px up, bottom sheet below. Hand-rolled `isMobile ? <Sheet> : <Dialog>` forks are folded into it; Dialog-only multi-field forms gain the mobile sheet by moving onto it. Read-only drill-ins (e.g. the liquidez account detail) follow the same breakpoint split with a single **Cerrar**.
+
+Overlays present differently by breakpoint:
 
 | Breakpoint | Surface |
 | --- | --- |
@@ -185,7 +243,7 @@ Same language on both surfaces:
 
 - Short confirms / deletes: `AlertDialog` / `ConfirmDeleteDialog` — same UI on both breakpoints unless mobile clearly suffers
 - Marketing landing: out of scope
-- Existing Dialog-only forms: migrate via `/responsive-overlay` one at a time; no big-bang retrofit
+- Existing Dialog-only forms: migrate onto `ResponsiveOverlay` (one flow per change is fine)
 - Thin shared chrome helper is allowed (opt-in); do not extract a mega form wrapper that owns fields/validation
 
 Agent rule: `.cursor/rules/responsive-overlays.mdc` (pointer) + `.cursor/rules/responsive-overlays-impl.mdc`. Skill: `/responsive-overlay` · PRD: `tasks/prd-responsive-overlays.md`.
@@ -207,7 +265,7 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc` (pointer) + `.cursor/rules/r
 - Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in mono.
 - Horizontal chips (wallets): `overflow-x-auto`, `shrink-0`, edge fades `from-background`.
 
-Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmosphere`, sticky header, `container`). Page rhythm: `space-y-5`. Sticky page bars: `top-16` (`group-has-data-[collapsible=icon]/sidebar-wrapper:top-12`).
+Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmosphere`, sticky header, `container`). Page rhythm: `space-y-5`. Title, search, filters, and the primary action live in the app header — no in-page sticky action bar (see **Chrome**).
 
 ---
 
@@ -234,9 +292,9 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 
 When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
 
-1. Keep domain structure (tables vs cards) from `.claude/skills/dashboard-ui/SKILL.md`.
-2. Swap shells to glass (`MONTHLY_PANEL_SHELL_CLASS` or the same dark border/blur).
-3. Use default `<Button>` for the section CTA; menus for overflow.
+1. Pick the archetype (planner, collection, detail, settings) and keep domain structure (tables vs cards) from `.claude/skills/dashboard-ui/SKILL.md`.
+2. Planner-grade panels use `MONTHLY_PANEL_SHELL_CLASS`; settings stay calm cards; card faces stay solid.
+3. Register the one primary action in the app header; overflow for rare actions.
 4. Metric strips stay calm + left border.
 5. Verify in **dark and light** at desktop and a narrow viewport.
 
