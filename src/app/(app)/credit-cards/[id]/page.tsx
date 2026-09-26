@@ -39,7 +39,6 @@ import {
 import { CreditCardCycleLedger } from '@/components/credit-cards/CreditCardCycleLedger';
 import { CreditCardCycleWorkspaceShell } from '@/components/credit-cards/CreditCardCycleWorkspaceShell';
 import { CreditCardCuotasTab } from '@/components/credit-cards/CreditCardCuotasTab';
-import { CreditCardReconciliationStrip } from '@/components/credit-cards/CreditCardReconciliationStrip';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import CreditCardStatementImportDialog from '@/components/credit-cards/CreditCardStatementImportDialog';
 import CreditCardPaymentDialog, {
@@ -78,7 +77,6 @@ import { CreditCardExternalPaymentDialog } from '@/components/credit-cards/Credi
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
 import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
-import { computeCreditCardCycleReconciliation } from '@/lib/finance/credit-card-cycle-reconciliation';
 import type { CreditCardCycleTab } from '@/lib/finance/credit-card-cycle-types';
 import {
   type PaymentMethodType,
@@ -561,29 +559,6 @@ export default function CreditCardDetailPage() {
     }
   }, [statementDuePlan, creditCardId, context, loadData]);
 
-  const reconciliation = useMemo(() => {
-    if (!statement) return null;
-    return computeCreditCardCycleReconciliation({
-      lastStatementBalance: statement.last_statement_balance,
-      paymentsAppliedToStatement: statement.payments_applied_to_statement,
-      currentCyclePurchases: statement.current_cycle_purchases,
-      currentCyclePayments: statement.current_cycle_payments,
-      outstandingBalance: statement.outstanding_balance,
-      importedStatementTotal: statement.imported_statement_total,
-      importedMinimumPayment: statement.minimum_payment,
-    });
-  }, [statement]);
-
-  const cycleImport = useMemo(() => {
-    if (!statement) return null;
-    return (
-      statementImports.find(
-        (importRecord) =>
-          importRecord.period_end?.slice(0, 10) === statement.statement_end,
-      ) ?? null
-    );
-  }, [statement, statementImports]);
-
   const cycleRangeLabel = statement
     ? formatCycleRange(statement.current_cycle_start, statement.current_cycle_end)
     : '';
@@ -758,15 +733,6 @@ export default function CreditCardDetailPage() {
               <TabContentSkeleton />
             ) : (
               <>
-                {reconciliation && reconciliation.status !== 'matched' ? (
-                  <CreditCardReconciliationStrip
-                    reconciliation={reconciliation}
-                    cycleDueDate={statement.statement_due_date}
-                    cycleImport={cycleImport}
-                    onOpenImportDialog={() => setMpImportDialogOpen(true)}
-                  />
-                ) : null}
-
                 <CreditCardCycleLedger
                   cycleStart={statement.current_cycle_start}
                   cycleEnd={statement.current_cycle_end}
