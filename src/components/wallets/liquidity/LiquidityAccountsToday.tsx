@@ -14,7 +14,6 @@ import { listLoans } from '@/lib/api/loans';
 import { accountHasDebtWhy } from '@/lib/finance/liquidity-debt-breakdown';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 import { cn, formatCurrency } from '@/lib/utils';
-import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { LiquidityAccountDebtWhy } from '@/components/wallets/liquidity/LiquidityAccountDebtWhy';
 import { LiquidityDebtSummaryStrip } from '@/components/wallets/liquidity/LiquidityDebtSummaryStrip';
 import { LiquiditySectionHeader } from '@/components/wallets/liquidity/liquidity-section';
@@ -170,7 +169,7 @@ const AccountCard = ({
   return (
     <div
       className={cn(
-        'relative flex w-[min(100%,17.5rem)] shrink-0 snap-start flex-col gap-3 rounded-xl border border-border/60 bg-card/80 p-3 text-left',
+        'relative flex w-full flex-col gap-3 rounded-xl border border-border/60 bg-card/80 p-3 text-left',
         'dark:border-white/[0.08] dark:bg-[#0a1020]/80',
       )}
     >
@@ -410,11 +409,11 @@ export const LiquidityAccountsToday = ({
       ) : null}
 
       <section
-        className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}
+        className="space-y-3"
         aria-labelledby={SectionIcon ? undefined : 'liquidity-cards-today-heading'}
       >
         {!SectionIcon ? (
-          <div className="flex flex-wrap items-start justify-between gap-2 px-4 py-4 sm:px-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <h2
                 id="liquidity-cards-today-heading"
@@ -432,7 +431,7 @@ export const LiquidityAccountsToday = ({
         ) : null}
 
         {loading ? (
-          <div className="space-y-3 px-4 py-4 sm:px-5" aria-hidden>
+          <div className="space-y-3" aria-hidden>
             <div className="h-28 animate-pulse rounded-xl bg-muted/40 sm:hidden" />
             <div className="hidden space-y-3 sm:block">
               <div className="h-12 animate-pulse rounded-xl bg-muted/40" />
@@ -440,7 +439,7 @@ export const LiquidityAccountsToday = ({
             </div>
           </div>
         ) : views.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-5">
+          <p className="py-8 text-center text-sm text-muted-foreground">
             No hay cuentas activas de efectivo, tarjeta o préstamo.
           </p>
         ) : (
@@ -451,34 +450,27 @@ export const LiquidityAccountsToday = ({
               onRetry={() => {
                 void load();
               }}
-              className="mx-4 mb-3 sm:mx-5"
             />
 
-            <div className="relative sm:hidden">
-              <div className="flex gap-3 overflow-x-auto px-4 pb-4 scrollbar-hide snap-x snap-mandatory">
-                {views.map((view, index) => {
-                  const row = rows[index]!;
-                  const account = getBreakdown(row);
-                  return (
-                    <AccountCard
-                      key={view.key}
-                      view={view}
-                      preview={account?.preview ?? ''}
-                      hasWhy={accountHasDebtWhy(account)}
-                      onSelect={() => handleMobileSelect(row)}
-                      onEdit={() => handleEditOrOpen(row)}
-                    />
-                  );
-                })}
-              </div>
-              <div
-                className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent dark:from-[#0d1327]"
-                aria-hidden
-              />
+            <div className="flex flex-col gap-3 sm:hidden">
+              {views.map((view, index) => {
+                const row = rows[index]!;
+                const account = getBreakdown(row);
+                return (
+                  <AccountCard
+                    key={view.key}
+                    view={view}
+                    preview={account?.preview ?? ''}
+                    hasWhy={accountHasDebtWhy(account)}
+                    onSelect={() => handleMobileSelect(row)}
+                    onEdit={() => handleEditOrOpen(row)}
+                  />
+                );
+              })}
             </div>
 
-            <div className="hidden sm:block">
-              <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(7rem,1fr)_minmax(7rem,1fr)] gap-3 border-t border-border/40 px-5 py-2 pr-24">
+            <div className="hidden overflow-hidden rounded-xl border border-border/60 sm:block dark:border-white/[0.08]">
+              <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(7rem,1fr)_minmax(7rem,1fr)] gap-3 border-b border-border/40 px-5 py-2 pr-24">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Cuenta
                 </p>

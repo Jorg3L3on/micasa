@@ -1,6 +1,6 @@
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
 import { LiquidityProjectionTab } from '@/components/wallets/liquidity/LiquidityProjectionTab';
 import { CashPlanTab } from '@/components/wallets/liquidity/plan/CashPlanTab';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
@@ -17,20 +17,30 @@ export const LiquidityWorkspace = () => {
   } = useLiquidityProjection();
 
   return (
-    <Tabs defaultValue="liquidez" className="gap-6">
+    <Tabs
+      defaultValue="liquidez"
+      variant="underline"
+      className="flex flex-col gap-6"
+    >
       <TabsList
-        variant="line"
         aria-label={PLAN_COPY.tabListLabel}
-        className="sticky top-16 z-30 h-auto w-full justify-start rounded-none border-b border-border/60 bg-background/85 px-0 backdrop-blur-xl group-has-data-[collapsible=icon]/sidebar-wrapper:top-12 dark:bg-[#060914]/70"
+        wrapperClassName="sticky top-16 z-30 w-full bg-transparent group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
+        className="w-full gap-0 border-b border-border/60 bg-transparent p-0"
       >
-        <TabsTrigger value="liquidez" className="min-h-11 px-4 text-sm">
+        <TabsTrigger
+          value="liquidez"
+          className="min-h-11 flex-1 justify-center px-4 text-sm"
+        >
           {PLAN_COPY.tabLiquidity}
         </TabsTrigger>
-        <TabsTrigger value="plan" className="min-h-11 px-4 text-sm">
+        <TabsTrigger
+          value="plan"
+          className="min-h-11 flex-1 justify-center px-4 text-sm"
+        >
           {PLAN_COPY.tabPlan}
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="liquidez" forceMount className="data-[state=inactive]:hidden">
+      <TabsContent value="liquidez" className="mt-0 outline-none">
         <LiquidityProjectionTab
           data={data}
           loading={loading}
@@ -40,7 +50,7 @@ export const LiquidityWorkspace = () => {
           onSelectedMonthKeyChange={setSelectedMonthKey}
         />
       </TabsContent>
-      <TabsContent value="plan" forceMount className="data-[state=inactive]:hidden">
+      <TabsContent value="plan" className="mt-0 outline-none">
         <CashPlanTab
           data={data}
           loading={loading}
