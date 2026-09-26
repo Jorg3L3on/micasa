@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { EASE_OUT, SPRING_PRESS } from '@/components/motion/ease';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,8 @@ export type CheckboxProps = {
   className?: string;
   /** Classes for the square control, after the checked/unchecked colors. */
   boxClassName?: string;
+  /** Replaces the drawn check when the control is checked. */
+  indicator?: ReactNode;
   id?: string;
   'aria-label'?: string;
   'aria-describedby'?: string;
@@ -30,6 +32,7 @@ export const Checkbox = ({
   label,
   className,
   boxClassName,
+  indicator,
   id: idProp,
   'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedBy,
@@ -78,44 +81,59 @@ export const Checkbox = ({
       >
         <AnimatePresence initial={false}>
           {showMark ? (
-            <motion.svg
-              key={indeterminate ? 'indeterminate' : 'checked'}
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={3}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              initial={reduce ? { opacity: 1 } : { opacity: 0, scale: 0.5 }}
-              animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-              exit={
-                reduce
-                  ? { opacity: 0 }
-                  : { opacity: 0, scale: 0.5, filter: 'blur(4px)' }
-              }
-              transition={
-                reduce ? { duration: 0 } : { duration: 0.16, ease: EASE_OUT }
-              }
-              aria-hidden
-            >
-              <title>{indeterminate ? 'Parcial' : 'Seleccionado'}</title>
-              <motion.path
-                d={path}
-                initial={reduce ? { pathLength: 1 } : { pathLength: 0 }}
-                animate={{ pathLength: 1 }}
+            indicator ? (
+              <motion.span
+                key="indicator"
+                className="inline-flex"
+                initial={reduce ? { opacity: 1 } : { opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
                 transition={
-                  reduce
-                    ? { duration: 0 }
-                    : {
-                        duration: indeterminate ? 0.2 : 0.3,
-                        ease: EASE_OUT,
-                        delay: 0.04,
-                      }
+                  reduce ? { duration: 0 } : { duration: 0.16, ease: EASE_OUT }
                 }
-              />
-            </motion.svg>
+              >
+                {indicator}
+              </motion.span>
+            ) : (
+              <motion.svg
+                key={indeterminate ? 'indeterminate' : 'checked'}
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                initial={reduce ? { opacity: 1 } : { opacity: 0, scale: 0.5 }}
+                animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                exit={
+                  reduce
+                    ? { opacity: 0 }
+                    : { opacity: 0, scale: 0.5, filter: 'blur(4px)' }
+                }
+                transition={
+                  reduce ? { duration: 0 } : { duration: 0.16, ease: EASE_OUT }
+                }
+                aria-hidden
+              >
+                <title>{indeterminate ? 'Parcial' : 'Seleccionado'}</title>
+                <motion.path
+                  d={path}
+                  initial={reduce ? { pathLength: 1 } : { pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={
+                    reduce
+                      ? { duration: 0 }
+                      : {
+                          duration: indeterminate ? 0.2 : 0.3,
+                          ease: EASE_OUT,
+                          delay: 0.04,
+                        }
+                  }
+                />
+              </motion.svg>
+            )
           ) : null}
         </AnimatePresence>
       </motion.button>

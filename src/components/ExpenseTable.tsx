@@ -106,7 +106,7 @@ const expenseStatusBoxClass = (isPaid: boolean, interactive: boolean) =>
   cn(
     'inline-flex h-8 w-8 items-center justify-center rounded-full border [&>svg]:block',
     isPaid
-      ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm'
+      ? 'border-transparent bg-emerald-500/15 text-emerald-600 shadow-sm ring-1 ring-emerald-500/30 dark:text-emerald-400'
       : cn(
           'border-dashed border-border/60 bg-card text-muted-foreground/40',
           interactive && 'hover:border-emerald-500/60 hover:text-emerald-600',
@@ -114,19 +114,7 @@ const expenseStatusBoxClass = (isPaid: boolean, interactive: boolean) =>
   );
 
 const ExpensePaidCheckIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={3}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-  >
-    <path d="M5 13l4 4L19 7" />
-  </svg>
+  <CheckCircle2 className="h-5 w-5" aria-hidden />
 );
 
 type ExpenseWalletLabelProps = {
@@ -781,7 +769,7 @@ export default function ExpenseTable({
                       openValue={openSwipe}
                       onOpenChange={setOpenSwipe}
                       surfaceClassName={cn(
-                        'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border bg-card px-3 transition-all',
+                        'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all [background-color:var(--card)]',
                         'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
                         isCompact ? 'py-2.5' : 'py-3',
                         expenseCardShellClass({
@@ -812,6 +800,9 @@ export default function ExpenseTable({
                             e.is_paid
                               ? `Deshacer pago de ${e.description}`
                               : `Marcar ${e.description} como pagado`
+                          }
+                          indicator={
+                            e.is_paid ? <ExpensePaidCheckIcon /> : undefined
                           }
                           boxClassName={expenseStatusBoxClass(e.is_paid, true)}
                           onCheckedChange={(nextPaid) => {
@@ -846,7 +837,7 @@ export default function ExpenseTable({
                           className={cn(
                             'min-w-0 truncate',
                             e.is_paid
-                              ? 'font-medium text-muted-foreground/80 line-through'
+                              ? 'font-medium text-muted-foreground/80'
                               : 'font-semibold text-foreground',
                           )}
                         >
@@ -927,7 +918,7 @@ export default function ExpenseTable({
                         'shrink-0 font-mono tabular-nums leading-tight',
                         isCompact ? 'text-xs' : 'text-sm',
                         e.is_paid
-                          ? 'text-muted-foreground/60 line-through'
+                          ? 'text-muted-foreground/60'
                           : isCardCharge
                             ? 'font-bold text-slate-700 dark:text-slate-300'
                             : 'font-bold text-foreground',

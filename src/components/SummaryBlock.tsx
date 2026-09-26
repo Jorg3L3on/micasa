@@ -233,6 +233,7 @@ export default function SummaryBlock({
             status={getFortnightStatusBadgeStatus(statusPill.tone)}
             size="sm"
             pulse={false}
+            showIcon={statusPill.tone !== 'shortfall'}
             contentKey={statusPill.tone}
             className="h-5 gap-1 px-2 text-[10px] font-semibold uppercase tracking-wider"
           >
