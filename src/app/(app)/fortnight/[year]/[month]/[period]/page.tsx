@@ -15,6 +15,7 @@ import type {
   TransactionRow,
   WalletListItem,
 } from '@/types/catalog';
+import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
 
 type Summary = {
   totalIncome: number;
@@ -182,6 +183,9 @@ export default async function FortnightPage({
           libre={libre}
           pagado={pagado}
           pendiente={pendiente}
+          pendingExpenseItems={getPendingLiquidityLineItems({
+            transactions,
+          })}
           year={year}
           month={month}
           period={period}
@@ -194,7 +198,6 @@ export default async function FortnightPage({
             summary.planningUnpaidExpenseCount ??
             transactions.filter((t) => !t.is_paid).length
           }
-          cardCharges={summary.cardCharges ?? null}
           planningOrphanCardPayments={
             summary.planningOrphanCardPayments ?? null
           }

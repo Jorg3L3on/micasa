@@ -85,6 +85,7 @@ import type { WalletListItem } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import { cn } from '@/lib/utils';
+import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
 
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
   `micasa.planificacion.fortnightTab.${p}`;
@@ -843,6 +844,15 @@ export default function FortnightColumn({
   const libre = summary.balance;
   const pagado = summary.totalPaid;
   const pendiente = summary.totalUnpaid;
+  const pendingExpenseItems = useMemo(
+    () =>
+      getPendingLiquidityLineItems({
+        transactions,
+        cardDueItems,
+        loanDueItems,
+      }),
+    [cardDueItems, loanDueItems, transactions],
+  );
 
   const currentFortnightUserIncome =
     summary.userIncome && summary.userIncome.length > 0
@@ -902,6 +912,7 @@ export default function FortnightColumn({
           libre={libre}
           pagado={pagado}
           pendiente={pendiente}
+          pendingExpenseItems={pendingExpenseItems}
           userIncome={currentFortnightUserIncome}
           incomeItems={
             summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
@@ -913,7 +924,6 @@ export default function FortnightColumn({
           expenseCount={summaryExpenseCount}
           paidExpenseCount={summaryPaidExpenseCount}
           unpaidExpenseCount={summaryUnpaidExpenseCount}
-          cardCharges={summary.cardCharges ?? null}
           planningOrphanCardPayments={
             summary.planningOrphanCardPayments ?? null
           }

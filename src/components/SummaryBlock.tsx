@@ -14,7 +14,6 @@ import {
   Clock,
   Pencil,
   BarChart3,
-  CreditCard,
   Banknote,
 } from 'lucide-react';
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
@@ -36,7 +35,6 @@ import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar'
 import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 import type {
   FundingWalletBreakdownItem,
-  PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
   PlannerOrphanCardPaymentsSummary,
   PlannerPayrollLoanDeductionSummary,
@@ -48,6 +46,7 @@ import {
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
+import type { PendingLiquidityLineItem } from '@/lib/finance/pending-liquidity-items';
 
 export type IncomeItemBySource = {
   id: number;
@@ -80,8 +79,6 @@ type SummaryBlockProps = {
   expenseCount?: number;
   paidExpenseCount?: number;
   unpaidExpenseCount?: number;
-  /** Cargos TC / tienda aparte del efectivo (solo planificación con API de resumen). */
-  cardCharges?: PlannerCardChargesSummary | null;
   /** Pagos a tarjeta sin fila de gasto, ya incluidos en totales de efectivo. */
   planningOrphanCardPayments?: PlannerOrphanCardPaymentsSummary | null;
   /** Adeudo al estado de cuenta (próximo pago) dentro del período; parte del pendiente. */
@@ -108,6 +105,8 @@ type SummaryBlockProps = {
     categoryId: number | null,
     walletId: number | null,
   ) => void;
+  /** Unpaid cash gastos, card cortes, and wallet cuotas inside the pending row. */
+  pendingExpenseItems?: PendingLiquidityLineItem[];
 };
 
 export default function SummaryBlock({
@@ -122,7 +121,6 @@ export default function SummaryBlock({
   expenseCount = 0,
   paidExpenseCount = 0,
   unpaidExpenseCount = 0,
-  cardCharges = null,
   planningOrphanCardPayments = null,
   planningCardStatementDue = null,
   planningWalletLoanDue = null,
@@ -135,6 +133,7 @@ export default function SummaryBlock({
   budgetOwnerQuery = '',
   onEditIncome,
   onEditIncomeSource,
+  pendingExpenseItems = [],
 }: SummaryBlockProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -271,7 +270,7 @@ export default function SummaryBlock({
               id: 'desglose',
               title: isExpanded ? 'Ocultar desglose' : 'Ver desglose',
               description: (
-          <>
+          <div className="flex flex-col gap-3">
             <Separator className="bg-border/50" />
 
             <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
@@ -436,46 +435,6 @@ export default function SummaryBlock({
                 {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
                 (desde la sección de tarjetas, sin gasto duplicado en la lista).
               </p>
-            ) : null}
-
-            {cardCharges != null && cardCharges.total > 0 ? (
-              <div
-                className={cn(
-                  METRIC_STRIP_CLASS,
-                  'border-l-[3px] border-l-violet-500/50 px-3 py-3',
-                )}
-                role="region"
-                aria-label="Cargos con tarjeta en esta quincena"
-              >
-                <div className="mb-2 flex items-center gap-1.5">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25 dark:bg-violet-500/20">
-                    <CreditCard
-                      className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
-                      data-icon="inline-start"
-                    />
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600/80 dark:text-violet-400/80">
-                    Cargos a tarjeta
-                  </span>
-                </div>
-                <p className="font-mono text-base font-black tabular-nums leading-tight text-violet-700 dark:text-violet-300">
-                  {formatCurrency(cardCharges.total)}
-                </p>
-                <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-                  Son compras cargadas a la tarjeta; no son salida de efectivo
-                  hasta que pagues el estado de cuenta (los pagos a la tarjeta
-                  sí cuentan arriba como efectivo/débito).
-                  {cardCharges.expenseCount > 0 ? (
-                    <>
-                      {' '}
-                      {cardCharges.expenseCount} movimiento
-                      {cardCharges.expenseCount !== 1 ? 's' : ''}:{' '}
-                      {formatCurrency(cardCharges.paid)} pagado ·{' '}
-                      {formatCurrency(cardCharges.unpaid)} pendiente.
-                    </>
-                  ) : null}
-                </p>
-              </div>
             ) : null}
 
             {incomeItems.length > 0 || hasUserIncome ? (
@@ -660,13 +619,34 @@ export default function SummaryBlock({
                       className="text-xs font-semibold text-foreground"
                     />
                   </div>
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-muted-foreground">
-                      Menos pendiente de la quincena (no pagado)
-                    </span>
-                    <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                      −{formatCurrency(displayPendienteFundingRow)}
-                    </span>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-muted-foreground">
+                        Menos pendiente de la quincena (no pagado)
+                      </span>
+                      <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+                        −{formatCurrency(displayPendienteFundingRow)}
+                      </span>
+                    </div>
+                    {displayPendienteFundingRow > 0 &&
+                    pendingExpenseItems.length > 0 ? (
+                      <ul
+                        className="space-y-0.5 pl-3"
+                        aria-label="Gastos pendientes de la quincena"
+                      >
+                        {pendingExpenseItems.map((item) => (
+                          <li
+                            key={item.id}
+                            className="flex items-center justify-between gap-2 text-[10px] leading-snug text-muted-foreground"
+                          >
+                            <span className="min-w-0 truncate">{item.name}</span>
+                            <span className="shrink-0 font-mono tabular-nums text-amber-700/90 dark:text-amber-400/90">
+                              −{formatCurrency(item.amount)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                   {payrollLoanDeduction > 0 ? (
                     <div className="flex items-center justify-between gap-2 text-xs">
@@ -705,7 +685,7 @@ export default function SummaryBlock({
                 </div>
               </div>
             ) : null}
-          </>
+          </div>
               ),
             },
           ]}
