@@ -7,13 +7,8 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import EmptyState from '@/components/EmptyState';
@@ -237,19 +232,22 @@ export default function HouseUsersPage() {
       </Card>
       </div>
 
-      <Dialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Agregar usuario</DialogTitle>
-          </DialogHeader>
+      <ResponsiveOverlay
+        open={addUserDialogOpen}
+        onOpenChange={setAddUserDialogOpen}
+        title="Invitar usuario"
+        description="Agrega a alguien a este hogar con su email de MiCasa."
+        busy={isSubmitting}
+      >
           <form
             onSubmit={(event) => {
               event.preventDefault();
               void inviteHouseUser();
             }}
             aria-busy={isSubmitting}
+            className="flex flex-col gap-4"
           >
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="add-user-email">Email</Label>
                 <Input
@@ -278,33 +276,27 @@ export default function HouseUsersPage() {
                 </p>
               )}
             </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAddUserDialogOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2
-                      className="h-4 w-4 animate-spin"
-                      aria-hidden
-                      data-icon="inline-start"
-                    />
-                    Agregando…
-                  </>
-                ) : (
-                  'Agregar'
-                )}
-              </Button>
-            </DialogFooter>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className={OVERLAY_PRIMARY_BUTTON_CLASS}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2
+                    className="h-4 w-4 animate-spin"
+                    aria-hidden
+                    data-icon="inline-start"
+                  />
+                  Invitando…
+                </>
+              ) : (
+                'Invitar'
+              )}
+            </Button>
           </form>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveOverlay>
     </>
   );
 }
