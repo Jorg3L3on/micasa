@@ -44,6 +44,8 @@ type ResponsiveOverlayProps = {
   children: ReactNode | ((api: OverlaySelectApi) => ReactNode);
   /** Blocks dismiss while a mutation is in flight. */
   busy?: boolean;
+  /** Header dismiss label; read-only results use `Cerrar`. */
+  cancelLabel?: string;
   contentClassName?: string;
 };
 
@@ -58,6 +60,7 @@ export const ResponsiveOverlay = ({
   description,
   children,
   busy = false,
+  cancelLabel = 'Cancelar',
   contentClassName,
 }: ResponsiveOverlayProps) => {
   const isMobile = useIsMobile();
@@ -103,7 +106,7 @@ export const ResponsiveOverlay = ({
       onClick={handleCancel}
       disabled={busy}
     >
-      Cancelar
+      {cancelLabel}
     </Button>
   );
 
