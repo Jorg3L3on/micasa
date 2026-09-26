@@ -1,11 +1,12 @@
 'use client';
 
 import {
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
+  startTransition,
   ViewTransition,
 } from 'react';
 import { useParams } from 'next/navigation';
@@ -26,6 +27,15 @@ import { WalletFormValues } from '@/schemas/wallet.schema';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
+import {
+  hasWalletVtStash,
+  seedCreditCardDetail,
+} from '@/lib/ui/wallet-detail-seed';
+import {
+  creditCardWarmKey,
+  creditStatementWarmKey,
+  takeWarmed,
+} from '@/lib/ui/wallet-detail-prefetch';
 import {
   CreditCardCycleSummary,
   CreditCardDetailTabTrigger,
@@ -141,14 +151,20 @@ export default function CreditCardDetailPage() {
   const { asOf: asOfDate, tab, setAsOf: setAsOfDate, setTab } =
     useCreditCardCycleUrlState({ defaultAsOf: today });
 
-  const [card, setCard] = useState<CreditCardListItem | null>(null);
+  const [card, setCard] = useState<CreditCardListItem | null>(() =>
+    seedCreditCardDetail(creditCardId, null),
+  );
   const [statement, setStatement] =
     useState<CreditCardStatementResponse | null>(null);
   const [paymentSources, setPaymentSources] = useState<PaymentMethodOption[]>(
     [],
   );
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(
+    () =>
+      !hasWalletVtStash(creditCardId) &&
+      seedCreditCardDetail(creditCardId, null) == null,
+  );
   const [cycleLoading, setCycleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -182,6 +198,9 @@ export default function CreditCardDetailPage() {
     number | null
   >(null);
 
+  const cardRef = useRef(card);
+  cardRef.current = card;
+
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
     const s = q.toString();
@@ -196,6 +215,14 @@ export default function CreditCardDetailPage() {
     [paymentSources],
   );
 
+  useEffect(() => {
+    if (card) return;
+    const seeded = seedCreditCardDetail(creditCardId, context);
+    if (!seeded) return;
+    setCard(seeded);
+    setLoading(false);
+  }, [card, context, creditCardId]);
+
   const loadData = useCallback(
     async (options?: { cycleOnly?: boolean }) => {
       if (context.id === 0) {
@@ -209,38 +236,62 @@ export default function CreditCardDetailPage() {
       }
 
       const cycleOnly = options?.cycleOnly ?? false;
+      const hasHero = cardRef.current != null;
 
       try {
         if (cycleOnly) {
           setCycleLoading(true);
-        } else {
+        } else if (!hasHero) {
           setLoading(true);
         }
         setError(null);
 
-        const statementPromise = getCreditCardStatement(
+        const statementWarm = creditStatementWarmKey(
           creditCardId,
           context,
           asOfDate,
         );
+        const statementPromise = (async () => {
+          const warmed =
+            await takeWarmed<CreditCardStatementResponse>(statementWarm);
+          return (
+            warmed ??
+            (await getCreditCardStatement(creditCardId, context, asOfDate))
+          );
+        })();
 
-        if (cycleOnly && card) {
+        if (cycleOnly && hasHero) {
           const statementData = await statementPromise;
           setStatement(statementData);
           return;
         }
 
-        // Hero-first: card + statement unblock the morph; secondary loads after.
+        // Hero-first: unblock on card (or keep seed), then fill statement.
+        const cardWarm = creditCardWarmKey(creditCardId, context);
+        const cardPromise = (async () => {
+          const warmed = await takeWarmed<CreditCardListItem>(cardWarm);
+          return (
+            warmed ??
+            (await clientFetchFromApi<CreditCardListItem>(
+              `/api/credit-cards/${creditCardId}`,
+              undefined,
+              context,
+            ))
+          );
+        })();
+
+        void cardPromise.then((cardData) => {
+          startTransition(() => {
+            setCard(cardData);
+            setLoading(false);
+          });
+        });
+
         const [cardData, statementData] = await Promise.all([
-          clientFetchFromApi<CreditCardListItem>(
-            `/api/credit-cards/${creditCardId}`,
-            undefined,
-            context,
-          ),
+          cardPromise,
           statementPromise,
         ]);
 
-        // Activate share morph for placeholder → real hero (same VT name).
         startTransition(() => {
           setCard(cardData);
           setStatement(statementData);
@@ -248,7 +299,7 @@ export default function CreditCardDetailPage() {
         });
 
         try {
-          const [paymentMethodsData, categoriesData, planData] =
+          const [paymentMethodsData, categoriesData, planData, importsData] =
             await Promise.all([
               getPaymentMethodOptions(context),
               clientFetchFromApi<CategoryOption[]>(
@@ -259,17 +310,10 @@ export default function CreditCardDetailPage() {
               getCreditCardPaymentPlan(creditCardId, context).catch(() => ({
                 items: [],
               })),
+              listCreditCardStatementImports(creditCardId, context).catch(
+                () => [] as CreditCardStatementImportListItem[],
+              ),
             ]);
-
-          let importsData: CreditCardStatementImportListItem[] = [];
-          try {
-            importsData = await listCreditCardStatementImports(
-              creditCardId,
-              context,
-            );
-          } catch {
-            importsData = [];
-          }
 
           setPaymentSources(paymentMethodsData);
           setCategoryOptions(categoriesData);
@@ -289,7 +333,7 @@ export default function CreditCardDetailPage() {
         setCycleLoading(false);
       }
     },
-    [asOfDate, card, context, creditCardId],
+    [asOfDate, context, creditCardId],
   );
 
   useEffect(() => {
@@ -522,12 +566,15 @@ export default function CreditCardDetailPage() {
   }, [statement, today]);
 
   const utilizationPct = useMemo((): number | null => {
-    if (!statement?.credit_limit || statement.credit_limit === 0) return null;
-    return Math.min(
-      100,
-      Math.round((statement.outstanding_balance / statement.credit_limit) * 100),
-    );
-  }, [statement]);
+    const limit =
+      statement?.credit_limit ??
+      card?.temporary_credit_limit ??
+      card?.credit_limit ??
+      null;
+    if (limit == null || limit === 0) return null;
+    const outstanding = statement?.outstanding_balance ?? card?.amount ?? 0;
+    return Math.min(100, Math.round((outstanding / limit) * 100));
+  }, [card, statement]);
 
   const statementDuePlan = useMemo(() => {
     if (!statement) return null;
@@ -636,11 +683,14 @@ export default function CreditCardDetailPage() {
     overflow: overflowItems.length > 0 ? { items: overflowItems } : null,
   });
 
-  if (context.id === 0 || (loading && !card)) {
+  if (
+    context.id === 0 ||
+    (loading && !card && !hasWalletVtStash(creditCardId))
+  ) {
     return <CreditCardDetailSkeleton cardId={creditCardId} />;
   }
 
-  if (error || !card || !statement) {
+  if ((error && !card) || (!card && !hasWalletVtStash(creditCardId))) {
     return (
       <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
         {error ?? 'No se pudo cargar la tarjeta'}
@@ -648,65 +698,83 @@ export default function CreditCardDetailPage() {
     );
   }
 
+  const statementReady = statement != null;
+
   return (
     <DirectionalTransition>
     <div className="relative">
       <Tabs value={tab} onValueChange={handleTabChange} className="gap-4">
       <CreditCardHeroZone>
         <ViewTransition
-          name={walletCardViewTransitionName(card.id)}
+          name={walletCardViewTransitionName(creditCardId)}
           share="morph"
           default="none"
         >
-          <CreditCardVisualHero
-            card={card}
-            statement={statement}
-            utilizationPct={utilizationPct}
-            isCurrentCycle={isCurrentCycle}
-          />
+          {card ? (
+            <CreditCardVisualHero
+              card={card}
+              statement={statement}
+              utilizationPct={utilizationPct}
+              isCurrentCycle={isCurrentCycle}
+            />
+          ) : (
+            <WalletCardVtPlaceholder
+              walletId={creditCardId}
+              variant="credit"
+            />
+          )}
         </ViewTransition>
-        <CreditCardDuePaymentStrip
-          statement={statement}
-          daysUntilDue={daysUntilDue}
-          onCapture={
-            statement.period_obligation?.confidence === 'missing' &&
-            statementDuePlan
-              ? () => setCaptureFortnightId(statementDuePlan.fortnightId)
-              : undefined
-          }
-          onClearDeclaration={
-            statement.declared_zero && statementDuePlan
-              ? () => {
-                  void handleClearCorteDeclaration();
-                }
-              : undefined
-          }
-        />
+        {statementReady ? (
+          <>
+            <CreditCardDuePaymentStrip
+              statement={statement}
+              daysUntilDue={daysUntilDue}
+              onCapture={
+                statement.period_obligation?.confidence === 'missing' &&
+                statementDuePlan
+                  ? () => setCaptureFortnightId(statementDuePlan.fortnightId)
+                  : undefined
+              }
+              onClearDeclaration={
+                statement.declared_zero && statementDuePlan
+                  ? () => {
+                      void handleClearCorteDeclaration();
+                    }
+                  : undefined
+              }
+            />
 
-        {isCurrentCycle ? (
-          <CreditCardCycleSpendingBar
-            items={statement.current_cycle_purchase_items}
-            total={statement.current_cycle_purchases}
-          />
+            {isCurrentCycle ? (
+              <CreditCardCycleSpendingBar
+                items={statement.current_cycle_purchase_items}
+                total={statement.current_cycle_purchases}
+              />
+            ) : (
+              <p className="rounded-2xl border border-border/50 bg-muted/15 px-4 py-2 text-center text-xs text-muted-foreground">
+                Viendo ciclo {cycleRangeLabel} —{' '}
+                <span className="font-mono font-semibold tabular-nums text-foreground">
+                  {formatCurrency(statement.current_cycle_purchases)}
+                </span>{' '}
+                en compras. El desglose por categoría corresponde al ciclo
+                seleccionado abajo.
+              </p>
+            )}
+
+            <CreditCardCycleSummary
+              statement={statement}
+              isCurrentCycle={isCurrentCycle}
+              onPreviousCycle={handlePreviousCycle}
+              onNextCycle={handleNextCycle}
+              onResetToToday={handleResetToToday}
+              formatCycleRange={formatCycleRange}
+            />
+          </>
         ) : (
-          <p className="rounded-2xl border border-border/50 bg-muted/15 px-4 py-2 text-center text-xs text-muted-foreground">
-            Viendo ciclo {cycleRangeLabel} —{' '}
-            <span className="font-mono font-semibold tabular-nums text-foreground">
-              {formatCurrency(statement.current_cycle_purchases)}
-            </span>{' '}
-            en compras. El desglose por categoría corresponde al ciclo seleccionado
-            abajo.
-          </p>
+          <div className="space-y-3" role="status" aria-label="Cargando ciclo">
+            <Skeleton className="h-14 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+          </div>
         )}
-
-        <CreditCardCycleSummary
-          statement={statement}
-          isCurrentCycle={isCurrentCycle}
-          onPreviousCycle={handlePreviousCycle}
-          onNextCycle={handleNextCycle}
-          onResetToToday={handleResetToToday}
-          formatCycleRange={formatCycleRange}
-        />
 
         <CreditCardDetailTabsList>
           <CreditCardDetailTabTrigger value="movimientos">
@@ -714,7 +782,8 @@ export default function CreditCardDetailPage() {
           </CreditCardDetailTabTrigger>
           <CreditCardDetailTabTrigger value="cuotas">
             Cuotas
-            {statement.installment_active_purchases.length > 0 ? (
+            {statementReady &&
+            statement.installment_active_purchases.length > 0 ? (
               <Badge
                 variant="default"
                 className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-[11px]"
@@ -729,7 +798,7 @@ export default function CreditCardDetailPage() {
 
         <CreditCardCycleWorkspaceShell>
           <TabsContent value="movimientos" className="mt-0 space-y-4">
-            {cycleLoading ? (
+            {!statementReady || cycleLoading ? (
               <TabContentSkeleton />
             ) : (
               <>
@@ -766,23 +835,29 @@ export default function CreditCardDetailPage() {
           </TabsContent>
 
           <TabsContent value="cuotas" className="mt-0">
-            <CreditCardCuotasTab
-              creditCardId={creditCardId}
-              context={context}
-              defaultDueDay={card.due_day}
-              purchases={statement.installment_active_purchases}
-              paymentHistory={statement.payment_history}
-              statementEnd={statement.statement_end}
-              ownerQueryString={ownerQueryString}
-              onChanged={() => loadData({ cycleOnly: true })}
-              createPlanDialogOpen={installmentPlanDialogOpen}
-              onCreatePlanDialogOpenChange={setInstallmentPlanDialogOpen}
-              cycleLoading={cycleLoading}
-            />
+            {!statementReady || !card ? (
+              <TabContentSkeleton />
+            ) : (
+              <CreditCardCuotasTab
+                creditCardId={creditCardId}
+                context={context}
+                defaultDueDay={card.due_day}
+                purchases={statement.installment_active_purchases}
+                paymentHistory={statement.payment_history}
+                statementEnd={statement.statement_end}
+                ownerQueryString={ownerQueryString}
+                onChanged={() => loadData({ cycleOnly: true })}
+                createPlanDialogOpen={installmentPlanDialogOpen}
+                onCreatePlanDialogOpenChange={setInstallmentPlanDialogOpen}
+                cycleLoading={cycleLoading}
+              />
+            )}
           </TabsContent>
         </CreditCardCycleWorkspaceShell>
       </Tabs>
 
+      {statementReady && card ? (
+        <>
       <CreditCardPaymentDialog
         open={paymentDialogOpen}
         onOpenChange={(open) => {
@@ -846,8 +921,8 @@ export default function CreditCardDetailPage() {
         context={context}
         categoryOptions={categoryOptions}
         statementImports={statementImports}
-        walletProviderIconKey={card?.provider_icon_key ?? null}
-        walletName={card?.name ?? ''}
+        walletProviderIconKey={card.provider_icon_key ?? null}
+        walletName={card.name}
         onSuccess={loadData}
         onDownloadImport={handleDownloadStatementImport}
         onRollbackClick={(id) => setRollbackImportId(id)}
@@ -905,6 +980,8 @@ export default function CreditCardDetailPage() {
           editCardFormError && editCardDialogOpen ? editCardFormError : null
         }
       />
+        </>
+      ) : null}
     </div>
     </DirectionalTransition>
   );

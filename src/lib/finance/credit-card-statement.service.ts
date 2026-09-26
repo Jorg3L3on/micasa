@@ -142,6 +142,17 @@ export async function getCreditCardStatementByOwner(
     credit_card_wallet_id: creditCardId,
   };
 
+  // Only load purchases in the statement/cycle windows (+ open cuotas).
+  // Unbounded is_paid history was the main latency on credit detail open.
+  const purchaseWindowStart =
+    window.statementStart.getTime() <= window.currentCycleStart.getTime()
+      ? window.statementStart
+      : window.currentCycleStart;
+  const purchaseWindowEnd =
+    window.statementEnd.getTime() >= window.currentCycleEnd.getTime()
+      ? window.statementEnd
+      : window.currentCycleEnd;
+
   const [purchases, payments, paymentTotals, statementImports, cardPlans] =
     await Promise.all([
     prisma.expense.findMany({
@@ -149,6 +160,31 @@ export async function getCreditCardStatementByOwner(
         ...ownerFilter,
         wallet_id: creditCardId,
         is_paid: true,
+        OR: [
+          {
+            payment_date: {
+              gte: purchaseWindowStart,
+              lte: purchaseWindowEnd,
+            },
+          },
+          {
+            AND: [
+              { payment_date: null },
+              {
+                created_at: {
+                  gte: purchaseWindowStart,
+                  lte: purchaseWindowEnd,
+                },
+              },
+            ],
+          },
+          {
+            AND: [
+              { credit_installment_current: { not: null } },
+              { credit_installment_total: { not: null } },
+            ],
+          },
+        ],
       },
       select: {
         id: true,
