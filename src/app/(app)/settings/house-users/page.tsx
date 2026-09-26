@@ -20,6 +20,7 @@ import EmptyState from '@/components/EmptyState';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { Trash2, UserPlus, Loader2 } from 'lucide-react';
+import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 
 type HouseUserItem = {
   id: number;
@@ -183,38 +184,34 @@ export default function HouseUsersPage() {
     return base;
   }, [isOwner, removingId, handleRemove]);
 
+  const handleOpenInvite = useCallback(() => {
+    setAddUserDialogOpen(true);
+  }, []);
+
+  const primaryActionIcon = useMemo(
+    () => <UserPlus data-icon="inline-start" />,
+    [],
+  );
+
+  useRegisterToolbarActions({
+    primaryAction: isOwner
+      ? {
+          label: 'Invitar usuario',
+          onClick: handleOpenInvite,
+          icon: primaryActionIcon,
+        }
+      : null,
+  });
+
   if (context.type !== 'house') {
     return null;
   }
 
   return (
     <>
-      <div
-        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
-        aria-label="Usuarios de la casa"
-      >
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold leading-tight">
-            Usuarios de la casa
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Quién comparte este hogar y puede colaborar en gastos y listas.
-          </p>
-        </div>
-        {isOwner ? (
-          <Button
-            className="h-9 shrink-0 rounded-xl"
-            onClick={() => setAddUserDialogOpen(true)}
-          >
-            <UserPlus data-icon="inline-start" className="h-4 w-4" aria-hidden />
-            Agregar usuario
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="relative z-0">
+      <div className="space-y-5">
       {error && (
-        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
         </div>
       )}

@@ -102,20 +102,10 @@ export default function AccountProfile({
 
   return (
     <div className="w-full space-y-5">
-      <div
-        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
-        aria-label="Información de la cuenta"
-      >
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold leading-tight">
-            Información de la cuenta
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Actualiza tu nombre y/o contraseña. Deja la contraseña en blanco si
-            no deseas cambiarla.
-          </p>
-        </div>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Actualiza tu nombre y/o contraseña. Deja la contraseña en blanco si no
+        deseas cambiarla.
+      </p>
 
       <Card className="overflow-hidden border-border/60">
         <CardContent className="space-y-6 p-6">

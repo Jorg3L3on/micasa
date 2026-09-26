@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Check,
   Copy,
@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plug,
+  Plus,
   ShieldOff,
   Sparkles,
 } from 'lucide-react';
@@ -64,6 +65,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
+import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 import AgentContextPicker, {
   formatContextLabel,
   useDefaultContextSelection,
@@ -320,7 +322,7 @@ export default function ConnectionsPanel({
     return `${window.location.origin}/api/mcp`;
   }, []);
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = useCallback(() => {
     setNewName('');
     setAllowWrite(false);
     setExpiryOption('never');
@@ -328,7 +330,20 @@ export default function ConnectionsPanel({
     setTokenCopied(false);
     setCreateContexts([]);
     setCreateOpen(true);
-  };
+  }, [setCreateContexts]);
+
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  useRegisterToolbarActions({
+    primaryAction: {
+      label: 'Nueva conexión',
+      onClick: handleOpenCreate,
+      icon: primaryActionIcon,
+    },
+  });
 
   const handleCreateOpenChange = (open: boolean) => {
     if (!open && creating) return;
@@ -683,28 +698,19 @@ export default function ConnectionsPanel({
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="space-y-5">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-          <div className="flex items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-text">
-              <Plug className="size-4" aria-hidden />
-            </span>
-            <div className="space-y-1">
-              <CardTitle className="text-base">Conexiones</CardTitle>
-              <CardDescription>
-                Llaves Bearer (`micasa_…`) para agentes MCP (Grok, Claude, Cursor).
-                ChatGPT puede usar OAuth en su lugar (sección de abajo).
-              </CardDescription>
-            </div>
+        <CardHeader className="flex flex-row items-start gap-3 space-y-0">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-text">
+            <Plug className="size-4" aria-hidden />
+          </span>
+          <div className="space-y-1">
+            <CardTitle className="text-base">Llaves de acceso</CardTitle>
+            <CardDescription>
+              Llaves Bearer (`micasa_…`) para agentes MCP (Grok, Claude, Cursor).
+              ChatGPT puede usar OAuth en su lugar (sección de abajo).
+            </CardDescription>
           </div>
-          <Button
-            type="button"
-            onClick={handleOpenCreate}
-            className="h-9 shrink-0 rounded-xl"
-          >
-            Nueva conexión
-          </Button>
         </CardHeader>
         <CardContent>
           {keys.length === 0 ? (
