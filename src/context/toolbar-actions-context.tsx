@@ -6,10 +6,12 @@ import {
   useContext,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { OverlaySelectProvider } from '@/components/overlay/responsive-overlay';
 
 export type ToolbarSearchConfig = {
   value: string;
@@ -70,6 +72,9 @@ type ToolbarActionsState = {
 type ToolbarActionsDispatch = {
   setSearchMode: (open: boolean) => void;
   setFiltersMountNode: (node: HTMLElement | null) => void;
+  /** Set by the filters overlay; receives open/close of Selects inside the panel. */
+  setFiltersSelectOpenChange: (handler: ((open: boolean) => void) | null) => void;
+  handleFiltersSelectOpenChange: (open: boolean) => void;
   register: (next: ToolbarActionsRegistration) => void;
   registerOverflow: (next: ToolbarOverflowConfig | null) => void;
   clear: () => void;
@@ -171,6 +176,19 @@ export function ToolbarActionsProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const filtersSelectOpenChangeRef = useRef<((open: boolean) => void) | null>(null);
+
+  const setFiltersSelectOpenChange = useCallback(
+    (handler: ((open: boolean) => void) | null) => {
+      filtersSelectOpenChangeRef.current = handler;
+    },
+    [],
+  );
+
+  const handleFiltersSelectOpenChange = useCallback((open: boolean) => {
+    filtersSelectOpenChangeRef.current?.(open);
+  }, []);
+
   const registerOverflow = useCallback((next: ToolbarOverflowConfig | null) => {
     const nextOverflow =
       next && next.items.length > 0 ? next : null;
@@ -228,11 +246,21 @@ export function ToolbarActionsProvider({ children }: { children: ReactNode }) {
     () => ({
       setSearchMode,
       setFiltersMountNode,
+      setFiltersSelectOpenChange,
+      handleFiltersSelectOpenChange,
       register,
       registerOverflow,
       clear,
     }),
-    [setSearchMode, setFiltersMountNode, register, registerOverflow, clear],
+    [
+      setSearchMode,
+      setFiltersMountNode,
+      setFiltersSelectOpenChange,
+      handleFiltersSelectOpenChange,
+      register,
+      registerOverflow,
+      clear,
+    ],
   );
 
   return (
@@ -386,9 +414,29 @@ export function useRegisterToolbarOverflow(items: ToolbarOverflowItem[]) {
   }, [registerOverflow]);
 }
 
-/** Renders filter UI into the open toolbar filters sheet/dropdown slot. */
+/**
+ * Stable handler for Selects/menus rendered inside `ToolbarFiltersPortal`;
+ * keeps the filters overlay open while their list closes.
+ */
+export function useToolbarFiltersSelectOpenChange(): (open: boolean) => void {
+  const dispatch = useContext(ToolbarDispatchContext);
+  if (!dispatch) {
+    throw new Error(
+      'useToolbarFiltersSelectOpenChange must be used within a ToolbarActionsProvider',
+    );
+  }
+  return dispatch.handleFiltersSelectOpenChange;
+}
+
+/** Renders filter UI into the open toolbar filters overlay slot. */
 export function ToolbarFiltersPortal({ children }: { children: ReactNode }) {
   const state = useContext(ToolbarStateContext);
-  if (!state?.filters?.open || !state.filtersMountNode) return null;
-  return createPortal(children, state.filtersMountNode);
+  const dispatch = useContext(ToolbarDispatchContext);
+  if (!state?.filters?.open || !state.filtersMountNode || !dispatch) return null;
+  return createPortal(
+    <OverlaySelectProvider onSelectOpenChange={dispatch.handleFiltersSelectOpenChange}>
+      {children}
+    </OverlaySelectProvider>,
+    state.filtersMountNode,
+  );
 }

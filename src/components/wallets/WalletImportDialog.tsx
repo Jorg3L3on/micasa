@@ -103,7 +103,7 @@ const WalletImportDialog = ({
       title="Importar movimientos"
       description="Sube un CSV de gastos e ingresos para registrarlos en esta billetera."
       busy={submitting}
-      cancelLabel={hasResult ? 'Cerrar' : 'Cancelar'}
+      dismissLabel={hasResult ? 'Cerrar' : 'Cancelar'}
     >
       <div className="flex flex-col gap-4">
         <p className="text-xs leading-relaxed text-muted-foreground">

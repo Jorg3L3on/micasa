@@ -27,6 +27,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import {
   ToolbarFiltersPortal,
   useRegisterToolbarActions,
+  useToolbarFiltersSelectOpenChange,
 } from '@/context/toolbar-actions-context';
 import {
   buildOwnerQuery,
@@ -1013,6 +1014,8 @@ export default function WalletsPage() {
     [],
   );
 
+  const handleFiltersSelectOpenChange = useToolbarFiltersSelectOpenChange();
+
   useRegisterToolbarActions({
     search: {
       value: searchQuery,
@@ -1046,6 +1049,7 @@ export default function WalletsPage() {
                     <Select
                       value={sortKey}
                       onValueChange={(v) => setSortKey(v as SortKey)}
+                      onOpenChange={handleFiltersSelectOpenChange}
                     >
                       <SelectTrigger
                         className="w-full sm:w-[200px]"
@@ -1366,7 +1370,7 @@ export default function WalletsPage() {
                     </ScrollFadeChipRow>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <DropdownMenu>
+                    <DropdownMenu onOpenChange={handleFiltersSelectOpenChange}>
                       <DropdownMenuTrigger asChild>
                         <Button
                           type="button"
