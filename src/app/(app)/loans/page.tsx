@@ -85,6 +85,7 @@ import { LenderOrganizeDialog } from '@/components/loans/LenderOrganizeDialog';
 import { LoanCalendarPaymentOverlay } from '@/components/loans/LoanCalendarPaymentOverlay';
 import { LoanCreateOverlay } from '@/components/loans/LoanCreateOverlay';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
 import {
   DateStepper,
   GroupedRow,
@@ -1656,7 +1657,7 @@ export default function LoansPage() {
                           Saldo pendiente
                         </p>
                         <p className="mt-1 font-mono text-xl font-bold tabular-nums text-foreground">
-                          {formatCurrency(selectedLoan.remainingAmount)}
+                          <CurrencyTicker value={selectedLoan.remainingAmount} />
                         </p>
                       </div>
                       <span className={MONTHLY_ICON_PILL_CLASS}>
@@ -1689,7 +1690,7 @@ export default function LoansPage() {
                           Pagado
                         </p>
                         <p className="mt-1 font-mono text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
-                          {formatCurrency(selectedLoan.paidAmount)}
+                          <CurrencyTicker value={selectedLoan.paidAmount} />
                         </p>
                       </div>
                       <div>

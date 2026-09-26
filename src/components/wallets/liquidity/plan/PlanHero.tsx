@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn, formatCurrency } from '@/lib/utils';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { groupGapBreakdownLines } from '@/components/wallets/liquidity/plan/group-gap-lines';
 import type { GapBreakdownLine, PlanHorizon, PlanMode } from '@/lib/finance/cash-plan/types';
@@ -113,7 +114,9 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
         <div className="space-y-2">
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px]', accent)}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-            <p className="mt-1 font-mono text-2xl font-bold tabular-nums">{formatCurrency(amount)}</p>
+            <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+              <CurrencyTicker value={amount} />
+            </p>
           </div>
           {showBreakdown ? (
             <Collapsible open={open} onOpenChange={setOpen}>
