@@ -456,6 +456,7 @@ export default function LoansPage() {
   const [lifecycleSubmitting, setLifecycleSubmitting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [listDeleteLoanId, setListDeleteLoanId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
   const [formErrors, setFormErrors] = useState<LoanFormErrors>({});
@@ -588,6 +589,13 @@ export default function LoansPage() {
         ? null
         : loans.find((loan) => loan.id === selectedLoanId) ?? null,
     [loans, selectedLoanId],
+  );
+  const deleteTargetLoan = useMemo(
+    () =>
+      listDeleteLoanId === null
+        ? selectedLoan
+        : loans.find((loan) => loan.id === listDeleteLoanId) ?? null,
+    [listDeleteLoanId, loans, selectedLoan],
   );
   const selectedLoanPayments = useMemo(
     () =>
@@ -946,14 +954,21 @@ export default function LoansPage() {
     }
   };
 
+  const handleRequestDeleteLoanFromList = (loanId: number) => {
+    setDeleteError(null);
+    setListDeleteLoanId(loanId);
+    setDeleteDialogOpen(true);
+  };
+
   const handleDeleteLoan = async () => {
-    if (!selectedLoan) return;
+    if (!deleteTargetLoan) return;
 
     setDeleteError(null);
     try {
-      await deleteLoan(selectedLoan.id, context);
+      await deleteLoan(deleteTargetLoan.id, context);
       toast.success('Préstamo eliminado');
       setDeleteDialogOpen(false);
+      setListDeleteLoanId(null);
       setSelectedLoanId(null);
       resetLoanDetailDrafts();
       clearLoanIdQueryParam();
@@ -1370,6 +1385,7 @@ export default function LoansPage() {
             setOrganizeMode('split');
             setOrganizeLenderId(lenderId);
           }}
+          onDeleteLoan={handleRequestDeleteLoanFromList}
           onUndoLastPayment={(lenderId, paymentId) => {
             void undoLenderPayment(lenderId, paymentId, context)
               .then(async () => {
@@ -2739,17 +2755,19 @@ export default function LoansPage() {
       </ResponsiveOverlay>
 
       <ConfirmDeleteDialog
-        open={deleteDialogOpen && selectedLoan !== null}
+        open={deleteDialogOpen && deleteTargetLoan !== null}
         onOpenChange={(open) => {
           setDeleteDialogOpen(open);
-          if (!open) setDeleteError(null);
+          if (open) return;
+          setDeleteError(null);
+          setListDeleteLoanId(null);
         }}
         onConfirm={handleDeleteLoan}
         title="Eliminar préstamo"
         description="Esto eliminará el préstamo, su calendario de pagos y los gastos generados por pagos de este préstamo. Los saldos afectados se revertirán."
         itemName={
-          selectedLoan
-            ? `${selectedLoan.name} · ${formatCurrency(selectedLoan.remainingAmount)} pendiente`
+          deleteTargetLoan
+            ? `${deleteTargetLoan.name} · ${formatCurrency(deleteTargetLoan.remainingAmount)} pendiente`
             : undefined
         }
         error={deleteError}
