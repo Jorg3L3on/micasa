@@ -163,7 +163,7 @@ List/card delete is viewport-split (`md` = 768px):
 - **`md+`:** quiet trash icon (`hidden md:inline-flex`), no swipe.
 - **Below `md`:** swipe-to-delete only (`swipeEnabled={isMobile}`); hide the trash icon.
 
-Shared trailing control: `SwipeDeleteAction`. Confirm with `ConfirmDeleteDialog`. Reference: `src/components/categories/CategoryTreeRow.tsx`. Shared swipe thresholds: `src/lib/ui/swipe-delete.ts`.
+Shared row wrapper: `SwipeDeleteRow` (`src/components/ui/swipe-delete-row.tsx`) around the trailing control `SwipeDeleteAction`; tables opt in with `DataTable` `renderMobileRow`. Confirm with `ConfirmDeleteDialog`. Reference: `src/components/categories/CategoryTreeRow.tsx`. Shared swipe thresholds: `src/lib/ui/swipe-delete.ts`.
 
 ### Form actions (Save / Cancelar / Cerrar / X)
 

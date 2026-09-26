@@ -14,8 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { TemplateSwipeRow } from '@/components/settings/TemplateSwipeRow';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, type ClientApiError } from '@/lib/api/client-fetch';
 import { deleteExpenseTemplate } from '@/lib/api/expense-templates';
@@ -248,15 +254,20 @@ export default function ExpenseTemplatesPage() {
               >
                 <Pencil className="h-4 w-4" data-icon="inline-start" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => openDeleteDialog(template)}
-                aria-label={`Eliminar ${template.name}`}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hidden size-8 md:inline-flex"
+                    onClick={() => openDeleteDialog(template)}
+                    aria-label={`Eliminar ${template.name}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Eliminar</TooltipContent>
+              </Tooltip>
             </div>
           );
         },
@@ -355,6 +366,16 @@ export default function ExpenseTemplatesPage() {
               filterSlot={filterSlot}
               columnVisibility
               emptyMessage="No se encontraron plantillas de gastos."
+              renderMobileRow={(template) => (
+                <TemplateSwipeRow
+                  name={template.name}
+                  subtitle={`${formatCategoryLabel(template.category, template.categoryIcon)} · ${template.paymentMethod ?? 'Sin método'}`}
+                  amount={template.totalEstimatedAmount ?? 0}
+                  active={template.active}
+                  onEdit={() => openEditDialog(template)}
+                  onRequestDelete={() => openDeleteDialog(template)}
+                />
+              )}
             />
           )}
         </CardContent>

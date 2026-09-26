@@ -7,8 +7,14 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { TemplateSwipeRow } from '@/components/settings/TemplateSwipeRow';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { deleteIncomeTemplate } from '@/lib/api/incomes';
@@ -166,14 +172,20 @@ export default function IncomeTemplatesPage() {
               >
                 <Pencil className="h-4 w-4" data-icon="inline-start" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => openDeleteDialog(template)}
-                aria-label={`Eliminar ${template.name}`}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hidden md:inline-flex"
+                    onClick={() => openDeleteDialog(template)}
+                    aria-label={`Eliminar ${template.name}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Eliminar</TooltipContent>
+              </Tooltip>
             </div>
           );
         },
@@ -233,6 +245,16 @@ export default function IncomeTemplatesPage() {
               filterPlaceholder="Filtrar por nombre..."
               columnVisibility
               emptyMessage="No se encontraron plantillas de ingresos."
+              renderMobileRow={(template) => (
+                <TemplateSwipeRow
+                  name={template.name}
+                  subtitle={template.source ?? undefined}
+                  amount={template.suggestedAmount}
+                  active={template.active}
+                  onEdit={() => handleEdit(template)}
+                  onRequestDelete={() => openDeleteDialog(template)}
+                />
+              )}
             />
           )}
         </CardContent>

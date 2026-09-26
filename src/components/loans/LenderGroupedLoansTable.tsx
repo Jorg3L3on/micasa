@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
-import { ChevronDown, HandCoins, Landmark, MoreHorizontal } from 'lucide-react';
+import {
+  ChevronDown,
+  HandCoins,
+  Landmark,
+  MoreHorizontal,
+  Trash2,
+} from 'lucide-react';
 import { LenderIdentity } from '@/components/loans/LenderIdentity';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +24,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { SwipeDeleteRow } from '@/components/ui/swipe-delete-row';
 import {
   Table,
   TableBody,
@@ -36,6 +43,7 @@ import {
   type InstallmentCue,
   type InstallmentCueSummary,
 } from '@/lib/finance/loan-installment-cues';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import {
   PAYROLL_DEDUCTION_COPY,
@@ -53,6 +61,7 @@ type LenderGroupedLoansTableProps = {
   onUndoLastPayment: (lenderId: number, paymentId: number) => void;
   onMergeLender: (lenderId: number) => void;
   onSplitLender: (lenderId: number) => void;
+  onDeleteLoan: (loanId: number) => void;
 };
 
 const statusLabel = (status: LoanListItem['status']) => {
@@ -395,7 +404,10 @@ export const LenderGroupedLoansTable = ({
   onUndoLastPayment,
   onMergeLender,
   onSplitLender,
+  onDeleteLoan,
 }: LenderGroupedLoansTableProps) => {
+  const isMobile = useIsMobile();
+  const [openSwipeLoanId, setOpenSwipeLoanId] = useState<number | null>(null);
   const unassignedLoans = loans.filter((loan) => loan.lenderId == null);
 
   const handleOpenLoanFromRow = (
@@ -424,38 +436,46 @@ export const LenderGroupedLoansTable = ({
         const Icon = isPayroll ? Landmark : HandCoins;
         return (
           <li key={loan.id}>
-            <div
-              role="button"
-              tabIndex={0}
-              className={cn(
-                'flex cursor-pointer items-start gap-2.5 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                loan.status === 'PAUSED' && 'opacity-80',
-                loan.status === 'CANCELLED' && 'opacity-70',
-              )}
-              onClick={(event) => handleOpenLoanFromRow(event, loan.id)}
-              onKeyDown={(event) => handleOpenLoanFromKey(event, loan.id)}
-              aria-label={`Ver detalle de ${loan.name}`}
+            <SwipeDeleteRow
+              enabled={isMobile}
+              isOpen={openSwipeLoanId === loan.id}
+              onOpenChange={(open) => setOpenSwipeLoanId(open ? loan.id : null)}
+              onRequestDelete={() => onDeleteLoan(loan.id)}
+              deleteAriaLabel={`Eliminar ${loan.name}`}
             >
-              <span className={cn('mt-0.5', loanIconClass(isPayroll))}>
-                <Icon className="h-3 w-3" aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="line-clamp-2 block text-sm font-medium leading-snug text-foreground">
-                  {loan.name}
+              <div
+                role="button"
+                tabIndex={0}
+                className={cn(
+                  'flex cursor-pointer items-start gap-2.5 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                  loan.status === 'PAUSED' && 'opacity-80',
+                  loan.status === 'CANCELLED' && 'opacity-70',
+                )}
+                onClick={(event) => handleOpenLoanFromRow(event, loan.id)}
+                onKeyDown={(event) => handleOpenLoanFromKey(event, loan.id)}
+                aria-label={`Ver detalle de ${loan.name}`}
+              >
+                <span className={cn('mt-0.5', loanIconClass(isPayroll))}>
+                  <Icon className="h-3 w-3" aria-hidden />
                 </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  {loanOriginShort(loan)} · {loan.paidPayments}/{loan.paymentCount}
+                <span className="min-w-0 flex-1">
+                  <span className="line-clamp-2 block text-sm font-medium leading-snug text-foreground">
+                    {loan.name}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    {loanOriginShort(loan)} · {loan.paidPayments}/{loan.paymentCount}
+                  </span>
                 </span>
-              </span>
-              <span className="shrink-0 text-right">
-                <span className="block font-mono text-sm font-semibold tabular-nums">
-                  {formatCurrency(loan.remainingAmount)}
+                <span className="shrink-0 text-right">
+                  <span className="block font-mono text-sm font-semibold tabular-nums">
+                    {formatCurrency(loan.remainingAmount)}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    {loanDueCueLabel(loan)}
+                  </span>
                 </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  {loanDueCueLabel(loan)}
-                </span>
-              </span>
-            </div>
+              </div>
+            </SwipeDeleteRow>
           </li>
         );
       })}
@@ -522,16 +542,33 @@ export const LenderGroupedLoansTable = ({
             {loanDueCueLabel(loan)}
           </TableCell>
           <TableCell className="text-right">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-[11px]"
-              onClick={() => onOpenLoan(loan.id)}
-              aria-label={`Ver detalle de ${loan.name}`}
-            >
-              Detalle
-            </Button>
+            <div className="flex items-center justify-end gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-[11px]"
+                onClick={() => onOpenLoan(loan.id)}
+                aria-label={`Ver detalle de ${loan.name}`}
+              >
+                Detalle
+              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="hidden h-7 w-7 md:inline-flex"
+                    onClick={() => onDeleteLoan(loan.id)}
+                    aria-label={`Eliminar ${loan.name}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" aria-hidden />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Eliminar</TooltipContent>
+              </Tooltip>
+            </div>
           </TableCell>
         </TableRow>
       );
