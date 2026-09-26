@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type FormEvent,
   type ReactNode,
@@ -12,18 +11,6 @@ import {
 import { ChevronLeft, ChevronRight, WalletCards } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +24,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import {
+  OVERLAY_AMOUNT_INPUT_CLASS,
+  OVERLAY_GROUPED_CARD_CLASS,
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_INPUT_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+} from '@/components/overlay/overlay-form';
 import { cn, formatCurrency } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 
@@ -106,9 +101,6 @@ const shiftMonth = (
 
 const groupedLabelClass =
   'w-[5.5rem] shrink-0 text-sm font-medium leading-none text-foreground';
-
-const rowTriggerClass =
-  'h-11 w-full max-w-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent';
 
 function GroupedRow({
   label,
@@ -242,8 +234,6 @@ const CreditCardQuickPurchaseDialog = ({
   defaultAlreadyInCardBalance = false,
 }: CreditCardQuickPurchaseDialogProps) => {
   const isMobile = useIsMobile();
-  const nestedSelectOpenRef = useRef(false);
-  const blockDismissUntilRef = useRef(0);
 
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [fortnights, setFortnights] = useState<FortnightCatalogItem[]>([]);
@@ -269,27 +259,6 @@ const CreditCardQuickPurchaseDialog = ({
   const [installmentCurrent, setInstallmentCurrent] = useState('');
   const [installmentTotal, setInstallmentTotal] = useState('');
   const [alreadyInCardBalance, setAlreadyInCardBalance] = useState(false);
-
-  const handleSelectOpenChange = (nextOpen: boolean) => {
-    nestedSelectOpenRef.current = nextOpen;
-    if (!nextOpen) {
-      blockDismissUntilRef.current = Date.now() + 500;
-    }
-  };
-
-  const shouldBlockDismiss = () =>
-    nestedSelectOpenRef.current || Date.now() < blockDismissUntilRef.current;
-
-  const handleRootOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && shouldBlockDismiss()) return;
-    onOpenChange(nextOpen);
-  };
-
-  const preventDismissWhileSelectOpen = (event: {
-    preventDefault: () => void;
-  }) => {
-    if (shouldBlockDismiss()) event.preventDefault();
-  };
 
   const syncFortnightFromDate = useCallback(
     (ymd: string, catalog: FortnightCatalogItem[]) => {
@@ -443,8 +412,6 @@ const CreditCardQuickPurchaseDialog = ({
     purchasePreview > 0 &&
     purchasePreview > resolvedAvailable;
 
-  const handleCancel = () => handleRootOpenChange(false);
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!fortnightId || !categoryId) {
@@ -535,39 +502,9 @@ const CreditCardQuickPurchaseDialog = ({
     ? 'El movimiento aparece en el ciclo; la deuda y el disponible no cambian.'
     : 'Registra un gasto pagado con esta tarjeta. Se aplicará al saldo de la tarjeta y a la quincena elegida.';
 
-  const cancelButton = (
-    <Button
-      type="button"
-      variant="ghost"
-      className="absolute left-0 h-9 px-2 text-primary-text"
-      onClick={handleCancel}
-      disabled={submitting}
-    >
-      Cancelar
-    </Button>
-  );
-
-  const dialogHeader = (
-    <div className="relative flex min-h-10 items-center justify-center">
-      {cancelButton}
-      <DialogTitle className="text-base font-semibold">
-        Registrar compra
-      </DialogTitle>
-      <DialogDescription className="sr-only">{a11yDescription}</DialogDescription>
-    </div>
-  );
-
-  const sheetHeader = (
-    <div className="relative flex min-h-10 items-center justify-center">
-      {cancelButton}
-      <SheetTitle className="text-base font-semibold">
-        Registrar compra
-      </SheetTitle>
-      <SheetDescription className="sr-only">{a11yDescription}</SheetDescription>
-    </div>
-  );
-
-  const formBody = (
+  const renderFormBody = (
+    handleSelectOpenChange: (nextOpen: boolean) => void,
+  ) => (
     <form
       onSubmit={(e) => void handleSubmit(e)}
       className={cn('flex flex-col gap-4', isMobile && 'pb-1')}
@@ -660,7 +597,7 @@ const CreditCardQuickPurchaseDialog = ({
         </div>
       ) : (
         <>
-          <div className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card">
+          <div className={OVERLAY_GROUPED_CARD_CLASS}>
             <GroupedRow label="Fecha" htmlFor="qp-date">
               <Input
                 id="qp-date"
@@ -668,7 +605,7 @@ const CreditCardQuickPurchaseDialog = ({
                 value={paymentDate}
                 onChange={(e) => handlePaymentDateChange(e.target.value)}
                 aria-label="Fecha de la compra"
-                className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                className={OVERLAY_ROW_INPUT_CLASS}
               />
             </GroupedRow>
 
@@ -709,7 +646,7 @@ const CreditCardQuickPurchaseDialog = ({
                 onValueChange={(id) => setCategoryId(String(id))}
                 onOpenChange={handleSelectOpenChange}
                 includeCategoryId={categoryId ? Number(categoryId) : null}
-                triggerClassName={rowTriggerClass}
+                triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
                 placeholder="Selecciona"
                 ariaLabel="Categoría del gasto"
               />
@@ -723,7 +660,7 @@ const CreditCardQuickPurchaseDialog = ({
                 aria-label="Descripción de la compra"
                 autoCapitalize="sentences"
                 autoComplete="off"
-                className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                className={OVERLAY_ROW_INPUT_CLASS}
               />
             </GroupedRow>
 
@@ -749,7 +686,7 @@ const CreditCardQuickPurchaseDialog = ({
                   onChange={(val) => setAmount(val === 0 ? '' : String(val))}
                   placeholder="0.00"
                   aria-label="Monto de la compra"
-                  className="h-10 border-0 bg-transparent px-0 font-mono text-2xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-12 md:text-4xl"
+                  className={OVERLAY_AMOUNT_INPUT_CLASS}
                 />
               </div>
             </div>
@@ -759,7 +696,7 @@ const CreditCardQuickPurchaseDialog = ({
             <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Cuotas (opcional)
             </p>
-            <div className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card">
+            <div className={OVERLAY_GROUPED_CARD_CLASS}>
               <GroupedRow label="Actual" htmlFor="qp-installment-cur">
                 <Input
                   id="qp-installment-cur"
@@ -771,7 +708,7 @@ const CreditCardQuickPurchaseDialog = ({
                   value={installmentCurrent}
                   onChange={(e) => setInstallmentCurrent(e.target.value)}
                   aria-label="Número de cuota actual (compra en varios meses)"
-                  className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                  className={OVERLAY_ROW_INPUT_CLASS}
                 />
               </GroupedRow>
               <GroupedRow label="Total" htmlFor="qp-installment-tot">
@@ -785,7 +722,7 @@ const CreditCardQuickPurchaseDialog = ({
                   value={installmentTotal}
                   onChange={(e) => setInstallmentTotal(e.target.value)}
                   aria-label="Total de cuotas del plan"
-                  className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                  className={OVERLAY_ROW_INPUT_CLASS}
                 />
               </GroupedRow>
             </div>
@@ -819,48 +756,25 @@ const CreditCardQuickPurchaseDialog = ({
       <Button
         type="submit"
         disabled={submitting || loading || exceedsCreditLimit}
-        className="h-11 w-full rounded-xl"
+        className={OVERLAY_PRIMARY_BUTTON_CLASS}
       >
         {submitting ? 'Guardando…' : 'Guardar'}
       </Button>
     </form>
   );
 
-  if (isMobile) {
-    return (
-      <Sheet open={open} onOpenChange={handleRootOpenChange}>
-        <SheetContent
-          side="bottom"
-          showCloseButton={false}
-          className="flex max-h-[92vh] flex-col gap-0 rounded-t-xl p-0"
-          onPointerDownOutside={preventDismissWhileSelectOpen}
-          onFocusOutside={preventDismissWhileSelectOpen}
-          onInteractOutside={preventDismissWhileSelectOpen}
-        >
-          <div className="border-b border-border/50 px-4 py-3">{sheetHeader}</div>
-          <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {open ? formBody : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleRootOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="flex max-h-[min(90dvh,90vh)] w-full max-w-md flex-col gap-0 overflow-hidden p-0"
-        onPointerDownOutside={preventDismissWhileSelectOpen}
-        onFocusOutside={preventDismissWhileSelectOpen}
-        onInteractOutside={preventDismissWhileSelectOpen}
-      >
-        <div className="border-b border-border/50 px-5 py-3">{dialogHeader}</div>
-        <div className="flex-1 overflow-y-auto overscroll-y-contain p-5">
-          {open ? formBody : null}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Registrar compra"
+      description={a11yDescription}
+      busy={submitting}
+    >
+      {({ handleSelectOpenChange }) =>
+        open ? renderFormBody(handleSelectOpenChange) : null
+      }
+    </ResponsiveOverlay>
   );
 };
 
