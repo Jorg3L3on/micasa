@@ -8,6 +8,7 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
 import { GoalListCard } from '@/components/wallets/GoalListCard';
+import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -94,6 +95,11 @@ export default function MetasPage() {
   useEffect(() => {
     void fetchAllWallets();
   }, [fetchAllWallets]);
+
+  const handlePullRefresh = useCallback(
+    () => fetchAllWallets({ silent: true }),
+    [fetchAllWallets],
+  );
 
   const goals = useMemo(
     () => allWallets.filter((w) => w.type === 'GOAL'),
@@ -282,6 +288,7 @@ export default function MetasPage() {
   const hasSearch = Boolean(searchQuery.trim());
 
   return (
+    <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Metas">
     <div className="space-y-5 pb-8 md:pb-4">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
@@ -518,5 +525,6 @@ export default function MetasPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </MobilePullToRefresh>
   );
 }

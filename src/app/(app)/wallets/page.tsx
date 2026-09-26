@@ -79,6 +79,7 @@ import { WalletCardsList } from '@/components/wallets/WalletCardsList';
 import { LenderRail } from '@/components/wallets/LenderRail';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
+import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import {
   ContentEnter,
   SkeletonExit,
@@ -833,7 +834,7 @@ export default function WalletsPage() {
   }, [context]);
 
   const fetchWallets = useCallback(
-    async (options?: { soft?: boolean }) => {
+    async (options?: { soft?: boolean; rethrow?: boolean }) => {
       const soft = options?.soft ?? false;
       try {
         if (!soft) {
@@ -865,10 +866,19 @@ export default function WalletsPage() {
           err instanceof Error ? err.message : 'Error al cargar las billeteras',
         );
         setLoading(false);
+        if (options?.rethrow) throw err;
       }
     },
     [context],
   );
+
+  const handlePullRefresh = useCallback(async () => {
+    const [, lenderRows] = await Promise.all([
+      fetchWallets({ soft: true, rethrow: true }),
+      listLenders(context),
+    ]);
+    setLenders(lenderRows.filter((lender) => lender.active));
+  }, [context, fetchWallets]);
 
   useEffect(() => {
     const key = walletListOwnerKey(context);
@@ -1038,6 +1048,7 @@ export default function WalletsPage() {
 
   return (
     <DirectionalTransition>
+    <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Billeteras">
     <div className="space-y-4 pb-8 md:pb-4">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
@@ -1613,6 +1624,7 @@ export default function WalletsPage() {
         </>
       )}
     </div>
+    </MobilePullToRefresh>
     </DirectionalTransition>
   );
 }

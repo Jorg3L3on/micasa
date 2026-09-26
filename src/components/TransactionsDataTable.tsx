@@ -23,6 +23,9 @@ import {
   useRegisterToolbarActions,
 } from '@/context/toolbar-actions-context';
 import { formatDate, formatCurrencySigned, cn } from '@/lib/utils';
+import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
+import { useFinanceContext } from '@/context/finance-context';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import type { TransactionRow } from '@/types/catalog';
 import {
   ArrowDownRight,
@@ -43,6 +46,8 @@ const TYPE_FILTER_CHIPS = [
   { value: 'expense', label: 'Gasto' },
 ] as const;
 
+const TRANSACTION_SERVER_FILTER_KEYS = ['month', 'year', 'period', 'type'] as const;
+
 const FILTER_CHIP_CLASS =
   'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors';
 
@@ -51,10 +56,34 @@ type TransactionsDataTableProps = {
 };
 
 export default function TransactionsDataTable({
-  transactions,
+  transactions: serverTransactions,
 }: TransactionsDataTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { context } = useFinanceContext();
+  const [transactions, setTransactions] = useState(serverTransactions);
+  const [syncedServerTransactions, setSyncedServerTransactions] =
+    useState(serverTransactions);
+
+  if (syncedServerTransactions !== serverTransactions) {
+    setSyncedServerTransactions(serverTransactions);
+    setTransactions(serverTransactions);
+  }
+
+  const handlePullRefresh = useCallback(async () => {
+    const params = new URLSearchParams();
+    for (const key of TRANSACTION_SERVER_FILTER_KEYS) {
+      const value = searchParams.get(key);
+      if (value) params.append(key, value);
+    }
+    params.append('is_paid', 'true');
+    const rows = await clientFetchFromApi<TransactionRow[]>(
+      `/api/transactions?${params.toString()}`,
+      undefined,
+      context,
+    );
+    setTransactions(rows);
+  }, [context, searchParams]);
 
   const month = searchParams.get('month') || '';
   const year = searchParams.get('year') || '';
@@ -294,6 +323,7 @@ export default function TransactionsDataTable({
   );
 
   return (
+    <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Operaciones">
     <div className="space-y-6">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
@@ -473,5 +503,6 @@ export default function TransactionsDataTable({
         </CardContent>
       </Card>
     </div>
+    </MobilePullToRefresh>
   );
 }

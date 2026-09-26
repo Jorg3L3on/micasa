@@ -86,6 +86,7 @@ import { LoanCalendarPaymentOverlay } from '@/components/loans/LoanCalendarPayme
 import { LoanCreateOverlay } from '@/components/loans/LoanCreateOverlay';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
+import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import {
   DateStepper,
   GroupedRow,
@@ -510,7 +511,6 @@ export default function LoansPage() {
     if (!options?.silent) {
       setLoading(true);
     }
-    setLoadError(null);
     try {
       const [loanData, lenderData, walletData, templateData] = await Promise.all([
         listLoans(context),
@@ -526,10 +526,11 @@ export default function LoansPage() {
       setLenders(lenderData);
       setWallets(walletData);
       setIncomeTemplates(templateData.filter((template) => template.active));
+      setLoadError(null);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudieron cargar préstamos';
-      setLoadError(message);
+      if (!options?.silent) setLoadError(message);
       toast.error(message);
     } finally {
       setLoading(false);
@@ -539,6 +540,11 @@ export default function LoansPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const handlePullRefresh = useCallback(
+    () => loadData({ silent: true }),
+    [loadData],
+  );
 
   useEffect(() => {
     if (selectedLoanId === null) return;
@@ -1244,6 +1250,7 @@ export default function LoansPage() {
   };
 
   return (
+    <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Préstamos">
     <div className="space-y-5">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
@@ -2750,5 +2757,6 @@ export default function LoansPage() {
         loadingLabel="Eliminando préstamo..."
       />
     </div>
+    </MobilePullToRefresh>
   );
 }
