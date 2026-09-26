@@ -25,14 +25,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   buildAccountsToday,
@@ -372,6 +365,15 @@ export const LiquidityAccountsToday = ({
     ? rows.find((row) => breakdownKeyForRow(row) === mobileWhyAccount.id) ?? null
     : null;
 
+  const handleWhyDetailOpenChange = (open: boolean) => {
+    if (!open) setMobileWhyId(null);
+  };
+
+  const handleWhyDetailAction = () => {
+    if (mobileWhyRow) handleEditOrOpen(mobileWhyRow);
+    setMobileWhyId(null);
+  };
+
   const countLabel =
     loanCount > 0
       ? `${walletCount} cuenta${walletCount === 1 ? '' : 's'} · ${loanCount} préstamo${loanCount === 1 ? '' : 's'}`
@@ -636,45 +638,33 @@ export const LiquidityAccountsToday = ({
         )}
       </section>
 
-      <Sheet
+      <ResponsiveOverlay
         open={mobileWhyAccount != null}
-        onOpenChange={(open) => {
-          if (!open) setMobileWhyId(null);
-        }}
+        onOpenChange={handleWhyDetailOpenChange}
+        title={mobileWhyAccount?.name ?? ''}
+        description={mobileWhyAccount?.preview || 'De qué está hecha esta deuda'}
+        dismissLabel="Cerrar"
       >
-        <SheetContent
-          side="bottom"
-          className="max-h-[85vh] gap-0 overflow-y-auto rounded-t-2xl px-4 pb-6"
-        >
-          {mobileWhyAccount ? (
-            <>
-              <SheetHeader className="px-0 pb-3">
-                <SheetTitle>{mobileWhyAccount.name}</SheetTitle>
-                <SheetDescription>
-                  {mobileWhyAccount.preview || 'De qué está hecha esta deuda'}
-                </SheetDescription>
-              </SheetHeader>
-              <LiquidityAccountDebtWhy
-                account={mobileWhyAccount}
-                onMore={() => handleWhyMore(mobileWhyAccount)}
-              />
-              <SheetFooter className="px-0 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full rounded-xl"
-                  onClick={() => {
-                    if (mobileWhyRow) handleEditOrOpen(mobileWhyRow);
-                    setMobileWhyId(null);
-                  }}
-                >
-                  {mobileWhyAccount.kind === 'loan' ? 'Abrir préstamo' : 'Corregir saldo'}
-                </Button>
-              </SheetFooter>
-            </>
-          ) : null}
-        </SheetContent>
-      </Sheet>
+        {mobileWhyAccount ? (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              {mobileWhyAccount.preview || 'De qué está hecha esta deuda'}
+            </p>
+            <LiquidityAccountDebtWhy
+              account={mobileWhyAccount}
+              onMore={() => handleWhyMore(mobileWhyAccount)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full rounded-xl"
+              onClick={handleWhyDetailAction}
+            >
+              {mobileWhyAccount.kind === 'loan' ? 'Abrir préstamo' : 'Corregir saldo'}
+            </Button>
+          </div>
+        ) : null}
+      </ResponsiveOverlay>
 
       {selectedCard ? (
         <WalletBalanceDialog
