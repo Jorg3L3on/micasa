@@ -392,7 +392,7 @@ html:has(.landing-root) {
 .orion-panel-glass {
   isolation: isolate;
   background-color: var(--card);
-  box-shadow: 0 10px 28px -18px rgb(15 23 42 / 0.16);
+  box-shadow: var(--shadow-card);
 }
 
 .dark .orion-panel-glass {

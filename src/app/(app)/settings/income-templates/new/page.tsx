@@ -36,6 +36,7 @@ import {
 } from '@/schemas/income-template.schema';
 import type { CategoryOption } from '@/types/catalog';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
+import { TEMPLATE_FIELD_SHELL_CLASS } from '@/components/expense-templates/template-field-shell';
 
 import {
   Select,
@@ -50,9 +51,6 @@ type HouseUserItem = {
   name: string;
   email: string;
 };
-
-const FIELD_CLASSNAME =
-  'h-11 rounded-lg border border-white/15 bg-black/35 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors placeholder:text-muted-foreground hover:border-white/25 hover:bg-black/45 focus-visible:border-white/35 focus-visible:bg-black/45 focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-0';
 
 export default function NewIncomeTemplatePage() {
   const { context } = useFinanceContext();
@@ -160,7 +158,7 @@ export default function NewIncomeTemplatePage() {
                       <FormLabel>Nombre</FormLabel>
                       <FormControl>
                         <Input
-                          className={FIELD_CLASSNAME}
+                          className={TEMPLATE_FIELD_SHELL_CLASS}
                           placeholder="Ej. Salario, Freelance"
                           {...field}
                         />
@@ -182,7 +180,7 @@ export default function NewIncomeTemplatePage() {
                         includeCategoryId={
                           field.value > 0 ? field.value : null
                         }
-                        triggerClassName={FIELD_CLASSNAME}
+                        triggerClassName={TEMPLATE_FIELD_SHELL_CLASS}
                         placeholder="Selecciona una categoría"
                         ariaLabel="Categoría"
                       />
@@ -198,7 +196,7 @@ export default function NewIncomeTemplatePage() {
                       <FormLabel>Monto sugerido (opcional)</FormLabel>
                       <FormControl>
                         <CurrencyInput
-                          className={FIELD_CLASSNAME}
+                          className={TEMPLATE_FIELD_SHELL_CLASS}
                           placeholder="0.00"
                           value={field.value ?? 0}
                           onChange={(val) =>
@@ -224,7 +222,7 @@ export default function NewIncomeTemplatePage() {
                     <FormLabel>Origen (opcional)</FormLabel>
                     <FormControl>
                       <Input
-                        className={FIELD_CLASSNAME}
+                        className={TEMPLATE_FIELD_SHELL_CLASS}
                         placeholder="Ej. Empresa, Proyecto"
                         {...field}
                         value={field.value ?? ''}
@@ -255,7 +253,7 @@ export default function NewIncomeTemplatePage() {
                       >
                         <FormControl>
                           <SelectTrigger
-                            className={`w-full ${FIELD_CLASSNAME}`}
+                            className={`w-full ${TEMPLATE_FIELD_SHELL_CLASS}`}
                             aria-label="Miembro que transfiere a la casa (opcional)"
                           >
                             <SelectValue placeholder="Selecciona un miembro (opcional)" />

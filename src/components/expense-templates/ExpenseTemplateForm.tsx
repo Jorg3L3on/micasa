@@ -41,6 +41,7 @@ import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { BoundedDayFieldInput } from '@/components/expense-templates/bounded-day-input';
+import { TEMPLATE_FIELD_SHELL_CLASS } from '@/components/expense-templates/template-field-shell';
 
 type ExpenseTemplateFormProps = {
   form: UseFormReturn<ExpenseTemplateFormValues>;
@@ -55,10 +56,6 @@ type ExpenseTemplateFormProps = {
   onSave: (data: ExpenseTemplateFormValues) => Promise<void>;
   cancelHref: string;
 };
-
-const FIELD_CLASSNAME =
-  'h-11 rounded-lg border border-white/15 bg-black/35 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors placeholder:text-muted-foreground hover:border-white/25 hover:bg-black/45 focus-visible:border-white/35 focus-visible:bg-black/45 focus-visible:ring-2 focus-visible:ring-white/15 focus-visible:ring-offset-0';
-
 export function ExpenseTemplateForm({
   form,
   title,
@@ -111,7 +108,7 @@ export function ExpenseTemplateForm({
                       <FormLabel>Nombre</FormLabel>
                       <FormControl>
                         <Input
-                          className={FIELD_CLASSNAME}
+                          className={TEMPLATE_FIELD_SHELL_CLASS}
                           placeholder="Ej. Super semanal, Netflix"
                           autoFocus
                           {...field}
@@ -134,7 +131,7 @@ export function ExpenseTemplateForm({
                         includeCategoryId={
                           field.value > 0 ? field.value : null
                         }
-                        triggerClassName={FIELD_CLASSNAME}
+                        triggerClassName={TEMPLATE_FIELD_SHELL_CLASS}
                         placeholder="Selecciona una categoria"
                         ariaLabel="Seleccionar categoria"
                       />
@@ -153,7 +150,7 @@ export function ExpenseTemplateForm({
                       <FormLabel>Monto por defecto (opcional)</FormLabel>
                       <FormControl>
                         <CurrencyInput
-                          className={FIELD_CLASSNAME}
+                          className={TEMPLATE_FIELD_SHELL_CLASS}
                           placeholder="0.00"
                           value={field.value ?? 0}
                           onChange={(val) =>
@@ -186,7 +183,7 @@ export function ExpenseTemplateForm({
                       >
                         <FormControl>
                           <SelectTrigger
-                            className={FIELD_CLASSNAME}
+                            className={TEMPLATE_FIELD_SHELL_CLASS}
                             aria-label="Seleccionar metodo de pago"
                           >
                             <SelectValue placeholder="Sin metodo por defecto" />
@@ -284,7 +281,7 @@ export function ExpenseTemplateForm({
                             </FormLabel>
                             <FormControl>
                               <BoundedDayFieldInput
-                                className={FIELD_CLASSNAME}
+                                className={TEMPLATE_FIELD_SHELL_CLASS}
                                 min={1}
                                 max={15}
                                 aria-label="Dia de vencimiento primera quincena"
@@ -333,7 +330,7 @@ export function ExpenseTemplateForm({
                             </FormLabel>
                             <FormControl>
                               <BoundedDayFieldInput
-                                className={FIELD_CLASSNAME}
+                                className={TEMPLATE_FIELD_SHELL_CLASS}
                                 min={16}
                                 max={31}
                                 aria-label="Dia de vencimiento segunda quincena"
@@ -386,7 +383,7 @@ export function ExpenseTemplateForm({
                         <FormLabel className="text-sm">Dia del mes</FormLabel>
                         <FormControl>
                           <BoundedDayFieldInput
-                            className={FIELD_CLASSNAME}
+                            className={TEMPLATE_FIELD_SHELL_CLASS}
                             min={1}
                             max={31}
                             placeholder="Vacio = sin corte"
