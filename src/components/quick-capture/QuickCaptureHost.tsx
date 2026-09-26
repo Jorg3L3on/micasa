@@ -29,6 +29,7 @@ import { clientFetchFromApi } from '@/lib/api/client-fetch';
 type QuickCaptureContextValue = {
   open: () => void;
   openExpense: () => void;
+  openIncome: () => void;
 };
 
 const QuickCaptureContext = createContext<QuickCaptureContextValue | null>(
@@ -109,7 +110,10 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
     setIncomeOpen(true);
   }, []);
 
-  const value = useMemo(() => ({ open, openExpense }), [open, openExpense]);
+  const value = useMemo(
+    () => ({ open, openExpense, openIncome }),
+    [open, openExpense, openIncome],
+  );
 
   const handleSaveExpense = async (values: QuickExpenseFormValues) => {
     setExpenseError(null);
