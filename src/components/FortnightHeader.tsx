@@ -10,20 +10,57 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  MONTHLY_CHROME_PADDING_CLASS,
+  MONTHLY_PANEL_SHELL_CLASS,
+} from '@/components/monthly/monthly-panel-shell'
+import { formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar'
+import { cn } from '@/lib/utils'
+
+type FortnightPeriod = 'FIRST' | 'SECOND'
 
 type FortnightHeaderProps = {
   year: number
   month: number
-  period: 'FIRST' | 'SECOND'
-  label: string
+  period: FortnightPeriod
   actions?: ReactNode
+}
+
+type FortnightNavLinkProps = {
+  href: string
+  label: string
+  direction: 'prev' | 'next'
+}
+
+const FortnightNavLink = ({ href, label, direction }: FortnightNavLinkProps) => {
+  const Icon = direction === 'prev' ? ChevronLeft : ChevronRight
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="icon-lg" asChild>
+          <Link href={href} aria-label={label}>
+            <Icon
+              className="size-5 shrink-0"
+              strokeWidth={2.25}
+              aria-hidden
+              data-icon={direction === 'prev' ? 'inline-start' : 'inline-end'}
+            />
+            <span className="sr-only">{label}</span>
+          </Link>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={4}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 export default function FortnightHeader({
   year,
   month,
   period,
-  label,
   actions,
 }: FortnightHeaderProps) {
   const searchParams = useSearchParams()
@@ -31,7 +68,7 @@ export default function FortnightHeader({
   const suffix = queryString ? `?${queryString}` : ''
   let prevYear = year
   let prevMonth = month
-  let prevPeriod: 'FIRST' | 'SECOND' = 'FIRST'
+  let prevPeriod: FortnightPeriod = 'FIRST'
 
   if (period === 'FIRST') {
     prevPeriod = 'SECOND'
@@ -47,7 +84,7 @@ export default function FortnightHeader({
 
   let nextYear = year
   let nextMonth = month
-  let nextPeriod: 'FIRST' | 'SECOND' = 'SECOND'
+  let nextPeriod: FortnightPeriod = 'SECOND'
 
   if (period === 'FIRST') {
     nextPeriod = 'SECOND'
@@ -61,58 +98,39 @@ export default function FortnightHeader({
     }
   }
 
+  const buildHref = (y: number, m: number, p: FortnightPeriod) =>
+    `/fortnight/${y}/${m.toString().padStart(2, '0')}/${p}${suffix}`
+
+  const prevLabel = `Quincena anterior: ${formatFortnightDateRangeLabel(prevYear, prevMonth, prevPeriod)}`
+  const nextLabel = `Quincena siguiente: ${formatFortnightDateRangeLabel(nextYear, nextMonth, nextPeriod)}`
+
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-bold">{label}</h1>
+    <div
+      className={cn(
+        'flex min-w-0 items-center justify-between gap-2',
+        MONTHLY_PANEL_SHELL_CLASS,
+        MONTHLY_CHROME_PADDING_CLASS,
+      )}
+    >
+      <div
+        className="flex items-center gap-1"
+        role="group"
+        aria-label="Selector de quincena"
+      >
+        <FortnightNavLink
+          href={buildHref(prevYear, prevMonth, prevPeriod)}
+          label={prevLabel}
+          direction="prev"
+        />
+        <FortnightNavLink
+          href={buildHref(nextYear, nextMonth, nextPeriod)}
+          label={nextLabel}
+          direction="next"
+        />
       </div>
-      <div className="flex items-center gap-2">
-        {actions}
-        <div
-          className="flex items-center gap-1"
-          role="group"
-          aria-label="Selector de quincena"
-        >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-lg" asChild>
-              <Link
-                href={`/fortnight/${prevYear}/${prevMonth.toString().padStart(2, '0')}/${prevPeriod}${suffix}`}
-                aria-label="Quincena anterior"
-              >
-                <ChevronLeft
-                  className="size-5 shrink-0"
-                  strokeWidth={2.25}
-                  aria-hidden data-icon="inline-start" />
-                <span className="sr-only">Quincena anterior</span>
-              </Link>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={4}>
-            Quincena anterior
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-lg" asChild>
-              <Link
-                href={`/fortnight/${nextYear}/${nextMonth.toString().padStart(2, '0')}/${nextPeriod}${suffix}`}
-                aria-label="Quincena siguiente"
-              >
-                <ChevronRight
-                  className="size-5 shrink-0"
-                  strokeWidth={2.25}
-                  aria-hidden data-icon="inline-end" />
-                <span className="sr-only">Quincena siguiente</span>
-              </Link>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={4}>
-            Quincena siguiente
-          </TooltipContent>
-        </Tooltip>
-        </div>
-      </div>
+      {actions ? (
+        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      ) : null}
     </div>
   )
 }
