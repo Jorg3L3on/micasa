@@ -19,6 +19,7 @@ import BudgetFormDialog from '@/components/BudgetFormDialog';
 import BudgetTemplateFieldsDialog from '@/components/BudgetTemplateFieldsDialog';
 import BudgetAllocationsDialog from '@/components/BudgetAllocationsDialog';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import {
   createBudget,
   deleteBudget,
@@ -493,7 +494,7 @@ export default function BudgetsPage() {
     },
   });
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (options?: { silent?: boolean }) => {
     // Wait for finance context sync (default is user/0 before session + URL resolve).
     // Matching loans/wallets: skip the unscoped fetch that races and paints an empty list.
     if (context.type === 'user' && context.id === 0) {
@@ -501,8 +502,10 @@ export default function BudgetsPage() {
     }
 
     try {
-      setLoading(true);
-      setError(null);
+      if (!options?.silent) {
+        setLoading(true);
+        setError(null);
+      }
       const templatesPromise = fetchBudgetTemplates(context);
       if (view === 'templates') {
         const templatesResult = await templatesPromise;
@@ -532,6 +535,7 @@ export default function BudgetsPage() {
       setTemplates(templatesResult);
       setPeriods(periodsResult);
     } catch (err) {
+      if (options?.silent) throw err;
       setError(err instanceof Error ? err.message : 'Error al cargar presupuestos');
     } finally {
       setLoading(false);
@@ -541,6 +545,11 @@ export default function BudgetsPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const handlePullRefresh = useCallback(
+    () => loadData({ silent: true }),
+    [loadData],
+  );
 
   const templateMap = useMemo(
     () => new Map(templates.map((template) => [template.id, template])),
@@ -731,6 +740,7 @@ export default function BudgetsPage() {
   }, [selectedMonth, selectedYear, updateQuery]);
 
   return (
+    <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Presupuestos">
     <div className="space-y-5">
       {isBudgetsView ? (
         <ToolbarFiltersPortal>
@@ -1080,5 +1090,6 @@ export default function BudgetsPage() {
         </>
       ) : null}
     </div>
+    </MobilePullToRefresh>
   );
 }

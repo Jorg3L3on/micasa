@@ -66,6 +66,7 @@ import {
   goalTipStripClass,
   resolveGoalVisualStyle,
 } from '@/components/wallets/goal-status-styles';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
 
 import { todayCalendarDate, formatDisplayDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -485,7 +486,7 @@ export default function MetaDetailPage() {
                   goalMetricInkClass(visual),
                 )}
               >
-                {formatCurrency(metrics.remaining)}
+                <CurrencyTicker value={metrics.remaining} />
               </p>
               <p className="mt-1 text-center text-sm text-muted-foreground">
                 Ahorrado{' '}

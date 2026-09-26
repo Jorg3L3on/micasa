@@ -12,14 +12,16 @@ export const useLiquidityProjection = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedMonthKey, setSelectedMonthKey] = useState('');
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (options?: { silent?: boolean }) => {
     if (!context || (context.type === 'user' && context.id === 0)) {
       setLoading(false);
       return;
     }
     try {
-      setLoading(true);
-      setError(null);
+      if (!options?.silent) {
+        setLoading(true);
+        setError(null);
+      }
       const res = await fetchLiquidityProjection(
         {
           chartRange: 'year_and_half',
@@ -30,7 +32,9 @@ export const useLiquidityProjection = () => {
         context,
       );
       setData(res);
+      setError(null);
     } catch (loadError) {
+      if (options?.silent) throw loadError;
       setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar tu panorama');
       setData(null);
     } finally {
