@@ -175,7 +175,6 @@ export default async function FortnightPage({
     getSummary(yearParam, monthParam, periodParam, ownerContext),
     fetchFromApi<WalletListItem[]>('/api/wallets', ownerContext).catch(() => []),
   ]);
-  const fortnightLabel = fortnightInfo.label;
   const fortnightId = fortnightInfo.id;
 
   const transactionsByDate = groupTransactionsByDate(transactions);
@@ -187,12 +186,11 @@ export default async function FortnightPage({
   const pendiente = summary.totalUnpaid;
 
   return (
-    <>
+    <div className="space-y-5">
       <FortnightHeader
         year={year}
         month={month}
         period={period}
-        label={fortnightLabel}
         actions={
           fortnightId != null ? (
             <ReceivePayrollTrigger
@@ -205,62 +203,60 @@ export default async function FortnightPage({
         }
       />
 
-      <div className="space-y-5">
-        {/* TOP SECTION - Summary Cards */}
-        <SummaryBlock
-          tenemos={tenemos}
-          libre={libre}
-          pagado={pagado}
-          pendiente={pendiente}
-          pendingExpenseItems={getPendingLiquidityLineItems({
-            transactions,
-          })}
-          year={year}
-          month={month}
-          period={period}
-          expenseCount={summary.planningExpenseCount ?? transactions.length}
-          paidExpenseCount={
-            summary.planningPaidExpenseCount ??
-            transactions.filter((t) => t.is_paid).length
-          }
-          unpaidExpenseCount={
-            summary.planningUnpaidExpenseCount ??
-            transactions.filter((t) => !t.is_paid).length
-          }
-          planningOrphanCardPayments={
-            summary.planningOrphanCardPayments ?? null
-          }
-          planningCardStatementDue={summary.planningCardStatementDue ?? null}
-          planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
-          planningPayrollLoanDeduction={
-            summary.planningPayrollLoanDeduction ?? null
-          }
-          planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
-          fundingWalletBalanceTotal={summary.fundingWalletBalanceTotal}
-          fundingNetVsPendingExpense={summary.fundingNetVsPendingExpense}
-          fundingWalletBreakdown={summary.fundingWalletBreakdown}
-        />
+      {/* TOP SECTION - Summary Cards */}
+      <SummaryBlock
+        tenemos={tenemos}
+        libre={libre}
+        pagado={pagado}
+        pendiente={pendiente}
+        pendingExpenseItems={getPendingLiquidityLineItems({
+          transactions,
+        })}
+        year={year}
+        month={month}
+        period={period}
+        expenseCount={summary.planningExpenseCount ?? transactions.length}
+        paidExpenseCount={
+          summary.planningPaidExpenseCount ??
+          transactions.filter((t) => t.is_paid).length
+        }
+        unpaidExpenseCount={
+          summary.planningUnpaidExpenseCount ??
+          transactions.filter((t) => !t.is_paid).length
+        }
+        planningOrphanCardPayments={
+          summary.planningOrphanCardPayments ?? null
+        }
+        planningCardStatementDue={summary.planningCardStatementDue ?? null}
+        planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
+        planningPayrollLoanDeduction={
+          summary.planningPayrollLoanDeduction ?? null
+        }
+        planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
+        fundingWalletBalanceTotal={summary.fundingWalletBalanceTotal}
+        fundingNetVsPendingExpense={summary.fundingNetVsPendingExpense}
+        fundingWalletBreakdown={summary.fundingWalletBreakdown}
+      />
 
-        {/* BOTTOM SECTION - Expense Tables */}
-        <div className="space-y-6">
-          {sortedDates.length === 0 ? (
-            <EmptyState message="No hay transacciones para esta quincena" />
-          ) : (
-            sortedDates.map((date) => (
-              <ExpenseTable
-                key={date}
-                date={date}
-                expenses={transactionsByDate[date]}
-                totalIncome={tenemos}
-                year={year}
-                month={month}
-                period={period}
-                wallets={wallets}
-              />
-            ))
-          )}
-        </div>
+      {/* BOTTOM SECTION - Expense Tables */}
+      <div className="space-y-6">
+        {sortedDates.length === 0 ? (
+          <EmptyState message="No hay transacciones para esta quincena" />
+        ) : (
+          sortedDates.map((date) => (
+            <ExpenseTable
+              key={date}
+              date={date}
+              expenses={transactionsByDate[date]}
+              totalIncome={tenemos}
+              year={year}
+              month={month}
+              period={period}
+              wallets={wallets}
+            />
+          ))
+        )}
       </div>
-    </>
+    </div>
   );
 }
