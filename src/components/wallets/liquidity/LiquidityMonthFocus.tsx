@@ -1,152 +1,94 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import { CalendarDays, Check, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { CurrencyTicker } from '@/components/motion/number-ticker';
-import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { CalendarClock, Check, Landmark, Sparkles } from 'lucide-react';
+import { AccountMetric } from '@/components/monthly/FortnightSummaryHero';
+import { AuraSurface } from '@/components/aura/aura-surface';
+import { AURA_TONE_HEX } from '@/lib/ui/aura-palette';
 import type {
   LiquidityMonthlySeriesItem,
   LiquidityProjectionEvent,
 } from '@/types/catalog';
-import {
-  formatMonthYearLabel,
-} from '@/components/wallets/liquidity/liquidity-personalization';
-import { LiquidityMonthStepper } from '@/components/wallets/liquidity/LiquidityMonthStepper';
-import { LiquidityMonthDebtTabs } from '@/components/wallets/liquidity/LiquidityMonthDebtTabs';
 import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
 
-type LiquidityMonthFocusProps = {
-  month: LiquidityMonthlySeriesItem | null;
-  events: LiquidityProjectionEvent[];
-  isCurrentMonth: boolean;
-  canPrev: boolean;
-  canNext: boolean;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
-  isRefreshing?: boolean;
-  embedded?: boolean;
-};
+const countLabel = (count: number, singular: string, plural: string): string =>
+  `${count} ${count === 1 ? singular : plural}`;
 
-export const LiquidityMonthFocus = ({
-  month,
-  events,
-  isCurrentMonth,
-  canPrev,
-  canNext,
-  onPrevMonth,
-  onNextMonth,
-  isRefreshing = false,
-  embedded = false,
-}: LiquidityMonthFocusProps) => {
-  if (!month) return null;
-
+/** Pagos del mes + Adeudo al cierre as Panel financiero aura tiles. */
+export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeriesItem }) => {
   const debtItems = month.debt_items ?? [];
   const paymentsDue = monthDebtPaymentsTotal(debtItems);
   const outstandingTotal = month.outstanding_debt_total ?? 0;
-
-  const shellClass = embedded
-    ? 'px-4 py-4 sm:px-5 sm:py-5'
-    : cn(MONTHLY_PANEL_SHELL_CLASS, 'px-4 py-4 sm:px-5');
+  const paymentCount = debtItems.filter((item) => (item.payment_amount ?? 0) > 0).length;
+  const outstandingCount = debtItems.filter((item) => item.amount > 0).length;
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={month.month_key}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.18 }}
-        className={cn(
-          shellClass,
-          'relative overflow-hidden',
-          isRefreshing && 'pointer-events-none opacity-50 transition-opacity',
-        )}
-        aria-live="polite"
-        aria-busy={isRefreshing}
-      >
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#3a37fc]/40 to-transparent"
-          aria-hidden
-        />
+    <div className="grid grid-cols-2 gap-2" role="region" aria-label="Deudas del mes">
+      <AccountMetric
+        label="Pagos del mes"
+        amount={paymentsDue}
+        subtitle={
+          paymentCount > 0
+            ? countLabel(paymentCount, 'pago programado', 'pagos programados')
+            : 'Sin pagos de deudas'
+        }
+        auraTone="violet"
+        pillClassName="bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400"
+        icon={CalendarClock}
+        amountClassName="text-foreground"
+      />
+      <AccountMetric
+        label="Adeudo al cierre"
+        amount={outstandingTotal}
+        subtitle={
+          outstandingCount > 0
+            ? countLabel(outstandingCount, 'cuenta con saldo', 'cuentas con saldo')
+            : 'Sin deudas al cierre'
+        }
+        auraTone={outstandingTotal > 0 ? 'amber' : 'emerald'}
+        pillClassName={
+          outstandingTotal > 0
+            ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
+            : 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+        }
+        icon={Landmark}
+        amountClassName={
+          outstandingTotal > 0
+            ? 'text-amber-700 dark:text-amber-300'
+            : 'text-emerald-700 dark:text-emerald-300'
+        }
+      />
+    </div>
+  );
+};
 
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <span
-              className={cn(
-                'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ring-1',
-                isCurrentMonth
-                  ? 'bg-primary/15 text-primary-text ring-primary/25'
-                  : 'bg-muted/40 text-muted-foreground ring-border/40',
-              )}
-              aria-hidden
+/** Payoff milestones for the selected month (“Terminas de pagar …”). */
+export const LiquidityMonthEvents = ({ events }: { events: LiquidityProjectionEvent[] }) => {
+  if (events.length === 0) return null;
+
+  return (
+    <section className="space-y-2" aria-label="Buenas noticias del mes">
+      <p className="flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+        <Sparkles className="size-3" aria-hidden />
+        Buenas noticias
+      </p>
+      <ul className="space-y-2" role="list">
+        {events.map((event) => (
+          <li key={`${event.event_type}-${event.loan_id ?? event.expense_id}`}>
+            <AuraSurface
+              color={AURA_TONE_HEX.emerald}
+              className="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 px-3 py-2.5"
             >
-              <CalendarDays className="size-4" />
-            </span>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {isCurrentMonth ? 'Este mes' : 'Mes seleccionado'}
-              </p>
-              <h3 className="text-base font-semibold tracking-tight">
-                {formatMonthYearLabel(month.month_key)}
-              </h3>
-            </div>
-          </div>
-          <LiquidityMonthStepper
-            onPrev={onPrevMonth}
-            onNext={onNextMonth}
-            canPrev={canPrev}
-            canNext={canNext}
-          />
-        </div>
-
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-violet-500/50')}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Pagos del mes
-            </p>
-            <p className="mt-1 font-mono text-lg font-bold tabular-nums text-violet-300">
-              <CurrencyTicker value={paymentsDue} />
-            </p>
-          </div>
-          <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-amber-500/50')}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Adeudo al cierre
-            </p>
-            <p className="mt-1 font-mono text-lg font-bold tabular-nums text-amber-300">
-              <CurrencyTicker value={outstandingTotal} />
-            </p>
-          </div>
-        </div>
-
-        {events.length > 0 ? (
-          <div className="mt-4 space-y-2">
-            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400/90">
-              <Sparkles className="size-3" aria-hidden />
-              Buenas noticias
-            </p>
-            <ul className="space-y-2">
-              {events.map((event) => (
-                <li
-                  key={`${event.event_type}-${event.loan_id ?? event.expense_id}`}
-                  className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5"
-                >
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400">
-                    <Check className="h-3 w-3 text-[#060914]" aria-hidden />
-                  </span>
-                  <span>
-                    <span className="text-sm font-semibold text-foreground">{event.title}</span>
-                    <span className="block text-xs text-muted-foreground">{event.subtitle}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        <LiquidityMonthDebtTabs items={debtItems} outstandingTotal={outstandingTotal} />
-      </motion.div>
-    </AnimatePresence>
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 dark:bg-emerald-400">
+                <Check className="h-3 w-3 text-white dark:text-[#060914]" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-foreground">{event.title}</span>
+                <span className="block text-xs text-muted-foreground">{event.subtitle}</span>
+              </span>
+            </AuraSurface>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 };

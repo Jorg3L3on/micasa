@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import type { LucideIcon } from 'lucide-react';
-import { ChevronRight, ExternalLink, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronUp, CreditCard, ExternalLink, Pencil } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import {
@@ -13,13 +12,20 @@ import {
 import { listLoans } from '@/lib/api/loans';
 import { accountHasDebtWhy } from '@/lib/finance/liquidity-debt-breakdown';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
+import { AURA_TONE_HEX, getAuraWalletColor } from '@/lib/ui/aura-palette';
 import { cn, formatCurrency } from '@/lib/utils';
+import { AuraRowBloom } from '@/components/aura/aura-surface';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { LiquidityAccountDebtWhy } from '@/components/wallets/liquidity/LiquidityAccountDebtWhy';
 import { LiquidityDebtSummaryStrip } from '@/components/wallets/liquidity/LiquidityDebtSummaryStrip';
-import { LiquiditySectionHeader } from '@/components/wallets/liquidity/liquidity-section';
+import {
+  LIQUIDITY_PANEL_CLASS,
+  LiquidityPanelHeader,
+} from '@/components/wallets/liquidity/liquidity-section';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -36,10 +42,11 @@ type LiquidityAccountsTodayProps = {
   onChanged?: () => void;
   actions?: ReactNode;
   fundingTotal?: number;
-  sectionIcon?: LucideIcon;
   /** Bumped by the workspace pull-to-refresh to reload this section. */
   refreshToken?: number;
 };
+
+const ACCOUNTS_PREVIEW_COUNT = 6;
 
 const badgeToneClass = (tone: AccountTodayBadge['tone']): string =>
   cn(
@@ -101,13 +108,22 @@ const UtilizationBar = ({
 
 const debtToneClass = (view: AccountTodayView): string =>
   view.kind === 'loan'
-    ? 'text-amber-300'
+    ? 'text-amber-700 dark:text-amber-300'
     : view.figures.isCredit
-      ? 'text-violet-300'
+      ? 'text-violet-700 dark:text-violet-300'
       : 'text-muted-foreground';
 
 const breakdownKeyForRow = (row: AccountTodayRow): string =>
   row.kind === 'wallet' ? `wallet-${row.wallet.id}` : `loan-${row.loan.id}`;
+
+const accountAuraColor = (view: AccountTodayView): string =>
+  view.kind === 'loan'
+    ? AURA_TONE_HEX.amber
+    : getAuraWalletColor(
+        view.providerIconKey,
+        undefined,
+        view.figures.isCredit ? 'violet' : 'emerald',
+      );
 
 const IconTipButton = ({
   label,
@@ -159,10 +175,11 @@ const AccountCard = ({
   return (
     <div
       className={cn(
-        'relative flex w-full flex-col gap-3 rounded-xl border border-border/60 bg-card/80 p-3 text-left',
-        'dark:border-white/[0.08] dark:bg-[#0a1020]/80',
+        MONTHLY_PANEL_SHELL_CLASS,
+        'isolate flex w-full flex-col gap-3 overflow-hidden rounded-xl p-3 text-left',
       )}
     >
+      <AuraRowBloom color={accountAuraColor(view)} />
       <button
         type="button"
         onClick={onSelect}
@@ -179,7 +196,7 @@ const AccountCard = ({
           <AccountIcon view={view} />
           <div className="min-w-0 flex-1 pr-8">
             <div className="flex flex-wrap items-center gap-1.5">
-              <p className="truncate text-sm font-medium">{view.name}</p>
+              <p className="truncate text-sm font-semibold">{view.name}</p>
               {badge ? <span className={badgeToneClass(badge.tone)}>{badge.label}</span> : null}
             </div>
             <p className="text-[10px] text-muted-foreground">{view.typeLabel}</p>
@@ -205,7 +222,7 @@ const AccountCard = ({
             <p
               className={cn(
                 'font-mono text-sm font-bold tabular-nums',
-                free == null ? 'text-muted-foreground' : 'text-emerald-300',
+                free == null ? 'text-muted-foreground' : 'text-emerald-700 dark:text-emerald-300',
               )}
             >
               {free == null ? '—' : formatCurrency(free)}
@@ -236,7 +253,6 @@ export const LiquidityAccountsToday = ({
   onChanged,
   actions,
   fundingTotal,
-  sectionIcon: SectionIcon,
   refreshToken = 0,
 }: LiquidityAccountsTodayProps) => {
   const { context } = useFinanceContext();
@@ -295,6 +311,23 @@ export const LiquidityAccountsToday = ({
 
   const rows = useMemo(() => buildAccountsToday(wallets, loans), [loans, wallets]);
   const views = useMemo(() => rows.map(toAccountTodayView), [rows]);
+  const debtFirstIndexes = useMemo(
+    () =>
+      views
+        .map((view, index) => ({ index, debt: view.figures.debt ?? 0 }))
+        .sort((a, b) => b.debt - a.debt)
+        .map((entry) => entry.index),
+    [views],
+  );
+  const [showAllAccounts, setShowAllAccounts] = useState(false);
+  const visibleIndexes = showAllAccounts
+    ? debtFirstIndexes
+    : debtFirstIndexes.slice(0, ACCOUNTS_PREVIEW_COUNT);
+  const hiddenAccountCount = views.length - ACCOUNTS_PREVIEW_COUNT;
+
+  const handleToggleShowAll = () => {
+    setShowAllAccounts((current) => !current);
+  };
   const walletCount = rows.filter((row) => row.kind === 'wallet').length;
   const loanCount = rows.filter((row) => row.kind === 'loan').length;
   const breakdownById = useMemo(() => {
@@ -339,7 +372,7 @@ export const LiquidityAccountsToday = ({
     handleOpenCard(account.accountId);
   };
 
-  const handleMobileSelect = (row: AccountTodayRow) => {
+  const handleSelect = (row: AccountTodayRow) => {
     const account = getBreakdown(row);
     if (accountHasDebtWhy(account)) {
       setWhyDetailId(account!.id);
@@ -369,69 +402,40 @@ export const LiquidityAccountsToday = ({
       ? `${walletCount} cuenta${walletCount === 1 ? '' : 's'} · ${loanCount} préstamo${loanCount === 1 ? '' : 's'}`
       : `${walletCount} cuenta${walletCount === 1 ? '' : 's'}`;
 
-  const description =
+  const subtitle =
     fundingTotal != null ? (
       <>
-        Hoy tienes{' '}
-        <span className="font-mono font-semibold tabular-nums text-emerald-300">
+        <span className="font-mono font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
           {formatCurrency(fundingTotal)}
         </span>{' '}
-        en efectivo y débito. Toca una deuda para ver de qué está hecha.
+        en efectivo y débito · {countLabel}
       </>
     ) : (
-      'Deuda y lo que te queda libre ahora. Toca una deuda para ver de qué está hecha.'
+      `Deuda y lo que te queda libre ahora · ${countLabel}`
     );
 
   return (
     <>
-      {SectionIcon ? (
-        <LiquiditySectionHeader
+      <section
+        className={cn(LIQUIDITY_PANEL_CLASS, 'space-y-3')}
+        aria-labelledby="liquidity-cards-today-heading"
+      >
+        <LiquidityPanelHeader
           id="liquidity-cards-today-heading"
           title="Tus tarjetas y préstamos hoy"
-          description={description}
-          icon={SectionIcon}
-          accent="emerald"
-          actions={
-            <>
-              {actions}
-              <span className="text-xs tabular-nums text-muted-foreground">{countLabel}</span>
-            </>
-          }
+          subtitle={subtitle}
+          icon={CreditCard}
+          actions={actions}
         />
-      ) : null}
-
-      <section
-        className="space-y-3"
-        aria-labelledby={SectionIcon ? undefined : 'liquidity-cards-today-heading'}
-      >
-        {!SectionIcon ? (
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h2
-                id="liquidity-cards-today-heading"
-                className="text-base font-semibold leading-tight"
-              >
-                Tus tarjetas y préstamos hoy
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {actions}
-              <span className="text-xs tabular-nums text-muted-foreground">{countLabel}</span>
-            </div>
-          </div>
-        ) : null}
 
         {loading ? (
-          <div className="space-y-3" aria-hidden>
-            <div className="h-28 animate-pulse rounded-xl bg-muted/40 sm:hidden" />
-            <div className="hidden space-y-3 sm:block">
-              <div className="h-12 animate-pulse rounded-xl bg-muted/40" />
-              <div className="h-12 animate-pulse rounded-xl bg-muted/40" />
-            </div>
+          <div className="space-y-2" aria-hidden>
+            <Skeleton className="h-20 w-full rounded-lg border border-border/60" />
+            <Skeleton className="h-28 w-full rounded-xl border border-border/60" />
+            <Skeleton className="h-28 w-full rounded-xl border border-border/60" />
           </div>
         ) : views.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground">
             No hay cuentas activas de efectivo, tarjeta o préstamo.
           </p>
         ) : (
@@ -443,167 +447,43 @@ export const LiquidityAccountsToday = ({
                 void load();
               }}
             />
-
-            <div className="flex flex-col gap-3 sm:hidden">
-              {views.map((view, index) => {
+            <p className="px-1 text-[10px] text-muted-foreground">
+              Toca una deuda para ver de qué está hecha.
+            </p>
+            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1" role="list">
+              {visibleIndexes.map((index) => {
+                const view = views[index]!;
                 const row = rows[index]!;
                 const account = getBreakdown(row);
                 return (
-                  <AccountCard
-                    key={view.key}
-                    view={view}
-                    preview={account?.preview ?? ''}
-                    hasWhy={accountHasDebtWhy(account)}
-                    onSelect={() => handleMobileSelect(row)}
-                    onEdit={() => handleEditOrOpen(row)}
-                  />
+                  <li key={view.key} className="min-w-0">
+                    <AccountCard
+                      view={view}
+                      preview={account?.preview ?? ''}
+                      hasWhy={accountHasDebtWhy(account)}
+                      onSelect={() => handleSelect(row)}
+                      onEdit={() => handleEditOrOpen(row)}
+                    />
+                  </li>
                 );
               })}
-            </div>
-
-            <div className="hidden overflow-hidden rounded-xl border border-border/60 sm:block dark:border-white/[0.08]">
-              <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(7rem,1fr)_minmax(7rem,1fr)] gap-3 border-b border-border/40 px-5 py-2 pr-24">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Cuenta
-                </p>
-                <p className="text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Deuda
-                </p>
-                <p className="text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Libre
-                </p>
-              </div>
-
-              <ul className="divide-y divide-border/40">
-                {views.map((view, index) => {
-                  const row = rows[index]!;
-                  const account = getBreakdown(row);
-                  const hasWhy = accountHasDebtWhy(account);
-                  const { figures, badge } = view;
-                  const { debt, free, utilizationPct } = figures;
-                  const showLoanHeading =
-                    view.kind === 'loan' && (index === 0 || views[index - 1]?.kind !== 'loan');
-                  const figuresRow = (
-                    <>
-                      <p
-                        className={cn(
-                          'font-mono text-sm font-bold tabular-nums sm:text-right',
-                          debtToneClass(view),
-                        )}
-                      >
-                        {debt == null ? '—' : formatCurrency(debt)}
-                      </p>
-                      <p
-                        className={cn(
-                          'font-mono text-sm font-bold tabular-nums sm:text-right',
-                          free == null ? 'text-muted-foreground' : 'text-emerald-300',
-                        )}
-                      >
-                        {free == null ? '—' : formatCurrency(free)}
-                      </p>
-                    </>
-                  );
-
-                  const identity = (
-                    <div className="flex min-w-0 items-center gap-3">
-                      <AccountIcon view={view} />
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-medium">{view.name}</p>
-                          {badge ? (
-                            <span className={badgeToneClass(badge.tone)}>{badge.label}</span>
-                          ) : null}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">{view.typeLabel}</p>
-                        {account?.preview ? (
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">
-                            {account.preview}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-
-                  const rowActions = (
-                    <div className="flex w-16 shrink-0 items-center justify-end gap-0.5 pr-5">
-                      <IconTipButton
-                        label={view.kind === 'loan' ? 'Abrir préstamo' : 'Corregir saldo'}
-                        onClick={() => handleEditOrOpen(row)}
-                      >
-                        {view.kind === 'loan' ? (
-                          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                        ) : (
-                          <Pencil className="h-3.5 w-3.5" aria-hidden />
-                        )}
-                      </IconTipButton>
-                    </div>
-                  );
-
-                  const rowGridClass =
-                    'grid min-w-0 flex-1 items-center gap-3 px-5 py-3 text-left sm:grid-cols-[minmax(0,1.4fr)_minmax(7rem,1fr)_minmax(7rem,1fr)]';
-
-                  return (
-                    <li key={view.key}>
-                      {showLoanHeading ? (
-                        <p className="px-5 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Préstamos
-                        </p>
-                      ) : null}
-                      {hasWhy && account ? (
-                        <div className="flex items-stretch hover:bg-muted/30">
-                          <button
-                            type="button"
-                            onClick={() => setWhyDetailId(account.id)}
-                            className="flex min-w-0 flex-1 items-center text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label={`Ver por qué debes en ${view.name}`}
-                          >
-                            <span className={rowGridClass}>
-                              {identity}
-                              {figuresRow}
-                              {utilizationPct != null ? (
-                                <span className="col-span-full pl-[3.25rem]">
-                                  <UtilizationBar utilizationPct={utilizationPct} />
-                                </span>
-                              ) : null}
-                            </span>
-                            <ChevronRight
-                              className="mr-1 h-4 w-4 shrink-0 text-muted-foreground"
-                              aria-hidden
-                            />
-                          </button>
-                          {rowActions}
-                        </div>
-                      ) : (
-                        <div className="flex items-stretch hover:bg-muted/30">
-                          <button
-                            type="button"
-                            onClick={() => handleEditOrOpen(row)}
-                            className={cn(
-                              rowGridClass,
-                              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                            )}
-                            aria-label={
-                              view.kind === 'loan'
-                                ? `Ver ${view.name} en préstamos`
-                                : `Ver o editar ${view.name}`
-                            }
-                          >
-                            {identity}
-                            {figuresRow}
-                            {utilizationPct != null ? (
-                              <div className="col-span-full pl-[3.25rem]">
-                                <UtilizationBar utilizationPct={utilizationPct} />
-                              </div>
-                            ) : null}
-                          </button>
-                          {rowActions}
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+            </ul>
+            {hiddenAccountCount > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2"
+                aria-expanded={showAllAccounts}
+                onClick={handleToggleShowAll}
+              >
+                {showAllAccounts ? (
+                  <ChevronUp className="h-4 w-4 shrink-0" aria-hidden />
+                ) : (
+                  <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                {showAllAccounts ? 'Ver menos' : `Ver las ${views.length} cuentas`}
+              </Button>
+            ) : null}
           </>
         )}
       </section>

@@ -98,14 +98,17 @@ export const LiquidityFundingWalletsMenu = ({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 gap-1.5 px-2 text-xs"
-              aria-label="Elegir qué cuentas suman a tu dinero disponible"
+              className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+              aria-label={
+                wallets.length > 0
+                  ? `Elegir qué cuentas suman a tu dinero disponible (${includedCount} de ${wallets.length})`
+                  : 'Elegir qué cuentas suman a tu dinero disponible'
+              }
               disabled={loading && wallets.length === 0}
             >
               <Settings2 className="size-3.5 shrink-0" aria-hidden />
-              Elegir cuentas
               {wallets.length > 0 ? (
-                <span className="text-[10px] tabular-nums text-muted-foreground">
+                <span className="font-mono text-[10px] tabular-nums">
                   {includedCount}/{wallets.length}
                 </span>
               ) : null}

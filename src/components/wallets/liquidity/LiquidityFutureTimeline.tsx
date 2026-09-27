@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useId, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo } from 'react';
 import { Check, LineChart, Loader2 } from 'lucide-react';
-import { LiquiditySectionHeader } from '@/components/wallets/liquidity/liquidity-section';
+import {
+  LIQUIDITY_PANEL_CLASS,
+  LiquidityPanelHeader,
+} from '@/components/wallets/liquidity/liquidity-section';
 import {
   Area,
   AreaChart,
@@ -18,7 +20,6 @@ import {
   YAxis,
 } from 'recharts';
 import { cn, formatCurrency } from '@/lib/utils';
-import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import type {
   LiquidityMonthlySeriesItem,
   LiquidityProjectionEvent,
@@ -26,8 +27,6 @@ import type {
 import {
   formatMonthYearLabel,
   formatShortMonthLabel,
-  LIQUIDITY_CHART_RANGE_OPTIONS,
-  type LiquidityChartRangeId,
   type LiquidityCustomChartRange,
 } from '@/components/wallets/liquidity/liquidity-personalization';
 import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
@@ -38,14 +37,10 @@ type LiquidityFutureTimelineProps = {
   events: LiquidityProjectionEvent[];
   /** Months currently drawn in the chart. */
   visibleRange: LiquidityCustomChartRange | null;
-  chartRange: LiquidityChartRangeId;
-  onChartRangeChange: (value: LiquidityChartRangeId) => void;
   onVisibleRangeChange: (range: LiquidityCustomChartRange) => void;
   selectedMonthKey: string;
   onSelectMonth: (monthKey: string) => void;
   isRefreshing?: boolean;
-  /** When true, renders inside LiquidityPanelConnector without outer shell border. */
-  embedded?: boolean;
 };
 
 type ChartPoint = {
@@ -227,13 +222,10 @@ export const LiquidityFutureTimeline = ({
   months,
   events,
   visibleRange,
-  chartRange,
-  onChartRangeChange,
   onVisibleRangeChange,
   selectedMonthKey,
   onSelectMonth,
   isRefreshing = false,
-  embedded = false,
 }: LiquidityFutureTimelineProps) => {
   const eventsByMonth = useMemo(() => {
     const map = new Map<string, LiquidityProjectionEvent[]>();
@@ -273,7 +265,6 @@ export const LiquidityFutureTimeline = ({
     [eventsByMonth, months],
   );
 
-  const rangeChipsId = useId();
   const { startIndex, endIndex } = resolveVisibleIndexes(chartRows, visibleRange);
   const visibleRows = useMemo(
     () => chartRows.slice(startIndex, endIndex + 1),
@@ -290,7 +281,16 @@ export const LiquidityFutureTimeline = ({
   }, [firstEventMonth, onSelectMonth, selectedMonthKey, visibleRows]);
 
   if (months.length === 0) {
-    return <p className="text-sm text-muted-foreground">Aún no hay meses por proyectar.</p>;
+    return (
+      <section className={LIQUIDITY_PANEL_CLASS} aria-labelledby="liquidity-chart-heading">
+        <LiquidityPanelHeader
+          id="liquidity-chart-heading"
+          title="Deudas por mes"
+          subtitle="Aún no hay meses por proyectar."
+          icon={LineChart}
+        />
+      </section>
+    );
   }
 
   const handleBrushChange = (next: { startIndex?: number; endIndex?: number }) => {
@@ -303,100 +303,49 @@ export const LiquidityFutureTimeline = ({
     onVisibleRangeChange({ fromMonthKey, toMonthKey });
   };
 
-  const chartShellClass = embedded
-    ? 'relative px-3 pb-4 pt-4 sm:px-5'
-    : cn(MONTHLY_PANEL_SHELL_CLASS, 'relative px-3 pb-4 pt-4 sm:px-5');
-
   return (
     <section
-      className={cn('space-y-3', embedded && 'space-y-0')}
-      aria-label="Deudas por mes"
+      className={cn(LIQUIDITY_PANEL_CLASS, 'space-y-3', isRefreshing && 'pointer-events-none')}
+      aria-labelledby="liquidity-chart-heading"
       aria-busy={isRefreshing}
     >
-      <div className={cn(embedded ? 'px-4 pt-4 sm:px-5' : undefined)}>
-        <LiquiditySectionHeader
-          id={embedded ? undefined : 'liquidity-chart-heading'}
-          title="Deudas por mes"
-          description={
-            embedded
-              ? 'Toca un mes en la gráfica o usa las flechas abajo para ver el detalle.'
-              : undefined
-          }
-          icon={LineChart}
-          accent="violet"
-        />
-      </div>
-
-      <div
-        className={cn(
-          chartShellClass,
-          isRefreshing && 'pointer-events-none',
-        )}
-      >
-        {isRefreshing ? (
-          <div
-            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl bg-[#0d1327]/55 backdrop-blur-[1px]"
-            role="status"
-            aria-live="polite"
-          >
-            <Loader2 className="size-5 animate-spin text-primary-text" aria-hidden />
-            <p className="text-xs font-medium text-muted-foreground">
-              Actualizando rango…
-            </p>
-          </div>
-        ) : null}
-        <div className={cn(isRefreshing && 'opacity-40 transition-opacity')}>
+      {isRefreshing ? (
         <div
-          role="group"
-          aria-label="Meses que muestra la gráfica"
-          className="mb-3 inline-flex items-center gap-0.5 rounded-full border border-border/50 p-0.5 dark:border-white/[0.07]"
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl bg-background/55 backdrop-blur-[1px]"
+          role="status"
+          aria-live="polite"
         >
-          {LIQUIDITY_CHART_RANGE_OPTIONS.map((option) => {
-            const isActive = option.value === chartRange;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                aria-pressed={isActive}
-                aria-label={option.description}
-                title={option.description}
-                onClick={() => onChartRangeChange(option.value)}
-                className={cn(
-                  'relative inline-flex min-h-8 items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold leading-none transition-colors',
-                  'outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
-                  isActive ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {isActive ? (
-                  <motion.span
-                    layoutId={`${rangeChipsId}-indicator`}
-                    className="absolute inset-0 rounded-full bg-primary"
-                    transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-                  />
-                ) : null}
-                <span className="relative">{option.label}</span>
-              </button>
-            );
-          })}
+          <Loader2 className="size-5 animate-spin text-primary-text" aria-hidden />
+          <p className="text-xs font-medium text-muted-foreground">Actualizando rango…</p>
         </div>
-        <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-5 rounded-full bg-gradient-to-r from-[#3a37fc] to-[#ee477a]" />
-            Pagos del mes (izq.)
+      ) : null}
+
+      <LiquidityPanelHeader
+        id="liquidity-chart-heading"
+        title="Deudas por mes"
+        subtitle="Toca un mes en la gráfica para ver su detalle."
+        icon={LineChart}
+      />
+
+      <div className={cn('space-y-3', isRefreshing && 'opacity-40 transition-opacity')}>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-4 rounded-full bg-linear-to-r from-[#3a37fc] to-[#ee477a]" aria-hidden />
+            <span className="text-[10px] text-muted-foreground">Pagos del mes (izq.)</span>
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-5 rounded-full bg-amber-400" />
-            Adeudo al cierre (der.)
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-4 rounded-full bg-amber-400" aria-hidden />
+            <span className="text-[10px] text-muted-foreground">Adeudo al cierre (der.)</span>
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-400">
-              <Check className="h-2.5 w-2.5 text-[#060914]" aria-hidden />
+          <span className="flex items-center gap-1.5">
+            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-400" aria-hidden>
+              <Check className="h-2 w-2 text-[#060914]" />
             </span>
-            Aquí terminas de pagar
+            <span className="text-[10px] text-muted-foreground">Aquí terminas de pagar</span>
           </span>
         </div>
 
-        <div className="h-80 w-full sm:h-[22rem] [&_.recharts-brush>rect:first-child]:stroke-white/10 [&_.recharts-brush>rect:first-child]:[rx:8px]">
+        <div className="-mx-1 h-72 sm:h-80 xl:h-[22rem] [&_.recharts-brush>rect:first-child]:stroke-white/10 [&_.recharts-brush>rect:first-child]:[rx:8px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={chartRows}
@@ -535,7 +484,6 @@ export const LiquidityFutureTimeline = ({
               </Brush>
             </ComposedChart>
           </ResponsiveContainer>
-        </div>
         </div>
       </div>
     </section>

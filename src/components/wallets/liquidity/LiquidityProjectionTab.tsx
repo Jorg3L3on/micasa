@@ -1,23 +1,33 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CreditCard, PieChart } from 'lucide-react';
 import type { LiquidityProjectionResponse } from '@/types/catalog';
+import { LiquidityChromeHeader } from '@/components/wallets/liquidity/LiquidityChromeHeader';
 import { LiquidityFutureTimeline } from '@/components/wallets/liquidity/LiquidityFutureTimeline';
-import { LiquidityMonthFocus } from '@/components/wallets/liquidity/LiquidityMonthFocus';
+import {
+  LiquidityMonthEvents,
+  LiquidityMonthMetrics,
+} from '@/components/wallets/liquidity/LiquidityMonthFocus';
+import { LiquidityMonthDebtTabs } from '@/components/wallets/liquidity/LiquidityMonthDebtTabs';
 import { LiquidityAccountsToday } from '@/components/wallets/liquidity/LiquidityAccountsToday';
 import { LiquiditySpendingCategories } from '@/components/wallets/liquidity/LiquiditySpendingCategories';
 import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
-import {
-  LiquidityPanelConnector,
-  LiquiditySectionGroup,
-} from '@/components/wallets/liquidity/liquidity-section';
+import { buildLiquidityPayoffProgress } from '@/components/wallets/liquidity/liquidity-payoff-progress';
 import {
   resolveInitialMonthKey,
-  shiftSelectedMonthKey,
   type LiquidityChartRangeId,
   type LiquidityCustomChartRange,
 } from '@/components/wallets/liquidity/liquidity-personalization';
+import {
+  MONTHLY_PANEL_CONTENT_GRID_CLASS,
+  MONTHLY_PANEL_MAIN_COLUMN_CLASS,
+} from '@/components/monthly/MonthlyPanelLayout';
+import {
+  MONTHLY_CHROME_PADDING_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
+import { Skeleton } from '@/components/ui/skeleton';
+import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import {
   clampCustomChartRangeToAvailable,
   DEFAULT_LIQUIDITY_CHART_RANGE,
@@ -26,18 +36,39 @@ import {
   resolveLiquidityChartRange,
 } from '@/lib/finance/liquidity-chart-range';
 import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
+import { cn } from '@/lib/utils';
 
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-8 animate-pulse">
-      <div className="space-y-4">
-        <div className="h-5 w-48 rounded-lg bg-muted/40" />
-        <div className="h-80 rounded-2xl border border-border/30 bg-muted/30 dark:border-white/[0.06] dark:bg-[#0d1327]/40" />
-        <div className="h-56 rounded-2xl border border-border/30 bg-muted/30 dark:border-white/[0.06] dark:bg-[#0d1327]/40" />
+const CHROME_SHELL_CLASS = cn(
+  '@container',
+  MONTHLY_LIQUID_PANEL_CLASS,
+  MONTHLY_CHROME_PADDING_CLASS,
+  'mb-5',
+);
+
+/** Always-visible aside: stacks under the main column until `xl`, then docks right like Panel financiero. */
+const LIQUIDITY_ASIDE_CLASS = 'flex min-w-0 flex-col gap-5';
+
+const LoadingSkeleton = () => (
+  <div role="status" aria-busy="true" aria-label="Cargando liquidez">
+    <Skeleton className="mb-5 h-[7.5rem] w-full rounded-2xl border border-border/60 sm:h-16" />
+    <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
+      <div className={cn(MONTHLY_PANEL_MAIN_COLUMN_CLASS, 'space-y-4')}>
+        <div className="grid grid-cols-2 gap-2">
+          <Skeleton className="h-[5.25rem] rounded-xl border border-border/60" />
+          <Skeleton className="h-[5.25rem] rounded-xl border border-border/60" />
+        </div>
+        <Skeleton className="h-[26rem] w-full rounded-2xl border border-border/60" />
+        <Skeleton className="h-12 w-full rounded-2xl border border-border/60" />
+        <Skeleton className="h-16 w-full rounded-xl border border-border/60" />
+        <Skeleton className="h-16 w-full rounded-xl border border-border/60" />
+      </div>
+      <div className={LIQUIDITY_ASIDE_CLASS}>
+        <Skeleton className="h-80 w-full rounded-2xl border border-border/60" />
+        <Skeleton className="h-64 w-full rounded-2xl border border-border/60" />
       </div>
     </div>
-  );
-}
+  </div>
+);
 
 export type LiquidityProjectionTabProps = {
   data: LiquidityProjectionResponse | null;
@@ -118,45 +149,46 @@ export function LiquidityProjectionTab({
     [chartMonthKeys, data?.monthly_series],
   );
 
-  const projectionEvents = useMemo(
-    () =>
-      (data?.projection_events ?? []).filter((event) => chartMonthKeys.has(event.month_key)),
-    [chartMonthKeys, data?.projection_events],
-  );
-
-  const monthKeys = chartMonths.map((month) => month.month_key);
-  const monthKeyList = monthKeys.join('|');
+  const monthKeys = useMemo(() => chartMonths.map((month) => month.month_key), [chartMonths]);
 
   useEffect(() => {
     if (!data || monthKeys.length === 0) return;
     if (selectedMonthKey && monthKeys.includes(selectedMonthKey)) return;
     onSelectedMonthKeyChange(resolveInitialMonthKey(monthKeys, data.as_of));
-  }, [data, monthKeyList, monthKeys, onSelectedMonthKeyChange, selectedMonthKey]);
+  }, [data, monthKeys, onSelectedMonthKeyChange, selectedMonthKey]);
 
   const resolvedMonthKey =
     selectedMonthKey && monthKeys.includes(selectedMonthKey)
       ? selectedMonthKey
       : resolveInitialMonthKey(monthKeys, data?.as_of ?? '');
   const selectedMonth =
-    chartMonths.find((month) => month.month_key === resolvedMonthKey) ??
-    null;
-  const selectedIndex = monthKeys.indexOf(resolvedMonthKey);
-  const selectedEvents = projectionEvents.filter(
+    chartMonths.find((month) => month.month_key === resolvedMonthKey) ?? null;
+  const selectedEvents = (data?.projection_events ?? []).filter(
     (event) => event.month_key === resolvedMonthKey,
   );
   const fundingTotal = data?.summary.funding_total ?? 0;
   const currentMonthKey = data?.as_of.slice(0, 7) ?? '';
-  const isChartRefreshing = loading && data !== null;
+  const isRefreshing = loading && data !== null;
 
-  const handleShiftMonth = (delta: number) => {
-    onSelectedMonthKeyChange(shiftSelectedMonthKey(monthKeys, resolvedMonthKey, delta));
-  };
+  const payoff = useMemo(
+    () =>
+      buildLiquidityPayoffProgress({
+        months: data?.monthly_series ?? [],
+        currentMonthKey,
+        selectedMonthKey: resolvedMonthKey,
+        payoffMonthKey,
+      }),
+    [currentMonthKey, data?.monthly_series, payoffMonthKey, resolvedMonthKey],
+  );
 
   return (
-    <div className="space-y-10">
+    <div>
       {error ? (
         <div
-          className="rounded-xl border border-l-[3px] border-l-destructive/50 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+          className={cn(
+            METRIC_STRIP_CLASS,
+            'mb-5 border-l-[3px] border-l-destructive/50 px-4 py-3 text-sm text-destructive',
+          )}
           role="alert"
         >
           {error}
@@ -167,50 +199,58 @@ export function LiquidityProjectionTab({
 
       {data ? (
         <>
-          <LiquiditySectionGroup aria-label="Proyección mensual">
-            <LiquidityPanelConnector>
+          <div className={CHROME_SHELL_CLASS}>
+            <LiquidityChromeHeader
+              monthKeys={monthKeys}
+              selectedMonthKey={resolvedMonthKey}
+              currentMonthKey={currentMonthKey}
+              onSelectMonth={onSelectedMonthKeyChange}
+              chartRange={chartRange}
+              onChartRangeChange={handleChartRangeChange}
+              payoff={payoff}
+            />
+          </div>
+
+          <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
+            <div
+              className={cn(
+                MONTHLY_PANEL_MAIN_COLUMN_CLASS,
+                'space-y-4',
+                isRefreshing && 'opacity-60 transition-opacity',
+              )}
+              aria-busy={isRefreshing}
+            >
+              {selectedMonth ? <LiquidityMonthMetrics month={selectedMonth} /> : null}
+
               <LiquidityFutureTimeline
                 months={data.monthly_series}
                 events={data.projection_events ?? []}
                 visibleRange={visibleRange}
-                chartRange={chartRange}
-                onChartRangeChange={handleChartRangeChange}
                 onVisibleRangeChange={handleCustomRangeChange}
                 selectedMonthKey={resolvedMonthKey}
                 onSelectMonth={onSelectedMonthKeyChange}
-                isRefreshing={false}
-                embedded
               />
 
-              <div className="border-t border-border/50 dark:border-white/[0.06]">
-                <LiquidityMonthFocus
-                  month={selectedMonth}
-                  events={selectedEvents}
-                  isCurrentMonth={selectedMonth?.month_key === currentMonthKey}
-                  canPrev={selectedIndex > 0}
-                  canNext={selectedIndex >= 0 && selectedIndex < monthKeys.length - 1}
-                  onPrevMonth={() => handleShiftMonth(-1)}
-                  onNextMonth={() => handleShiftMonth(1)}
-                  isRefreshing={isChartRefreshing}
-                  embedded
+              <LiquidityMonthEvents events={selectedEvents} />
+
+              {selectedMonth ? (
+                <LiquidityMonthDebtTabs
+                  items={selectedMonth.debt_items ?? []}
+                  outstandingTotal={selectedMonth.outstanding_debt_total ?? 0}
                 />
-              </div>
-            </LiquidityPanelConnector>
-          </LiquiditySectionGroup>
+              ) : null}
+            </div>
 
-          <LiquiditySectionGroup aria-label="Cuentas">
-            <LiquidityAccountsToday
-              fundingTotal={fundingTotal}
-              onChanged={onReload}
-              actions={<LiquidityFundingWalletsMenu onChanged={onReload} />}
-              sectionIcon={CreditCard}
-              refreshToken={refreshToken}
-            />
-          </LiquiditySectionGroup>
-
-          <LiquiditySectionGroup aria-label="Gastos por categoría">
-            <LiquiditySpendingCategories sectionIcon={PieChart} refreshToken={refreshToken} />
-          </LiquiditySectionGroup>
+            <aside className={LIQUIDITY_ASIDE_CLASS} aria-label="Cuentas y gastos">
+              <LiquidityAccountsToday
+                fundingTotal={fundingTotal}
+                onChanged={onReload}
+                actions={<LiquidityFundingWalletsMenu onChanged={onReload} />}
+                refreshToken={refreshToken}
+              />
+              <LiquiditySpendingCategories refreshToken={refreshToken} />
+            </aside>
+          </div>
         </>
       ) : null}
     </div>

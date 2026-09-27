@@ -52,7 +52,7 @@ type MonthlyChromeHeaderProps = {
 
 const accentEmphasisClass = cn('font-semibold', MONTHLY_ACCENT_TEXT_CLASS);
 
-const ChromeDivider = ({ className }: { className?: string }) => (
+export const ChromeDivider = ({ className }: { className?: string }) => (
   <div
     className={cn(
       'hidden h-10 w-px shrink-0 bg-border/60 @min-[42rem]:block',
@@ -85,12 +85,12 @@ const formatAxisDate = (ymd: string) => {
   return `${day} ${MONTH_SHORT_ES_LOWER[month - 1] ?? ''}`;
 };
 
-type ProgressTone = 'active' | 'complete' | 'upcoming';
+export type ProgressTone = 'active' | 'complete' | 'upcoming';
 
-const chromeTileClass =
+export const chromeTileClass =
   'flex min-w-0 items-center gap-2.5 @min-[42rem]:flex-1 @min-[42rem]:px-3';
 
-const statusGlyphClass = (tone: ProgressTone) => {
+export const statusGlyphClass = (tone: ProgressTone) => {
   if (tone === 'active') return MONTHLY_ICON_PILL_CLASS;
   if (tone === 'complete') {
     return cn(
@@ -104,7 +104,7 @@ const statusGlyphClass = (tone: ProgressTone) => {
   );
 };
 
-const FortnightProgressTrack = ({
+export const FortnightProgressTrack = ({
   percent,
   tone,
   label,
