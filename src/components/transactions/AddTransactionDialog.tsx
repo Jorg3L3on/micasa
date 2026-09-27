@@ -55,7 +55,10 @@ import {
   FormGroupedRow,
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_INPUT_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
+  OverlayErrorBanner,
+  OverlayHint,
 } from '@/components/overlay/overlay-form';
 
 export type TransactionTab = 'expense' | 'income';
@@ -330,9 +333,7 @@ export default function AddTransactionDialog({
           <Form {...expenseForm}>
             <div className="flex flex-col gap-3">
               {expenseError ? (
-                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                  {expenseError}
-                </div>
+                <OverlayErrorBanner>{expenseError}</OverlayErrorBanner>
               ) : null}
               <div className={OVERLAY_GROUPED_CARD_CLASS}>
                 <FormField
@@ -387,10 +388,6 @@ export default function AddTransactionDialog({
                   }}
                 />
 
-                <p className="px-3 pb-2 text-[11px] leading-snug text-muted-foreground">
-                  Elige la billetera. Si hay varias, no se asigna sola.
-                </p>
-
                 <FormField
                   control={expenseForm.control}
                   name="amount"
@@ -434,7 +431,7 @@ export default function AddTransactionDialog({
                             autoComplete="off"
                             enterKeyHint="done"
                             spellCheck
-                            className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                            className={OVERLAY_ROW_INPUT_CLASS}
                             {...field}
                           />
                         </FormControl>
@@ -462,6 +459,11 @@ export default function AddTransactionDialog({
                   )}
                 />
               </div>
+
+              <OverlayHint>
+                De aquí sale el gasto. Si hay varias, elige una; no se asigna
+                sola.
+              </OverlayHint>
 
               {exceedsFundingBalance && selectedExpenseWallet ? (
                 <InsufficientWalletExpenseNotice
@@ -522,9 +524,7 @@ export default function AddTransactionDialog({
           <Form {...incomeForm}>
             <div className="flex flex-col gap-3">
               {incomeError ? (
-                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                  {incomeError}
-                </div>
+                <OverlayErrorBanner>{incomeError}</OverlayErrorBanner>
               ) : null}
               <div className={OVERLAY_GROUPED_CARD_CLASS}>
                 <FormField
@@ -622,7 +622,7 @@ export default function AddTransactionDialog({
                             autoComplete="off"
                             enterKeyHint="done"
                             spellCheck
-                            className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                            className={OVERLAY_ROW_INPUT_CLASS}
                             {...field}
                           />
                         </FormControl>

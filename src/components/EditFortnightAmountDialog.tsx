@@ -31,6 +31,8 @@ import {
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
+  OverlayErrorBanner,
+  OverlayHint,
 } from '@/components/overlay/overlay-form';
 
 type EditFortnightAmountDialogProps = {
@@ -155,17 +157,13 @@ export default function EditFortnightAmountDialog({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="flex flex-col gap-3"
           >
-            {error ? (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            ) : null}
-            <p className="px-1 text-xs text-muted-foreground">
+            <OverlayHint role="status">
               Monto actual:{' '}
               <span className="font-mono font-semibold tabular-nums text-foreground">
                 {formatCurrency(defaultAmount)}
               </span>
-            </p>
+            </OverlayHint>
+            {error ? <OverlayErrorBanner>{error}</OverlayErrorBanner> : null}
             <div className={OVERLAY_GROUPED_CARD_CLASS}>
               <FormField
                 control={form.control}
@@ -264,10 +262,10 @@ export default function EditFortnightAmountDialog({
               ) : null}
             </div>
             {updatesIncomeTemplate ? (
-              <p className="px-1 text-xs text-muted-foreground">
+              <OverlayHint>
                 La plantilla guarda esta billetera. El saldo no cambia hasta
                 que uses Recibir quincena.
-              </p>
+              </OverlayHint>
             ) : null}
             <Button
               type="submit"

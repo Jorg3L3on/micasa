@@ -1,22 +1,22 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CurrencyInput } from '@/components/ui/currency-input';
-import { Label } from '@/components/ui/label';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
-  OVERLAY_AMOUNT_INPUT_CLASS,
+  AmountRow,
+  DateStepper,
+  GroupedRow,
   OVERLAY_GROUPED_CARD_CLASS,
-  OVERLAY_GROUPED_LABEL_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_INPUT_CLASS,
+  OverlayHint,
 } from '@/components/overlay/overlay-form';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
-import { cn } from '@/lib/utils';
 import type { FinanceContextType } from '@/types/finance-context';
 
 export type WalletQuickIncomeDialogProps = {
@@ -27,27 +27,6 @@ export type WalletQuickIncomeDialogProps = {
   context: FinanceContextType;
   onSuccess: () => Promise<void> | void;
 };
-
-function GroupedRow({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-1 px-3 py-1.5">
-      <div className="flex min-h-11 items-center gap-3">
-        <Label htmlFor={htmlFor} className={OVERLAY_GROUPED_LABEL_CLASS}>
-          {label}
-        </Label>
-        <div className="min-w-0 flex-1">{children}</div>
-      </div>
-    </div>
-  );
-}
 
 const WalletQuickIncomeDialog = ({
   open,
@@ -113,7 +92,7 @@ const WalletQuickIncomeDialog = ({
   const description = `Registra un ingreso a ${walletName}. Se asigna a la quincena según la fecha y aumenta el saldo.`;
 
   const formBody = (
-    <div className={cn('flex flex-col gap-4', isMobile && 'pb-1')}>
+    <div className="flex flex-col gap-3">
       <div className={OVERLAY_GROUPED_CARD_CLASS}>
         <GroupedRow label="Descripción" htmlFor="wallet-income-source">
           <Input
@@ -126,50 +105,23 @@ const WalletQuickIncomeDialog = ({
             autoCapitalize="sentences"
             autoComplete="off"
             enterKeyHint="next"
-            className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+            className={OVERLAY_ROW_INPUT_CLASS}
           />
         </GroupedRow>
-
-        <div className="space-y-1 px-3 py-2">
-          <Label
-            htmlFor="wallet-income-amount"
-            className="text-sm font-medium text-foreground"
-          >
-            Monto
-          </Label>
-          <div className="flex items-center gap-2">
-            <span
-              className="mr-[2.5rem] inline-flex h-7 shrink-0 items-center rounded-md bg-muted px-2 text-xs font-semibold tracking-wide text-muted-foreground"
-              aria-hidden
-            >
-              MXN
-            </span>
-            <CurrencyInput
-              id="wallet-income-amount"
-              hideSymbol
-              clearable
-              value={amount}
-              onChange={setAmount}
-              disabled={submitting}
-              placeholder="0.00"
-              aria-label="Monto"
-              enterKeyHint="next"
-              className={OVERLAY_AMOUNT_INPUT_CLASS}
-            />
-          </div>
-        </div>
-
-        <GroupedRow label="Fecha" htmlFor="wallet-income-date">
-          <Input
-            id="wallet-income-date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            disabled={submitting}
-            className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-          />
+        <AmountRow
+          id="wallet-income-amount"
+          value={amount}
+          onChange={setAmount}
+          disabled={submitting}
+        />
+        <GroupedRow label="Fecha">
+          <DateStepper value={date} onChange={setDate} disabled={submitting} />
         </GroupedRow>
       </div>
+
+      <OverlayHint>
+        Se asigna a la quincena de esa fecha y aumenta el saldo de {walletName}.
+      </OverlayHint>
 
       <Button
         type="button"

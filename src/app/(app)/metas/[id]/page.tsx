@@ -28,16 +28,6 @@ import { WalletMovementsFeed } from '@/components/wallets/WalletMovementFeed';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   useRegisterToolbarActions,
@@ -639,25 +629,21 @@ export default function MetaDetailPage() {
         </>
       ) : null}
 
-      <AlertDialog open={completeOpen} onOpenChange={setCompleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Archivar meta</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se marcará como archivada (inactiva).
-              {wallet.amount > 0
-                ? ' Después podrás transferir el saldo a otra billetera.'
-                : ''}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleComplete}>
-              Archivar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={completeOpen}
+        onOpenChange={setCompleteOpen}
+        title="Archivar meta"
+        description={`Se marcará como archivada (inactiva).${
+          wallet.amount > 0
+            ? ' Después podrás transferir el saldo a otra billetera.'
+            : ''
+        }`}
+        itemName={wallet.name}
+        confirmLabel="Archivar"
+        loadingLabel="Archivando…"
+        tone="default"
+        onConfirm={handleComplete}
+      />
 
       <ConfirmDeleteDialog
         open={deleteOpen}

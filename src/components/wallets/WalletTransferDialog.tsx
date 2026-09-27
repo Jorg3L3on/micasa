@@ -2,18 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { Button } from '@/components/ui/button';
-import { CurrencyInput } from '@/components/ui/currency-input';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -27,15 +17,18 @@ import { createWalletTransfer } from '@/lib/api/wallets';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { isGoalWalletType, isTransferableWalletType } from '@/domain/payment-method';
 import { cn, formatCurrency } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
+  AmountRow,
+  DateStepper,
   GroupedRow,
-  OVERLAY_AMOUNT_INPUT_CLASS,
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
   OVERLAY_ROW_INPUT_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
+  OverlayErrorBanner,
+  OverlayHint,
+  OverlaySectionLabel,
 } from '@/components/overlay/overlay-form';
 import type { FinanceContextType } from '@/types/finance-context';
 
@@ -68,8 +61,6 @@ const WalletTransferDialog = ({
   context,
   onSuccess,
 }: WalletTransferDialogProps) => {
-  const isMobile = useIsMobile();
-
   const fundingWallets = useMemo(
     () =>
       wallets.filter((w) => w.active && isTransferableWalletType(w.type)),
@@ -193,51 +184,22 @@ const WalletTransferDialog = ({
   const renderFormBody = (
     handleSelectOpenChange: (nextOpen: boolean) => void,
   ) => (
-    <div className={cn('flex flex-col gap-3', isMobile && 'pb-1')}>
+    <div className="flex flex-col gap-3">
       {!canTransfer ? (
-        <p className="text-sm text-muted-foreground">
+        <OverlayHint>
           Necesitas al menos dos billeteras de efectivo o débito activas para
           transferir.
-        </p>
+        </OverlayHint>
       ) : (
         <>
           <div className={OVERLAY_GROUPED_CARD_CLASS}>
-            <div className="space-y-1 px-3 py-2">
-              <span className="text-sm font-medium text-foreground">Monto</span>
-              <div className="flex items-center gap-2">
-                <span
-                  className="mr-[2.5rem] inline-flex h-7 shrink-0 items-center rounded-md bg-muted px-2 text-xs font-semibold tracking-wide text-muted-foreground"
-                  aria-hidden
-                >
-                  MXN
-                </span>
-                <CurrencyInput
-                  id="wallet-transfer-amount"
-                  hideSymbol
-                  clearable
-                  value={parsedAmount}
-                  onChange={(val) => setAmount(val === 0 ? '' : String(val))}
-                  disabled={submitting}
-                  placeholder="0.00"
-                  className={OVERLAY_AMOUNT_INPUT_CLASS}
-                  enterKeyHint="next"
-                  aria-label="Monto a transferir"
-                />
-              </div>
-              {fromIsGoal && fromWallet ? (
-                <p className="text-xs text-muted-foreground">
-                  Máximo ahorrado:{' '}
-                  <span className="font-mono tabular-nums text-foreground">
-                    {formatCurrency(fromWallet.amount)}
-                  </span>
-                </p>
-              ) : null}
-              {goalExceedsSaved ? (
-                <p className="text-xs text-destructive" role="alert">
-                  El monto no puede ser mayor al ahorro de la meta.
-                </p>
-              ) : null}
-            </div>
+            <AmountRow
+              id="wallet-transfer-amount"
+              value={parsedAmount}
+              onChange={(val) => setAmount(val === 0 ? '' : String(val))}
+              disabled={submitting}
+              ariaLabel="Monto a transferir"
+            />
 
             <GroupedRow label="Desde">
               {fromLocked && fromWallet ? (
@@ -320,16 +282,23 @@ const WalletTransferDialog = ({
             </GroupedRow>
 
             <GroupedRow label="Fecha">
-              <Input
-                id="wallet-transfer-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                disabled={submitting}
-                className={OVERLAY_ROW_INPUT_CLASS}
-              />
+              <DateStepper value={date} onChange={setDate} disabled={submitting} />
             </GroupedRow>
           </div>
+
+          {goalExceedsSaved ? (
+            <OverlayErrorBanner>
+              El monto no puede ser mayor al ahorro de la meta.
+            </OverlayErrorBanner>
+          ) : null}
+          {fromIsGoal && fromWallet ? (
+            <OverlayHint>
+              Máximo ahorrado:{' '}
+              <span className="font-mono tabular-nums text-foreground">
+                {formatCurrency(fromWallet.amount)}
+              </span>
+            </OverlayHint>
+          ) : null}
 
           <ToggleField
             label="Agregar comisión"
@@ -344,41 +313,20 @@ const WalletTransferDialog = ({
           />
 
           {addFee ? (
-            <div className="space-y-2">
-              <p className="px-1 text-xs font-medium text-muted-foreground">
-                Comisión
-              </p>
+            <>
+              <OverlaySectionLabel>Comisión</OverlaySectionLabel>
               <div className={OVERLAY_GROUPED_CARD_CLASS}>
-                <div className="space-y-1 px-3 py-2">
-                  <span className="text-sm font-medium text-foreground">
-                    Monto
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="mr-[2.5rem] inline-flex h-7 shrink-0 items-center rounded-md bg-muted px-2 text-xs font-semibold tracking-wide text-muted-foreground"
-                      aria-hidden
-                    >
-                      MXN
-                    </span>
-                    <CurrencyInput
-                      id="wallet-transfer-fee"
-                      hideSymbol
-                      clearable
-                      value={parsedFee}
-                      onChange={(val) =>
-                        setFeeAmount(val === 0 ? '' : String(val))
-                      }
-                      disabled={submitting}
-                      placeholder="0.00"
-                      className={OVERLAY_AMOUNT_INPUT_CLASS}
-                      enterKeyHint="done"
-                      aria-label="Comisión de transferencia"
-                    />
-                  </div>
-                </div>
+                <AmountRow
+                  id="wallet-transfer-fee"
+                  value={parsedFee}
+                  onChange={(val) => setFeeAmount(val === 0 ? '' : String(val))}
+                  disabled={submitting}
+                  enterKeyHint="done"
+                  ariaLabel="Comisión de transferencia"
+                />
               </div>
               {parsedAmount > 0 ? (
-                <p className="px-1 text-xs text-muted-foreground">
+                <OverlayHint>
                   Origen descuenta{' '}
                   <span className="font-mono tabular-nums text-foreground">
                     {formatCurrency(sourceDebit)}
@@ -388,9 +336,9 @@ const WalletTransferDialog = ({
                     {formatCurrency(parsedAmount)}
                   </span>
                   .
-                </p>
+                </OverlayHint>
               ) : null}
-            </div>
+            </>
           ) : null}
         </>
       )}
@@ -420,33 +368,21 @@ const WalletTransferDialog = ({
         }
       </ResponsiveOverlay>
 
-      <AlertDialog
+      <ConfirmDeleteDialog
         open={confirmNegativeOpen}
         onOpenChange={setConfirmNegativeOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Saldo insuficiente</AlertDialogTitle>
-            <AlertDialogDescription>
-              {fromWallet
-                ? `${fromWallet.name} tiene ${formatCurrency(fromWallet.amount)} y se descontarán ${formatCurrency(sourceDebit)}. El saldo quedará negativo. ¿Continuar?`
-                : 'El saldo de origen quedará negativo. ¿Continuar?'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={submitting}
-              onClick={(e) => {
-                e.preventDefault();
-                void submitTransfer();
-              }}
-            >
-              Continuar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={submitTransfer}
+        title="Saldo insuficiente"
+        description={
+          fromWallet
+            ? `${fromWallet.name} tiene ${formatCurrency(fromWallet.amount)} y se descontarán ${formatCurrency(sourceDebit)}. El saldo quedará negativo. ¿Continuar?`
+            : 'El saldo de origen quedará negativo. ¿Continuar?'
+        }
+        confirmLabel="Transferir de todos modos"
+        loadingLabel="Transfiriendo…"
+        tone="default"
+        busy={submitting}
+      />
     </>
   );
 };

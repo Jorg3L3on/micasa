@@ -34,6 +34,8 @@ import {
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
+  OverlayErrorBanner,
+  OverlaySectionLabel,
 } from '@/components/overlay/overlay-form';
 
 type Props = {
@@ -320,13 +322,13 @@ export function ReceivePayrollButton({
               />
             </div>
           ) : wallets.length === 0 ? (
-            <p className="text-sm text-destructive">
+            <OverlayErrorBanner>
               No hay billeteras de débito o efectivo disponibles.
-            </p>
+            </OverlayErrorBanner>
           ) : categories.length === 0 ? (
-            <p className="text-sm text-destructive">
+            <OverlayErrorBanner>
               No hay categorías de ingreso. Crea una en Configuración.
-            </p>
+            </OverlayErrorBanner>
           ) : !hasEntries ? (
             <p className="text-center text-sm text-muted-foreground">
               No hay plantillas de ingresos configuradas para esta quincena.
@@ -338,9 +340,7 @@ export function ReceivePayrollButton({
               );
               return (
                 <div key={entry.template.id} className="flex flex-col gap-2">
-                  <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {entry.template.name}
-                  </p>
+                  <OverlaySectionLabel>{entry.template.name}</OverlaySectionLabel>
                   <div className={OVERLAY_GROUPED_CARD_CLASS}>
                     <AmountRow
                       id={`income-amount-${entry.template.id}`}

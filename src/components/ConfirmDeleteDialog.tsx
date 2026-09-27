@@ -4,7 +4,10 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
-import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
+import {
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+  OverlayErrorBanner,
+} from '@/components/overlay/overlay-form';
 
 export type ConfirmDeleteDialogProps = {
   open: boolean;
@@ -20,6 +23,8 @@ export type ConfirmDeleteDialogProps = {
   loadingLabel?: string;
   /** Destructive (default) or primary confirm. */
   tone?: 'destructive' | 'default';
+  /** Parent-owned pending state (when `onConfirm` does not await the work). */
+  busy?: boolean;
 };
 
 export default function ConfirmDeleteDialog({
@@ -33,8 +38,10 @@ export default function ConfirmDeleteDialog({
   confirmLabel = 'Eliminar',
   loadingLabel = 'Eliminando…',
   tone = 'destructive',
+  busy = false,
 }: ConfirmDeleteDialogProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const isDeleting = isConfirming || busy;
 
   const handleRootOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && isDeleting) return;
@@ -42,11 +49,11 @@ export default function ConfirmDeleteDialog({
   };
 
   async function handleConfirm() {
-    setIsDeleting(true);
+    setIsConfirming(true);
     try {
       await onConfirm();
     } finally {
-      setIsDeleting(false);
+      setIsConfirming(false);
     }
   }
 
@@ -64,11 +71,7 @@ export default function ConfirmDeleteDialog({
           {itemName ? (
             <p className="text-sm font-semibold text-foreground">{itemName}</p>
           ) : null}
-          {error ? (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          ) : null}
+          {error ? <OverlayErrorBanner>{error}</OverlayErrorBanner> : null}
         </div>
 
         <Button

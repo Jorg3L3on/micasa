@@ -188,7 +188,7 @@ Cursor workflow (PRD → GitHub issues → feat branch → PRs): [docs/agents/wo
 
 ### Design system
 
-[`DESIGN.md`](DESIGN.md) is the visual source of truth (navy canvas, glass, orange CTAs). Do not commit third-party mockup images — tokens live in `src/app/globals.css`; live screenshots of **this** app live in `docs/images/`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`. Toolbar migrations: `.claude/skills/toolbar-page/SKILL.md` (`/toolbar-page`) + `tasks/prd-app-header-toolbar.md`. Overlay Dialog/Sheet migrations: `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`) + `tasks/prd-responsive-overlays.md`.
+[`DESIGN.md`](DESIGN.md) is the visual source of truth (navy canvas, glass, orange CTAs). Do not commit third-party mockup images — tokens live in `src/app/globals.css`; live screenshots of **this** app live in `docs/images/`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`. Toolbar migrations: `.claude/skills/toolbar-page/SKILL.md` (`/toolbar-page`) + `tasks/prd-app-header-toolbar.md`. Overlay Dialog/Sheet standard: `DESIGN.md` → Overlays (reference: Agregar gasto, `src/components/quick-capture/QuickExpenseSheet.tsx`; kit: `src/components/overlay/overlay-form.tsx`) + recipe `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`). Rule: `.cursor/rules/responsive-overlays.mdc` (always on).
 
 ## Cursor Cloud specific instructions
 

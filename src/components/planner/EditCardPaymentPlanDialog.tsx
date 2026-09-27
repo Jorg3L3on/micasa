@@ -3,9 +3,10 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, FormField } from '@/components/ui/form';
+import { Form, FormControl, FormField } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { cn, formatCurrency } from '@/lib/utils';
 import {
   cardPaymentPlanFormSchema,
   type CardPaymentPlanFormValues,
@@ -21,8 +22,15 @@ import {
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   FormAmountRow,
+  FormGroupedRow,
+  OptionalDateStepper,
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_NUMBER_INPUT_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+  OVERLAY_SECONDARY_BUTTON_CLASS,
+  OverlayErrorBanner,
+  OverlayHint,
 } from '@/components/overlay/overlay-form';
 
 type EditCardPaymentPlanDialogProps = {
@@ -146,17 +154,13 @@ export const EditCardPaymentPlanDialog = ({
       description={`Cuánto planeas pagar en ${fortnightLabel} para ${walletName}. No cambia la deuda total. Si quitas el monto, vuelve el pago del corte o el aviso de que falta el dato.`}
       busy={form.formState.isSubmitting}
     >
+      {({ handleSelectOpenChange }) => (
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(handleSubmit)}
           className="flex flex-col gap-3"
         >
-          {error ? (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          ) : null}
-          <p className="px-1 text-xs text-muted-foreground">
+          <OverlayHint role="status">
             {knownPeriodAmount != null ? (
               <>
                 Toca pagar:{' '}
@@ -169,13 +173,12 @@ export const EditCardPaymentPlanDialog = ({
                 Falta el pago del corte
               </span>
             )}
-          </p>
-          <p className="px-1 text-xs text-muted-foreground">
-            Deuda total:{' '}
+            {' · '}Deuda total:{' '}
             <span className="font-mono font-semibold tabular-nums text-foreground">
               {formatCurrency(outstandingBalance)}
             </span>
-          </p>
+          </OverlayHint>
+          {error ? <OverlayErrorBanner>{error}</OverlayErrorBanner> : null}
           <div className={OVERLAY_GROUPED_CARD_CLASS}>
             <FormField
               control={form.control}
@@ -192,24 +195,27 @@ export const EditCardPaymentPlanDialog = ({
               control={form.control}
               name="scope"
               render={({ field }) => (
-                <div className="flex items-center gap-3 px-3 py-2">
-                  <span className="w-[5rem] shrink-0 text-sm font-medium">
-                    Vigencia
-                  </span>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger
-                      className="h-9 w-full border-0 bg-transparent px-0 shadow-none"
-                      aria-label="Vigencia del pago planeado"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
+                <FormGroupedRow label="Vigencia">
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    onOpenChange={handleSelectOpenChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger
+                        className={OVERLAY_ROW_TRIGGER_CLASS}
+                        aria-label="Vigencia del pago planeado"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
                     <SelectContent>
                       <SelectItem value="this_cycle">Este corte</SelectItem>
                       <SelectItem value="n_cycles">N cortes</SelectItem>
                       <SelectItem value="until_date">Hasta fecha</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </FormGroupedRow>
               )}
             />
             {scope === 'n_cycles' ? (
@@ -217,21 +223,22 @@ export const EditCardPaymentPlanDialog = ({
                 control={form.control}
                 name="cycleCount"
                 render={({ field }) => (
-                  <label className="flex items-center gap-3 px-3 py-2">
-                    <span className="w-[5rem] shrink-0 text-sm font-medium">
-                      Cortes
-                    </span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={36}
-                      inputMode="numeric"
-                      aria-label="Número de cortes"
-                      className="h-9 w-full bg-transparent font-mono text-sm tabular-nums outline-none"
-                      value={field.value ?? 2}
-                      onChange={(event) => field.onChange(Number(event.target.value))}
-                    />
-                  </label>
+                  <FormGroupedRow label="Cortes">
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={36}
+                        inputMode="numeric"
+                        aria-label="Número de cortes"
+                        className={OVERLAY_ROW_NUMBER_INPUT_CLASS}
+                        value={field.value ?? 2}
+                        onChange={(event) =>
+                          field.onChange(Number(event.target.value))
+                        }
+                      />
+                    </FormControl>
+                  </FormGroupedRow>
                 )}
               />
             ) : null}
@@ -240,34 +247,33 @@ export const EditCardPaymentPlanDialog = ({
                 control={form.control}
                 name="validUntil"
                 render={({ field }) => (
-                  <label className="flex items-center gap-3 px-3 py-2">
-                    <span className="w-[5rem] shrink-0 text-sm font-medium">
-                      Hasta
-                    </span>
-                    <input
-                      type="date"
-                      aria-label="Vigente hasta"
-                      className="h-9 w-full bg-transparent text-sm outline-none"
-                      value={field.value ?? ''}
-                      onChange={(event) => field.onChange(event.target.value)}
+                  <FormGroupedRow label="Hasta">
+                    <OptionalDateStepper
+                      label="Vigente hasta"
+                      placeholder="Elige fecha"
+                      value={field.value ? field.value : null}
+                      onChange={(next) => field.onChange(next ?? '')}
                     />
-                  </label>
+                  </FormGroupedRow>
                 )}
               />
             ) : null}
           </div>
-          {form.formState.errors.cycleCount?.message ||
-          form.formState.errors.validUntil?.message ? (
-            <p className="px-1 text-xs text-destructive" role="alert">
-              {form.formState.errors.cycleCount?.message ??
-                form.formState.errors.validUntil?.message}
-            </p>
-          ) : null}
+          <Button
+            type="submit"
+            disabled={form.formState.isSubmitting}
+            className={OVERLAY_PRIMARY_BUTTON_CLASS}
+          >
+            {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
+          </Button>
           {knownPeriodAmount == null && onDeclareZero ? (
             <Button
               type="button"
               variant="ghost"
-              className="h-9 px-2 text-amber-700 dark:text-amber-300"
+              className={cn(
+                OVERLAY_SECONDARY_BUTTON_CLASS,
+                'text-amber-700 dark:text-amber-300',
+              )}
               disabled={form.formState.isSubmitting}
               onClick={() => void handleDeclareZero()}
             >
@@ -278,22 +284,16 @@ export const EditCardPaymentPlanDialog = ({
             <Button
               type="button"
               variant="ghost"
-              className="h-9 px-2 text-primary-text"
+              className={cn(OVERLAY_SECONDARY_BUTTON_CLASS, 'text-primary-text')}
               disabled={form.formState.isSubmitting}
               onClick={() => void handleClear()}
             >
               {hasCustomPlan ? 'Quitar monto planeado' : 'Quitar la declaración de $0'}
             </Button>
           ) : null}
-          <Button
-            type="submit"
-            disabled={form.formState.isSubmitting}
-            className={OVERLAY_PRIMARY_BUTTON_CLASS}
-          >
-            {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
-          </Button>
         </form>
       </Form>
+      )}
     </ResponsiveOverlay>
   );
 };

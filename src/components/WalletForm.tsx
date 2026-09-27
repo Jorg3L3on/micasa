@@ -3,13 +3,11 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import {
-  AlertCircle,
   Loader2,
   Banknote,
   Landmark,
   CreditCard,
   Store,
-  CalendarDays,
   Target,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -19,8 +17,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
-  FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
@@ -42,8 +38,22 @@ import { cn } from '@/lib/utils';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { WALLET_PROVIDER_ICON_OPTIONS } from '@/lib/wallet-provider-icons';
 import MemberAssigneeSelect from '@/components/assignee/MemberAssigneeSelect';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useFinanceContext } from '@/context/finance-context';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import {
+  FieldClearButton,
+  FormAmountRow,
+  FormGroupedRow,
+  OptionalDateStepper,
+  OVERLAY_GROUPED_CARD_CLASS,
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_INPUT_CLASS,
+  OVERLAY_ROW_NUMBER_INPUT_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+  OverlayErrorBanner,
+  OverlayHint,
+  OverlaySectionLabel,
+} from '@/components/overlay/overlay-form';
 
 type TypeMeta = {
   label: string;
@@ -150,7 +160,8 @@ export default function WalletForm({
   allowedTypes,
   showAmountField = true,
 }: WalletFormProps) {
-  const isMobile = useIsMobile();
+  const { context } = useFinanceContext();
+  const isHouseContext = context.type === 'house';
 
   const form = useForm<WalletFormInput>({
     resolver: zodResolver(walletSchema),
@@ -211,11 +222,6 @@ export default function WalletForm({
       ? 'Define nombre, tipo y saldo inicial.'
       : 'Actualiza los datos de esta billetera.';
 
-  const fieldHeight = isMobile ? 'h-11' : 'h-10';
-  const creditAmountHeight = isMobile
-    ? 'h-11 font-mono tabular-nums'
-    : 'h-10 font-mono tabular-nums';
-
   const submitLabel = isSubmitting ? (
     <>
       <Loader2
@@ -235,295 +241,375 @@ export default function WalletForm({
     'Guardar cambios'
   );
 
+  const renderSecondaryAmount = (
+    name:
+      | 'credit_limit'
+      | 'temporary_credit_limit'
+      | 'minimum_payment',
+    label: string,
+    ariaLabel: string,
+  ) => (
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <FormGroupedRow label={label}>
+          <FormControl>
+            <CurrencyInput
+              hideSymbol
+              className={OVERLAY_ROW_NUMBER_INPUT_CLASS}
+              value={
+                field.value == null || field.value === ''
+                  ? 0
+                  : Number(field.value)
+              }
+              onChange={(val) => field.onChange(val === 0 ? null : val)}
+              onBlur={field.onBlur}
+              name={field.name}
+              ref={field.ref}
+              placeholder="0.00"
+              enterKeyHint="next"
+              aria-label={ariaLabel}
+            />
+          </FormControl>
+        </FormGroupedRow>
+      )}
+    />
+  );
+
+  const renderDayField = (
+    name: 'cutoff_day' | 'due_day',
+    label: string,
+    ariaLabel: string,
+  ) => (
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <FormGroupedRow label={label}>
+          <FormControl>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={31}
+              step="1"
+              className={OVERLAY_ROW_NUMBER_INPUT_CLASS}
+              placeholder="1–31"
+              aria-label={ariaLabel}
+              value={
+                field.value == null || field.value === ''
+                  ? ''
+                  : Number(field.value)
+              }
+              onChange={(e) =>
+                field.onChange(
+                  e.target.value === '' ? null : Number(e.target.value),
+                )
+              }
+            />
+          </FormControl>
+        </FormGroupedRow>
+      )}
+    />
+  );
+
+  const renderPercentField = (
+    name: 'apr_annual' | 'cat_annual',
+    label: string,
+    ariaLabel: string,
+    placeholder: string,
+  ) => (
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <FormGroupedRow label={label}>
+          <FormControl>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={500}
+              step="0.01"
+              className={OVERLAY_ROW_NUMBER_INPUT_CLASS}
+              aria-label={ariaLabel}
+              placeholder={placeholder}
+              value={percentFromRate(field.value) ?? ''}
+              onChange={(event) =>
+                field.onChange(
+                  rateFromPercent(
+                    event.target.value === ''
+                      ? null
+                      : Number(event.target.value),
+                  ),
+                )
+              }
+            />
+          </FormControl>
+        </FormGroupedRow>
+      )}
+    />
+  );
+
   const renderFormBody = (
     handleSelectOpenChange: (nextOpen: boolean) => void,
-  ) => {
-    const formFields = (
-      <>
-        {error ? (
-          <div
-            className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
-            role="alert"
-          >
-            <AlertCircle
-              className="mt-0.5 h-4 w-4 shrink-0"
-              aria-hidden
-              data-icon="inline-start"
-            />
-            <span className="min-w-0">{error}</span>
-          </div>
-        ) : null}
+  ) => (
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="flex flex-col gap-3"
+      >
+        {error ? <OverlayErrorBanner>{error}</OverlayErrorBanner> : null}
 
-        <div
-          className={cn(
-            'grid items-start gap-3',
-            isGoalType
-              ? 'grid-cols-1'
-              : isMobile
-                ? 'grid-cols-1'
-                : 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,4fr)_minmax(4.5rem,1fr)]',
-          )}
-        >
+        <div className={OVERLAY_GROUPED_CARD_CLASS}>
           <FormField
             control={form.control}
             name="name"
             render={({ field }) => (
-              <FormItem className="min-w-0">
-                <FormLabel>Nombre</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder={
-                      isGoalType
-                        ? 'Ej. Viaje, Auto, TV…'
-                        : 'Ej. Banorte, Efectivo…'
-                    }
-                    className={fieldHeight}
-                    autoCapitalize="sentences"
-                    enterKeyHint="next"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+              <FormGroupedRow label="Nombre">
+                <div className="flex items-center gap-1">
+                  <FormControl>
+                    <Input
+                      placeholder={
+                        isGoalType
+                          ? 'Ej. Viaje, Auto, TV…'
+                          : 'Ej. Banorte, Efectivo…'
+                      }
+                      className={OVERLAY_ROW_INPUT_CLASS}
+                      autoCapitalize="sentences"
+                      autoComplete="off"
+                      enterKeyHint="next"
+                      {...field}
+                    />
+                  </FormControl>
+                  {field.value ? (
+                    <FieldClearButton
+                      label="Borrar nombre"
+                      onClear={() => field.onChange('')}
+                    />
+                  ) : null}
+                </div>
+              </FormGroupedRow>
             )}
           />
+
+          {!lockType ? (
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormGroupedRow label="Tipo">
+                  <Select
+                    onValueChange={field.onChange}
+                    onOpenChange={handleSelectOpenChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger
+                        className={OVERLAY_ROW_TRIGGER_CLASS}
+                        aria-label="Tipo de billetera"
+                      >
+                        <SelectValue placeholder="Selecciona" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {typeOptions.map((value) => {
+                        const meta = TYPE_META[value];
+                        const Icon = meta.icon;
+                        return (
+                          <SelectItem key={value} value={value}>
+                            <span className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-md',
+                                  meta.iconBg,
+                                )}
+                              >
+                                <Icon
+                                  className={cn('h-3 w-3', meta.accent)}
+                                  data-icon="inline-start"
+                                />
+                              </span>
+                              {meta.label}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </FormGroupedRow>
+              )}
+            />
+          ) : null}
 
           {!isGoalType ? (
             <FormField
               control={form.control}
-              name="active"
+              name="provider_icon_key"
               render={({ field }) => (
-                <FormItem className={cn('space-y-0', isMobile ? 'pt-1' : 'pt-0.5')}>
-                  <ToggleField
-                    layout={isMobile ? 'row' : 'stack'}
-                    label="Estado"
-                    checked={Boolean(field.value)}
-                    onCheckedChange={field.onChange}
-                    aria-label="Billetera activa"
+                <FormGroupedRow label="Banco">
+                  <Select
+                    onValueChange={(value) =>
+                      field.onChange(value === '__none__' ? null : value)
+                    }
+                    onOpenChange={handleSelectOpenChange}
+                    value={field.value ?? '__none__'}
+                  >
+                    <FormControl>
+                      <SelectTrigger
+                        className={OVERLAY_ROW_TRIGGER_CLASS}
+                        aria-label="Empresa o banco de la billetera"
+                      >
+                        <SelectValue placeholder="Selecciona" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        <span className="text-muted-foreground">Sin asignar</span>
+                      </SelectItem>
+                      {WALLET_PROVIDER_ICON_OPTIONS.map((provider) => (
+                        <SelectItem key={provider.key} value={provider.key}>
+                          <span className="flex items-center gap-2">
+                            <WalletProviderIcon
+                              providerIconKey={provider.key}
+                              className="h-5 w-5 rounded-md border-0"
+                              showTooltipLabel={false}
+                            />
+                            {provider.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormGroupedRow>
+              )}
+            />
+          ) : null}
+
+          {isGoalType ? (
+            <>
+              <FormField
+                control={form.control}
+                name="goal_amount"
+                render={({ field }) => (
+                  <FormAmountRow
+                    label="Monto objetivo"
+                    value={field.value == null ? 0 : field.value}
+                    onChange={(val) => field.onChange(val === 0 ? null : val)}
                   />
-                </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="goal_due_date"
+                render={({ field }) => (
+                  <FormGroupedRow label="Fecha límite">
+                    <OptionalDateStepper
+                      label="Fecha límite"
+                      value={typeof field.value === 'string' && field.value ? field.value : null}
+                      onChange={field.onChange}
+                    />
+                  </FormGroupedRow>
+                )}
+              />
+            </>
+          ) : null}
+
+          {showAmountField && !isGoalType ? (
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormAmountRow
+                  label={isCreditType ? 'Saldo utilizado' : 'Saldo'}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          ) : null}
+
+          {isHouseContext ? (
+            <FormField
+              control={form.control}
+              name="assignee_user_id"
+              render={({ field }) => (
+                <FormGroupedRow label="Miembro">
+                  <FormControl>
+                    <MemberAssigneeSelect
+                      id="micasa-wallet-assignee"
+                      hideLabel
+                      label="Asignar a miembro (opcional)"
+                      triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
+                      value={field.value ?? ''}
+                      onChange={(userId) =>
+                        field.onChange(userId === '' ? null : userId)
+                      }
+                      onOpenChange={handleSelectOpenChange}
+                    />
+                  </FormControl>
+                </FormGroupedRow>
               )}
             />
           ) : null}
         </div>
 
-        {!isGoalType || !lockType ? (
-          <div
-            className={cn(
-              'grid grid-cols-1 gap-3',
-              !isMobile && 'sm:grid-cols-2 sm:gap-4',
-            )}
-          >
-            {!lockType ? (
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem className="min-w-0">
-                    <FormLabel>Tipo de billetera</FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        onOpenChange={handleSelectOpenChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger
-                          className={cn(fieldHeight, 'w-full')}
-                          aria-label="Tipo de billetera"
-                        >
-                          <SelectValue placeholder="Selecciona un tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {typeOptions.map((value) => {
-                            const meta = TYPE_META[value];
-                            const Icon = meta.icon;
-                            return (
-                              <SelectItem key={value} value={value}>
-                                <span className="flex items-center gap-2">
-                                  <span
-                                    className={cn(
-                                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-md',
-                                      meta.iconBg,
-                                    )}
-                                  >
-                                    <Icon
-                                      className={cn('h-3 w-3', meta.accent)}
-                                      data-icon="inline-start"
-                                    />
-                                  </span>
-                                  {meta.label}
-                                </span>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ) : null}
-
-            {!isGoalType ? (
-              <FormField
-                control={form.control}
-                name="provider_icon_key"
-                render={({ field }) => (
-                  <FormItem
-                    className={cn(
-                      'min-w-0',
-                      lockType && !isMobile && 'sm:col-span-2',
-                    )}
-                  >
-                    <FormLabel>Empresa o banco</FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={(value) =>
-                          field.onChange(value === '__none__' ? null : value)
-                        }
-                        onOpenChange={handleSelectOpenChange}
-                        value={field.value ?? '__none__'}
-                      >
-                        <SelectTrigger
-                          className={cn(fieldHeight, 'w-full')}
-                          aria-label="Empresa o banco de la billetera"
-                        >
-                          <SelectValue placeholder="Selecciona un proveedor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">
-                            <span className="text-muted-foreground">
-                              Sin asignar
-                            </span>
-                          </SelectItem>
-                          {WALLET_PROVIDER_ICON_OPTIONS.map((provider) => (
-                            <SelectItem key={provider.key} value={provider.key}>
-                              <span className="flex items-center gap-2">
-                                <WalletProviderIcon
-                                  providerIconKey={provider.key}
-                                  className="h-5 w-5 rounded-md border-0"
-                                  showTooltipLabel={false}
-                                />
-                                {provider.label}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ) : null}
-          </div>
+        {isHouseContext ? (
+          <OverlayHint>
+            {isGoalType
+              ? 'Miembro opcional. Déjalo vacío para una meta compartida.'
+              : 'Miembro opcional. Déjalo vacío para una billetera compartida.'}
+          </OverlayHint>
         ) : null}
 
-        {showAmountField && !isGoalType ? (
+        {isCreditType ? (
+          <>
+            <OverlaySectionLabel>Datos de crédito</OverlaySectionLabel>
+            <div className={OVERLAY_GROUPED_CARD_CLASS}>
+              {renderSecondaryAmount('credit_limit', 'Línea', 'Línea de crédito')}
+              {renderSecondaryAmount(
+                'temporary_credit_limit',
+                'Temporal',
+                'Límite temporal promocional',
+              )}
+              {renderDayField('cutoff_day', 'Día corte', 'Día de corte')}
+              {renderDayField('due_day', 'Día pago', 'Día de pago')}
+              {mode === 'edit' ? (
+                <>
+                  {renderSecondaryAmount('minimum_payment', 'Pago mín.', 'Pago mínimo')}
+                  {renderPercentField('apr_annual', 'APR %', 'APR anual en porcentaje', '42')}
+                  {renderPercentField('cat_annual', 'CAT %', 'CAT anual en porcentaje', '55')}
+                </>
+              ) : null}
+            </div>
+            <OverlayHint>
+              Temporal: promoción por encima de tu línea (p. ej. DiDi); vacío
+              quita el tope extra.
+              {mode === 'edit'
+                ? ' Pago mínimo es lo que pide el banco, no el pago para no generar intereses. APR y CAT son anuales; déjalos vacíos si no los tienes.'
+                : ''}
+            </OverlayHint>
+          </>
+        ) : null}
+
+        {!isGoalType ? (
           <FormField
             control={form.control}
-            name="amount"
-            render={({ field }) => {
-              const numericValue =
-                field.value === undefined ||
-                field.value === null ||
-                field.value === ''
-                  ? ''
-                  : Number(field.value);
-
-              return (
-                <FormItem>
-                  <FormLabel>
-                    {isCreditType ? 'Saldo utilizado' : 'Saldo'}
-                  </FormLabel>
-                  <FormControl>
-                    <CurrencyInput
-                      className="h-11 font-mono text-base tabular-nums"
-                      value={numericValue === '' ? 0 : numericValue}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                      placeholder="0.00"
-                      enterKeyHint="next"
-                      aria-label={
-                        isCreditType ? 'Saldo utilizado' : 'Saldo'
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-        ) : null}
-
-        {isGoalType ? (
-          <div
-            className={cn(
-              'grid grid-cols-1 gap-3',
-              !isMobile && 'sm:grid-cols-2 sm:gap-4',
+            name="active"
+            render={({ field }) => (
+              <FormItem className="space-y-0">
+                <ToggleField
+                  layout="row"
+                  className="px-3"
+                  label="Activa"
+                  checked={Boolean(field.value)}
+                  onCheckedChange={field.onChange}
+                  aria-label="Billetera activa"
+                />
+              </FormItem>
             )}
-          >
-            <FormField
-              control={form.control}
-              name="goal_amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monto objetivo</FormLabel>
-                  <FormControl>
-                    <CurrencyInput
-                      className={creditAmountHeight}
-                      value={
-                        field.value == null || field.value === ''
-                          ? 0
-                          : Number(field.value)
-                      }
-                      onChange={(val) =>
-                        field.onChange(val === 0 ? null : val)
-                      }
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                      placeholder="0.00"
-                      enterKeyHint="next"
-                      aria-label="Monto objetivo"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="goal_due_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fecha límite</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      className={fieldHeight}
-                      value={
-                        typeof field.value === 'string' ? field.value : ''
-                      }
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value === '' ? null : e.target.value,
-                        )
-                      }
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                      aria-label="Fecha límite de la meta"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+          />
         ) : null}
 
         {!isCreditType && !isGoalType ? (
@@ -531,9 +617,10 @@ export default function WalletForm({
             control={form.control}
             name="include_in_liquidity"
             render={({ field }) => (
-              <FormItem className="space-y-0 border-t border-border/60 pt-3">
+              <FormItem className="space-y-0">
                 <ToggleField
                   layout="row"
+                  className="px-3"
                   label="Incluir en liquidez"
                   helper="Cuenta en el saldo de Liquidez (efectivo + débito)."
                   checked={Boolean(field.value)}
@@ -545,322 +632,16 @@ export default function WalletForm({
           />
         ) : null}
 
-        <FormField
-          control={form.control}
-          name="assignee_user_id"
-          render={({ field }) => (
-            <FormItem className="space-y-1">
-              <FormControl>
-                <div className="space-y-1">
-                  <MemberAssigneeSelect
-                    id="micasa-wallet-assignee"
-                    value={field.value ?? ''}
-                    onChange={(userId) =>
-                      field.onChange(userId === '' ? null : userId)
-                    }
-                    onOpenChange={handleSelectOpenChange}
-                    label="Asignar a miembro (opcional)"
-                  />
-                  <p className="pl-0.5 text-[10px] text-muted-foreground">
-                    En la casa: deja vacío para una billetera compartida.
-                  </p>
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {isCreditType ? (
-          <div className="space-y-4 border-t border-border/60 pt-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Datos de crédito
-            </p>
-
-            <FormField
-              control={form.control}
-              name="credit_limit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Línea de crédito</FormLabel>
-                  <FormControl>
-                    <CurrencyInput
-                      className={creditAmountHeight}
-                      value={
-                        field.value == null || field.value === ''
-                          ? 0
-                          : Number(field.value)
-                      }
-                      onChange={(val) =>
-                        field.onChange(val === 0 ? null : val)
-                      }
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                      placeholder="0.00"
-                      enterKeyHint="next"
-                      aria-label="Línea de crédito"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="temporary_credit_limit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Límite temporal (opcional)</FormLabel>
-                  <FormControl>
-                    <CurrencyInput
-                      className={creditAmountHeight}
-                      aria-label="Límite temporal promocional"
-                      value={
-                        field.value == null || field.value === ''
-                          ? 0
-                          : Number(field.value)
-                      }
-                      onChange={(val) =>
-                        field.onChange(val === 0 ? null : val)
-                      }
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                      placeholder="0.00"
-                      enterKeyHint="next"
-                    />
-                  </FormControl>
-                  <p className="pl-0.5 text-[10px] text-muted-foreground">
-                    Promoción por encima de tu línea (p. ej. DiDi). Vacío
-                    quita el tope extra.
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="cutoff_day"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-1.5">
-                      <CalendarDays
-                        className="h-3.5 w-3.5 text-muted-foreground"
-                        aria-hidden
-                        data-icon="inline-start"
-                      />
-                      Día de corte
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        max={31}
-                        step="1"
-                        className={fieldHeight}
-                        placeholder="1–31"
-                        value={
-                          field.value == null || field.value === ''
-                            ? ''
-                            : Number(field.value)
-                        }
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ''
-                              ? null
-                              : Number(e.target.value),
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="due_day"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-1.5">
-                      <CalendarDays
-                        className="h-3.5 w-3.5 text-muted-foreground"
-                        aria-hidden
-                        data-icon="inline-start"
-                      />
-                      Día de pago
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        max={31}
-                        step="1"
-                        className={fieldHeight}
-                        placeholder="1–31"
-                        value={
-                          field.value == null || field.value === ''
-                            ? ''
-                            : Number(field.value)
-                        }
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ''
-                              ? null
-                              : Number(e.target.value),
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {mode === 'edit' ? (
-            <>
-            <FormField
-              control={form.control}
-              name="minimum_payment"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Pago mínimo</FormLabel>
-                  <FormControl>
-                    <CurrencyInput
-                      className={creditAmountHeight}
-                      aria-label="Pago mínimo"
-                      value={
-                        field.value == null || field.value === ''
-                          ? 0
-                          : Number(field.value)
-                      }
-                      onChange={(val) =>
-                        field.onChange(val === 0 ? null : val)
-                      }
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                      placeholder="0.00"
-                      enterKeyHint="next"
-                    />
-                  </FormControl>
-                  <p className="pl-0.5 text-[10px] text-muted-foreground">
-                    Lo que el banco pide como mínimo. No es el pago para no
-                    generar intereses (corte) ni la deuda total. Vacío si no lo
-                    conoces.
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="apr_annual"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>APR anual (%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        max={500}
-                        step="0.01"
-                        className={fieldHeight}
-                        aria-label="APR anual en porcentaje"
-                        placeholder="42"
-                        value={percentFromRate(field.value) ?? ''}
-                        onChange={(event) =>
-                          field.onChange(
-                            rateFromPercent(
-                              event.target.value === ''
-                                ? null
-                                : Number(event.target.value),
-                            ),
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <p className="pl-0.5 text-[10px] text-muted-foreground">
-                      Porcentaje anual. Vacío si no la tienes. No inventamos 36%.
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="cat_annual"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>CAT anual (%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        max={500}
-                        step="0.01"
-                        className={fieldHeight}
-                        aria-label="CAT anual en porcentaje"
-                        placeholder="55"
-                        value={percentFromRate(field.value) ?? ''}
-                        onChange={(event) =>
-                          field.onChange(
-                            rateFromPercent(
-                              event.target.value === ''
-                                ? null
-                                : Number(event.target.value),
-                            ),
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <p className="pl-0.5 text-[10px] text-muted-foreground">
-                      Costo anual total. Distinto del APR y del pago del corte.
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            </>
-            ) : null}
-          </div>
-        ) : null}
-      </>
-    );
-
-    return (
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleSubmit)}
-          className={cn('space-y-4', isMobile && 'pb-1')}
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className={OVERLAY_PRIMARY_BUTTON_CLASS}
         >
-          {formFields}
-
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="h-11 w-full rounded-xl"
-          >
-            {submitLabel}
-          </Button>
-        </form>
-      </Form>
-    );
-
-  };
+          {submitLabel}
+        </Button>
+      </form>
+    </Form>
+  );
 
   return (
     <ResponsiveOverlay
