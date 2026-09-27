@@ -14,7 +14,6 @@ const buildOwnerSuffix = (context: FinanceContextType): string => {
 const MODULE_ROOT_SEGMENTS = new Set([
   'wallets',
   'metas',
-  'budgets',
   'loans',
   'transactions',
   'categories',
@@ -37,7 +36,7 @@ export function shouldShowToolbarBack(pathname: string): boolean {
     return false;
   }
 
-  // Sidebar hub: Liquidez y análisis
+  // Sidebar hub: Análisis
   if (
     segments[0] === 'wallets' &&
     segments[1] === 'liquidity' &&
@@ -119,6 +118,9 @@ export function getPageTitle(pathname: string): {
     if (segments[1] === 'categories') {
       return { title: 'Categorías', isHome: false, showBack };
     }
+    if (segments[1] === 'budgets') {
+      return { title: 'Presupuestos', isHome: false, showBack };
+    }
     if (segments[1] === 'account') {
       return { title: 'Cuenta', isHome: false, showBack };
     }
@@ -163,7 +165,7 @@ export function getPageTitle(pathname: string): {
 
   if (segments[0] === 'wallets') {
     if (segments[1] === 'liquidity') {
-      return { title: 'Proyección de liquidez', isHome: false, showBack };
+      return { title: 'Análisis', isHome: false, showBack };
     }
     if (segments[1]) {
       return { title: 'Billetera', isHome: false, showBack };
@@ -178,10 +180,6 @@ export function getPageTitle(pathname: string): {
 
   if (segments[0] === 'credit-cards') {
     return { title: 'Estado de cuenta', isHome: false, showBack };
-  }
-
-  if (segments[0] === 'budgets') {
-    return { title: 'Presupuestos', isHome: false, showBack };
   }
 
   if (segments[0] === 'loans') {

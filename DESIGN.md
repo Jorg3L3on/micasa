@@ -114,10 +114,10 @@ The quincena route stays for deep links and adopts planner chrome. It is **not**
 
 ### Mobile map
 
-- **Dock** stays five slots: **Panel**, **Billeteras**, **Liquidez**, the **plus** button, **Más**.
-- The third tab is labeled **Liquidez** (never “Análisis”) and opens the same page as the sidebar item **Liquidez y análisis**.
+- **Dock** stays five slots: **Panel**, **Billeteras**, **Análisis**, the **plus** button, **Más**.
+- The third tab is labeled **Análisis** and opens the same page as the sidebar item **Análisis**.
 - **Más** opens the sidebar sheet.
-- **Sidebar order** (canonical): Panel financiero, Billeteras, Liquidez y análisis, Metas, Préstamos, Operaciones, Presupuestos, then Configuración. Configuración is in that list **and** stays in the team switcher.
+- **Sidebar order** (canonical): Panel financiero, Billeteras, Préstamos, Análisis, Metas, Operaciones, then Configuración (Presupuestos lives under Configuración). Configuración is in that list **and** stays in the team switcher.
 - The active dock label uses readable foreground text (`text-foreground`), not the electric-blue fill color.
 
 ### Motion allow-list
@@ -130,7 +130,7 @@ Apply **only**:
 | --- | --- |
 | Currency ticker | Hero money amounts (planner summary, liquidez hero, préstamos / metas / presupuestos totals). **Not** table cells or list rows |
 | Motion tabs | In-page choice of two or three views (quincena toggle, Presupuestos vs Plantillas, budget status views) |
-| Pull to refresh (mobile only) | Planner, Billeteras, Metas, Préstamos, Operaciones, Presupuestos, Liquidez. **Not** Configuración |
+| Pull to refresh (mobile only) | Planner, Billeteras, Metas, Préstamos, Operaciones, Análisis. **Not** Configuración (incl. Presupuestos) |
 | Shared-element morph | Billeteras and tarjetas only. Do not add one for metas or préstamos |
 | Swipe to delete | Below `md` only, then `ConfirmDeleteDialog` (see **Viewport delete**). Billeteras, metas, préstamos, plantillas, categorías, expense rows |
 

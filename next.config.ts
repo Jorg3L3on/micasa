@@ -68,6 +68,16 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: '/budgets',
+        destination: '/settings/budgets',
+        permanent: true,
+      },
+      {
+        source: '/budgets/:path*',
+        destination: '/settings/budgets/:path*',
+        permanent: true,
+      },
+      {
         source: '/expenses',
         destination: '/transactions',
         permanent: true,

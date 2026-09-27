@@ -3,7 +3,6 @@ import {
   ChartLine,
   Goal,
   HandCoins,
-  PiggyBank,
   Receipt,
   Settings,
   Wallet,
@@ -19,7 +18,6 @@ export type NavDestinationId =
   | 'goals'
   | 'loans'
   | 'transactions'
-  | 'budgets'
   | 'settings';
 
 export type NavDestination = {
@@ -56,9 +54,15 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
       matchesSection(pathname, '/credit-cards'),
   },
   {
+    id: 'loans',
+    title: 'Préstamos',
+    getHref: () => '/loans',
+    icon: HandCoins,
+    isActive: (pathname) => matchesSection(pathname, '/loans'),
+  },
+  {
     id: 'liquidity',
-    title: 'Liquidez y análisis',
-    dockTitle: 'Liquidez',
+    title: 'Análisis',
     getHref: () => '/wallets/liquidity',
     icon: ChartLine,
     isActive: (pathname) => matchesSection(pathname, '/wallets/liquidity'),
@@ -71,25 +75,11 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
     isActive: (pathname) => matchesSection(pathname, '/metas'),
   },
   {
-    id: 'loans',
-    title: 'Préstamos',
-    getHref: () => '/loans',
-    icon: HandCoins,
-    isActive: (pathname) => matchesSection(pathname, '/loans'),
-  },
-  {
     id: 'transactions',
     title: 'Operaciones',
     getHref: () => '/transactions',
     icon: Receipt,
     isActive: (pathname) => matchesSection(pathname, '/transactions'),
-  },
-  {
-    id: 'budgets',
-    title: 'Presupuestos',
-    getHref: () => '/budgets',
-    icon: PiggyBank,
-    isActive: (pathname) => matchesSection(pathname, '/budgets'),
   },
   {
     id: 'settings',

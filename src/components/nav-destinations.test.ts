@@ -7,15 +7,14 @@ import {
 } from '@/components/nav-destinations';
 
 describe('NAV_DESTINATIONS', () => {
-  it('lists the eight sidebar destinations in canonical order', () => {
+  it('lists the seven sidebar destinations in canonical order', () => {
     expect(NAV_DESTINATIONS.map((item) => item.title)).toEqual([
       'Panel financiero',
       'Billeteras',
-      'Liquidez y análisis',
-      'Metas',
       'Préstamos',
+      'Análisis',
+      'Metas',
       'Operaciones',
-      'Presupuestos',
       'Configuración',
     ]);
   });
@@ -43,6 +42,7 @@ describe('NAV_DESTINATIONS', () => {
     const settings = getNavDestination('settings');
     expect(settings.getHref()).toBe('/settings');
     expect(settings.isActive('/settings/account')).toBe(true);
+    expect(settings.isActive('/settings/budgets')).toBe(true);
     expect(settings.isActive('/settingsx')).toBe(false);
   });
 });
@@ -53,7 +53,7 @@ describe('getDockDestinations', () => {
     expect(tabs.map((item) => item.dockTitle ?? item.title)).toEqual([
       'Panel',
       'Billeteras',
-      'Liquidez',
+      'Análisis',
     ]);
     expect(tabs[2].getHref()).toBe(getNavDestination('liquidity').getHref());
   });
