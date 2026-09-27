@@ -4,6 +4,11 @@ import { usePathname } from 'next/navigation';
 import { useFinanceContext } from '@/context/finance-context';
 import { getAppHomeHref, formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
+import {
+  monthlyHeaderPeriodLabel,
+  monthlyHeaderPeriodShortLabel,
+  useMonthlyHeaderPeriod,
+} from '@/components/monthly/monthly-header-period';
 
 const buildOwnerSuffix = (context: FinanceContextType): string => {
   if (context.type === 'user' && context.id === 0) return '';
@@ -205,7 +210,21 @@ export function getPageTitle(pathname: string): {
 
 export function useAppPageTitle() {
   const pathname = usePathname();
-  return getPageTitle(pathname);
+  const headerPeriod = useMonthlyHeaderPeriod();
+  const pageTitle = getPageTitle(pathname);
+  if (!headerPeriod || !pathname.startsWith('/monthly/')) {
+    return { ...pageTitle, periodPrefix: null };
+  }
+  const periodPrefix = {
+    full: monthlyHeaderPeriodLabel(headerPeriod),
+    short: monthlyHeaderPeriodShortLabel(headerPeriod),
+  };
+  return {
+    ...pageTitle,
+    title: `${periodPrefix.full} · ${pageTitle.title}`,
+    baseTitle: pageTitle.title,
+    periodPrefix,
+  };
 }
 
 export function useAppHomeHref() {
@@ -216,8 +235,22 @@ export function useAppHomeHref() {
 
 /** Centered toolbar title (Apple-style principal). */
 export default function PageTitle() {
-  const { title } = useAppPageTitle();
+  const pageTitle = useAppPageTitle();
+  if (!pageTitle.periodPrefix) {
+    return (
+      <h2 className="truncate text-lg font-semibold leading-tight">
+        {pageTitle.title}
+      </h2>
+    );
+  }
   return (
-    <h2 className="truncate text-lg font-semibold leading-tight">{title}</h2>
+    <h2
+      className="truncate text-lg font-semibold leading-tight"
+      aria-label={pageTitle.title}
+    >
+      <span className="sm:hidden">{pageTitle.periodPrefix.short}</span>
+      <span className="hidden sm:inline">{pageTitle.periodPrefix.full}</span>
+      {` · ${pageTitle.baseTitle}`}
+    </h2>
   );
 }

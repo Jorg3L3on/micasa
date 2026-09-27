@@ -13,10 +13,14 @@ import {
 } from '@/components/ui/tooltip';
 import { MonthlyMonthPicker } from '@/components/monthly/MonthlyMonthPicker';
 import {
+  GLASS_TAB_ACTIVE_LABEL_CLASS,
+  GLASS_TAB_INDICATOR_CLASS,
+  GLASS_TAB_TRACK_CLASS,
   MONTHLY_ACCENT_TEXT_CLASS,
   MONTHLY_ICON_PILL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
+import { usePublishMonthlyHeaderPeriod } from '@/components/monthly/monthly-header-period';
 import {
   getCalendarFortnightRefForYmd,
   getFortnightCalendarBounds,
@@ -272,9 +276,12 @@ export const MonthlyChromeHeader = ({
   showFortnightToggle = true,
 }: MonthlyChromeHeaderProps) => {
   const { prefsReady, period, setPeriod } = useMonthlyPanelPreferences();
+  usePublishMonthlyHeaderPeriod(showFortnightToggle ? period : null);
   const current = getCalendarFortnightRefForYmd(todayYmd);
   const currentYear = current.year;
   const currentMonth = current.month;
+  const isCurrentFortnight =
+    isCurrentMonth && (!showFortnightToggle || period === current.period);
 
   const handlePeriodChange = (next: FortnightPeriod) => {
     setPeriod(next);
@@ -302,8 +309,7 @@ export const MonthlyChromeHeader = ({
         wrapperClassName="w-full @min-[42rem]:w-auto"
         className={cn(
           'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:w-max',
-          'bg-gradient-to-br from-muted/30 via-background to-muted/10',
-          'dark:from-muted/20 dark:via-card dark:to-muted/5',
+          GLASS_TAB_TRACK_CLASS,
         )}
       >
         <TabsTrigger
@@ -311,7 +317,8 @@ export const MonthlyChromeHeader = ({
           stretch
           aria-label={`Primera quincena: ${firstLabel}`}
           title={firstLabel}
-          indicatorClassName="shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-primary/35"
+          indicatorClassName={GLASS_TAB_INDICATOR_CLASS}
+          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
           className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
         >
           1ª Quincena
@@ -321,7 +328,8 @@ export const MonthlyChromeHeader = ({
           stretch
           aria-label={`Segunda quincena: ${secondLabel}`}
           title={secondLabel}
-          indicatorClassName="shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-primary/35"
+          indicatorClassName={GLASS_TAB_INDICATOR_CLASS}
+          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
           className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
         >
           2ª Quincena
@@ -386,7 +394,7 @@ export const MonthlyChromeHeader = ({
             ownerQuery={ownerQuery}
             currentYear={currentYear}
             currentMonth={currentMonth}
-            isCurrentMonth={isCurrentMonth}
+            showCurrentBadge={isCurrentFortnight}
           />
           {jumpToCurrent}
 
@@ -406,14 +414,16 @@ export const MonthlyChromeHeader = ({
       {showFortnightToggle ? (
         <>
           <div
-            className="h-px w-full bg-border/50 @min-[42rem]:hidden"
+            className="hidden h-px w-full bg-border/50 md:block @min-[42rem]:hidden"
             aria-hidden
           />
 
           <ChromeDivider className="mx-2" />
 
-          {/* Progress */}
-          <div className="min-w-0 @min-[42rem]:flex-1">{progressCenter}</div>
+          {/* Progress (tablet and desktop only) */}
+          <div className="hidden min-w-0 md:block @min-[42rem]:flex-1">
+            {progressCenter}
+          </div>
 
           <div
             className="h-px w-full bg-border/50 @min-[42rem]:hidden"

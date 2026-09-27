@@ -404,6 +404,7 @@ export const TabsTrigger = ({
   children,
   className,
   indicatorClassName,
+  activeLabelClassName,
   stretch = false,
   'aria-label': ariaLabel,
   title,
@@ -412,6 +413,8 @@ export const TabsTrigger = ({
   children: ReactNode;
   className?: string;
   indicatorClassName?: string;
+  /** Label color over the active indicator (defaults to white on primary). */
+  activeLabelClassName?: string;
   /** Share the row equally. Used by the fortnight switcher. */
   stretch?: boolean;
   'aria-label'?: string;
@@ -497,7 +500,10 @@ export const TabsTrigger = ({
           data-tabs-label=""
           aria-hidden="true"
           inert
-          className="pointer-events-none absolute inset-0 inline-flex items-center justify-center text-primary-foreground [gap:inherit] [padding:inherit]"
+          className={cn(
+            'pointer-events-none absolute inset-0 inline-flex items-center justify-center text-primary-foreground [gap:inherit] [padding:inherit]',
+            activeLabelClassName,
+          )}
           style={{ clipPath: initialClip }}
         >
           {children}

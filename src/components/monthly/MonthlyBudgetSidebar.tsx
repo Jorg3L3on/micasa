@@ -12,7 +12,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import {
   MONTHLY_ICON_PILL_CLASS,
-  MONTHLY_PANEL_SHELL_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import type {
@@ -28,7 +28,7 @@ type MonthlyBudgetSidebarProps = {
   variant?: 'panel' | 'embedded';
 };
 
-const budgetPanelShellClass = cn(MONTHLY_PANEL_SHELL_CLASS, 'p-4');
+const budgetPanelShellClass = cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-4');
 const budgetEmbeddedShellClass = cn(
   METRIC_STRIP_CLASS,
   'border-l-[3px] border-l-violet-500/50 px-3 py-3',

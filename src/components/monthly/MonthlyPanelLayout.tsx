@@ -9,7 +9,7 @@ import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPan
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import {
   MONTHLY_CHROME_PADDING_CLASS,
-  MONTHLY_PANEL_SHELL_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
@@ -103,7 +103,7 @@ export const MonthlyPanelLayout = ({
       <div
         className={cn(
           '@container',
-          MONTHLY_PANEL_SHELL_CLASS,
+          MONTHLY_LIQUID_PANEL_CLASS,
           MONTHLY_CHROME_PADDING_CLASS,
           'mb-5',
         )}

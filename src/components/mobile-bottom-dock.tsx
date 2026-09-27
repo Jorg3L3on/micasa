@@ -108,7 +108,7 @@ const DockTabLink = ({
         {active ? (
           <motion.span
             layoutId={layoutId}
-            className="absolute inset-1 -z-10 rounded-full bg-black/5 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/15"
+            className="absolute inset-1 -z-10 rounded-full liquid-glass liquid-glass-pill"
             transition={reduceMotion ? { duration: 0 } : PILL_SPRING}
             aria-hidden
           />
@@ -359,7 +359,7 @@ function MobileBottomDockInner() {
               {moreActive ? (
                 <motion.span
                   layoutId={pillLayoutId}
-                  className="absolute inset-1 -z-10 rounded-full bg-black/5 ring-1 ring-black/10 dark:bg-white/10 dark:ring-white/15"
+                  className="absolute inset-1 -z-10 rounded-full liquid-glass liquid-glass-pill"
                   transition={reduceMotion ? { duration: 0 } : PILL_SPRING}
                   aria-hidden
                 />

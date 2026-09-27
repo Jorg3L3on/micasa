@@ -37,7 +37,8 @@ type MonthlyMonthPickerProps = {
   /** Calendar current month (1–12) for highlight. */
   currentYear: number;
   currentMonth: number;
-  isCurrentMonth: boolean;
+  /** Show the Actual pill (viewed month and quincena contain today). */
+  showCurrentBadge: boolean;
 };
 
 export const MonthlyMonthPicker = ({
@@ -47,7 +48,7 @@ export const MonthlyMonthPicker = ({
   ownerQuery,
   currentYear,
   currentMonth,
-  isCurrentMonth,
+  showCurrentBadge,
 }: MonthlyMonthPickerProps) => {
   const router = useRouter();
   // Prefer the page's owner query over FinanceProvider — avoids SSR crashes when
@@ -119,7 +120,7 @@ export const MonthlyMonthPicker = ({
                 aria-hidden
               />
             </span>
-            {isCurrentMonth ? (
+            {showCurrentBadge ? (
               <span className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 text-[10px] font-semibold uppercase tracking-wider text-foreground">
                 <span
                   className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"

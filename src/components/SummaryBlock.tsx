@@ -19,7 +19,7 @@ import {
 import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
 import {
   MONTHLY_ICON_PILL_CLASS,
-  MONTHLY_PANEL_SHELL_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
@@ -204,7 +204,7 @@ export default function SummaryBlock({
 
   return (
     <Card
-      className={cn(MONTHLY_PANEL_SHELL_CLASS, 'gap-0 py-0')}
+      className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'gap-0 py-0')}
       role="region"
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
     >
