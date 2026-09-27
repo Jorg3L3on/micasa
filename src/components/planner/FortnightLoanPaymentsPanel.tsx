@@ -21,6 +21,13 @@ import { LoanPaymentManageOverlay } from '@/components/loans/LoanPaymentManageOv
 import { useFinanceContext } from '@/context/finance-context';
 import { getLender, payLender } from '@/lib/api/lenders';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
+import { AuraRowBloom } from '@/components/aura/aura-surface';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import {
+  AURA_TONE_HEX,
+  getDueRowTone,
+  type DueRowStatus,
+} from '@/lib/ui/aura-palette';
 
 type FortnightLoanPaymentsPanelProps = {
   items: LoanDuePaymentItem[];
@@ -31,7 +38,7 @@ type FortnightLoanPaymentsPanelProps = {
   onUpdated?: () => Promise<void> | void;
 };
 
-type VisualStatus = 'paid' | 'overdue' | 'pending' | 'muted';
+type VisualStatus = Exclude<DueRowStatus, 'missing'>;
 
 const getDaysLeft = (dueDateYmd: string, todayYmd: string): number => {
   const [dy, dm, dd] = dueDateYmd.split('-').map((n) => parseInt(n, 10));
@@ -215,7 +222,7 @@ export default function FortnightLoanPaymentsPanel({
           const isPayroll = group.paymentSource === 'PAYROLL_DEDUCTION';
           const Icon = isPayroll ? Landmark : HandCoins;
           const isDueSoon = visual === 'pending' && daysLeft <= 7;
-          const isDueLater = visual === 'pending' && daysLeft > 7;
+          const rowTone = getDueRowTone(visual, daysLeft);
           const scheduledItems = group.items.filter(
             (item) => item.status === 'SCHEDULED',
           );
@@ -228,20 +235,18 @@ export default function FortnightLoanPaymentsPanel({
             <li
               key={group.key}
               className={cn(
-                'group/row relative overflow-hidden rounded-xl border px-3 transition-all',
-                'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+                MONTHLY_PANEL_SHELL_CLASS,
+                'group/row overflow-hidden rounded-xl px-3',
                 isCompact ? 'py-2.5' : 'py-3',
-                visual === 'overdue' &&
-                  'border-destructive/25 bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5',
-                isDueSoon &&
-                  'border-amber-500/25 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 hover:from-amber-500/12 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4',
-                isDueLater &&
-                  'border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-card to-blue-500/2 hover:from-blue-500/12 dark:from-blue-500/14 dark:via-card/60 dark:to-blue-500/4',
-                visual === 'paid' &&
-                  'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3',
-                visual === 'muted' && 'border-border/50 bg-muted/20 opacity-80',
+                visual === 'muted' && 'opacity-80',
               )}
             >
+              {rowTone ? (
+                <AuraRowBloom
+                  color={AURA_TONE_HEX[rowTone]}
+                  subdued={visual === 'paid'}
+                />
+              ) : null}
               <div className="flex items-center gap-2.5">
                 <span
                   className={cn(

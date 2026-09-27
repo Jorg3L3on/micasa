@@ -46,9 +46,9 @@ const MENU_TRANSITION: Transition = {
 
 export const MOBILE_DOCK_SHELL_CLASS = cn(
   'relative grid h-16 grid-cols-5 items-center overflow-hidden rounded-full',
-  'border border-black/10 bg-background/80 shadow-[0_12px_40px_-16px_rgba(15,23,42,0.35)]',
-  'supports-[backdrop-filter]:bg-background/70 backdrop-blur-2xl backdrop-saturate-150',
-  'dark:border-white/10 dark:bg-[rgb(9_14_29/0.72)] dark:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.72),0_32px_80px_-36px_rgba(58,55,252,0.16)]',
+  'border border-black/10 bg-background/70 shadow-[0_12px_40px_-16px_rgba(15,23,42,0.35),inset_0_1px_0_rgba(255,255,255,0.5)]',
+  'supports-[backdrop-filter]:bg-background/45 backdrop-blur-2xl backdrop-saturate-180',
+  'dark:border-white/[0.12] dark:bg-[rgb(9_14_29/0.6)] dark:supports-[backdrop-filter]:bg-[rgb(9_14_29/0.4)] dark:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.72),0_32px_80px_-36px_rgba(58,55,252,0.16),inset_0_1px_0_rgba(255,255,255,0.06)]',
   'before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-black/20 before:to-transparent',
   'dark:before:via-white/40',
 );

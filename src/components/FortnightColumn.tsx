@@ -22,7 +22,7 @@ import { panelSnapshotFromDueItem } from '@/lib/finance/card-period-surfaces';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
 import {
   GLASS_TAB_ACTIVE_LABEL_CLASS,
-  GLASS_TAB_INDICATOR_CLASS,
+  AURA_TAB_INDICATOR_CLASS,
   MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import {
@@ -943,7 +943,7 @@ export default function FortnightColumn({
                 value="expenses"
                 stretch
                 className={plannerTabTriggerClass}
-                indicatorClassName={GLASS_TAB_INDICATOR_CLASS}
+                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
                 activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
                 aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
               >
@@ -963,7 +963,7 @@ export default function FortnightColumn({
                 value="cards"
                 stretch
                 className={plannerTabTriggerClass}
-                indicatorClassName={GLASS_TAB_INDICATOR_CLASS}
+                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
                 activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
                 aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
               >
@@ -985,7 +985,7 @@ export default function FortnightColumn({
                 value="loans"
                 stretch
                 className={plannerTabTriggerClass}
-                indicatorClassName={GLASS_TAB_INDICATOR_CLASS}
+                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
                 activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
                 aria-label={`Préstamos, ${pendingLoanPaymentsCount} pendientes`}
               >

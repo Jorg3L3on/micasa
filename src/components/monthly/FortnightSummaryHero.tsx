@@ -6,6 +6,8 @@ import {
 } from '@/components/monthly/fortnight-summary-header';
 import { getFortnightCommitmentBar } from '@/components/monthly/fortnight-income-commitment';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { AuraSurface } from '@/components/aura/aura-surface';
+import { AURA_TONE_HEX, type AuraTone } from '@/lib/ui/aura-palette';
 import {
   Tooltip,
   TooltipContent,
@@ -21,18 +23,6 @@ type FortnightSummaryHeroProps = {
   incomeRemainder: number;
   /** Pagado + pendiente + nómina + presupuesto restante. */
   dueToPay: number;
-  /** Saldos activos Efectivo + Débito (bruto, “en cuentas hoy”). */
-  fundingInAccounts: number;
-  /**
-   * Efectivo/débito menos pendiente, nómina y resto de presupuesto
-   * (“Liquidez actual” / billeteras vs pendiente).
-   */
-  fundingLiquidity?: number;
-  /**
-   * Si false, se ocultan las tarjetas Balance actual y Liquidez actual
-   * (solo quincena calendario en curso o la siguiente).
-   */
-  fundingLiquidityApplies?: boolean;
   /**
    * Entra / toca pagar / te falta. En la quincena en curso se oculta:
    * Liquidez actual ya responde “¿alcanza el efectivo?”.
@@ -239,7 +229,7 @@ type AccountMetricProps = {
   label: string;
   amount: number;
   subtitle: string;
-  borderClassName: string;
+  auraTone: AuraTone;
   pillClassName: string;
   icon: typeof Banknote;
   amountClassName: string;
@@ -249,17 +239,15 @@ const AccountMetric = ({
   label,
   amount,
   subtitle,
-  borderClassName,
+  auraTone,
   pillClassName,
   icon: Icon,
   amountClassName,
 }: AccountMetricProps) => (
-  <div
-    className={cn(
-      METRIC_STRIP_CLASS,
-      'border-l-[3px] px-2.5 py-2',
-      borderClassName,
-    )}
+  <AuraSurface
+    color={AURA_TONE_HEX[auraTone]}
+    animated
+    className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
   >
     <div className="mb-1.5 flex items-center gap-1.5">
       <span
@@ -283,7 +271,7 @@ const AccountMetric = ({
     <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
       {subtitle}
     </p>
-  </div>
+  </AuraSurface>
 );
 
 type LegendItemProps = {
@@ -319,13 +307,58 @@ const LegendItem = ({
   </div>
 );
 
+type FortnightAccountMetricsProps = {
+  /** Saldos activos Efectivo + Débito (bruto, “en cuentas hoy”). */
+  fundingInAccounts: number;
+  /** Efectivo/débito menos pendiente, nómina y resto de presupuesto. */
+  fundingLiquidity: number;
+};
+
+/** Balance actual + Liquidez actual tiles; only for the current or next calendar quincena. */
+export const FortnightAccountMetrics = ({
+  fundingInAccounts,
+  fundingLiquidity,
+}: FortnightAccountMetricsProps) => {
+  const liquidityNegative = fundingLiquidity < 0;
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <AccountMetric
+        label="Balance actual"
+        amount={fundingInAccounts}
+        subtitle="Efectivo + débito hoy"
+        auraTone={fundingInAccounts < 0 ? 'destructive' : 'emerald'}
+        pillClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+        icon={Banknote}
+        amountClassName={
+          fundingInAccounts < 0 ? 'text-destructive' : 'text-foreground'
+        }
+      />
+      <AccountMetric
+        label="Liquidez actual"
+        amount={fundingLiquidity}
+        subtitle="Tras pendientes y presupuesto"
+        auraTone={liquidityNegative ? 'destructive' : 'emerald'}
+        pillClassName={
+          liquidityNegative
+            ? 'bg-destructive/10 text-destructive dark:bg-destructive/15'
+            : 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+        }
+        icon={Wallet}
+        amountClassName={
+          liquidityNegative
+            ? 'text-destructive'
+            : 'text-emerald-700 dark:text-emerald-300'
+        }
+      />
+    </div>
+  );
+};
+
 export const FortnightSummaryHero = ({
   periodIncome,
   incomeRemainder,
   dueToPay,
-  fundingInAccounts,
-  fundingLiquidity = 0,
-  fundingLiquidityApplies = true,
   showIncomeRemainderBreakdown = true,
   paidAmount,
   pendingAmount,
@@ -347,8 +380,6 @@ export const FortnightSummaryHero = ({
     0,
     periodIncome - cashCommittedAmount - leftoverAmount,
   );
-  const liquidityNegative = fundingLiquidity < 0;
-
   const paidSubtitle =
     expenseCount > 0
       ? `${paidExpenseCount} de ${expenseCount} gastos`
@@ -368,43 +399,6 @@ export const FortnightSummaryHero = ({
     <div className="@container min-w-0">
       <div className="flex min-w-0 flex-col gap-4 @3xl:flex-row @3xl:items-start @3xl:gap-6">
       <div className="flex min-w-0 flex-1 flex-col gap-3">
-        {fundingLiquidityApplies ? (
-          <div className="grid grid-cols-2 gap-2">
-            <AccountMetric
-              label="Balance actual"
-              amount={fundingInAccounts}
-              subtitle="Efectivo + débito hoy"
-              borderClassName="border-l-emerald-500/50"
-              pillClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
-              icon={Banknote}
-              amountClassName={
-                fundingInAccounts < 0 ? 'text-destructive' : 'text-foreground'
-              }
-            />
-            <AccountMetric
-              label="Liquidez actual"
-              amount={fundingLiquidity}
-              subtitle="Tras pendientes y presupuesto"
-              borderClassName={
-                liquidityNegative
-                  ? 'border-l-destructive/60'
-                  : 'border-l-emerald-500/50'
-              }
-              pillClassName={
-                liquidityNegative
-                  ? 'bg-destructive/10 text-destructive dark:bg-destructive/15'
-                  : 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
-              }
-              icon={Wallet}
-              amountClassName={
-                liquidityNegative
-                  ? 'text-destructive'
-                  : 'text-emerald-700 dark:text-emerald-300'
-              }
-            />
-          </div>
-        ) : null}
-
         <CommitmentBar
           periodIncome={periodIncome}
           paidAmount={paidAmount}
@@ -413,12 +407,14 @@ export const FortnightSummaryHero = ({
         />
 
         <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          <LegendItem
-            label="Pagado"
-            amount={paidAmount}
-            subtitle={paidSubtitle}
-            dotClassName="bg-emerald-500 dark:bg-emerald-400"
-          />
+          {paidAmount > 0 ? (
+            <LegendItem
+              label="Pagado"
+              amount={paidAmount}
+              subtitle={paidSubtitle}
+              dotClassName="bg-emerald-500 dark:bg-emerald-400"
+            />
+          ) : null}
           <LegendItem
             label="Pendiente"
             amount={pendingAmount}
@@ -433,7 +429,7 @@ export const FortnightSummaryHero = ({
               dotClassName="bg-violet-500 dark:bg-violet-400"
             />
           ) : null}
-          {freeAmount > 0 ? (
+          {freeAmount > 0 && !showIncomeRemainderBreakdown ? (
             <LegendItem
               label="Libre"
               amount={freeAmount}
@@ -496,16 +492,17 @@ export const FortnightSummaryHero = ({
             ) : null}
           </dl>
 
-          <div
-            className={cn(
-              METRIC_STRIP_CLASS,
-              'border-l-[3px] px-2.5 py-2',
-              copy.tone === 'shortfall'
-                ? 'border-l-destructive/60'
-                : copy.gapNote
-                  ? 'border-l-amber-500/60'
-                  : 'border-l-emerald-500/50',
-            )}
+          <AuraSurface
+            color={
+              AURA_TONE_HEX[
+                copy.tone === 'shortfall'
+                  ? 'destructive'
+                  : copy.gapNote
+                    ? 'amber'
+                    : 'emerald'
+              ]
+            }
+            className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
           >
             <div className="flex items-baseline justify-between gap-3">
               <span
@@ -526,7 +523,7 @@ export const FortnightSummaryHero = ({
                 {copy.gapNote}
               </p>
             ) : null}
-          </div>
+          </AuraSurface>
         </div>
       ) : null}
     </div>

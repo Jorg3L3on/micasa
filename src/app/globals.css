@@ -144,6 +144,18 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --animate-shine: shine var(--duration) infinite linear;
+  @keyframes shine {
+    0% {
+      background-position: 0% 0%;
+    }
+    50% {
+      background-position: 100% 100%;
+    }
+    to {
+      background-position: 0% 0%;
+    }
+  }
 }
 
 /* ==========================================================================
@@ -497,6 +509,21 @@ html:has(.landing-root) {
   box-shadow:
     0 0 0 1px rgb(255 255 255 / 0.1),
     0 0 14px -8px rgb(255 255 255 / 0.2);
+}
+
+/* Panel financiero tabs: glass pill with an electric-blue halo (wallet strip aura language). */
+.liquid-glass-pill.liquid-glass-pill-aura {
+  background-image: radial-gradient(120% 140% at 50% 0%, rgb(58 55 252 / 0.1), transparent 70%);
+  box-shadow:
+    0 0 0 1px rgb(58 55 252 / 0.25),
+    0 6px 18px -10px rgb(58 55 252 / 0.55);
+}
+
+.dark .liquid-glass-pill.liquid-glass-pill-aura {
+  background-image: radial-gradient(120% 140% at 50% 0%, rgb(58 55 252 / 0.28), transparent 70%);
+  box-shadow:
+    0 0 0 1px rgb(107 104 255 / 0.4),
+    0 0 18px -6px rgb(58 55 252 / 0.75);
 }
 
 @keyframes landing-glow-drift {

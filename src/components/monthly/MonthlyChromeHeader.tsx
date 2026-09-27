@@ -14,7 +14,7 @@ import {
 import { MonthlyMonthPicker } from '@/components/monthly/MonthlyMonthPicker';
 import {
   GLASS_TAB_ACTIVE_LABEL_CLASS,
-  GLASS_TAB_INDICATOR_CLASS,
+  AURA_TAB_INDICATOR_CLASS,
   GLASS_TAB_TRACK_CLASS,
   MONTHLY_ACCENT_TEXT_CLASS,
   MONTHLY_ICON_PILL_CLASS,
@@ -118,7 +118,7 @@ const FortnightProgressTrack = ({
   return (
     <div className="relative flex h-2.5 items-center">
       <div
-        className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60 dark:bg-white/[0.08]"
+        className="h-1.5 w-full rounded-full bg-muted/60 dark:bg-white/[0.08]"
         role="progressbar"
         aria-valuenow={percent}
         aria-valuemin={0}
@@ -127,8 +127,8 @@ const FortnightProgressTrack = ({
       >
         <div
           className={cn(
-            'h-full rounded-full bg-primary transition-[width] duration-500 dark:bg-[#3a37fc]',
-            tone === 'upcoming' && 'bg-transparent dark:bg-transparent',
+            'h-full rounded-full bg-linear-to-r from-[#3a37fc] to-violet-500 shadow-[0_0_12px_-1px_rgba(58,55,252,0.8)] transition-[width] duration-500',
+            tone === 'upcoming' && 'bg-none shadow-none',
           )}
           style={{ width: `${percent}%` }}
         />
@@ -317,7 +317,7 @@ export const MonthlyChromeHeader = ({
           stretch
           aria-label={`Primera quincena: ${firstLabel}`}
           title={firstLabel}
-          indicatorClassName={GLASS_TAB_INDICATOR_CLASS}
+          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
           activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
           className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
         >
@@ -328,7 +328,7 @@ export const MonthlyChromeHeader = ({
           stretch
           aria-label={`Segunda quincena: ${secondLabel}`}
           title={secondLabel}
-          indicatorClassName={GLASS_TAB_INDICATOR_CLASS}
+          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
           activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
           className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
         >
@@ -414,14 +414,13 @@ export const MonthlyChromeHeader = ({
       {showFortnightToggle ? (
         <>
           <div
-            className="hidden h-px w-full bg-border/50 md:block @min-[42rem]:hidden"
+            className="h-px w-full bg-border/50 @min-[42rem]:hidden"
             aria-hidden
           />
 
           <ChromeDivider className="mx-2" />
 
-          {/* Progress (tablet and desktop only) */}
-          <div className="hidden min-w-0 md:block @min-[42rem]:flex-1">
+          <div className="min-w-0 @min-[42rem]:flex-1">
             {progressCenter}
           </div>
 

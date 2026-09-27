@@ -15,6 +15,12 @@ import {
   MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { AuraSurface } from '@/components/aura/aura-surface';
+import {
+  AURA_TONE_HEX,
+  getAuraBarStyle,
+  getAuraWalletColor,
+} from '@/lib/ui/aura-palette';
 import type {
   MonthlyBudgetAllocationRow,
   MonthlyBudgetPanelResult,
@@ -164,9 +170,19 @@ function BudgetAllocationRow({
   const remainingLabel = overspent
     ? `${formatCurrency(Math.abs(allocation.remaining))} excedido`
     : `${formatCurrency(allocation.remaining)} restante`;
+  const brandColor = getAuraWalletColor(
+    allocation.walletProviderIconKey,
+    undefined,
+    'violet',
+  );
+  const barColor = overspent ? AURA_TONE_HEX.destructive : brandColor;
 
   return (
-    <li className="space-y-1.5 rounded-lg border border-border/40 bg-card/40 px-2.5 py-2">
+    <AuraSurface
+      role="listitem"
+      color={brandColor}
+      className="space-y-1.5 rounded-xl border border-border/40 bg-card/40 px-3 py-2.5"
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <CategoryLabel
@@ -202,7 +218,7 @@ function BudgetAllocationRow({
         />
       </div>
       <div
-        className="h-1.5 overflow-hidden rounded-full bg-muted/40"
+        className="h-1.5 rounded-full bg-muted/40"
         role="progressbar"
         aria-valuenow={barPercent}
         aria-valuemin={0}
@@ -210,8 +226,8 @@ function BudgetAllocationRow({
         aria-label={`${allocation.percentUsed}% del presupuesto de ${allocation.categoryName}`}
       >
         <div
-          className="h-full rounded-full bg-violet-500 dark:bg-violet-400"
-          style={{ width: `${barPercent}%` }}
+          className="h-full rounded-full transition-[width] duration-500"
+          style={{ width: `${barPercent}%`, ...getAuraBarStyle(barColor) }}
         />
       </div>
       <div className="flex justify-between gap-2 text-[10px] text-muted-foreground">
@@ -231,6 +247,6 @@ function BudgetAllocationRow({
           {remainingLabel}
         </span>
       </div>
-    </li>
+    </AuraSurface>
   );
 }

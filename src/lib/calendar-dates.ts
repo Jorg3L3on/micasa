@@ -17,6 +17,12 @@ const displayDateFormatter = new Intl.DateTimeFormat('es-MX', {
   day: 'numeric',
 });
 
+const displayDayMonthFormatter = new Intl.DateTimeFormat('es-MX', {
+  timeZone: APP_TIMEZONE,
+  month: 'short',
+  day: 'numeric',
+});
+
 const zonedPartsFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: APP_TIMEZONE,
   year: 'numeric',
@@ -212,8 +218,10 @@ export function endOfCalendarDay(ymd: string): Date {
   return zonedLocalTimeToUtc(ymd, 23, 59, 59, 999);
 }
 
-/** es-MX display for calendar dates and timestamps (civil day in MX). */
-export function formatDisplayDate(dateString: string | Date): string {
+const formatWithDisplayFormatter = (
+  dateString: string | Date,
+  formatter: Intl.DateTimeFormat,
+): string => {
   try {
     const date =
       typeof dateString === 'string'
@@ -224,10 +232,20 @@ export function formatDisplayDate(dateString: string | Date): string {
     if (Number.isNaN(date.getTime())) {
       return String(dateString);
     }
-    return displayDateFormatter.format(date);
+    return formatter.format(date);
   } catch {
     return String(dateString);
   }
+};
+
+/** es-MX display for calendar dates and timestamps (civil day in MX). */
+export function formatDisplayDate(dateString: string | Date): string {
+  return formatWithDisplayFormatter(dateString, displayDateFormatter);
+}
+
+/** Like {@link formatDisplayDate} without the year (e.g. "1 oct"), for compact list rows. */
+export function formatDisplayDayMonth(dateString: string | Date): string {
+  return formatWithDisplayFormatter(dateString, displayDayMonthFormatter);
 }
 
 const wallClockShortFormatter = new Intl.DateTimeFormat('es-MX', {

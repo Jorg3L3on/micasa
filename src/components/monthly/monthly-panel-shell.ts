@@ -13,6 +13,12 @@ export const MONTHLY_LIQUID_PANEL_CLASS = cn(MONTHLY_PANEL_SHELL_CLASS, 'liquid-
 /** Active tab indicator: glass pill (same recipe as the mobile dock). */
 export const GLASS_TAB_INDICATOR_CLASS = 'liquid-glass liquid-glass-pill';
 
+/** Panel financiero tab indicator: glass pill plus the electric-blue aura halo. */
+export const AURA_TAB_INDICATOR_CLASS = cn(
+  GLASS_TAB_INDICATOR_CLASS,
+  'liquid-glass-pill-aura',
+);
+
 export const GLASS_TAB_ACTIVE_LABEL_CLASS = 'text-foreground';
 
 /** Tab track under the glass pill: faint tint so the pill reads as the lit surface. */

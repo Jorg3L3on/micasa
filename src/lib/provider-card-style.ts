@@ -53,6 +53,8 @@ const rgba = (hex: string, alpha: number) => {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 };
 
+export const hexWithAlpha = rgba;
+
 const getCardColor = (providerIconKey?: string | null, fallbackType?: string) => {
   if (providerIconKey && PROVIDER_ICON_BASE_COLORS[providerIconKey]) {
     return PROVIDER_ICON_BASE_COLORS[providerIconKey];
@@ -121,14 +123,76 @@ export const WALLET_BRAND_HIT_WASH_CLASS =
 export const WALLET_BRAND_HIT_LABEL_CLASS =
   'group-hover:text-[var(--wallet-brand-ink)] group-focus-visible:text-[var(--wallet-brand-ink)] dark:group-hover:text-[var(--wallet-brand-ink-dark)] dark:group-focus-visible:text-[var(--wallet-brand-ink-dark)]';
 
-export type ProviderCardTone = 'subtle' | 'wow' | 'calm' | 'list';
+export type ProviderCardTone = 'subtle' | 'wow' | 'calm' | 'list' | 'aura';
 export type ProviderCardScheme = 'light' | 'dark';
 
-/** Calm cards adapt to theme; wow/subtle stay dark plastic surfaces. */
+const THEME_ADAPTIVE_TONES: ReadonlySet<ProviderCardTone> = new Set([
+  'calm',
+  'aura',
+]);
+
+/** Calm/aura cards adapt to theme; wow/subtle stay dark plastic surfaces. */
 export const isProviderCardDarkSurface = (
   tone: ProviderCardTone,
   scheme: ProviderCardScheme,
-): boolean => tone !== 'calm' || scheme === 'dark';
+): boolean => !THEME_ADAPTIVE_TONES.has(tone) || scheme === 'dark';
+
+export type WalletAuraColors = {
+  /** Gradient stops for the animated shine border. */
+  shine: string[];
+  /** Soft halo painted behind the card. */
+  glow: string;
+  glowStrong: string;
+};
+
+/** Brand-derived colors for the Panel financiero wallet strip aura. */
+export const getWalletAuraColors = (
+  providerIconKey?: string | null,
+  fallbackType?: string,
+): WalletAuraColors | null => {
+  const baseColor = getCardColor(providerIconKey, fallbackType);
+  if (!baseColor) return null;
+
+  return {
+    shine: [baseColor, mixWithWhite(baseColor, 0.55), rgba(baseColor, 0.55)],
+    glow: rgba(baseColor, 0.35),
+    glowStrong: rgba(baseColor, 0.6),
+  };
+};
+
+/** Aura tone: deep card face with brand bloom, like a premium linked card (grid is layered by the strip). */
+const getAuraToneCardStyle = (
+  baseColor: string,
+  scheme: ProviderCardScheme,
+): CSSProperties => {
+  if (scheme === 'light') {
+    return {
+      background: `
+        radial-gradient(90% 120% at 0% 0%, ${rgba(baseColor, 0.16)} 0%, transparent 60%),
+        radial-gradient(80% 110% at 100% 100%, ${rgba(baseColor, 0.1)} 0%, transparent 65%),
+        linear-gradient(155deg, #ffffff 0%, #f4f6fb 100%)
+      `,
+      borderColor: rgba(baseColor, 0.22),
+      boxShadow: `
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        0 10px 24px -16px ${rgba(baseColor, 0.45)}
+      `,
+    };
+  }
+
+  return {
+    background: `
+      radial-gradient(90% 120% at 0% 0%, ${rgba(baseColor, 0.28)} 0%, transparent 60%),
+      radial-gradient(80% 110% at 100% 100%, ${rgba(baseColor, 0.16)} 0%, transparent 65%),
+      linear-gradient(155deg, #0b1020 0%, #111729 100%)
+    `,
+    borderColor: rgba(baseColor, 0.2),
+    boxShadow: `
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 12px 28px -18px ${rgba(baseColor, 0.8)}
+    `,
+  };
+};
 
 /** List tone: airy brand wash on bg-card — readable with default foreground text. */
 export const getListToneCardStyle = (baseColor: string): CSSProperties => ({
@@ -149,6 +213,10 @@ export const getProviderCardStyle = (
 
   if (tone === 'list') {
     return getListToneCardStyle(baseColor);
+  }
+
+  if (tone === 'aura') {
+    return getAuraToneCardStyle(baseColor, scheme);
   }
 
   // Calm tone: even brand wash (no left accent stripe / corner bloom).

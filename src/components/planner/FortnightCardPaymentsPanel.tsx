@@ -31,6 +31,13 @@ import {
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
 import { EditCardPaymentPlanDialog } from '@/components/planner/EditCardPaymentPlanDialog';
+import { AuraRowBloom } from '@/components/aura/aura-surface';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import {
+  AURA_TONE_HEX,
+  getDueRowTone,
+  type DueRowStatus,
+} from '@/lib/ui/aura-palette';
 import type { CardPaymentPlanFormValues } from '@/schemas/credit-card-payment-plan.schema';
 
 /** Calendar-day difference between the statement due date and today (UTC). */
@@ -53,6 +60,14 @@ const daysLeftColor = (days: number, status: PlannerCardPaymentStatus) => {
   if (days <= 3) return 'text-destructive';
   if (days <= 7) return 'text-amber-600 dark:text-amber-400';
   return 'text-blue-600 dark:text-blue-400';
+};
+
+const CARD_STATUS_TO_DUE_ROW: Record<PlannerCardPaymentStatus, DueRowStatus> = {
+  pagado: 'paid',
+  vencido: 'overdue',
+  falta_dato: 'missing',
+  sin_cargo: 'muted',
+  por_pagar: 'pending',
 };
 
 const WALLET_TYPE_ICON: Record<string, typeof CreditCard> = {
@@ -260,30 +275,27 @@ const FortnightCardPaymentsPanel = ({
 
             const isDueSoon =
               status === 'por_pagar' && daysLeft <= 7;
-            const isDueLater =
-              status === 'por_pagar' && daysLeft > 7;
+            const rowTone = getDueRowTone(
+              CARD_STATUS_TO_DUE_ROW[status],
+              daysLeft,
+            );
 
             return (
               <li
                 key={item.walletId}
                 className={cn(
-                  'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all',
-                  'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+                  MONTHLY_PANEL_SHELL_CLASS,
+                  'group/row flex items-center gap-2.5 overflow-hidden rounded-xl px-3',
                   isCompact ? 'py-2.5' : 'py-3',
-                  status === 'vencido' &&
-                    'border-destructive/25 bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5',
-                  isDueSoon &&
-                    'border-amber-500/25 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 hover:from-amber-500/12 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4',
-                  isDueLater &&
-                    'border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-card to-blue-500/2 hover:from-blue-500/12 dark:from-blue-500/14 dark:via-card/60 dark:to-blue-500/4',
-                  status === 'pagado' &&
-                    'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3',
-                  status === 'sin_cargo' &&
-                    'border-border/50 bg-muted/20 opacity-80',
-                  isMissingPayment &&
-                    'border-amber-500/30 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4',
+                  status === 'sin_cargo' && 'opacity-80',
                 )}
               >
+                {rowTone ? (
+                  <AuraRowBloom
+                    color={AURA_TONE_HEX[rowTone]}
+                    subdued={status === 'pagado'}
+                  />
+                ) : null}
                 <span
                   className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1',
