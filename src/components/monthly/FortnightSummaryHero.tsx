@@ -235,7 +235,8 @@ type AccountMetricProps = {
   amountClassName: string;
 };
 
-const AccountMetric = ({
+/** Aura hero tile (Balance actual / Liquidez actual); reused by Liquidez month metrics. */
+export const AccountMetric = ({
   label,
   amount,
   subtitle,

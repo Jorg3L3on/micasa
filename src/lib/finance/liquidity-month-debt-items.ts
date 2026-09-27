@@ -11,6 +11,11 @@ export type MonthDebtItem = {
   payment_amount?: number;
   /** Civil due date when the schedule knows a day. Never inferred. */
   due_date?: string;
+  /** Prestamista shown as the row icon (loans only). */
+  lender_name?: string;
+  lender_icon_key?: string | null;
+  /** Wallet provider icon (cards and compras a meses). */
+  wallet_icon_key?: string | null;
 };
 
 type ObligationLike = {
@@ -44,7 +49,10 @@ type DebtTrackLike = {
   end_month_key: string;
   monthly_amount: number;
   schedule?: TrackScheduleEntry[];
+  wallet_id?: number;
   wallet_name?: string;
+  lender_name?: string;
+  lender_icon_key?: string | null;
 };
 
 /** @deprecated Payroll rows are folded into loan tracks with schedules. */
@@ -111,7 +119,11 @@ export const buildMonthDebtItems = (
   milestones: MilestoneLike[],
   debtTracks: DebtTrackLike[],
   _payrollItems: PayrollDebtLineItem[] = [],
+  walletIconKeys: ReadonlyMap<number, string | null> = new Map(),
 ): Map<string, MonthDebtItem[]> => {
+  const walletIconKeyFor = (walletId: number | undefined): string | null =>
+    walletId == null ? null : (walletIconKeys.get(walletId) ?? null);
+
   const map = new Map<string, MonthDebtItem[]>();
   for (const key of monthKeys) {
     map.set(key, []);
@@ -135,6 +147,7 @@ export const buildMonthDebtItems = (
         subtitle: 'Adeudo de tarjeta',
         amount: obligation.next_due_payment,
         payment_amount: obligation.next_due_payment,
+        wallet_icon_key: walletIconKeyFor(obligation.wallet_id),
       });
     }
   }
@@ -175,6 +188,11 @@ export const buildMonthDebtItems = (
         amount: remaining,
         payment_amount: payment,
         ...(dueDate ? { due_date: dueDate } : {}),
+        ...(kind === 'loan'
+          ? track.lender_name
+            ? { lender_name: track.lender_name, lender_icon_key: track.lender_icon_key ?? null }
+            : {}
+          : { wallet_icon_key: walletIconKeyFor(track.wallet_id) }),
       });
     }
   }
@@ -193,6 +211,9 @@ export type MonthDebtItemInput = {
   title: string;
   subtitle: string;
   amount: number;
+  lender_name?: string;
+  lender_icon_key?: string | null;
+  wallet_icon_key?: string | null;
 };
 
 const sortMonthDebtItems = (list: MonthDebtItem[]): void => {
@@ -224,6 +245,10 @@ export const groupDebtItemsByMonth = (
         title: input.title,
         subtitle: input.subtitle,
         amount: roundMoney(input.amount),
+        ...(input.lender_name
+          ? { lender_name: input.lender_name, lender_icon_key: input.lender_icon_key ?? null }
+          : {}),
+        ...(input.kind === 'loan' ? {} : { wallet_icon_key: input.wallet_icon_key ?? null }),
       },
     });
   }
@@ -247,6 +272,6 @@ export const pastLoanDebtSubtitle = (paymentSource: string, lender: string): str
 export const monthDebtItemsTotal = (items: readonly MonthDebtItem[]): number =>
   items.reduce((sum, item) => sum + item.amount, 0);
 
-/** Sum of payments due this month (chart / “Deudas de este mes”). */
+/** Sum of payments due this month (chart / “Pagos del mes”). */
 export const monthDebtPaymentsTotal = (items: readonly MonthDebtItem[]): number =>
   items.reduce((sum, item) => sum + (item.payment_amount ?? 0), 0);

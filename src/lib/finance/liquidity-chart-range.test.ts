@@ -4,38 +4,40 @@ import {
   clampCustomChartRangeToAvailable,
   defaultCustomChartRange,
   parseStoredCustomChartRange,
+  resolveDebtPayoffMonthKey,
   resolveLiquidityChartRange,
+  resolveLiquidityFetchWindow,
   shiftMonthKey,
 } from '@/lib/finance/liquidity-chart-range';
 
 describe('resolveLiquidityChartRange', () => {
   const today = '2026-08-22';
 
-  it('builds year-to-date through the current month', () => {
-    const bounds = resolveLiquidityChartRange('ytd', today);
-    expect(bounds.fromMonthKey).toBe('2026-01');
-    expect(bounds.toMonthKey).toBe('2026-08');
-    expect(bounds.monthKeys).toEqual(buildMonthKeyRange('2026-01', '2026-08'));
+  it('looks 3, 6 and 12 months ahead starting this month', () => {
+    expect(resolveLiquidityChartRange('next_3', today).monthKeys).toEqual(
+      buildMonthKeyRange('2026-08', '2026-10'),
+    );
+    expect(resolveLiquidityChartRange('next_6', today).toMonthKey).toBe('2027-01');
+    const year = resolveLiquidityChartRange('next_12', today);
+    expect(year.fromMonthKey).toBe('2026-08');
+    expect(year.toMonthKey).toBe('2027-07');
+    expect(year.monthKeys).toHaveLength(12);
   });
 
-  it('centers ±3 months around the current month', () => {
-    const bounds = resolveLiquidityChartRange('plus_minus_3', today);
-    expect(bounds.fromMonthKey).toBe('2026-05');
-    expect(bounds.toMonthKey).toBe('2026-11');
-    expect(bounds.monthKeys).toHaveLength(7);
-    expect(bounds.monthKeys[3]).toBe('2026-08');
+  it('runs "Hasta liquidar" through the last scheduled payment', () => {
+    const bounds = resolveLiquidityChartRange('payoff', today, null, '2027-03');
+    expect(bounds.fromMonthKey).toBe('2026-08');
+    expect(bounds.toMonthKey).toBe('2027-03');
   });
 
-  it('spans the full calendar year', () => {
-    const bounds = resolveLiquidityChartRange('calendar_year', today);
-    expect(bounds.fromMonthKey).toBe('2026-01');
-    expect(bounds.toMonthKey).toBe('2026-12');
+  it('keeps at least three months when the payoff is imminent', () => {
+    const bounds = resolveLiquidityChartRange('payoff', today, null, '2026-08');
+    expect(bounds.toMonthKey).toBe('2026-10');
   });
 
-  it('spans January through June of the next year', () => {
-    const bounds = resolveLiquidityChartRange('year_and_half', today);
-    expect(bounds.fromMonthKey).toBe('2026-01');
-    expect(bounds.toMonthKey).toBe('2027-06');
+  it('shows six months when there is no debt left', () => {
+    const bounds = resolveLiquidityChartRange('payoff', today, null, null);
+    expect(bounds.toMonthKey).toBe('2027-01');
   });
 
   it('uses a custom from/to window and swaps inverted bounds', () => {
@@ -79,6 +81,38 @@ describe('custom chart range helpers', () => {
       ['2026-07', '2026-08', '2026-09'],
     );
     expect(clamped).toEqual({ fromMonthKey: '2026-07', toMonthKey: '2026-09' });
+  });
+});
+
+describe('resolveDebtPayoffMonthKey', () => {
+  it('returns the last month with a payment due', () => {
+    expect(
+      resolveDebtPayoffMonthKey([
+        { monthKey: '2026-08', paymentsDue: 500 },
+        { monthKey: '2026-12', paymentsDue: 120 },
+        { monthKey: '2027-01', paymentsDue: 0 },
+      ]),
+    ).toBe('2026-12');
+  });
+
+  it('returns null when nothing is due', () => {
+    expect(resolveDebtPayoffMonthKey([{ monthKey: '2026-08', paymentsDue: 0 }])).toBeNull();
+  });
+});
+
+describe('resolveLiquidityFetchWindow', () => {
+  it('covers January through June of next year early in the year', () => {
+    expect(resolveLiquidityFetchWindow('2026-03-10')).toEqual({
+      fromMonthKey: '2026-01',
+      toMonthKey: '2027-06',
+    });
+  });
+
+  it('extends past June so the 1A preset is fully covered', () => {
+    expect(resolveLiquidityFetchWindow('2026-09-27')).toEqual({
+      fromMonthKey: '2026-01',
+      toMonthKey: '2027-08',
+    });
   });
 });
 

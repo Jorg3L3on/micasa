@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
         select: {
           amount: true,
           paid_at: true,
-          credit_card_wallet: { select: { id: true, name: true } },
+          credit_card_wallet: { select: { id: true, name: true, provider_icon_key: true } },
         },
       }),
       prisma.loanPayment.findMany({
@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               lender: true,
+              lender_entity: { select: { name: true, provider_icon_key: true } },
               payment_source: true,
             },
           },
@@ -162,6 +163,7 @@ export async function GET(request: NextRequest) {
         title: payment.credit_card_wallet.name,
         subtitle: 'Pago de tarjeta',
         amount,
+        wallet_icon_key: payment.credit_card_wallet.provider_icon_key,
       });
     }
 
@@ -184,6 +186,8 @@ export async function GET(request: NextRequest) {
         title: payment.loan.name,
         subtitle: pastLoanDebtSubtitle(payment.loan.payment_source, payment.loan.lender),
         amount,
+        lender_name: payment.loan.lender_entity?.name ?? payment.loan.lender,
+        lender_icon_key: payment.loan.lender_entity?.provider_icon_key ?? null,
       });
     }
 

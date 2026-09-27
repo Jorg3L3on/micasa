@@ -7,6 +7,46 @@ import {
 } from '@/lib/finance/lender-identity';
 import { cn } from '@/lib/utils';
 
+type LenderIconProps = {
+  name: string;
+  providerIconKey?: string | null;
+  className?: string;
+  iconClassName?: string;
+};
+
+export const LenderIcon = ({
+  name,
+  providerIconKey,
+  className,
+  iconClassName,
+}: LenderIconProps) => {
+  const inferredKey = inferLenderProviderIconKey(name, providerIconKey);
+  const showFonacotPill = isFonacotLenderName(name) && !inferredKey;
+
+  if (showFonacotPill) {
+    return (
+      <span
+        className={cn(
+          'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 text-[11px] font-bold tracking-wide text-teal-800 ring-1 ring-teal-500/30 dark:text-teal-200',
+          className,
+        )}
+        aria-label="Fonacot"
+        title="Fonacot"
+      >
+        FC
+      </span>
+    );
+  }
+
+  return (
+    <WalletProviderIcon
+      providerIconKey={inferredKey}
+      className={cn('h-10 w-10 rounded-xl', className)}
+      iconClassName={cn('h-5 w-5', iconClassName)}
+    />
+  );
+};
+
 type LenderIdentityProps = {
   name: string;
   providerIconKey?: string | null;
@@ -27,50 +67,33 @@ export const LenderIdentity = ({
   subtitleClassName,
   iconClassName,
   iconInnerClassName,
-}: LenderIdentityProps) => {
-  const inferredKey = inferLenderProviderIconKey(name, providerIconKey);
-  const showFonacotPill = isFonacotLenderName(name) && !inferredKey;
-
-  return (
-    <span className={cn('inline-flex min-w-0 items-center gap-2.5', className)}>
-      {showFonacotPill ? (
-        <span
-          className={cn(
-            'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 text-[11px] font-bold tracking-wide text-teal-800 ring-1 ring-teal-500/30 dark:text-teal-200',
-            iconClassName,
-          )}
-          aria-label="Fonacot"
-          title="Fonacot"
-        >
-          FC
-        </span>
-      ) : (
-        <WalletProviderIcon
-          providerIconKey={inferredKey}
-          className={cn('h-10 w-10 rounded-xl', iconClassName)}
-          iconClassName={cn('h-5 w-5', iconInnerClassName)}
-        />
-      )}
-      <span className="min-w-0">
-        <span
-          className={cn(
-            'block font-semibold leading-tight text-foreground',
-            nameClassName,
-          )}
-        >
-          {name}
-        </span>
-        {subtitle ? (
-          <span
-            className={cn(
-              'mt-0.5 block text-xs text-muted-foreground',
-              subtitleClassName,
-            )}
-          >
-            {subtitle}
-          </span>
-        ) : null}
+}: LenderIdentityProps) => (
+  <span className={cn('inline-flex min-w-0 items-center gap-2.5', className)}>
+    <LenderIcon
+      name={name}
+      providerIconKey={providerIconKey}
+      className={iconClassName}
+      iconClassName={iconInnerClassName}
+    />
+    <span className="min-w-0">
+      <span
+        className={cn(
+          'block font-semibold leading-tight text-foreground',
+          nameClassName,
+        )}
+      >
+        {name}
       </span>
+      {subtitle ? (
+        <span
+          className={cn(
+            'mt-0.5 block text-xs text-muted-foreground',
+            subtitleClassName,
+          )}
+        >
+          {subtitle}
+        </span>
+      ) : null}
     </span>
-  );
-};
+  </span>
+);

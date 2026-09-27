@@ -24,7 +24,6 @@ export const useLiquidityProjection = () => {
       }
       const res = await fetchLiquidityProjection(
         {
-          chartRange: 'year_and_half',
           omitZero: true,
           includeUnpaid: true,
           includeTemplates: true,

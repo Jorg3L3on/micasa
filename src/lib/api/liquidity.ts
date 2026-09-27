@@ -13,7 +13,6 @@ import {
 
 export type FetchLiquidityProjectionParams = {
   until?: string;
-  chartRange?: string;
   omitZero?: boolean;
   stressCyclePercent?: number;
   includeUnpaid?: boolean;
@@ -26,9 +25,6 @@ const appendLiquiditySearchParams = (
 ) => {
   if (params.until) {
     search.set('until', params.until);
-  }
-  if (params.chartRange) {
-    search.set('chartRange', params.chartRange);
   }
   if (params.omitZero === false) {
     search.set('omitZero', 'false');

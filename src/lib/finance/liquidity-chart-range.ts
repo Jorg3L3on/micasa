@@ -1,27 +1,33 @@
 import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 
-export type LiquidityChartRangeId =
-  | 'ytd'
-  | 'plus_minus_3'
-  | 'calendar_year'
-  | 'year_and_half'
-  | 'custom';
+export type LiquidityChartRangeId = 'next_3' | 'next_6' | 'next_12' | 'payoff' | 'custom';
+
+export type LiquidityChartPresetId = Exclude<LiquidityChartRangeId, 'custom'>;
 
 export type LiquidityCustomChartRange = {
   fromMonthKey: string;
   toMonthKey: string;
 };
 
+export const DEFAULT_LIQUIDITY_CHART_RANGE: LiquidityChartPresetId = 'next_3';
+
 export const LIQUIDITY_CHART_RANGE_OPTIONS: Array<{
-  value: Exclude<LiquidityChartRangeId, 'custom'>;
+  value: LiquidityChartPresetId;
   label: string;
-  hint: string;
+  description: string;
 }> = [
-  { value: 'ytd', label: 'Enero a hoy', hint: 'Lo que va del año' },
-  { value: 'plus_minus_3', label: '±3 meses', hint: '3 atrás · 3 adelante' },
-  { value: 'calendar_year', label: 'Todo el año', hint: 'Ene – Dic' },
-  { value: 'year_and_half', label: 'Año y medio', hint: 'Ene – Jun sig.' },
+  { value: 'next_3', label: '3M', description: 'Próximos 3 meses' },
+  { value: 'next_6', label: '6M', description: 'Próximos 6 meses' },
+  { value: 'next_12', label: '1A', description: 'Próximos 12 meses' },
+  { value: 'payoff', label: 'Hasta liquidar', description: 'Hasta que terminas de pagar' },
 ];
+
+/** Shortest "Hasta liquidar" window, so a payoff this month still draws a line. */
+const PAYOFF_MIN_MONTHS = 3;
+/** "Hasta liquidar" window when there is no debt left to pay. */
+const PAYOFF_FALLBACK_MONTHS = 6;
+/** The projection must cover at least the "1A" preset. */
+const FETCH_MIN_FORWARD_MONTHS = 11;
 
 const MONTH_KEY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -129,37 +135,57 @@ export type LiquidityChartRangeBounds = {
   monthKeys: string[];
 };
 
+/** Last month with a scheduled debt payment, or null when nothing is left to pay. */
+export const resolveDebtPayoffMonthKey = (
+  months: ReadonlyArray<{ monthKey: string; paymentsDue: number }>,
+): string | null => {
+  let payoffMonthKey: string | null = null;
+  for (const month of months) {
+    if (month.paymentsDue <= 0.005) continue;
+    if (!payoffMonthKey || compareMonthKeys(month.monthKey, payoffMonthKey) > 0) {
+      payoffMonthKey = month.monthKey;
+    }
+  }
+  return payoffMonthKey;
+};
+
+const resolvePayoffToMonthKey = (
+  currentMonthKey: string,
+  payoffMonthKey: string | null,
+): string => {
+  if (!payoffMonthKey) return shiftMonthKey(currentMonthKey, PAYOFF_FALLBACK_MONTHS - 1);
+  const minimumTo = shiftMonthKey(currentMonthKey, PAYOFF_MIN_MONTHS - 1);
+  return compareMonthKeys(payoffMonthKey, minimumTo) > 0 ? payoffMonthKey : minimumTo;
+};
+
 /** Resolve chart month span from a preset (or custom from/to) and today's calendar date. */
 export const resolveLiquidityChartRange = (
   rangeId: LiquidityChartRangeId,
   todayYmd: string,
   custom: LiquidityCustomChartRange | null = null,
+  payoffMonthKey: string | null = null,
 ): LiquidityChartRangeBounds => {
-  const [year] = todayYmd.split('-').map(Number);
   const currentMonthKey = todayYmd.slice(0, 7);
-  const yearStart = monthKeyFromParts(year, 1);
-  const yearEnd = monthKeyFromParts(year, 12);
-  const nextYearMid = monthKeyFromParts(year + 1, 6);
 
   let fromMonthKey: string;
   let toMonthKey: string;
 
   switch (rangeId) {
-    case 'ytd':
-      fromMonthKey = yearStart;
-      toMonthKey = currentMonthKey;
+    case 'next_3':
+      fromMonthKey = currentMonthKey;
+      toMonthKey = shiftMonthKey(currentMonthKey, 2);
       break;
-    case 'plus_minus_3':
-      fromMonthKey = shiftMonthKey(currentMonthKey, -3);
-      toMonthKey = shiftMonthKey(currentMonthKey, 3);
+    case 'next_6':
+      fromMonthKey = currentMonthKey;
+      toMonthKey = shiftMonthKey(currentMonthKey, 5);
       break;
-    case 'calendar_year':
-      fromMonthKey = yearStart;
-      toMonthKey = yearEnd;
+    case 'next_12':
+      fromMonthKey = currentMonthKey;
+      toMonthKey = shiftMonthKey(currentMonthKey, 11);
       break;
-    case 'year_and_half':
-      fromMonthKey = yearStart;
-      toMonthKey = nextYearMid;
+    case 'payoff':
+      fromMonthKey = currentMonthKey;
+      toMonthKey = resolvePayoffToMonthKey(currentMonthKey, payoffMonthKey);
       break;
     case 'custom': {
       const resolved = custom
@@ -185,11 +211,28 @@ export const resolveLiquidityChartRange = (
 export const monthKeyToUntilDate = (monthKey: string): Date =>
   parseCalendarDate(endOfMonthYmdFromMonthKey(monthKey));
 
+/**
+ * Months the projection API computes: January of this year (so the range slider can look
+ * back) through June of next year, extended so the "1A" preset is always fully covered.
+ */
+export const resolveLiquidityFetchWindow = (
+  todayYmd: string,
+): { fromMonthKey: string; toMonthKey: string } => {
+  const [year] = todayYmd.split('-').map(Number);
+  const currentMonthKey = todayYmd.slice(0, 7);
+  const nextYearMid = monthKeyFromParts(year + 1, 6);
+  const minimumTo = shiftMonthKey(currentMonthKey, FETCH_MIN_FORWARD_MONTHS);
+  return {
+    fromMonthKey: monthKeyFromParts(year, 1),
+    toMonthKey: compareMonthKeys(nextYearMid, minimumTo) >= 0 ? nextYearMid : minimumTo,
+  };
+};
+
 export const isLiquidityChartRangeId = (value: string | null): value is LiquidityChartRangeId =>
-  value === 'ytd' ||
-  value === 'plus_minus_3' ||
-  value === 'calendar_year' ||
-  value === 'year_and_half' ||
+  value === 'next_3' ||
+  value === 'next_6' ||
+  value === 'next_12' ||
+  value === 'payoff' ||
   value === 'custom';
 
 export const asOfYmdForMonthKey = (monthKey: string, todayYmd: string): string => {

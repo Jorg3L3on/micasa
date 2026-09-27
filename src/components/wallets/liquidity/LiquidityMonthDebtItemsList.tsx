@@ -1,5 +1,11 @@
 'use client';
 
+import { LenderIcon } from '@/components/loans/LenderIdentity';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { AuraRowBloom } from '@/components/aura/aura-surface';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { AURA_TONE_HEX, getAuraWalletColor } from '@/lib/ui/aura-palette';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
   monthDebtItemsTotal,
@@ -14,10 +20,19 @@ const KIND_LABEL: Record<MonthDebtItem['kind'], string> = {
 };
 
 const KIND_PILL: Record<MonthDebtItem['kind'], string> = {
-  card: 'bg-violet-500/10 text-violet-300 ring-violet-500/20',
-  msi: 'bg-fuchsia-500/10 text-fuchsia-300 ring-fuchsia-500/20',
-  loan: 'bg-amber-500/10 text-amber-300 ring-amber-500/20',
+  card: 'border-violet-500/40 bg-violet-500/10 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  msi: 'border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300',
+  loan: 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
 };
+
+const KIND_DOT: Record<MonthDebtItem['kind'], string> = {
+  card: 'bg-violet-500 dark:bg-violet-400',
+  msi: 'bg-fuchsia-500 dark:bg-fuchsia-400',
+  loan: 'bg-amber-500 dark:bg-amber-400',
+};
+
+const ROW_ICON_CLASS = 'h-9 w-9 rounded-lg text-[10px]';
+const ROW_ICON_INNER_CLASS = 'h-4 w-4';
 
 export type MonthDebtListMode = 'remaining' | 'payment';
 
@@ -32,11 +47,21 @@ const rowsForMode = (items: readonly MonthDebtItem[], mode: MonthDebtListMode): 
     })
     .filter((item) => item.displayAmount > 0);
 
+const rowAuraColor = (item: MonthDebtItem): string =>
+  item.kind === 'loan'
+    ? AURA_TONE_HEX.amber
+    : getAuraWalletColor(item.wallet_icon_key, undefined, 'violet');
+
+const amountClass = (mode: MonthDebtListMode): string =>
+  cn(
+    'shrink-0 font-mono text-sm font-bold tabular-nums',
+    mode === 'payment' ? 'text-foreground' : 'text-amber-700 dark:text-amber-300',
+  );
+
 type LiquidityMonthDebtItemsListProps = {
   items: MonthDebtItem[];
   emptyMessage: string;
   mode?: MonthDebtListMode;
-  heading?: string;
   totalLabel?: string;
   /** When set, overrides computed total (e.g. chart `outstanding_debt_total`). */
   totalOverride?: number;
@@ -47,7 +72,6 @@ export const LiquidityMonthDebtItemsList = ({
   items,
   emptyMessage,
   mode = 'remaining',
-  heading,
   totalLabel,
   totalOverride,
   className,
@@ -56,62 +80,79 @@ export const LiquidityMonthDebtItemsList = ({
   const total =
     totalOverride ??
     (mode === 'payment' ? monthDebtPaymentsTotal(items) : monthDebtItemsTotal(items));
-  const resolvedHeading =
-    heading ?? (mode === 'payment' ? 'Pagos del mes' : 'Adeudo restante');
   const resolvedTotalLabel =
     totalLabel ?? (mode === 'payment' ? 'Total del mes' : 'Total adeudo');
 
-  return (
-    <div className={className ?? 'space-y-2'}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {resolvedHeading}
-        {rows.length > 0 ? (
-          <span className="ml-1.5 font-medium normal-case tracking-normal tabular-nums">
-            · {rows.length}
-          </span>
-        ) : null}
+  if (rows.length === 0) {
+    return (
+      <p
+        className={cn(
+          'rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground',
+          className,
+        )}
+      >
+        {emptyMessage}
       </p>
-      <div className="overflow-hidden rounded-xl border border-border/50 dark:border-white/[0.07]">
-        <ul className="max-h-72 divide-y divide-border/40 overflow-y-auto dark:divide-white/[0.06]">
-          {rows.length === 0 ? (
-            <li className="px-3 py-4 text-center text-sm text-muted-foreground">{emptyMessage}</li>
-          ) : (
-            rows.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-start justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-muted/20"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{item.title}</p>
-                  <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span
-                      className={cn(
-                        'rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1',
-                        KIND_PILL[item.kind],
-                      )}
-                    >
-                      {KIND_LABEL[item.kind]}
-                    </span>
-                    {item.subtitle ? <span>{item.subtitle}</span> : null}
-                  </p>
-                </div>
-                <p className={cnAmountClass(mode)}>{formatCurrency(item.displayAmount)}</p>
-              </li>
-            ))
+    );
+  }
+
+  return (
+    <ul className={cn('flex flex-col gap-2', className)} role="list">
+      {rows.map((item) => (
+        <li
+          key={item.id}
+          className={cn(
+            MONTHLY_PANEL_SHELL_CLASS,
+            'isolate flex items-center gap-2.5 overflow-hidden rounded-xl px-3 py-3',
           )}
-        </ul>
-        {rows.length > 0 ? (
-          <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-muted/20 px-3 py-2.5 dark:border-white/[0.08] dark:bg-white/[0.03]">
-            <p className="text-sm font-semibold">{resolvedTotalLabel}</p>
-            <p className={cnAmountClass(mode)}>{formatCurrency(total)}</p>
+        >
+          <AuraRowBloom color={rowAuraColor(item)} />
+          {item.kind === 'loan' ? (
+            <LenderIcon
+              name={item.lender_name ?? item.title}
+              providerIconKey={item.lender_icon_key}
+              className={ROW_ICON_CLASS}
+              iconClassName={ROW_ICON_INNER_CLASS}
+            />
+          ) : (
+            <WalletProviderIcon
+              providerIconKey={item.wallet_icon_key}
+              className={ROW_ICON_CLASS}
+              iconClassName={ROW_ICON_INNER_CLASS}
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold leading-tight text-foreground">
+              {item.title}
+            </p>
+            <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+              <span
+                className={cn(
+                  'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium',
+                  KIND_PILL[item.kind],
+                )}
+              >
+                <span className={cn('h-1 w-1 rounded-full', KIND_DOT[item.kind])} aria-hidden />
+                {KIND_LABEL[item.kind]}
+              </span>
+              {item.subtitle ? <span className="truncate">{item.subtitle}</span> : null}
+            </p>
           </div>
-        ) : null}
-      </div>
-    </div>
+          <p className={amountClass(mode)}>{formatCurrency(item.displayAmount)}</p>
+        </li>
+      ))}
+      <li
+        className={cn(
+          METRIC_STRIP_CLASS,
+          'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px]',
+          mode === 'payment' ? 'border-l-violet-500/50' : 'border-l-amber-500/50',
+        )}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {resolvedTotalLabel}
+        </span>
+        <span className={cn(amountClass(mode), 'text-base')}>{formatCurrency(total)}</span>
+      </li>
+    </ul>
   );
 };
-
-const cnAmountClass = (mode: MonthDebtListMode): string =>
-  mode === 'payment'
-    ? 'shrink-0 font-mono text-sm font-bold tabular-nums text-violet-300'
-    : 'shrink-0 font-mono text-sm font-bold tabular-nums text-amber-300';
