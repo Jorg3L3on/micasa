@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Check,
   Copy,
@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plug,
+  Plus,
   ShieldOff,
   Sparkles,
 } from 'lucide-react';
@@ -25,19 +26,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ToggleField } from '@/components/ui/toggle';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  ResponsiveOverlay,
+  useOverlaySelectOpenChange,
+} from '@/components/overlay/responsive-overlay';
+import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,9 +53,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
+import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 import AgentContextPicker, {
   formatContextLabel,
   useDefaultContextSelection,
@@ -217,55 +209,35 @@ const CLIENT_SNIPPETS: ClientSnippet[] = [
   },
 ];
 
-type OverlayShellProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  description: string;
-  children: React.ReactNode;
+type ExpirySelectProps = {
+  value: string;
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
 };
 
-/** Dialog on desktop, bottom Sheet on mobile (responsive-overlays rule). */
-function OverlayShell({
-  open,
-  onOpenChange,
-  title,
-  description,
-  children,
-}: OverlayShellProps) {
-  const isMobile = useIsMobile();
-
-  if (isMobile) {
-    return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="bottom"
-          className="flex max-h-[92vh] flex-col gap-0 rounded-t-xl p-0"
-        >
-          <SheetHeader className="border-b border-border/50 px-4 py-3">
-            <SheetTitle className="text-base font-semibold">{title}</SheetTitle>
-            <SheetDescription className="sr-only">{description}</SheetDescription>
-          </SheetHeader>
-          <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {open ? children : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
+const ExpirySelect = ({ value, onValueChange, disabled }: ExpirySelectProps) => {
+  const handleSelectOpenChange = useOverlaySelectOpenChange();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-md gap-4 p-5">
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
-          <DialogDescription className="sr-only">{description}</DialogDescription>
-        </DialogHeader>
-        {open ? children : null}
-      </DialogContent>
-    </Dialog>
+    <Select
+      value={value}
+      onValueChange={onValueChange}
+      onOpenChange={handleSelectOpenChange}
+      disabled={disabled}
+    >
+      <SelectTrigger id="connection-expiry" className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {EXPIRY_OPTIONS.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
-}
+};
 
 type ConnectionsPanelProps = {
   initialKeys: ApiKeySummary[];
@@ -320,7 +292,7 @@ export default function ConnectionsPanel({
     return `${window.location.origin}/api/mcp`;
   }, []);
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = useCallback(() => {
     setNewName('');
     setAllowWrite(false);
     setExpiryOption('never');
@@ -328,7 +300,20 @@ export default function ConnectionsPanel({
     setTokenCopied(false);
     setCreateContexts([]);
     setCreateOpen(true);
-  };
+  }, [setCreateContexts]);
+
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  useRegisterToolbarActions({
+    primaryAction: {
+      label: 'Nueva conexión',
+      onClick: handleOpenCreate,
+      icon: primaryActionIcon,
+    },
+  });
 
   const handleCreateOpenChange = (open: boolean) => {
     if (!open && creating) return;
@@ -538,29 +523,23 @@ export default function ConnectionsPanel({
           {createdToken}
         </p>
       </div>
-      <Button
-        type="button"
-        onClick={handleCopyToken}
-        className="h-11 w-full rounded-xl"
-      >
-        {tokenCopied ? (
-          <>
-            <Check className="size-4" aria-hidden /> Copiado
-          </>
-        ) : (
-          <>
-            <Copy className="size-4" aria-hidden /> Copiar token
-          </>
-        )}
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        className="h-9 w-full"
-        onClick={() => handleCreateOpenChange(false)}
-      >
-        Listo
-      </Button>
+      {tokenCopied ? (
+        <Button
+          type="button"
+          onClick={() => handleCreateOpenChange(false)}
+          className={OVERLAY_PRIMARY_BUTTON_CLASS}
+        >
+          <Check className="size-4" aria-hidden /> Listo
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          onClick={handleCopyToken}
+          className={OVERLAY_PRIMARY_BUTTON_CLASS}
+        >
+          <Copy className="size-4" aria-hidden /> Copiar token
+        </Button>
+      )}
     </div>
   ) : (
     <div className="flex flex-col gap-4">
@@ -602,22 +581,11 @@ export default function ConnectionsPanel({
         >
           Expiración
         </label>
-        <Select
+        <ExpirySelect
           value={expiryOption}
           onValueChange={setExpiryOption}
           disabled={creating}
-        >
-          <SelectTrigger id="connection-expiry" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {EXPIRY_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
         <p className="text-[10px] leading-snug text-muted-foreground">
           Al expirar, el token deja de funcionar automáticamente.
         </p>
@@ -683,28 +651,19 @@ export default function ConnectionsPanel({
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="space-y-5">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-          <div className="flex items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-text">
-              <Plug className="size-4" aria-hidden />
-            </span>
-            <div className="space-y-1">
-              <CardTitle className="text-base">Conexiones</CardTitle>
-              <CardDescription>
-                Llaves Bearer (`micasa_…`) para agentes MCP (Grok, Claude, Cursor).
-                ChatGPT puede usar OAuth en su lugar (sección de abajo).
-              </CardDescription>
-            </div>
+        <CardHeader className="flex flex-row items-start gap-3 space-y-0">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-text">
+            <Plug className="size-4" aria-hidden />
+          </span>
+          <div className="space-y-1">
+            <CardTitle className="text-base">Llaves de acceso</CardTitle>
+            <CardDescription>
+              Llaves Bearer (`micasa_…`) para agentes MCP (Grok, Claude, Cursor).
+              ChatGPT puede usar OAuth en su lugar (sección de abajo).
+            </CardDescription>
           </div>
-          <Button
-            type="button"
-            onClick={handleOpenCreate}
-            className="h-9 shrink-0 rounded-xl"
-          >
-            Nueva conexión
-          </Button>
         </CardHeader>
         <CardContent>
           {keys.length === 0 ? (
@@ -1030,7 +989,7 @@ export default function ConnectionsPanel({
         </CardContent>
       </Card>
 
-      <OverlayShell
+      <ResponsiveOverlay
         open={createOpen}
         onOpenChange={handleCreateOpenChange}
         title={createdToken ? 'Token de conexión' : 'Nueva conexión'}
@@ -1039,31 +998,34 @@ export default function ConnectionsPanel({
             ? 'Copia el token; solo se muestra una vez.'
             : 'Crea una llave para conectar un agente MCP.'
         }
+        busy={creating}
       >
         {createBody}
-      </OverlayShell>
+      </ResponsiveOverlay>
 
-      <OverlayShell
+      <ResponsiveOverlay
         open={renameTarget != null}
         onOpenChange={(open) => {
-          if (!open && !renaming) setRenameTarget(null);
+          if (!open) setRenameTarget(null);
         }}
         title="Renombrar conexión"
         description="Cambia el nombre visible de la conexión."
+        busy={renaming}
       >
         {renameBody}
-      </OverlayShell>
+      </ResponsiveOverlay>
 
-      <OverlayShell
+      <ResponsiveOverlay
         open={editContextsTarget != null}
         onOpenChange={(open) => {
-          if (!open && !savingContexts) setEditContextsTarget(null);
+          if (!open) setEditContextsTarget(null);
         }}
         title="Editar contextos"
         description="Cambia qué contextos puede ver esta conexión."
+        busy={savingContexts}
       >
         {editContextsBody}
-      </OverlayShell>
+      </ResponsiveOverlay>
 
       <AlertDialog
         open={revokeTarget != null}

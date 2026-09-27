@@ -21,7 +21,7 @@ When adding or changing screens, align with **`DESIGN.md`** (repo root) and **`f
 - **Icon-only controls**: always **`aria-label`** and usually **`Tooltip`** with Spanish copy matching existing patterns.
 - **Binary preferences**: use shared **`Toggle` / `ToggleField`** (`src/components/ui/toggle.tsx`) — electric blue (`bg-primary`) ON, neutral glass OFF; `layout="row" | "stack"`. Checkbox only for multi-select. See `DESIGN.md`.
 - **Destructive list/card delete**: **Viewport Delete Rule** — `md+` quiet trash (no swipe); below `md` swipe only (hide trash). See `DESIGN.md`.
-- **New multi-field form overlays**: Dialog on desktop, bottom Sheet on mobile — see **`responsive-overlays`** (pointer), **`responsive-overlays-impl`**, **`/responsive-overlay`**, and **`DESIGN.md` → Overlays**.
+- **New multi-field form overlays**: Dialog on desktop, bottom Sheet on mobile — see **`responsive-overlays`** (rule), **`/responsive-overlay`** (skill), and **`DESIGN.md` → Overlays**. Body uses the grouped-row kit in `src/components/overlay/overlay-form.tsx`; confirms use `ConfirmDeleteDialog`.
 
 ## Surfaces and color
 

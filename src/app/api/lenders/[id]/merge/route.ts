@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import {
-  reportApiError,
-  setOwnerSentryContext,
-} from '@/lib/observability/report-error';
+import { reportApiError } from '@/lib/observability/report-error';
 import { mergeLendersForOwner } from '@/lib/finance/lender.service';
 import { mergeLenderSchema } from '@/schemas/lender.schema';
 
@@ -24,8 +21,6 @@ export async function POST(
       ownerType: context.ownerType,
       ownerId: context.ownerId,
     };
-    setOwnerSentryContext(owner);
-
     const { id } = await params;
     const lenderId = Number(id);
     if (!Number.isInteger(lenderId) || lenderId <= 0) {

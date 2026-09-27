@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { formatCurrency } from '@/lib/utils';
 
 export const insufficientWalletExpenseMessage = (
@@ -57,27 +48,16 @@ export function InsufficientWalletExpenseDialog({
   onAccept: () => void;
 }) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Saldo insuficiente</AlertDialogTitle>
-          <AlertDialogDescription>
-            {insufficientWalletExpenseMessage(walletName, balance, amount)}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={busy}
-            onClick={(event) => {
-              event.preventDefault();
-              onAccept();
-            }}
-          >
-            Registrar sin descontar
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDeleteDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      onConfirm={onAccept}
+      title="Saldo insuficiente"
+      description={insufficientWalletExpenseMessage(walletName, balance, amount)}
+      confirmLabel="Registrar sin descontar"
+      loadingLabel="Guardando…"
+      tone="default"
+      busy={busy}
+    />
   );
 }

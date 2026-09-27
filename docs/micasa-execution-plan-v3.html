@@ -754,9 +754,9 @@
           <div>
             <div class="task-title">2.4 — Error monitoring (Sentry or equivalent)</div>
             <div class="task-why">
-              Shipped: <code>@sentry/nextjs</code> on client/server/edge, owner-tagged capture for
-              statement import + loans, <code>global-error</code> / dashboard boundaries, Vercel + CI
-              source maps, and error-rate spike alert (ziglabs / javascript-nextjs).
+              Sentry was removed. Unexpected API failures log a JSON line
+              (<code>event: api.unexpected_error</code>) with route and owner ids.
+              Read them in the host runtime logs.
             </div>
           </div>
           <div class="task-meta">

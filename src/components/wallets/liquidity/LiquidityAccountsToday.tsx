@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronDown, ExternalLink, Pencil } from 'lucide-react';
+import { ChevronRight, ExternalLink, Pencil } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import {
@@ -20,19 +20,7 @@ import { LiquiditySectionHeader } from '@/components/wallets/liquidity/liquidity
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { Button } from '@/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   buildAccountsToday,
@@ -49,6 +37,8 @@ type LiquidityAccountsTodayProps = {
   actions?: ReactNode;
   fundingTotal?: number;
   sectionIcon?: LucideIcon;
+  /** Bumped by the workspace pull-to-refresh to reload this section. */
+  refreshToken?: number;
 };
 
 const badgeToneClass = (tone: AccountTodayBadge['tone']): string =>
@@ -247,6 +237,7 @@ export const LiquidityAccountsToday = ({
   actions,
   fundingTotal,
   sectionIcon: SectionIcon,
+  refreshToken = 0,
 }: LiquidityAccountsTodayProps) => {
   const { context } = useFinanceContext();
   const router = useRouter();
@@ -258,8 +249,7 @@ export const LiquidityAccountsToday = ({
   const [breakdownError, setBreakdownError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCard, setSelectedCard] = useState<WalletListItem | null>(null);
-  const [openWhyIds, setOpenWhyIds] = useState<string[]>([]);
-  const [mobileWhyId, setMobileWhyId] = useState<string | null>(null);
+  const [whyDetailId, setWhyDetailId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!context || (context.type === 'user' && context.id === 0)) {
@@ -301,7 +291,7 @@ export const LiquidityAccountsToday = ({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshToken]);
 
   const rows = useMemo(() => buildAccountsToday(wallets, loans), [loans, wallets]);
   const views = useMemo(() => rows.map(toAccountTodayView), [rows]);
@@ -352,25 +342,27 @@ export const LiquidityAccountsToday = ({
   const handleMobileSelect = (row: AccountTodayRow) => {
     const account = getBreakdown(row);
     if (accountHasDebtWhy(account)) {
-      setMobileWhyId(account!.id);
+      setWhyDetailId(account!.id);
       return;
     }
     handleEditOrOpen(row);
   };
 
-  const handleWhyOpenChange = (id: string, open: boolean) => {
-    setOpenWhyIds((current) => {
-      if (open) return current.includes(id) ? current : [...current, id];
-      return current.filter((item) => item !== id);
-    });
+  const whyDetailAccount = whyDetailId
+    ? breakdownById.get(whyDetailId) ?? null
+    : null;
+  const whyDetailRow = whyDetailAccount
+    ? rows.find((row) => breakdownKeyForRow(row) === whyDetailAccount.id) ?? null
+    : null;
+
+  const handleWhyDetailOpenChange = (open: boolean) => {
+    if (!open) setWhyDetailId(null);
   };
 
-  const mobileWhyAccount = mobileWhyId
-    ? breakdownById.get(mobileWhyId) ?? null
-    : null;
-  const mobileWhyRow = mobileWhyAccount
-    ? rows.find((row) => breakdownKeyForRow(row) === mobileWhyAccount.id) ?? null
-    : null;
+  const handleWhyDetailAction = () => {
+    if (whyDetailRow) handleEditOrOpen(whyDetailRow);
+    setWhyDetailId(null);
+  };
 
   const countLabel =
     loanCount > 0
@@ -491,9 +483,6 @@ export const LiquidityAccountsToday = ({
                   const { debt, free, utilizationPct } = figures;
                   const showLoanHeading =
                     view.kind === 'loan' && (index === 0 || views[index - 1]?.kind !== 'loan');
-                  const whyId = account?.id ?? breakdownKeyForRow(row);
-                  const isOpen = openWhyIds.includes(whyId);
-
                   const figuresRow = (
                     <>
                       <p
@@ -561,46 +550,29 @@ export const LiquidityAccountsToday = ({
                         </p>
                       ) : null}
                       {hasWhy && account ? (
-                        <Collapsible
-                          open={isOpen}
-                          onOpenChange={(open) => handleWhyOpenChange(whyId, open)}
-                        >
-                          <div className="flex items-stretch hover:bg-muted/30">
-                            <CollapsibleTrigger asChild>
-                              <button
-                                type="button"
-                                className="flex min-w-0 flex-1 items-center text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                aria-label={`Ver por qué debes en ${view.name}`}
-                              >
-                                <span className={rowGridClass}>
-                                  {identity}
-                                  {figuresRow}
-                                  {utilizationPct != null ? (
-                                    <span className="col-span-full pl-[3.25rem]">
-                                      <UtilizationBar utilizationPct={utilizationPct} />
-                                    </span>
-                                  ) : null}
+                        <div className="flex items-stretch hover:bg-muted/30">
+                          <button
+                            type="button"
+                            onClick={() => setWhyDetailId(account.id)}
+                            className="flex min-w-0 flex-1 items-center text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`Ver por qué debes en ${view.name}`}
+                          >
+                            <span className={rowGridClass}>
+                              {identity}
+                              {figuresRow}
+                              {utilizationPct != null ? (
+                                <span className="col-span-full pl-[3.25rem]">
+                                  <UtilizationBar utilizationPct={utilizationPct} />
                                 </span>
-                                <ChevronDown
-                                  className={cn(
-                                    'mr-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-                                    isOpen && 'rotate-180',
-                                  )}
-                                  aria-hidden
-                                />
-                              </button>
-                            </CollapsibleTrigger>
-                            {rowActions}
-                          </div>
-                          <CollapsibleContent>
-                            <div className="px-5 pb-4 pl-[3.25rem]">
-                              <LiquidityAccountDebtWhy
-                                account={account}
-                                onMore={() => handleWhyMore(account)}
-                              />
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
+                              ) : null}
+                            </span>
+                            <ChevronRight
+                              className="mr-1 h-4 w-4 shrink-0 text-muted-foreground"
+                              aria-hidden
+                            />
+                          </button>
+                          {rowActions}
+                        </div>
                       ) : (
                         <div className="flex items-stretch hover:bg-muted/30">
                           <button
@@ -636,45 +608,33 @@ export const LiquidityAccountsToday = ({
         )}
       </section>
 
-      <Sheet
-        open={mobileWhyAccount != null}
-        onOpenChange={(open) => {
-          if (!open) setMobileWhyId(null);
-        }}
+      <ResponsiveOverlay
+        open={whyDetailAccount != null}
+        onOpenChange={handleWhyDetailOpenChange}
+        title={whyDetailAccount?.name ?? ''}
+        description={whyDetailAccount?.preview || 'De qué está hecha esta deuda'}
+        dismissLabel="Cerrar"
       >
-        <SheetContent
-          side="bottom"
-          className="max-h-[85vh] gap-0 overflow-y-auto rounded-t-2xl px-4 pb-6"
-        >
-          {mobileWhyAccount ? (
-            <>
-              <SheetHeader className="px-0 pb-3">
-                <SheetTitle>{mobileWhyAccount.name}</SheetTitle>
-                <SheetDescription>
-                  {mobileWhyAccount.preview || 'De qué está hecha esta deuda'}
-                </SheetDescription>
-              </SheetHeader>
-              <LiquidityAccountDebtWhy
-                account={mobileWhyAccount}
-                onMore={() => handleWhyMore(mobileWhyAccount)}
-              />
-              <SheetFooter className="px-0 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full rounded-xl"
-                  onClick={() => {
-                    if (mobileWhyRow) handleEditOrOpen(mobileWhyRow);
-                    setMobileWhyId(null);
-                  }}
-                >
-                  {mobileWhyAccount.kind === 'loan' ? 'Abrir préstamo' : 'Corregir saldo'}
-                </Button>
-              </SheetFooter>
-            </>
-          ) : null}
-        </SheetContent>
-      </Sheet>
+        {whyDetailAccount ? (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              {whyDetailAccount.preview || 'De qué está hecha esta deuda'}
+            </p>
+            <LiquidityAccountDebtWhy
+              account={whyDetailAccount}
+              onMore={() => handleWhyMore(whyDetailAccount)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full rounded-xl"
+              onClick={handleWhyDetailAction}
+            >
+              {whyDetailAccount.kind === 'loan' ? 'Abrir préstamo' : 'Corregir saldo'}
+            </Button>
+          </div>
+        ) : null}
+      </ResponsiveOverlay>
 
       {selectedCard ? (
         <WalletBalanceDialog

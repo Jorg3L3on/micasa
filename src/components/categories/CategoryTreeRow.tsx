@@ -1,7 +1,5 @@
 'use client';
 
-import { useEffect, useRef, type MouseEvent } from 'react';
-import { motion, useAnimation, type PanInfo } from 'framer-motion';
 import { Pencil, Power, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,19 +7,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  SwipeDeleteAction,
-  SWIPE_DELETE_ACTION_WIDTH,
-} from '@/components/ui/swipe-delete-action';
+import { SwipeDeleteRow } from '@/components/ui/swipe-delete-row';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { CategoryOption } from '@/types/catalog';
-
-const ACTION_WIDTH = SWIPE_DELETE_ACTION_WIDTH;
-const OPEN_THRESHOLD = 40;
-const DRAG_CLICK_SUPPRESS_MS = 450;
-const DRAG_MOVE_THRESHOLD_PX = 10;
 
 type CategoryTreeRowProps = {
   category: CategoryOption;
@@ -45,55 +35,6 @@ export function CategoryTreeRow({
   onRequestDelete,
 }: CategoryTreeRowProps) {
   const active = category.active ?? true;
-  const controls = useAnimation();
-  const prevIsOpen = useRef(isSwipeOpen);
-  const suppressNextClickRef = useRef(false);
-
-  useEffect(() => {
-    if (!swipeEnabled) {
-      void controls.set({ x: 0 });
-      return;
-    }
-    if (prevIsOpen.current === isSwipeOpen) return;
-    prevIsOpen.current = isSwipeOpen;
-    void controls.start({
-      x: isSwipeOpen ? -ACTION_WIDTH : 0,
-      transition: { type: 'spring', stiffness: 400, damping: 35 },
-    });
-  }, [isSwipeOpen, swipeEnabled, controls]);
-
-  const handleDragEnd = (_event: unknown, info: PanInfo) => {
-    if (!swipeEnabled) return;
-    const offsetX = info.offset.x;
-    const vx = info.velocity.x;
-    const draggedHorizontally =
-      Math.abs(offsetX) > DRAG_MOVE_THRESHOLD_PX || Math.abs(vx) > 80;
-    if (draggedHorizontally) {
-      suppressNextClickRef.current = true;
-      window.setTimeout(() => {
-        suppressNextClickRef.current = false;
-      }, DRAG_CLICK_SUPPRESS_MS);
-    }
-    const shouldOpen = offsetX < -OPEN_THRESHOLD || vx < -500;
-    if (shouldOpen) {
-      void controls.start({
-        x: -ACTION_WIDTH,
-        transition: { type: 'spring', stiffness: 400, damping: 35 },
-      });
-      onSwipeOpenChange(true);
-    } else {
-      void controls.start({
-        x: 0,
-        transition: { type: 'spring', stiffness: 400, damping: 35 },
-      });
-      onSwipeOpenChange(false);
-    }
-  };
-
-  const handleDeleteClick = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    onRequestDelete();
-  };
 
   const row = (
     <div
@@ -194,34 +135,16 @@ export function CategoryTreeRow({
     </div>
   );
 
-  if (!swipeEnabled) {
-    return row;
-  }
-
   return (
-    <div className="relative overflow-hidden rounded-lg">
-      <div
-        className="absolute inset-0 z-0 flex justify-end"
-        aria-hidden={!isSwipeOpen}
-      >
-        <SwipeDeleteAction
-          onClick={handleDeleteClick}
-          ariaLabel={`Eliminar ${category.name}`}
-        />
-      </div>
-      <motion.div
-        className="relative z-[1]"
-        drag="x"
-        dragConstraints={{ left: -ACTION_WIDTH, right: 0 }}
-        dragElastic={0.05}
-        dragMomentum={false}
-        onDragEnd={handleDragEnd}
-        animate={controls}
-        initial={{ x: 0 }}
-        style={{ touchAction: 'pan-y' }}
-      >
-        {row}
-      </motion.div>
-    </div>
+    <SwipeDeleteRow
+      enabled={swipeEnabled}
+      isOpen={isSwipeOpen}
+      onOpenChange={onSwipeOpenChange}
+      onRequestDelete={onRequestDelete}
+      deleteAriaLabel={`Eliminar ${category.name}`}
+      className="rounded-lg"
+    >
+      {row}
+    </SwipeDeleteRow>
   );
 }

@@ -9,6 +9,10 @@ import { FinanceProvider } from '@/context/finance-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from 'sonner';
 import { DOCUMENT_TITLE_TEMPLATE, SITE_NAME } from '@/lib/document-title';
+import { IOS_SPLASH_IMAGES } from '@/lib/pwa/ios-splash';
+import { buildLaunchRedirectScript } from '@/lib/pwa/pwa-launch';
+import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
+import { ServiceWorkerRegistrar } from '@/components/pwa/ServiceWorkerRegistrar';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -56,12 +60,22 @@ export const metadata: Metadata = {
     description:
       'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
   },
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: 'black-translucent',
+    startupImage: IOS_SPLASH_IMAGES,
+  },
+  // Next emits only `mobile-web-app-capable`; older iOS needs the Apple name
+  // to use the startup images and status bar style.
+  other: { 'apple-mobile-web-app-capable': 'yes' },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#060914',
 };
 
 export default function RootLayout({
@@ -74,6 +88,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${display.variable} antialiased`}
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: buildLaunchRedirectScript(getCurrentMonthlyPanelHref()),
+          }}
+        />
         <SessionProvider>
           <FinanceProvider>
             <TooltipProvider delayDuration={0}>
@@ -90,7 +109,13 @@ export default function RootLayout({
                   zIndex={1600}
                 />
                 {children}
-                <Toaster richColors position="top-center" />
+                <Toaster
+                  richColors
+                  position="top-center"
+                  offset={{ top: 'calc(env(safe-area-inset-top) + 24px)' }}
+                  mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 16px)' }}
+                />
+                <ServiceWorkerRegistrar />
               </ThemeProvider>
             </TooltipProvider>
           </FinanceProvider>

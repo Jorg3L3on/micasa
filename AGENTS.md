@@ -188,7 +188,7 @@ Cursor workflow (PRD → GitHub issues → feat branch → PRs): [docs/agents/wo
 
 ### Design system
 
-[`DESIGN.md`](DESIGN.md) is the visual source of truth (navy canvas, glass, orange CTAs). Do not commit third-party mockup images — tokens live in `src/app/globals.css`; live screenshots of **this** app live in `docs/images/`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`. Toolbar migrations: `.claude/skills/toolbar-page/SKILL.md` (`/toolbar-page`) + `tasks/prd-app-header-toolbar.md`. Overlay Dialog/Sheet migrations: `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`) + `tasks/prd-responsive-overlays.md`.
+[`DESIGN.md`](DESIGN.md) is the visual source of truth (navy canvas, glass, orange CTAs). Do not commit third-party mockup images — tokens live in `src/app/globals.css`; live screenshots of **this** app live in `docs/images/`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`. Toolbar migrations: `.claude/skills/toolbar-page/SKILL.md` (`/toolbar-page`) + `tasks/prd-app-header-toolbar.md`. Overlay Dialog/Sheet standard: `DESIGN.md` → Overlays (reference: Agregar gasto, `src/components/quick-capture/QuickExpenseSheet.tsx`; kit: `src/components/overlay/overlay-form.tsx`) + recipe `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`). Rule: `.cursor/rules/responsive-overlays.mdc` (always on).
 
 ## Cursor Cloud specific instructions
 
@@ -239,4 +239,4 @@ To re-seed: `npx prisma db seed` (destructive — clears all data first).
 - **Prisma client output** is `src/generated/prisma` (non-default). Always import from there or via `src/lib/prisma.ts`.
 - After schema changes, run `npx prisma generate` before starting the dev server.
 - The `npm run ci` script runs: `validate:metric-strips` → `validate:prisma-imports` → `validate:calendar-dates` → `prisma generate` → `vitest run --coverage` (≈70% floor on `src/lib/finance/**`) → isolation tests → `next build`.
-- The dev server uses `--webpack` mode by default (`npm run dev`). Turbopack mode is available via `npm run dev:turbo`.
+- The dev server uses Turbopack by default (`npm run dev`). Webpack mode is available via `npm run dev:webpack`.

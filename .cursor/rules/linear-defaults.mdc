@@ -7,12 +7,12 @@ alwaysApply: true
 
 When creating or saving Linear issues via the Linear MCP (e.g. `save_issue`), always use these defaults unless the user specifies otherwise:
 
-- **project**: MiCasa (or id `c4f9a95e-1461-4a2a-be36-ab9b909b23c7`)
+- **project**: MiCasa (or id `4c1dffab-d674-463b-a636-e46a6412eb1e`)
 - **team**: Jorg3 (or key `JOR`)
 
 Required when creating an issue: `title` and `team`. Always include `project` so all issues go to the MiCasa project.
 
-When listing issues (`list_issues`), always filter by **project**: MiCasa (or id `c4f9a95e-1461-4a2a-be36-ab9b909b23c7`) so only MiCasa issues are returned, unless the user asks for issues from another project or "all" issues.
+When listing issues (`list_issues`), always filter by **project**: MiCasa (or id `4c1dffab-d674-463b-a636-e46a6412eb1e`) so only MiCasa issues are returned, unless the user asks for issues from another project or "all" issues.
 
 ## Implementing Linear issues
 

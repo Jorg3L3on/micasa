@@ -3,16 +3,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { CurrencyInput } from '@/components/ui/currency-input';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import {
+  AmountRow,
+  DateStepper,
+  GroupedRow,
+  OVERLAY_GROUPED_CARD_CLASS,
+  OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_INPUT_CLASS,
+} from '@/components/overlay/overlay-form';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { CreditCardScheduledPaymentItem } from '@/types/catalog';
 import {
@@ -109,71 +109,56 @@ export const CreditCardScheduledPaymentDialog = ({
   ]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {editingItem ? 'Editar cuota futura' : 'Agregar cuota futura'}
-          </DialogTitle>
-          <DialogDescription>
-            Registra un pago programado sin crear compra ni cambiar la deuda de
-            la tarjeta.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title={editingItem ? 'Editar cuota futura' : 'Agregar cuota futura'}
+      description="Registra un pago programado sin crear compra ni cambiar la deuda de la tarjeta."
+      busy={submitting}
+    >
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleSubmit();
+        }}
+        className="flex flex-col gap-3"
+        aria-busy={submitting}
+      >
+        <div className={OVERLAY_GROUPED_CARD_CLASS}>
+          <AmountRow
+            id="scheduled-amount"
+            value={amount}
+            onChange={setAmount}
+            ariaLabel="Monto de la cuota futura"
+          />
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <label htmlFor="scheduled-due-date" className="text-sm font-medium">
-              Fecha de pago
-            </label>
-            <Input
-              id="scheduled-due-date"
-              type="date"
-              value={dueDate}
-              onChange={(event) => setDueDate(event.target.value)}
-            />
-          </div>
+          <GroupedRow label="Fecha">
+            <DateStepper value={dueDate} onChange={setDueDate} />
+          </GroupedRow>
 
-          <div className="space-y-2">
-            <label htmlFor="scheduled-amount" className="text-sm font-medium">
-              Monto
-            </label>
-            <CurrencyInput
-              id="scheduled-amount"
-              value={amount}
-              onChange={setAmount}
-              placeholder="0.00"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="scheduled-label" className="text-sm font-medium">
-              Etiqueta (opcional)
-            </label>
+          <GroupedRow label="Etiqueta">
             <Input
               id="scheduled-label"
               value={label}
               onChange={(event) => setLabel(event.target.value)}
-              placeholder="Ej. MSI Liverpool"
+              placeholder="Opcional, ej. MSI Liverpool"
+              aria-label="Etiqueta de la cuota futura"
               maxLength={120}
+              autoCapitalize="sentences"
+              className={OVERLAY_ROW_INPUT_CLASS}
             />
-          </div>
+          </GroupedRow>
         </div>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={submitting}
-          >
-            Cancelar
-          </Button>
-          <Button type="button" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Guardando…' : editingItem ? 'Guardar' : 'Agregar'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <Button
+          type="submit"
+          disabled={submitting}
+          aria-busy={submitting}
+          className={OVERLAY_PRIMARY_BUTTON_CLASS}
+        >
+          {submitting ? 'Guardando…' : editingItem ? 'Guardar' : 'Agregar'}
+        </Button>
+      </form>
+    </ResponsiveOverlay>
   );
 };

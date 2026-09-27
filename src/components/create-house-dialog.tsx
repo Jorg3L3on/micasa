@@ -1,16 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 
 export type CreatedHouse = { id: number; name: string };
@@ -63,59 +58,49 @@ export function CreateHouseDialog({
     [name, onOpenChange, onCreated]
   );
 
-  const handleCancel = useCallback(() => {
-    onOpenChange(false);
-  }, [onOpenChange]);
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Crear casa</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} noValidate>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="create-house-name">Nombre</Label>
-              <Input
-                id="create-house-name"
-                name="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nombre de la casa"
-                disabled={loading}
-                required
-                minLength={1}
-                maxLength={100}
-                aria-invalid={!!error}
-                aria-describedby={error ? 'create-house-name-error' : undefined}
-              />
-            </div>
-            {error && (
-              <p
-                id="create-house-name-error"
-                className="text-destructive text-sm"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creando…' : 'Crear'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Crear casa"
+      description="Crea un hogar compartido para planear gastos con otras personas."
+      busy={loading}
+    >
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="create-house-name">Nombre</Label>
+          <Input
+            id="create-house-name"
+            name="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nombre de la casa"
+            disabled={loading}
+            required
+            minLength={1}
+            maxLength={100}
+            aria-invalid={!!error}
+            aria-describedby={error ? 'create-house-name-error' : undefined}
+          />
+        </div>
+        {error && (
+          <p
+            id="create-house-name-error"
+            className="text-destructive text-sm"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
+        <Button
+          type="submit"
+          disabled={loading}
+          aria-busy={loading}
+          className={OVERLAY_PRIMARY_BUTTON_CLASS}
+        >
+          {loading ? 'Creando…' : 'Crear'}
+        </Button>
+      </form>
+    </ResponsiveOverlay>
   );
 }

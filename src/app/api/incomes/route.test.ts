@@ -32,7 +32,11 @@ vi.mock('@/lib/server/get-owner-context', () => ({
 
 vi.mock('@/lib/prisma', () => ({
   default: {
-    income: { findFirst: incomeFindFirst, create: incomeCreate },
+    income: {
+      findFirst: incomeFindFirst,
+      create: incomeCreate,
+      update: incomeUpdate,
+    },
     wallet: { findFirst: walletFindFirst },
     category: { findFirst: categoryFindFirst },
     $transaction: transactionFn,
@@ -163,6 +167,63 @@ describe('PUT /api/incomes', () => {
     );
   });
 
+  it('updates only the amount of an uncredited planned income', async () => {
+    incomeFindFirst.mockResolvedValue({
+      id: 12,
+      amount: 15000,
+      wallet_id: null,
+      wallet_credited: false,
+      category_id: null,
+      income_template_id: 5,
+      source: 'Salario',
+    });
+    incomeUpdate.mockResolvedValue({
+      id: 12,
+      amount: 17500,
+      source: 'Salario',
+      received_at: new Date('2026-09-15T12:00:00.000Z'),
+      fortnight_id: 4,
+      income_template_id: 5,
+      wallet_id: null,
+      wallet_credited: false,
+      category_id: null,
+    });
+
+    const response = await putIncome({ amount: 17500, planned: true });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.amount).toBe(17500);
+    expect(incomeUpdate).toHaveBeenCalledWith({
+      where: { id: 12 },
+      data: { amount: 17500 },
+    });
+    expect(transactionFn).not.toHaveBeenCalled();
+    expect(applyWalletAmountDelta).not.toHaveBeenCalled();
+    expect(incomeTemplateUpdate).not.toHaveBeenCalled();
+  });
+
+  it('keeps applying the wallet delta when a planned edit hits a credited income', async () => {
+    incomeFindFirst.mockResolvedValue({
+      id: 12,
+      amount: 12500,
+      wallet_id: 7,
+      wallet_credited: true,
+      category_id: 3,
+      source: 'Nómina',
+    });
+    walletFindFirst.mockResolvedValue({ id: 7, type: 'CASH' });
+
+    const response = await putIncome({ amount: 13000, planned: true });
+
+    expect(response.status).toBe(200);
+    expect(transactionFn).toHaveBeenCalled();
+    expect(applyWalletAmountDelta).toHaveBeenCalledWith(
+      expect.anything(),
+      7,
+      500,
+    );
+  });
 });
 
 describe('POST /api/incomes planned', () => {

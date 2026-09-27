@@ -35,7 +35,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Home() {
+const QUICK_CAPTURE_VALUES = new Set(['expense', 'income']);
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ quick?: string | string[] }>;
+}) {
   const session = await auth();
 
   if (session?.user?.id) {
@@ -49,7 +55,12 @@ export default async function Home() {
       redirect('/onboarding');
     }
 
-    redirect(getAppHomeHref());
+    const { quick } = await searchParams;
+    const query = new URLSearchParams();
+    if (typeof quick === 'string' && QUICK_CAPTURE_VALUES.has(quick)) {
+      query.set('quick', quick);
+    }
+    redirect(getAppHomeHref(query));
   }
 
   return (

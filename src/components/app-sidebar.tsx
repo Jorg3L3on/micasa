@@ -2,19 +2,11 @@
 
 import * as React from 'react';
 import { Suspense } from 'react';
-import {
-  ChartLine,
-  Receipt,
-  Calendar,
-  Goal,
-  HandCoins,
-  PiggyBank,
-  Wallet,
-} from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 import { TeamSwitcher } from '@/components/team-switcher';
-import { NavMain } from '@/components/nav-main';
+import { NavMain, type NavMainItem } from '@/components/nav-main';
+import { NAV_DESTINATIONS } from '@/components/nav-destinations';
 import {
   Sidebar,
   SidebarContent,
@@ -25,7 +17,6 @@ import {
 } from '@/components/ui/sidebar';
 import { AlertsBell } from '@/components/AlertsBell';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 
 /** Cierra el drawer en móvil al cambiar ruta o query (p. ej. contexto de casa). */
 function MobileSidebarCloseOnRouteInner() {
@@ -61,55 +52,12 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
 
-  const menuItems = [
-    {
-      title: 'Panel financiero',
-      url: getCurrentMonthlyPanelHref(),
-      icon: Calendar,
-      isActive: pathname.startsWith('/monthly/'),
-    },
-    {
-      title: 'Billeteras',
-      url: '/wallets',
-      icon: Wallet,
-      isActive:
-        pathname === '/wallets' ||
-        (pathname.startsWith('/wallets/') &&
-          !pathname.startsWith('/wallets/liquidity')) ||
-        pathname.startsWith('/credit-cards'),
-    },
-    {
-      title: 'Liquidez y análisis',
-      url: '/wallets/liquidity',
-      icon: ChartLine,
-      isActive: pathname.startsWith('/wallets/liquidity'),
-    },
-    {
-      title: 'Metas',
-      url: '/metas',
-      icon: Goal,
-      isActive: pathname === '/metas' || pathname.startsWith('/metas/'),
-    },
-    {
-      title: 'Préstamos',
-      url: '/loans',
-      icon: HandCoins,
-      isActive: pathname === '/loans' || pathname.startsWith('/loans/'),
-    },
-    {
-      title: 'Operaciones',
-      url: '/transactions',
-      icon: Receipt,
-      isActive:
-        pathname === '/transactions' || pathname.startsWith('/transactions/'),
-    },
-    {
-      title: 'Presupuestos',
-      url: '/budgets',
-      icon: PiggyBank,
-      isActive: pathname === '/budgets' || pathname.startsWith('/budgets/'),
-    },
-  ];
+  const menuItems: NavMainItem[] = NAV_DESTINATIONS.map((destination) => ({
+    title: destination.title,
+    url: destination.getHref(),
+    icon: destination.icon,
+    isActive: destination.isActive(pathname),
+  }));
 
   return (
     <>

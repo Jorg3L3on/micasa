@@ -7,15 +7,19 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/motion/tabs';
 import { useFinanceContext } from '@/context/finance-context';
+import {
+  ToolbarFiltersPortal,
+  useRegisterToolbarActions,
+} from '@/context/toolbar-actions-context';
 import BudgetPeriodDetail from '@/components/BudgetPeriodDetail';
 import BudgetFormDialog from '@/components/BudgetFormDialog';
 import BudgetTemplateFieldsDialog from '@/components/BudgetTemplateFieldsDialog';
 import BudgetAllocationsDialog from '@/components/BudgetAllocationsDialog';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import {
   createBudget,
   deleteBudget,
@@ -43,8 +47,6 @@ import {
   Plus,
   Repeat2,
   RotateCcw,
-  Search,
-  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 import {
@@ -65,7 +67,26 @@ const BUDGET_STATUS_TABS: ReadonlyArray<{ value: BudgetStatus; label: string }> 
   { value: 'scheduled', label: 'Programados' },
 ];
 
-const SEGMENT_DRAG_PX = 8;
+const BUDGETS_VIEW_TABS: ReadonlyArray<{ value: BudgetsView; label: string }> = [
+  { value: 'budgets', label: 'Presupuestos' },
+  { value: 'templates', label: 'Plantillas' },
+];
+
+const MOTION_TABS_LIST_CLASS = cn(
+  'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner',
+  'bg-gradient-to-br from-muted/30 via-background to-muted/10',
+  'dark:from-muted/20 dark:via-card dark:to-muted/5',
+);
+const MOTION_TABS_INDICATOR_CLASS =
+  'shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-primary/35';
+const MOTION_TABS_TRIGGER_CLASS = 'min-h-8 px-2.5 py-1.5 text-xs font-semibold leading-none';
+
+const BUDGET_SORT_OPTIONS: ReadonlyArray<{ value: BudgetSort; label: string }> = [
+  { value: 'attention', label: 'Urgencia' },
+  { value: 'name', label: 'Nombre' },
+  { value: 'period_end', label: 'Cierre de periodo' },
+];
+
 const SEGMENT_SWIPE_PX = 48;
 const SEGMENT_FLICK_VX = 480;
 
@@ -73,99 +94,21 @@ function clampSegment(value: number, max: number) {
   return Math.min(max, Math.max(0, value));
 }
 
-function useBudgetStatusGestures(status: BudgetStatus, setStatus: (status: BudgetStatus) => void) {
+function useBudgetStatusSwipe(status: BudgetStatus, setStatus: (status: BudgetStatus) => void) {
   const count = BUDGET_STATUS_TABS.length;
   const statusIndex = Math.max(
     0,
     BUDGET_STATUS_TABS.findIndex((tab) => tab.value === status),
   );
-  const [thumbIndex, setThumbIndex] = useState(statusIndex);
-  const [listDragging, setListDragging] = useState(false);
-  const thumbIndexRef = useRef(statusIndex);
-  const listDragRef = useRef(false);
-  const listMovedRef = useRef(false);
-  const listStartXRef = useRef(0);
-  const listOriginRef = useRef(statusIndex);
-  const listLastXRef = useRef(0);
-  const listLastTRef = useRef(0);
-  const listVelocityRef = useRef(0);
   const panelStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const suppressPanelClickRef = useRef(false);
 
-  const setThumb = useCallback((value: number) => {
-    thumbIndexRef.current = value;
-    setThumbIndex(value);
-  }, []);
-
-  useEffect(() => {
-    if (listDragRef.current) return;
-    setThumb(statusIndex);
-  }, [setThumb, statusIndex]);
-
   const commitIndex = useCallback(
     (nextIndex: number) => {
-      const clamped = clampSegment(Math.round(nextIndex), count - 1);
-      setThumb(clamped);
-      const next = BUDGET_STATUS_TABS[clamped];
-      if (next) setStatus(next.value);
+      const next = BUDGET_STATUS_TABS[clampSegment(nextIndex, count - 1)];
+      if (next && next.value !== status) setStatus(next.value);
     },
-    [count, setStatus, setThumb],
-  );
-
-  const onListPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    listDragRef.current = true;
-    listMovedRef.current = false;
-    listStartXRef.current = event.clientX;
-    listOriginRef.current = statusIndex;
-    listLastXRef.current = event.clientX;
-    listLastTRef.current = event.timeStamp;
-    listVelocityRef.current = 0;
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }, [statusIndex]);
-
-  const onListPointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!listDragRef.current) return;
-      const dx = event.clientX - listStartXRef.current;
-      if (Math.abs(dx) >= SEGMENT_DRAG_PX) {
-        listMovedRef.current = true;
-        setListDragging(true);
-      }
-      const dt = event.timeStamp - listLastTRef.current;
-      if (dt > 0) {
-        listVelocityRef.current = ((event.clientX - listLastXRef.current) / dt) * 1000;
-      }
-      listLastXRef.current = event.clientX;
-      listLastTRef.current = event.timeStamp;
-      const width = event.currentTarget.getBoundingClientRect().width;
-      const segmentWidth = (width - 4) / count;
-      if (segmentWidth <= 0) return;
-      setThumb(clampSegment(listOriginRef.current + dx / segmentWidth, count - 1));
-    },
-    [count, setThumb],
-  );
-
-  const finishListPointer = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!listDragRef.current) return;
-      listDragRef.current = false;
-      setListDragging(false);
-      try {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      } catch {
-        /* already released */
-      }
-      if (!listMovedRef.current) {
-        setThumb(statusIndex);
-        return;
-      }
-      let next = thumbIndexRef.current;
-      if (listVelocityRef.current > SEGMENT_FLICK_VX) next = listOriginRef.current + 1;
-      else if (listVelocityRef.current < -SEGMENT_FLICK_VX) next = listOriginRef.current - 1;
-      commitIndex(next);
-    },
-    [commitIndex, setThumb, statusIndex],
+    [count, setStatus, status],
   );
 
   const onPanelPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -205,11 +148,6 @@ function useBudgetStatusGestures(status: BudgetStatus, setStatus: (status: Budge
   }, []);
 
   return {
-    thumbIndex,
-    listDragging,
-    onListPointerDown,
-    onListPointerMove,
-    finishListPointer,
     onPanelPointerDown,
     onPanelPointerUp,
     onPanelClickCapture,
@@ -504,18 +442,59 @@ export default function BudgetsPage() {
     });
   }, [updateQuery]);
 
-  const {
-    thumbIndex,
-    listDragging,
-    onListPointerDown,
-    onListPointerMove,
-    finishListPointer,
-    onPanelPointerDown,
-    onPanelPointerUp,
-    onPanelClickCapture,
-  } = useBudgetStatusGestures(status, setStatus);
+  const { onPanelPointerDown, onPanelPointerUp, onPanelClickCapture } = useBudgetStatusSwipe(
+    status,
+    setStatus,
+  );
 
-  const loadData = useCallback(async () => {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      updateQuery((next) => {
+        setQueryValue(next, 'q', value || null);
+        next.delete('page');
+      });
+    },
+    [updateQuery],
+  );
+
+  const handleSortChange = useCallback(
+    (nextSort: BudgetSort) => {
+      updateQuery((next) => setQueryValue(next, 'sort', nextSort === 'attention' ? null : nextSort));
+    },
+    [updateQuery],
+  );
+
+  const handleOpenCreate = useCallback(() => setCreateDialogOpen(true), []);
+
+  const primaryActionIcon = useMemo(() => <Plus data-icon="inline-start" />, []);
+
+  const isBudgetsView = view === 'budgets';
+
+  useRegisterToolbarActions({
+    search: isBudgetsView
+      ? {
+          value: q,
+          onChange: handleSearchChange,
+          placeholder: 'Buscar presupuesto o categoría',
+        }
+      : null,
+    filters: isBudgetsView
+      ? {
+          open: filtersOpen,
+          onOpenChange: setFiltersOpen,
+          activeCount: sort === 'attention' ? 0 : 1,
+        }
+      : null,
+    primaryAction: {
+      label: 'Nuevo presupuesto',
+      onClick: handleOpenCreate,
+      icon: primaryActionIcon,
+    },
+  });
+
+  const loadData = useCallback(async (options?: { silent?: boolean }) => {
     // Wait for finance context sync (default is user/0 before session + URL resolve).
     // Matching loans/wallets: skip the unscoped fetch that races and paints an empty list.
     if (context.type === 'user' && context.id === 0) {
@@ -523,8 +502,10 @@ export default function BudgetsPage() {
     }
 
     try {
-      setLoading(true);
-      setError(null);
+      if (!options?.silent) {
+        setLoading(true);
+        setError(null);
+      }
       const templatesPromise = fetchBudgetTemplates(context);
       if (view === 'templates') {
         const templatesResult = await templatesPromise;
@@ -554,6 +535,7 @@ export default function BudgetsPage() {
       setTemplates(templatesResult);
       setPeriods(periodsResult);
     } catch (err) {
+      if (options?.silent) throw err;
       setError(err instanceof Error ? err.message : 'Error al cargar presupuestos');
     } finally {
       setLoading(false);
@@ -563,6 +545,11 @@ export default function BudgetsPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const handlePullRefresh = useCallback(
+    () => loadData({ silent: true }),
+    [loadData],
+  );
 
   const templateMap = useMemo(
     () => new Map(templates.map((template) => [template.id, template])),
@@ -753,49 +740,59 @@ export default function BudgetsPage() {
   }, [selectedMonth, selectedYear, updateQuery]);
 
   return (
+    <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Presupuestos">
     <div className="space-y-5">
-      <header className="sticky top-16 z-20 border-b border-border/60 bg-background group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
-        <div className="flex min-h-14 items-center justify-between gap-4 py-2">
+      {isBudgetsView ? (
+        <ToolbarFiltersPortal>
           <div>
-            <h2 className="text-lg font-semibold leading-tight">Presupuestos</h2>
-            <p className="text-xs text-muted-foreground">
-              Controla tus gastos con presupuestos flexibles.
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Orden
             </p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Ordenar presupuestos">
+              {BUDGET_SORT_OPTIONS.map((option) => {
+                const isSelected = sort === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => handleSortChange(option.value)}
+                    className={cn(
+                      'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
+                      isSelected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <Button
-            variant="outline"
-            className="h-9 shrink-0 bg-white dark:bg-card"
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Nuevo presupuesto</span>
-            <span className="sm:hidden">Nuevo</span>
-          </Button>
-        </div>
-        <div className="flex items-end">
-          <div className="flex items-center gap-5" role="tablist" aria-label="Vista de presupuestos">
-            {([
-              ['budgets', 'Presupuestos'],
-              ['templates', 'Plantillas'],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={view === value}
-                onClick={() => setView(value)}
-                className={cn(
-                  'relative h-10 px-0.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  view === value &&
-                    'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
+        </ToolbarFiltersPortal>
+      ) : null}
+
+      <Tabs
+        value={view}
+        onValueChange={(value) => setView(parseView(value))}
+        variant="pill"
+        className="mx-auto w-full max-w-[22rem]"
+      >
+        <TabsList aria-label="Vista de presupuestos" className={MOTION_TABS_LIST_CLASS}>
+          {BUDGETS_VIEW_TABS.map((tab) => (
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              stretch
+              indicatorClassName={MOTION_TABS_INDICATOR_CLASS}
+              className={MOTION_TABS_TRIGGER_CLASS}
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {error ? (
         <Alert variant="destructive">
@@ -807,81 +804,29 @@ export default function BudgetsPage() {
         </Alert>
       ) : null}
 
-      {view === 'budgets' ? (
-        <Tabs
-          value={status}
-          onValueChange={(value) => {
-            if (value === 'active' || value === 'history' || value === 'scheduled') {
-              setStatus(value);
-            }
-          }}
-          className="gap-0"
-        >
+      {isBudgetsView ? (
           <Card className="gap-0 py-0">
-            <div className="flex min-h-11 items-center justify-center px-4 pt-4 sm:px-5">
-              <TabsList
-                variant="segmented"
-                aria-label="Estado de presupuestos"
-                className="w-full max-w-[22rem] touch-manipulation"
-                onPointerDown={onListPointerDown}
-                onPointerMove={onListPointerMove}
-                onPointerUp={finishListPointer}
-                onPointerCancel={finishListPointer}
+            <div className="flex flex-col items-center gap-3 px-4 pt-4 sm:px-5">
+              <Tabs
+                value={status}
+                onValueChange={(value) => setStatus(parseStatus(value))}
+                variant="pill"
+                className="w-full max-w-[22rem]"
               >
-                <span
-                  aria-hidden
-                  className={cn(
-                    'pointer-events-none absolute top-[2px] left-[2px] z-0 h-[calc(100%-4px)] rounded-full bg-white shadow-[0_3px_8px_rgba(0,0,0,0.12),0_3px_1px_rgba(0,0,0,0.04)] dark:bg-[#636366] dark:shadow-[0_1px_4px_rgba(0,0,0,0.45)]',
-                    !listDragging &&
-                      'transition-transform duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none',
-                  )}
-                  style={{
-                    width: `calc((100% - 4px) / ${BUDGET_STATUS_TABS.length})`,
-                    transform: `translateX(${thumbIndex * 100}%)`,
-                  }}
-                />
-                {BUDGET_STATUS_TABS.map((tab) => (
-                  <TabsTrigger
-                    key={tab.value}
-                    id={`budget-status-tab-${tab.value}`}
-                    value={tab.value}
-                    aria-controls="budget-status-panel"
-                  >
-                    {tab.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
-            <CardContent className="p-0">
-              <div
-                id="budget-status-panel"
-                role="tabpanel"
-                aria-labelledby={`budget-status-tab-${status}`}
-                className="touch-pan-y"
-                onPointerDown={onPanelPointerDown}
-                onPointerUp={onPanelPointerUp}
-                onPointerCancel={onPanelPointerUp}
-                onClickCapture={onPanelClickCapture}
-              >
-                <div
-                  data-no-swipe
-                  className="flex flex-wrap items-center gap-2 border-b border-border/60 p-4 sm:p-5"
-                >
-              <div className="relative min-w-56 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={q}
-                  onChange={(event) =>
-                    updateQuery((next) => {
-                      setQueryValue(next, 'q', event.target.value || null);
-                      next.delete('page');
-                    })
-                  }
-                  className="h-9 pl-9"
-                  placeholder="Buscar presupuesto o categoría..."
-                  aria-label="Buscar presupuestos"
-                />
-              </div>
+                <TabsList aria-label="Estado de presupuestos" className={MOTION_TABS_LIST_CLASS}>
+                  {BUDGET_STATUS_TABS.map((tab) => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      stretch
+                      indicatorClassName={MOTION_TABS_INDICATOR_CLASS}
+                      className={MOTION_TABS_TRIGGER_CLASS}
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
               {status === 'history' ? (
                 <div className="flex items-center rounded-lg border border-border/60 bg-card px-1 py-0.5">
                   <Button variant="ghost" size="icon" className="size-8" onClick={() => moveMonth(-1)} aria-label="Mes anterior">
@@ -895,26 +840,17 @@ export default function BudgetsPage() {
                   </Button>
                 </div>
               ) : null}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-9">
-                    <SlidersHorizontal className="mr-2 h-4 w-4" />
-                    Orden
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => updateQuery((next) => setQueryValue(next, 'sort', null))}>
-                    Urgencia
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateQuery((next) => next.set('sort', 'name'))}>
-                    Nombre
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateQuery((next) => next.set('sort', 'period_end'))}>
-                    Cierre de periodo
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
+            <CardContent className="p-0">
+              <div
+                role="tabpanel"
+                aria-label={BUDGET_STATUS_TABS.find((tab) => tab.value === status)?.label}
+                className="mt-4 touch-pan-y border-t border-border/60"
+                onPointerDown={onPanelPointerDown}
+                onPointerUp={onPanelPointerUp}
+                onPointerCancel={onPanelPointerUp}
+                onClickCapture={onPanelClickCapture}
+              >
             {loading ? (
               <div className="space-y-2 p-4 sm:p-5">
                 {Array.from({ length: 4 }).map((_, index) => (
@@ -977,7 +913,6 @@ export default function BudgetsPage() {
               </div>
             </CardContent>
           </Card>
-        </Tabs>
       ) : (
         <Card className="gap-0 py-0">
           <CardContent className="space-y-5 p-4 sm:p-5">
@@ -1020,7 +955,12 @@ export default function BudgetsPage() {
                           </p>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="size-9">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-9"
+                                aria-label={`Acciones de ${template.name}`}
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -1150,5 +1090,6 @@ export default function BudgetsPage() {
         </>
       ) : null}
     </div>
+    </MobilePullToRefresh>
   );
 }

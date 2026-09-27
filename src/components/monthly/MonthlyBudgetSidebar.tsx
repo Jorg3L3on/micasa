@@ -99,7 +99,7 @@ export const MonthlyBudgetSidebar = ({
           Presupuestos para ver el resumen aquí.
         </p>
         <Button variant="outline" size="sm" className="mt-4 w-full" asChild>
-          <Link href={`/budgets${ownerQuery}`}>Ir a presupuestos</Link>
+          <Link href={`/settings/budgets${ownerQuery}`}>Ir a presupuestos</Link>
         </Button>
       </Frame>
     );
@@ -143,7 +143,7 @@ export const MonthlyBudgetSidebar = ({
 
       <Button variant="outline" className="w-full gap-2" asChild>
         <Link
-          href={`/budgets${ownerQuery}`}
+          href={`/settings/budgets${ownerQuery}`}
           aria-label="Ver reporte completo de presupuesto de la quincena"
         >
           <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />

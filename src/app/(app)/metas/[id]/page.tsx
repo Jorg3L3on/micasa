@@ -28,16 +28,6 @@ import { WalletMovementsFeed } from '@/components/wallets/WalletMovementFeed';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   useRegisterToolbarActions,
@@ -66,6 +56,7 @@ import {
   goalTipStripClass,
   resolveGoalVisualStyle,
 } from '@/components/wallets/goal-status-styles';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
 
 import { todayCalendarDate, formatDisplayDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -485,7 +476,7 @@ export default function MetaDetailPage() {
                   goalMetricInkClass(visual),
                 )}
               >
-                {formatCurrency(metrics.remaining)}
+                <CurrencyTicker value={metrics.remaining} />
               </p>
               <p className="mt-1 text-center text-sm text-muted-foreground">
                 Ahorrado{' '}
@@ -638,25 +629,21 @@ export default function MetaDetailPage() {
         </>
       ) : null}
 
-      <AlertDialog open={completeOpen} onOpenChange={setCompleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Archivar meta</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se marcará como archivada (inactiva).
-              {wallet.amount > 0
-                ? ' Después podrás transferir el saldo a otra billetera.'
-                : ''}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleComplete}>
-              Archivar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={completeOpen}
+        onOpenChange={setCompleteOpen}
+        title="Archivar meta"
+        description={`Se marcará como archivada (inactiva).${
+          wallet.amount > 0
+            ? ' Después podrás transferir el saldo a otra billetera.'
+            : ''
+        }`}
+        itemName={wallet.name}
+        confirmLabel="Archivar"
+        loadingLabel="Archivando…"
+        tone="default"
+        onConfirm={handleComplete}
+      />
 
       <ConfirmDeleteDialog
         open={deleteOpen}

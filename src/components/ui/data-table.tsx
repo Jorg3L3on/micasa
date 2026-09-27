@@ -60,6 +60,8 @@ export type DataTableProps<TData> = {
   getRowCanExpand?: (row: Row<TData>) => boolean;
   /** Allow more than one row expanded at a time. Defaults to false (accordion). */
   enableMultiRowExpansion?: boolean;
+  /** Below `md`, replaces the table with a list of these rows (filters and pagination still apply). */
+  renderMobileRow?: (row: TData) => React.ReactNode;
 };
 
 export function DataTable<TData>({
@@ -77,6 +79,7 @@ export function DataTable<TData>({
   renderExpandedRow,
   getRowCanExpand,
   enableMultiRowExpansion = false,
+  renderMobileRow,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -167,7 +170,35 @@ export function DataTable<TData>({
           )}
         </div>
       )}
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      {renderMobileRow ? (
+        <ul
+          className="divide-y divide-border/60 overflow-hidden rounded-lg border bg-card md:hidden"
+          role="list"
+        >
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => (
+              <li key={row.id}>{renderMobileRow(row.original)}</li>
+            ))
+          ) : (
+            <li
+              className={cn(
+                'text-center',
+                typeof emptyMessage === 'string'
+                  ? 'py-8 text-sm text-muted-foreground'
+                  : 'p-2',
+              )}
+            >
+              {emptyMessage}
+            </li>
+          )}
+        </ul>
+      ) : null}
+      <div
+        className={cn(
+          'overflow-x-auto rounded-lg border bg-card',
+          renderMobileRow && 'hidden md:block',
+        )}
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

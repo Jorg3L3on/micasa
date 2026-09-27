@@ -8,18 +8,9 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
 import { GoalListCard } from '@/components/wallets/GoalListCard';
+import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   ToolbarFiltersPortal,
@@ -94,6 +85,11 @@ export default function MetasPage() {
   useEffect(() => {
     void fetchAllWallets();
   }, [fetchAllWallets]);
+
+  const handlePullRefresh = useCallback(
+    () => fetchAllWallets({ silent: true }),
+    [fetchAllWallets],
+  );
 
   const goals = useMemo(
     () => allWallets.filter((w) => w.type === 'GOAL'),
@@ -282,6 +278,7 @@ export default function MetasPage() {
   const hasSearch = Boolean(searchQuery.trim());
 
   return (
+    <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Metas">
     <div className="space-y-5 pb-8 md:pb-4">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
@@ -490,33 +487,27 @@ export default function MetasPage() {
         />
       ) : null}
 
-      <AlertDialog
+      <ConfirmDeleteDialog
         open={completeWallet != null}
         onOpenChange={(open) => {
           if (!open) setCompleteWallet(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Archivar meta</AlertDialogTitle>
-            <AlertDialogDescription>
-              {completeWallet
-                ? `Se marcará «${completeWallet.name}» como archivada (inactiva).${
-                    completeWallet.amount > 0
-                      ? ' Después podrás transferir el saldo a otra billetera.'
-                      : ''
-                  }`
-                : null}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleCompleteConfirm()}>
-              Archivar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="Archivar meta"
+        description={
+          completeWallet
+            ? `Se marcará «${completeWallet.name}» como archivada (inactiva).${
+                completeWallet.amount > 0
+                  ? ' Después podrás transferir el saldo a otra billetera.'
+                  : ''
+              }`
+            : 'Se marcará como archivada (inactiva).'
+        }
+        confirmLabel="Archivar"
+        loadingLabel="Archivando…"
+        tone="default"
+        onConfirm={handleCompleteConfirm}
+      />
     </div>
+    </MobilePullToRefresh>
   );
 }

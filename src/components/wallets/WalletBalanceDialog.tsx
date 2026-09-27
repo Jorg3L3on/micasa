@@ -11,6 +11,7 @@ import {
   AmountRow,
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
+  OverlayHint,
 } from '@/components/overlay/overlay-form';
 
 const DETAIL_BALANCE_INPUT_ID = 'wallet-detail-balance-input';
@@ -123,20 +124,13 @@ export default function WalletBalanceDialog({
       busy={savingBalance}
     >
       <div className="flex flex-col gap-3">
-        <p className="px-1 text-xs text-muted-foreground">
+        <OverlayHint role="status">
           {walletName} —{' '}
           {isCredit ? 'deuda actual en libros' : 'saldo actual en libros'}:{' '}
           <span className="font-mono font-semibold tabular-nums text-foreground">
             {formatCurrency(currentAmount)}
           </span>
-        </p>
-
-        {isCredit ? (
-          <p className="px-1 text-xs text-muted-foreground">
-            No registra movimientos ni pagos: solo alinea el saldo utilizado con
-            el emisor si difiere de compras y pagos cargados en MiCasa.
-          </p>
-        ) : null}
+        </OverlayHint>
 
         <div className={OVERLAY_GROUPED_CARD_CLASS}>
           <AmountRow
@@ -149,6 +143,13 @@ export default function WalletBalanceDialog({
             ariaLabel={isCredit ? 'Nueva deuda utilizada' : 'Nuevo saldo'}
           />
         </div>
+
+        {isCredit ? (
+          <OverlayHint>
+            No registra movimientos ni pagos: solo alinea el saldo utilizado con
+            el emisor si difiere de compras y pagos cargados en MiCasa.
+          </OverlayHint>
+        ) : null}
 
         <Button
           type="button"

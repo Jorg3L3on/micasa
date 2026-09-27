@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import {
-  reportApiError,
-  setOwnerSentryContext,
-} from '@/lib/observability/report-error';
+import { reportApiError } from '@/lib/observability/report-error';
 import prisma from '@/lib/prisma';
 import { rollbackCreditCardStatementImport } from '@/lib/server/credit-card-statement/rollback-statement-import.service';
 
@@ -29,8 +26,6 @@ export async function DELETE(
       ownerType: context.ownerType,
       ownerId: context.ownerId,
     };
-    setOwnerSentryContext(owner);
-
     const { id, importId } = await params;
     const walletId = Number(id);
     const impId = Number(importId);

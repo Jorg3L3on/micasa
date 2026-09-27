@@ -36,6 +36,23 @@ const OverlaySelectContext = createContext<OverlaySelectApi>({
 export const useOverlaySelectOpenChange = (): OverlaySelectApi['handleSelectOpenChange'] =>
   useContext(OverlaySelectContext).handleSelectOpenChange;
 
+/** Re-provides an overlay's select handler to content portaled from another React tree. */
+export const OverlaySelectProvider = ({
+  onSelectOpenChange,
+  children,
+}: {
+  onSelectOpenChange: OverlaySelectApi['handleSelectOpenChange'];
+  children: ReactNode;
+}) => {
+  const value = useMemo(
+    () => ({ handleSelectOpenChange: onSelectOpenChange }),
+    [onSelectOpenChange],
+  );
+  return (
+    <OverlaySelectContext.Provider value={value}>{children}</OverlaySelectContext.Provider>
+  );
+};
+
 type ResponsiveOverlayProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -45,6 +62,8 @@ type ResponsiveOverlayProps = {
   /** Blocks dismiss while a mutation is in flight. */
   busy?: boolean;
   contentClassName?: string;
+  /** Header dismiss copy; read-only surfaces pass `Cerrar`. */
+  dismissLabel?: string;
 };
 
 /**
@@ -59,6 +78,7 @@ export const ResponsiveOverlay = ({
   children,
   busy = false,
   contentClassName,
+  dismissLabel = 'Cancelar',
 }: ResponsiveOverlayProps) => {
   const isMobile = useIsMobile();
   const nestedSelectOpenRef = useRef(false);
@@ -103,7 +123,7 @@ export const ResponsiveOverlay = ({
       onClick={handleCancel}
       disabled={busy}
     >
-      Cancelar
+      {dismissLabel}
     </Button>
   );
 

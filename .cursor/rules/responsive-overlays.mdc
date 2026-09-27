@@ -1,0 +1,34 @@
+---
+description: Dialog (desktop) / bottom Sheet (mobile) overlay standard for every form and confirm
+alwaysApply: true
+---
+
+# Responsive overlays (MiCasa)
+
+The full spec is **`DESIGN.md` → Overlays (Dialog / Sheet)**. Read it before adding or editing any modal, sheet, or confirm. Reference implementation: **Agregar gasto** (`src/components/quick-capture/QuickExpenseSheet.tsx`). Build/migration recipe: `/responsive-overlay` (`.claude/skills/responsive-overlay/SKILL.md`).
+
+## Must
+
+- Shell: `ResponsiveOverlay` (`src/components/overlay/responsive-overlay.tsx`). It owns Dialog vs Sheet, header Cancelar, centered title, sr-only description, sizes, and select-safe dismiss.
+- Body: only the kit in `src/components/overlay/overlay-form.tsx`:
+  - `OVERLAY_GROUPED_CARD_CLASS` card with `FormGroupedRow` / `GroupedRow` rows
+  - `OVERLAY_ROW_TRIGGER_CLASS`, `OVERLAY_ROW_INPUT_CLASS`, `OVERLAY_ROW_NUMBER_INPUT_CLASS`, `OVERLAY_ROW_TEXTAREA_CLASS` for controls in rows
+  - `FormAmountRow` / `AmountRow` for money, `DateStepper` / `OptionalDateStepper` for dates
+  - `OverlayErrorBanner`, `OverlayHint` (below the card), `OverlaySectionLabel` (second card)
+  - `ToggleField layout="row" className="px-3"` outside the card
+  - one primary `OVERLAY_PRIMARY_BUTTON_CLASS`; optional ghost `OVERLAY_SECONDARY_BUTTON_CLASS` under it
+- Order: context line → error → grouped card(s) → hint → warnings → toggles → primary → secondary.
+- Confirms: `ConfirmDeleteDialog` with `tone` / `confirmLabel` / `loadingLabel`.
+- Portaled selects pass `handleSelectOpenChange` to `onOpenChange`.
+
+## Never
+
+- Native visible `type="date"`, `$`-prefixed `CurrencyInput` for the main amount, stacked labels over bordered inputs
+- Local copies of `GroupedRow`, the MXN chip, or `w-[5rem]` label spans
+- `isMobile` branching for field sizes or layout; multi-column field grids
+- Raw `Dialog` / `Sheet` / `AlertDialog` for forms or confirms; footer Cancelar; top-right X; title icons
+- Inline styling for a field type the kit lacks — add it to the kit instead
+
+## Before shipping
+
+Open the overlay at **390px** and **1280px** and compare it with Agregar gasto side by side (same row height, label column, amount size, hint placement, primary).

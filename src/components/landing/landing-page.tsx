@@ -134,7 +134,7 @@ export const LandingPage = () => {
 
       <header
         className={cn(
-          'sticky top-0 z-30 transition-[background-color,border-color,backdrop-filter] duration-300',
+          'sticky top-0 z-30 pt-[env(safe-area-inset-top)] transition-[background-color,border-color,backdrop-filter] duration-300',
           headerSolid
             ? 'border-b border-white/8 bg-[#060914]/80 backdrop-blur-xl'
             : 'border-b border-transparent bg-transparent'

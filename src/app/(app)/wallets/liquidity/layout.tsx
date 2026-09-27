@@ -1,6 +1,6 @@
 import { documentTitle } from '@/lib/document-title';
 
-export const metadata = documentTitle('Liquidez y análisis', {
+export const metadata = documentTitle('Análisis', {
   description:
     'Entiende tu dinero: lo que ya pasó, lo que tienes hoy y lo que viene.',
 });

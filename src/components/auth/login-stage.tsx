@@ -14,7 +14,7 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
   return (
     <div
       className={cn(
-        'dark relative flex min-h-svh items-center justify-center overflow-x-hidden bg-[#060914] px-5 py-8 text-[#f7f8ff]',
+        'dark relative flex min-h-svh items-center justify-center overflow-x-hidden bg-[#060914] px-5 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] text-[#f7f8ff]',
         className,
       )}
     >

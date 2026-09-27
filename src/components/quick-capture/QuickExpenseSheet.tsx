@@ -41,7 +41,10 @@ import {
   FormGroupedRow,
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_INPUT_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
+  OverlayErrorBanner,
+  OverlayHint,
 } from '@/components/overlay/overlay-form';
 
 type QuickExpenseSheetProps = {
@@ -205,15 +208,9 @@ export function QuickExpenseSheet({
       {({ handleSelectOpenChange }) => (
         <Form {...form}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            {error ? (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            ) : null}
+            <OverlayHint role="status">{preview}</OverlayHint>
 
-            <p className="px-1 text-xs text-muted-foreground" role="status">
-              {preview}
-            </p>
+            {error ? <OverlayErrorBanner>{error}</OverlayErrorBanner> : null}
 
             <div className={OVERLAY_GROUPED_CARD_CLASS}>
               <FormField
@@ -318,7 +315,7 @@ export function QuickExpenseSheet({
                           enterKeyHint="done"
                           spellCheck
                           disabled={loading || submitting}
-                          className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                          className={OVERLAY_ROW_INPUT_CLASS}
                           {...field}
                         />
                       </FormControl>
@@ -347,7 +344,7 @@ export function QuickExpenseSheet({
               />
             </div>
 
-            <p className="px-1 text-xs text-muted-foreground">{walletHint}</p>
+            <OverlayHint>{walletHint}</OverlayHint>
 
             {exceedsFundingBalance && selectedWallet ? (
               <InsufficientWalletExpenseNotice

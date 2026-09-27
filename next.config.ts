@@ -1,23 +1,32 @@
 import type { NextConfig } from 'next';
-import { withSentryConfig } from '@sentry/nextjs';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['pdf-parse', '@napi-rs/canvas', 'pdfjs-dist'],
+  serverExternalPackages: ['@napi-rs/canvas', 'pdfjs-dist'],
+  env: {
+    // Versions the service worker URL so each deploy triggers the update prompt.
+    NEXT_PUBLIC_APP_VERSION:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? 'dev',
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '4mb',
     },
     proxyClientMaxBodySize: '4mb',
-    // Enables React <ViewTransition> for Suspense reveals and shared-element morphs.
-    viewTransition: true,
     // Next 16.1+ defaults this to true; Turbopack FS cache can grow large and add background work in dev.
-    // When using `npm run dev:turbo`, set back to true if cold starts are too slow.
     turbopackFileSystemCacheForDev: false,
   },
   async headers() {
     const oauthFormActionCsp =
       "form-action 'self' https://chatgpt.com https://chat.openai.com";
     return [
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
       {
         source: '/oauth/consent',
         headers: [{ key: 'Content-Security-Policy', value: oauthFormActionCsp }],
@@ -72,6 +81,16 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: '/budgets',
+        destination: '/settings/budgets',
+        permanent: true,
+      },
+      {
+        source: '/budgets/:path*',
+        destination: '/settings/budgets/:path*',
+        permanent: true,
+      },
+      {
         source: '/expenses',
         destination: '/transactions',
         permanent: true,
@@ -85,20 +104,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
-
-export default withSentryConfig(nextConfig, {
-  org: 'ziglabs',
-  project: 'javascript-nextjs',
-  authToken: sentryAuthToken,
-  // Quiet when token is absent (local / CI without secrets).
-  silent: !sentryAuthToken,
-  widenClientFileUpload: true,
-  tunnelRoute: '/monitoring',
-  webpack: {
-    treeshake: {
-      removeDebugLogging: true,
-    },
-    automaticVercelMonitors: false,
-  },
-});
+export default nextConfig;

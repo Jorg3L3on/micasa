@@ -17,9 +17,9 @@ Agent entry points:
 - This file (`DESIGN.md`) — visual contract
 - `.cursor/rules/fintech-ui-design-system.mdc` — cards, metrics, money type
 - `.cursor/rules/ui-consistency.mdc` — chrome, CTAs, hierarchy (always on)
-- `.cursor/rules/responsive-overlays.mdc` — Dialog/Sheet overlays (always on); impl + `/responsive-overlay` skill
+- `.cursor/rules/responsive-overlays.mdc` — Dialog/Sheet overlays (always on); points to **Overlays** below
 - `.claude/skills/dashboard-ui/SKILL.md` (same copy in `.agents/skills/dashboard-ui/`) — page anatomy
-- Overlay migrations: `.claude/skills/responsive-overlay/SKILL.md` + `tasks/prd-responsive-overlays.md`
+- Overlay builds and migrations: `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`)
 
 ---
 
@@ -86,6 +86,62 @@ Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914
 
 ---
 
+## Logged-in UI contract
+
+Panel financiero is the reference for **tokens, glass, overlay chrome, and operate motion** — not a layout to paste onto Configuración or onto wallet and goal card faces. These decisions are locked; do not invent a second pattern.
+
+### Page archetypes
+
+Every logged-in route is one of four archetypes:
+
+| Archetype | Purpose | Routes | Surface |
+| --- | --- | --- | --- |
+| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
+| **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell |
+| **Detail** | One object, back to its collection | Billetera, estado de cuenta (tarjeta), meta | Same as collection; card faces stay solid |
+| **Settings** | Quiet catalogs and account | Configuración (cuenta, categorías, plantillas, usuarios, conexiones) | Calm `bg-card` cards — **never** glass |
+
+The quincena route stays for deep links and adopts planner chrome. It is **not** in the sidebar or the mobile dock.
+
+### Chrome (toolbar-first)
+
+- The **app header** owns the route title, search, filters, and the **one primary action** — register them with `useRegisterToolbarActions` (`src/context/toolbar-actions-context.tsx`). Rare actions go in the header overflow (`overflow` / `useRegisterToolbarOverflow`).
+- Do **not** repeat the header title with an in-page heading. Do **not** add an in-page sticky action bar.
+- Page rhythm under the header is **`space-y-5`**.
+- The month name in the planner glass band stays — that band is the period control, not a second page title.
+- Glass uses the single planner shell. Wallet and goal card faces stay solid. Do not glass-wash Configuración.
+- Do not revive the unused `PageHeader` component. Do not put a grid or a tinted wash on glass panels.
+
+### Mobile map
+
+- **Dock** stays five slots: **Panel**, **Billeteras**, **Análisis**, the **plus** button, **Más**.
+- The third tab is labeled **Análisis** and opens the same page as the sidebar item **Análisis**.
+- **Más** opens the sidebar sheet.
+- **Sidebar order** (canonical): Panel financiero, Billeteras, Préstamos, Análisis, Metas, Operaciones, then Configuración (Presupuestos lives under Configuración). Configuración is in that list **and** stays in the team switcher.
+- The active dock label uses readable foreground text (`text-foreground`), not the electric-blue fill color.
+
+### Motion allow-list
+
+Tokens first (see **Motion tokens**). Dialog and sheet open/close use `--motion-panel` + `--ease-out-soft`. Operate motion stays ≤ 320ms. Honor `prefers-reduced-motion` everywhere.
+
+Apply **only**:
+
+| Motion | Where |
+| --- | --- |
+| Currency ticker | Hero money amounts (planner summary, liquidez hero, préstamos / metas / presupuestos totals). **Not** table cells or list rows |
+| Motion tabs | In-page choice of two or three views (quincena toggle, Presupuestos vs Plantillas, budget status views) |
+| Pull to refresh (mobile only) | Planner, Billeteras, Metas, Préstamos, Operaciones, Análisis. **Not** Configuración (incl. Presupuestos) |
+| Shared-element morph | Billeteras and tarjetas only. Do not add one for metas or préstamos |
+| Swipe to delete | Below `md` only, then `ConfirmDeleteDialog` (see **Viewport delete**). Billeteras, metas, préstamos, plantillas, categorías, expense rows |
+
+Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy summary accordion, and the animated summary badge.
+
+### Out of scope
+
+Marketing landing, login, admin, the tasks route, and OAuth consent keep their own surfaces. Orange pills stay on the landing page.
+
+---
+
 ## Layout and controls
 
 Keep chrome **sparse**. One dominant labeled control per block; rare actions in `DropdownMenu`.
@@ -107,7 +163,7 @@ List/card delete is viewport-split (`md` = 768px):
 - **`md+`:** quiet trash icon (`hidden md:inline-flex`), no swipe.
 - **Below `md`:** swipe-to-delete only (`swipeEnabled={isMobile}`); hide the trash icon.
 
-Shared trailing control: `SwipeDeleteAction`. Confirm with `ConfirmDeleteDialog`. Reference: `src/components/categories/CategoryTreeRow.tsx`. Shared swipe thresholds: `src/lib/ui/swipe-delete.ts`.
+Shared row wrapper: `SwipeDeleteRow` (`src/components/ui/swipe-delete-row.tsx`) around the trailing control `SwipeDeleteAction`; tables opt in with `DataTable` `renderMobileRow`. Confirm with `ConfirmDeleteDialog`. Reference: `src/components/categories/CategoryTreeRow.tsx`. Shared swipe thresholds: `src/lib/ui/swipe-delete.ts`.
 
 ### Form actions (Save / Cancelar / Cerrar / X)
 
@@ -116,11 +172,11 @@ Shared trailing control: `SwipeDeleteAction`. Confirm with `ConfirmDeleteDialog`
 | **Responsive form overlay** (Dialog + Sheet) | Header **Cancelar** (`ghost` + `text-primary-text`, left) replaces the top-right **X**. Centered title. No footer Cancelar. One full-width primary (`h-11 w-full rounded-xl`). At most one dismiss and one primary — no duplicate Cancelar/Guardar. |
 | Page / non-overlay forms | Footer **Cancelar** (`outline`) + primary (**Guardar** / **Crear** / …); optional header **X** whose `sr-only` label is **Cerrar** |
 | Read-only / done / import result | Footer **Cerrar** only (or X alone) |
-| Destructive confirm | `ConfirmDeleteDialog` / `AlertDialog`: **Cancelar** + destructive confirm (same on both breakpoints) |
+| Confirm (delete, archive, "continuar de todos modos") | `ConfirmDeleteDialog` (`tone="destructive"` default, `tone="default"` for non-destructive) — header **Cancelar** + one full-width confirm, on the shared overlay |
 
 Rules:
 
-- Overlay chrome matches **Add Transaction** (`src/components/transactions/AddTransactionDialog.tsx`) and **WalletForm** (`src/components/WalletForm.tsx`).
+- Overlay chrome and body match **Agregar gasto** (`src/components/quick-capture/QuickExpenseSheet.tsx`). See **Overlays** for the full spec.
 - Loading copy uses the ellipsis character: `Guardando…` / `Eliminando…` / `Creando…`.
 - Destructive confirms use a destructive primary; do not invent a second Cancelar in the footer of an overlay that already has header Cancelar.
 
@@ -136,7 +192,7 @@ CSS variables in `globals.css` (respect `prefers-reduced-motion`):
 | `--ease-out-soft` | cubic-bezier(0.22, 1, 0.36, 1) | Continuity |
 | `--ease-spring` | cubic-bezier(0.16, 1, 0.3, 1) | Snappy micro feedback |
 
-Utilities: `.motion-fade-in`, `.motion-slide-up`. Route transitions use View Transitions + a short mobile page settle. Operate surfaces stay ≤ ~300ms; no scroll-reveal theater on the planner.
+Utilities: `.motion-fade-in` (`--motion-base`) and `.motion-slide-up` (`--motion-panel`); both are disabled under reduced motion. Tailwind usage: `duration-(--motion-panel) ease-(--ease-out-soft) motion-reduce:animate-none` (as in `src/components/ui/dialog.tsx` / `sheet.tsx`). Route transitions use View Transitions + a short mobile page settle. Operate surfaces stay ≤ 320ms; no scroll-reveal theater on the planner. What may animate is fixed by the **Motion allow-list** above.
 
 ### Light mode inventory (known gaps)
 
@@ -152,22 +208,31 @@ Fix these when touching light parity (do not leave new hardcoded dark-only chrom
 
 ## Overlays (Dialog / Sheet)
 
-New **multi-field** create/edit (and similar form) overlays must present differently by breakpoint:
+**Every** multi-field create or edit uses the shared **`ResponsiveOverlay`** (`src/components/overlay/responsive-overlay.tsx`): centered dialog from 768px up, bottom sheet below. Hand-rolled `isMobile ? <Sheet> : <Dialog>` forks are folded into it; Dialog-only multi-field forms gain the mobile sheet by moving onto it. Read-only drill-ins (e.g. the liquidez account detail) follow the same breakpoint split with a single **Cerrar**.
+
+Overlays present differently by breakpoint:
 
 | Breakpoint | Surface |
 | --- | --- |
 | Desktop (`md+`, ≥ 768px) | Centered modal **`Dialog`** |
 | Mobile (`< 768px`) | Bottom **sheet** |
 
-Mobile sheets follow Apple’s [Sheets](https://developer.apple.com/design/human-interface-guidelines/sheets) model (modal sheet rising from the bottom, scrollable content, dismissible). Implement like **Add Transaction**:
+Mobile sheets follow Apple’s [Sheets](https://developer.apple.com/design/human-interface-guidelines/sheets) model (modal sheet rising from the bottom, scrollable content, dismissible).
 
-- Canonical: `src/components/transactions/AddTransactionDialog.tsx` (WalletForm chrome follows the same header/primary pattern; field body may stay denser stacked labels)
+**Reference implementation:** **Agregar gasto** — `src/components/quick-capture/QuickExpenseSheet.tsx` (Panel financiero). `AddTransactionDialog.tsx`, `WalletForm.tsx` (Nueva meta / billetera), and `WalletTransferDialog.tsx` follow it exactly. When in doubt, open Agregar gasto and copy it.
 
-- Breakpoint: `useIsMobile()` from `src/hooks/use-mobile.ts` (do not invent a second hook)
-- Same data and actions on both breakpoints; mobile may restyle for thumb reach, height, and gestures (swipe/dismiss, denser rows)
-- Sheet chrome defaults: `side="bottom"`, `max-h-[92vh]`, rounded top, scrollable body, safe-area bottom padding
-- Keep component filenames as `*Dialog` for consistency; the dual presentation is still required
-- When the form uses portaled Select/popover menus, prevent sheet dismiss while those menus are open
+Live references (dark, this app):
+
+| Overlay | Desktop Dialog | Mobile Sheet |
+| --- | --- | --- |
+| Agregar gasto | [`agregar-gasto-desktop.png`](docs/images/overlays/agregar-gasto-desktop.png) | [`agregar-gasto-mobile.png`](docs/images/overlays/agregar-gasto-mobile.png) |
+| Nueva meta | [`nueva-meta-desktop.png`](docs/images/overlays/nueva-meta-desktop.png) | [`nueva-meta-mobile.png`](docs/images/overlays/nueva-meta-mobile.png) |
+| Transferir saldo | [`transferir-desktop.png`](docs/images/overlays/transferir-desktop.png) | [`transferir-mobile.png`](docs/images/overlays/transferir-mobile.png) |
+
+- The breakpoint lives **inside** `ResponsiveOverlay` (`useIsMobile()` from `src/hooks/use-mobile.ts`). Callers never branch on `isMobile` for layout or field sizes.
+- Same fields, order, and actions on both breakpoints.
+- Keep component filenames as `*Dialog` / `*Sheet`; the dual presentation is always on.
+- Portaled Select/popover menus call `handleSelectOpenChange` (render-prop arg or `useOverlaySelectOpenChange()`), so closing a menu does not dismiss the sheet.
 
 ### Overlay chrome (Dialog and Sheet)
 
@@ -176,19 +241,74 @@ Same language on both surfaces:
 1. **Cancelar** — `Button variant="ghost"` + `text-primary-text`, absolute **left** in the header; `showCloseButton={false}` (no top-right **X**)
 2. **Title** — centered (`text-base font-semibold`); **no** icon beside the title
 3. **Description** — not visible; keep `DialogDescription` / `SheetDescription` as **`sr-only`** for accessibility
-4. **Primary** — one full-width submit (`h-11 w-full rounded-xl`); no second Cancelar or Guardar
-5. **Body** — Add Transaction–style **grouped bordered rows** (`rounded-xl border divide-y`, label + control rows, single column on both breakpoints). Extra sections (e.g. credit fields) use a second grouped card with a small section label
+4. **Primary** — one full-width submit (`OVERLAY_PRIMARY_BUTTON_CLASS`); no second Cancelar or Guardar
+5. **Body** — grouped bordered rows (below), single column on both breakpoints
+
+All of this is owned by `ResponsiveOverlay`. Do not re-implement the header.
+
+### Body anatomy (top to bottom)
+
+Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these blocks, in this order; skip the ones you do not need:
+
+1. **Context line** — optional one-liner that explains where the record lands (e.g. `Va a: 2ª quincena · septiembre 2026`). `OverlayHint role="status"`.
+2. **Error** — `OverlayErrorBanner`. One style; never a hand-rolled `bg-destructive/*` box.
+3. **Grouped card** — `OVERLAY_GROUPED_CARD_CLASS`. Each field is a row:
+   - label + control → `FormGroupedRow` (react-hook-form) or `GroupedRow` (`htmlFor` when the control has an `id`)
+   - amount → `FormAmountRow` / `AmountRow` (MXN chip + big mono amount; label sits **above** the amount)
+   - date → `DateStepper` (required) or `OptionalDateStepper` (nullable, e.g. Fecha límite)
+4. **Extra sections** — `OverlaySectionLabel` + a second grouped card (e.g. "Datos de crédito", "Comisión").
+5. **Hint** — `OverlayHint` **below** the card it explains. Never inside the card.
+6. **Warnings** — amber notice (`InsufficientWalletExpenseNotice` style) when a value needs attention before saving.
+7. **Toggle rows** — `ToggleField layout="row" className="px-3"` (optional `helper`), outside the card.
+8. **Primary** — one `Button` with `OVERLAY_PRIMARY_BUTTON_CLASS`. Loading copy uses `…` (`Guardando…`).
+9. **Secondary actions** — optional `Button variant="ghost"` with `OVERLAY_SECONDARY_BUTTON_CLASS`, below the primary (e.g. "Quitar plan"). Destructive ones add `text-destructive`.
+
+### Sizes (fixed; do not override per screen)
+
+| Element | Value | Source |
+| --- | --- | --- |
+| Dialog | `max-w-md`, `p-5`, `gap-4` | `ResponsiveOverlay` |
+| Sheet | `side="bottom"`, `max-h-[92vh]`, `rounded-t-xl`, body `p-4` + safe-area bottom | `ResponsiveOverlay` |
+| Header | `min-h-10`; Cancelar `h-9 px-2 text-primary-text`; title `text-base font-semibold` | `ResponsiveOverlay` |
+| Grouped card | `rounded-xl border border-border/60 bg-card divide-y divide-border/60` | `OVERLAY_GROUPED_CARD_CLASS` |
+| Row | `px-3 py-1.5`, `min-h-11`, `gap-3` | `GroupedRow` / `FormGroupedRow` |
+| Row label | `w-[5rem] text-sm font-medium` | `OVERLAY_GROUPED_LABEL_CLASS` |
+| Select trigger in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_TRIGGER_CLASS` |
+| Text input in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_INPUT_CLASS` |
+| Number input in a row | same + `font-mono tabular-nums` | `OVERLAY_ROW_NUMBER_INPUT_CLASS` |
+| Textarea in a row | `min-h-11`, borderless, `resize-none` | `OVERLAY_ROW_TEXTAREA_CLASS` |
+| Amount | MXN chip + `text-2xl` (`md:text-4xl`) bold mono | `AmountRow` / `FormAmountRow` |
+| Hint / context line | `px-1 text-xs text-muted-foreground` | `OverlayHint` |
+| Section label | `px-1 text-xs font-medium text-muted-foreground` | `OverlaySectionLabel` |
+| Primary | `h-11 w-full rounded-xl` | `OVERLAY_PRIMARY_BUTTON_CLASS` |
+| Secondary | ghost, `h-9 w-full rounded-xl` | `OVERLAY_SECONDARY_BUTTON_CLASS` |
+
+Everything above is exported from `src/components/overlay/overlay-form.tsx` (and `responsive-overlay.tsx`). If a field type is missing, **add it to the kit** — do not style it inline in the caller.
+
+### Banned inside overlays
+
+- Native visible `<input type="date">` → `DateStepper` / `OptionalDateStepper`
+- Stacked `FormLabel` over a bordered `Input` / `SelectTrigger` → grouped row
+- `CurrencyInput` with the `$` prefix for the main amount → `AmountRow` / `FormAmountRow`
+- Local copies of `GroupedRow`, the MXN chip, or `w-[5rem]` label spans → import from the kit
+- `isMobile ? 'h-11' : 'h-10'` or any per-breakpoint field sizing; two-column field grids
+- Hand-rolled error boxes; hints inside the grouped card
+- Raw `Dialog`, `Sheet`, or `AlertDialog` for a form or a confirm → `ResponsiveOverlay` / `ConfirmDeleteDialog`
+- A footer Cancelar, a top-right X, an icon beside the title, or a second primary
+
+### Confirms
+
+Every confirm (delete, archive, "registrar sin descontar", "transferir de todos modos") uses **`ConfirmDeleteDialog`** (`src/components/ConfirmDeleteDialog.tsx`), which sits on `ResponsiveOverlay`: header Cancelar, sr-only description repeated as body copy, one full-width confirm. `tone="destructive"` (default) for delete, `tone="default"` otherwise; set `confirmLabel` / `loadingLabel`.
 
 **Overlay vs page:** long, multi-step, or deep-linkable flows belong on a **route**, not in a sheet. This section applies only when an overlay is the right choice.
 
 **Exceptions**
 
-- Short confirms / deletes: `AlertDialog` / `ConfirmDeleteDialog` — same UI on both breakpoints unless mobile clearly suffers
-- Marketing landing: out of scope
-- Existing Dialog-only forms: migrate via `/responsive-overlay` one at a time; no big-bang retrofit
-- Thin shared chrome helper is allowed (opt-in); do not extract a mega form wrapper that owns fields/validation
+- Marketing landing, login, admin: out of scope
+- Existing Dialog-only forms: migrate onto `ResponsiveOverlay` + the kit (one flow per change is fine)
+- Do not extract a mega form wrapper that owns fields/validation; the kit stays presentational
 
-Agent rule: `.cursor/rules/responsive-overlays.mdc` (pointer) + `.cursor/rules/responsive-overlays-impl.mdc`. Skill: `/responsive-overlay` · PRD: `tasks/prd-responsive-overlays.md`.
+Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay` (`.claude/skills/responsive-overlay/SKILL.md`).
 
 ---
 
@@ -207,7 +327,7 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc` (pointer) + `.cursor/rules/r
 - Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in mono.
 - Horizontal chips (wallets): `overflow-x-auto`, `shrink-0`, edge fades `from-background`.
 
-Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmosphere`, sticky header, `container`). Page rhythm: `space-y-5`. Sticky page bars: `top-16` (`group-has-data-[collapsible=icon]/sidebar-wrapper:top-12`).
+Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmosphere`, sticky header, `container`). Page rhythm: `space-y-5`. Title, search, filters, and the primary action live in the app header — no in-page sticky action bar (see **Chrome**).
 
 ---
 
@@ -234,9 +354,9 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 
 When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
 
-1. Keep domain structure (tables vs cards) from `.claude/skills/dashboard-ui/SKILL.md`.
-2. Swap shells to glass (`MONTHLY_PANEL_SHELL_CLASS` or the same dark border/blur).
-3. Use default `<Button>` for the section CTA; menus for overflow.
+1. Pick the archetype (planner, collection, detail, settings) and keep domain structure (tables vs cards) from `.claude/skills/dashboard-ui/SKILL.md`.
+2. Planner-grade panels use `MONTHLY_PANEL_SHELL_CLASS`; settings stay calm cards; card faces stay solid.
+3. Register the one primary action in the app header; overflow for rare actions.
 4. Metric strips stay calm + left border.
 5. Verify in **dark and light** at desktop and a narrow viewport.
 

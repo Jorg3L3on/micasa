@@ -7,10 +7,12 @@ import {
   GroupedRow,
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_TEXTAREA_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
+  OverlayErrorBanner,
+  OverlayHint,
 } from '@/components/overlay/overlay-form';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -20,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import type { PaymentMethodOption } from '@/types/catalog';
 import type {
   LoanListItem,
@@ -133,6 +135,14 @@ export const LoanCalendarPaymentOverlay = ({
   const selectedWallet = walletOptions.find(
     (wallet) => String(wallet.id) === draft?.sourceWalletId,
   );
+  const showsPaidAt =
+    draft?.action === 'MARK_PAID' || draft?.action === 'MARK_PAID_EXTERNAL';
+  const errorMessages = [
+    errors.paidAt,
+    errors.sourceWalletId,
+    errors.note,
+    errors.general,
+  ].filter((message): message is string => Boolean(message));
 
   return (
     <ResponsiveOverlay
@@ -145,7 +155,6 @@ export const LoanCalendarPaymentOverlay = ({
           : 'Confirma la acción de este pago.'
       }
       busy={submitting}
-      contentClassName="sm:max-w-lg"
     >
       {({ handleSelectOpenChange }) =>
         loan && payment && draft ? (
@@ -174,25 +183,29 @@ export const LoanCalendarPaymentOverlay = ({
               </p>
             </div>
 
-            <p className="text-xs text-muted-foreground">
+            <OverlayHint>
               {paymentActionDescription(draft.action, loan.paymentSource)}
-            </p>
+            </OverlayHint>
 
-            {draft.action === 'MARK_PAID' ||
-            draft.action === 'MARK_PAID_EXTERNAL' ? (
-              <DateStepper
-                value={draft.paidAt}
-                onChange={(next) => onFieldChange('paidAt', next)}
-              />
-            ) : null}
-            {errors.paidAt ? (
-              <p className="text-xs text-destructive" role="alert">
-                {errors.paidAt}
-              </p>
+            {errorMessages.length > 0 ? (
+              <OverlayErrorBanner>
+                {errorMessages.map((message) => (
+                  <p key={message}>{message}</p>
+                ))}
+              </OverlayErrorBanner>
             ) : null}
 
-            {draft.action === 'MARK_PAID' ? (
-              <div className={OVERLAY_GROUPED_CARD_CLASS}>
+            <div className={OVERLAY_GROUPED_CARD_CLASS}>
+              {showsPaidAt ? (
+                <GroupedRow label="Fecha">
+                  <DateStepper
+                    label="Fecha de pago"
+                    value={draft.paidAt}
+                    onChange={(next) => onFieldChange('paidAt', next)}
+                  />
+                </GroupedRow>
+              ) : null}
+              {draft.action === 'MARK_PAID' ? (
                 <GroupedRow label="Billetera">
                   <Select
                     value={
@@ -208,11 +221,7 @@ export const LoanCalendarPaymentOverlay = ({
                     }
                   >
                     <SelectTrigger
-                      className={cn(
-                        OVERLAY_ROW_TRIGGER_CLASS,
-                        errors.sourceWalletId &&
-                          'border-destructive focus:ring-destructive/30',
-                      )}
+                      className={OVERLAY_ROW_TRIGGER_CLASS}
                       aria-label="Billetera que pagará el préstamo"
                       aria-invalid={Boolean(errors.sourceWalletId)}
                     >
@@ -251,37 +260,22 @@ export const LoanCalendarPaymentOverlay = ({
                     </SelectContent>
                   </Select>
                 </GroupedRow>
-              </div>
-            ) : null}
-            {isPayrollDeduction && draft.action === 'MARK_PAID' ? (
-              <p className="text-[11px] text-muted-foreground">
-                Déjalo sin billetera para registrar solo la deducción de nómina.
-              </p>
-            ) : null}
-            {errors.sourceWalletId ? (
-              <p className="text-xs text-destructive" role="alert">
-                {errors.sourceWalletId}
-              </p>
-            ) : null}
-
-            <div className="space-y-1.5">
-              <Label htmlFor="loan-calendar-payment-note">Nota (opcional)</Label>
-              <Textarea
-                id="loan-calendar-payment-note"
-                value={draft.note}
-                onChange={(event) => onFieldChange('note', event.target.value)}
-                placeholder="Motivo o referencia del cambio"
-                rows={2}
-              />
+              ) : null}
+              <GroupedRow label="Nota" htmlFor="loan-calendar-payment-note">
+                <Textarea
+                  id="loan-calendar-payment-note"
+                  value={draft.note}
+                  onChange={(event) => onFieldChange('note', event.target.value)}
+                  placeholder="Opcional"
+                  rows={1}
+                  className={OVERLAY_ROW_TEXTAREA_CLASS}
+                />
+              </GroupedRow>
             </div>
-
-            {errors.general ? (
-              <div
-                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-                role="alert"
-              >
-                {errors.general}
-              </div>
+            {isPayrollDeduction && draft.action === 'MARK_PAID' ? (
+              <OverlayHint>
+                Déjalo sin billetera para registrar solo la deducción de nómina.
+              </OverlayHint>
             ) : null}
 
             <Button

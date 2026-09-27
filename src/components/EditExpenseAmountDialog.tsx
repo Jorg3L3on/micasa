@@ -32,7 +32,10 @@ import {
   FormGroupedRow,
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
+  OVERLAY_ROW_INPUT_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
+  OverlayErrorBanner,
+  OverlayHint,
 } from '@/components/overlay/overlay-form';
 
 type EditExpenseAmountDialogProps = {
@@ -120,17 +123,13 @@ export default function EditExpenseAmountDialog({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="flex flex-col gap-3"
           >
-            {error ? (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            ) : null}
-            <p className="px-1 text-xs text-muted-foreground">
+            <OverlayHint role="status">
               Monto actual:{' '}
               <span className="font-mono font-semibold tabular-nums text-foreground">
                 {formatCurrency(initialAmount)}
               </span>
-            </p>
+            </OverlayHint>
+            {error ? <OverlayErrorBanner>{error}</OverlayErrorBanner> : null}
             <div className={OVERLAY_GROUPED_CARD_CLASS}>
               <FormField
                 control={form.control}
@@ -145,7 +144,7 @@ export default function EditExpenseAmountDialog({
                           autoComplete="off"
                           enterKeyHint="next"
                           spellCheck
-                          className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                          className={OVERLAY_ROW_INPUT_CLASS}
                           aria-label="Nombre del gasto"
                           {...field}
                         />

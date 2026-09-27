@@ -1,22 +1,21 @@
-import * as Sentry from '@sentry/nextjs';
 import { z } from 'zod';
 
-export type OwnerSentryContext = {
+export type OwnerLogContext = {
   userId: number;
   ownerType: 'user' | 'house';
   ownerId: number;
 };
 
 export type ReportApiErrorOptions = {
-  /** Stable route key for titles/fingerprints, e.g. `POST /api/loans`. */
+  /** Stable route key, e.g. `POST /api/loans`. */
   route: string;
-  owner?: OwnerSentryContext;
-  /** HTTP status that will be returned to the client. Capture when ≥500 or omitted. */
+  owner?: OwnerLogContext;
+  /** HTTP status that will be returned to the client. Log when ≥500 or omitted. */
   status?: number;
   errorCode?: string;
 };
 
-/** Domain / client errors that must not become Sentry issues. */
+/** Domain / client errors that must not be logged as unexpected failures. */
 const SKIP_ERROR_CODES = new Set([
   'NO_MOVEMENTS',
   'CARD_NOT_FOUND',
@@ -47,46 +46,32 @@ export const shouldReportApiError = (
   return true;
 };
 
-export const setOwnerSentryContext = (owner: OwnerSentryContext) => {
-  Sentry.setUser({ id: String(owner.userId) });
-  Sentry.setTags({
-    owner_type: owner.ownerType,
-    owner_id: String(owner.ownerId),
-  });
-};
-
 /**
- * Capture unexpected API failures. Skips Zod validation and known domain codes.
- * Event titles use `route` (+ optional `errorCode`) — never free-form user messages.
+ * Log unexpected API failures as a JSON line. Skips Zod validation and known domain codes.
+ * Titles use `route` (+ optional `errorCode`) — never free-form user messages.
  */
 export const reportApiError = (
   error: unknown,
   options: ReportApiErrorOptions,
 ): void => {
-  if (options.owner) {
-    setOwnerSentryContext(options.owner);
-  }
-
   if (!shouldReportApiError(error, options)) return;
 
   const code = options.errorCode ?? getErrorCode(error);
-  const title = code ? `${options.route} [${code}]` : options.route;
-
-  Sentry.withScope((scope) => {
-    scope.setTag('route', options.route);
-    if (code) scope.setTag('error_code', code);
-    if (options.status != null) scope.setTag('http_status', String(options.status));
-    scope.setFingerprint([options.route, code ?? 'unexpected']);
-    scope.setExtra('error_message', error instanceof Error ? error.message : String(error));
-
-    if (error instanceof Error) {
-      Sentry.captureException(error, { tags: { route: options.route } });
-      return;
-    }
-
-    Sentry.captureMessage(title, {
-      level: 'error',
-      extra: { error },
-    });
+  const line = JSON.stringify({
+    severity: 'error',
+    event: 'api.unexpected_error',
+    route: options.route,
+    ...(code ? { error_code: code } : {}),
+    ...(options.status != null ? { http_status: options.status } : {}),
+    ...(options.owner
+      ? {
+          user_id: options.owner.userId,
+          owner_type: options.owner.ownerType,
+          owner_id: options.owner.ownerId,
+        }
+      : {}),
+    error_message: error instanceof Error ? error.message : String(error),
+    at: new Date().toISOString(),
   });
+  console.error(line);
 };

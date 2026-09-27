@@ -5,8 +5,8 @@ import { SkeletonExit } from '@/components/view-transition/SuspenseReveal';
 export default function FortnightLoading() {
   return (
     <SkeletonExit>
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-64" />
+      <div className="space-y-5">
+        <Skeleton className="h-14 w-full rounded-2xl" />
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>

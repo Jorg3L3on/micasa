@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/nextjs';
 import { auth } from '@/lib/auth';
 import { getAppHomeHref, getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 import { NextResponse } from 'next/server';
@@ -10,6 +9,7 @@ const PUBLIC_PATHS = new Set([
   '/register',
   '/privacy',
   '/terms',
+  '/offline',
 ]);
 
 const proxy = auth((req) => {
@@ -62,12 +62,12 @@ const proxy = auth((req) => {
   return NextResponse.next();
 });
 
-export default Sentry.wrapMiddlewareWithSentry(proxy);
+export default proxy;
 
-// Exclude Sentry tunnel + static brand assets; keep app routes matched so
-// auth redirects still run. Public routes are listed in PUBLIC_PATHS.
+// Exclude static brand assets; keep app routes matched so auth redirects still run.
+// Public routes are listed in PUBLIC_PATHS.
 export const config = {
   matcher: [
-    '/((?!api|monitoring|_next/static|_next/image|favicon.ico|icon.ico|icon|apple-touch-icon.png|apple-icon|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|icon.ico|icon|apple-touch-icon.png|apple-icon|sw.js|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };
