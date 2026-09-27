@@ -382,7 +382,7 @@ const WalletBalanceStrip = ({
           <div
             ref={listRef}
             className={cn(
-              'pointer-events-none -mx-3 -my-4 flex items-stretch gap-3 overflow-x-auto overflow-y-hidden scrollbar-hide px-3 py-4 [&>*]:pointer-events-auto',
+              '-mx-3 -my-4 flex items-stretch gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide px-3 py-4 [-webkit-overflow-scrolling:touch]',
               '[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]',
               draggingId != null && 'touch-none',
             )}
