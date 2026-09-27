@@ -19,12 +19,16 @@ import {
   walletStripPointerDistance,
   writeWalletStripOrder,
 } from '@/lib/ui/wallet-strip-order';
+import { useReducedMotion } from 'framer-motion';
 import {
   getProviderCardStyle,
+  getWalletAuraColors,
   isProviderCardDarkSurface,
 } from '@/lib/provider-card-style';
 import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
+import { AnimatedGridPattern } from '@/components/ui/animated-grid-pattern';
+import { ShineBorder } from '@/components/ui/shine-border';
 import { cn } from '@/lib/utils';
 import { CreditCard, GripVertical, Landmark, Wallet } from 'lucide-react';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
@@ -54,6 +58,7 @@ const WalletBalanceStrip = ({
 }: WalletBalanceStripProps) => {
   const { context } = useFinanceContext();
   const scheme = useProviderCardScheme();
+  const shouldReduceMotion = useReducedMotion();
   const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(null);
   const [balanceOverrides, setBalanceOverrides] = useState<Record<number, number>>({});
 
@@ -365,12 +370,10 @@ const WalletBalanceStrip = ({
   return (
     <>
       <div
-        className="relative min-w-0 flex-1 pt-0.5"
+        className="relative min-w-0 flex-1"
         role="region"
         aria-label="Saldos de billeteras"
       >
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-linear-to-r from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-3 bg-linear-to-l from-background to-transparent" />
           <p className="sr-only" aria-live="polite">
             {draggingId != null
               ? `Reordenando ${orderedWallets.find((wallet) => wallet.id === draggingId)?.name ?? 'billetera'}`
@@ -379,7 +382,8 @@ const WalletBalanceStrip = ({
           <div
             ref={listRef}
             className={cn(
-              'flex items-stretch gap-2 overflow-x-auto overflow-y-hidden py-0.5 pr-1 scrollbar-hide px-1',
+              'pointer-events-none -mx-3 -my-4 flex items-stretch gap-3 overflow-x-auto overflow-y-hidden scrollbar-hide px-3 py-4 [&>*]:pointer-events-auto',
+              '[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]',
               draggingId != null && 'touch-none',
             )}
           >
@@ -463,13 +467,19 @@ const WalletBalanceStrip = ({
                 const providerCardStyle = getProviderCardStyle(
                   wallet.provider_icon_key,
                   wallet.type,
-                  'calm',
+                  'aura',
                   scheme,
+                );
+                const auraColors = getWalletAuraColors(
+                  wallet.provider_icon_key,
+                  wallet.type,
                 );
                 const useProviderGradient = Boolean(providerCardStyle);
                 const onDarkSurface =
                   useProviderGradient &&
-                  isProviderCardDarkSurface('calm', scheme);
+                  isProviderCardDarkSurface('aura', scheme);
+                const isActiveCard =
+                  draggingId === wallet.id || holdingId === wallet.id;
                 const accent = hasBankIcon ? 'neutral' : fallbackAccent;
 
                 const cardContent = (
@@ -632,7 +642,7 @@ const WalletBalanceStrip = ({
                 );
 
                 const cardClasses = cn(
-                  'group relative flex h-full min-w-[136px] shrink-0 flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 pr-6 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2 sm:pr-7',
+                  'group relative isolate flex h-full min-w-[136px] shrink-0 flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 pr-6 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2 sm:pr-7',
                   'backdrop-blur-sm ring-1 ring-inset transition-all duration-300 [-webkit-touch-callout:none]',
                   onDarkSurface ? 'ring-white/5' : 'ring-black/5',
                   'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:to-transparent',
@@ -685,7 +695,7 @@ const WalletBalanceStrip = ({
                     onPointerDown={handleCardPointerDown(wallet.id)}
                     onContextMenu={handleCardContextMenu}
                     className={cn(
-                      'relative flex shrink-0 touch-manipulation',
+                      'group/wallet relative flex shrink-0 touch-manipulation',
                       draggingId === wallet.id && 'z-20',
                       draggingId != null &&
                         draggingId !== wallet.id &&
@@ -693,6 +703,20 @@ const WalletBalanceStrip = ({
                     )}
                     aria-grabbed={draggingId === wallet.id}
                   >
+                    {auraColors ? (
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'pointer-events-none absolute inset-x-5 inset-y-2 rounded-xl blur-md transition-opacity duration-300 motion-reduce:transition-none',
+                          isActiveCard
+                            ? 'opacity-100'
+                            : 'opacity-40 group-hover/wallet:opacity-90 dark:opacity-55',
+                        )}
+                        style={{
+                          background: `linear-gradient(120deg, ${auraColors.glowStrong}, ${auraColors.glow})`,
+                        }}
+                      />
+                    ) : null}
                     <button
                       type="button"
                       onClick={handleCardClick(wallet)}
@@ -715,6 +739,31 @@ const WalletBalanceStrip = ({
                             )}
                           />
                         </>
+                      ) : null}
+                      <AnimatedGridPattern
+                        width={14}
+                        height={14}
+                        numSquares={shouldReduceMotion ? 0 : 6}
+                        maxOpacity={0.5}
+                        duration={2.5}
+                        repeatDelay={1.5}
+                        className={cn(
+                          '-z-10 fill-transparent [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]',
+                          onDarkSurface
+                            ? 'stroke-white/[0.06]'
+                            : 'stroke-slate-900/[0.06]',
+                        )}
+                        style={{ color: auraColors?.glow }}
+                      />
+                      {auraColors ? (
+                        <ShineBorder
+                          shineColor={auraColors.shine}
+                          borderWidth={1.5}
+                          duration={11}
+                          style={{
+                            animationDelay: `-${(wallet.id % 7) * 1.6}s`,
+                          }}
+                        />
                       ) : null}
                       {cardContent}
                     </button>

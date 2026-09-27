@@ -207,6 +207,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
+const UPDATE_LOCKED_MESSAGES: Record<string, string> = {
+  EXPENSE_TRANSFER_LOCKED:
+    'No se pueden actualizar gastos generados automáticamente por transferencias',
+  EXPENSE_LOAN_PAYMENT_LOCKED:
+    'No se pueden actualizar gastos generados automáticamente por pagos de préstamos',
+  EXPENSE_CARD_PAYMENT_LOCKED:
+    'No se pueden modificar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
+};
+
 export async function PUT(request: NextRequest) {
   let transactionUpdateLog: {
     owner_type: string;
@@ -241,38 +250,16 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Ownership gate only; transfer / loan / card-payment locks are enforced by updateExpense.
     const existing = await prisma.expense.findFirst({
       where: { id: Number(id), ...ownerFilter },
-      include: {
-        transferAsUser: { select: { id: true } },
-        loan_payment: { select: { id: true } },
-      },
+      select: { id: true, wallet_id: true },
     });
 
     if (!existing) {
       return NextResponse.json(
         { error: 'Transaction not found' },
         { status: 404 },
-      );
-    }
-
-    if (existing.transferAsUser != null) {
-      return NextResponse.json(
-        {
-          error:
-            'No se pueden actualizar gastos generados automáticamente por transferencias',
-        },
-        { status: 400 },
-      );
-    }
-
-    if (existing.loan_payment != null) {
-      return NextResponse.json(
-        {
-          error:
-            'No se pueden actualizar gastos generados automáticamente por pagos de préstamos',
-        },
-        { status: 400 },
       );
     }
 
@@ -306,7 +293,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    if (walletId !== undefined && walletId !== null) {
+    if (walletId != null && walletId !== existing.wallet_id) {
       const wallet = await prisma.wallet.findFirst({
         where: { id: walletId, ...ownerFilter },
         select: { id: true },
@@ -390,19 +377,12 @@ export async function PUT(request: NextRequest) {
         { status: 400 },
       );
     }
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      (error as { code: string }).code === 'EXPENSE_CARD_PAYMENT_LOCKED'
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            'No se pueden modificar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
-        },
-        { status: 400 },
-      );
+    const lockedMessage =
+      error && typeof error === 'object' && 'code' in error
+        ? UPDATE_LOCKED_MESSAGES[(error as { code: string }).code]
+        : undefined;
+    if (lockedMessage) {
+      return NextResponse.json({ error: lockedMessage }, { status: 400 });
     }
     console.error('Error updating transaction:', error);
     return NextResponse.json(

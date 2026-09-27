@@ -82,6 +82,16 @@ dark:border-white/[0.12] dark:backdrop-blur-2xl dark:backdrop-saturate-120
 
 Dark glass is even translucent navy (`#090e1d` at ~52%) with a luminous hairline and a floating blue-black shadow so atmosphere shows through. Do **not** put a grid overlay or corner sheen on these cards. Summary metrics sit on the panel without nested cards.
 
+**Wallet strip exception (Panel financiero only):** `WalletBalanceStrip` has no panel of its own; each card face carries a Magic UI `AnimatedGridPattern` (`src/components/ui/animated-grid-pattern.tsx`) with brand-tinted squares. Cards use provider tone `aura` (deep face + brand bloom), a brand-colored `ShineBorder` (`src/components/ui/shine-border.tsx`), and a blurred brand halo from `getWalletAuraColors()`. Keep this treatment scoped to the strip; glass panels stay grid-free.
+
+**Aura language (Panel financiero / planner):** the rest of the planner echoes the strip at lower intensity through one shared kit — `AuraSurface` (`src/components/aura/aura-surface.tsx`) and `src/lib/ui/aura-palette.ts` (`AURA_TONE_HEX`, `getAuraWalletColor`, `getAuraBloomImage`, `getAuraBarStyle`). Do not hand-roll blooms or glows.
+
+- **Animated** (`animated`): only the Resumen hero tiles (Balance actual / Liquidez actual) — emerald when healthy, destructive when negative.
+- **Static** `AuraSurface`: remainder strip (emerald / amber / destructive) and budget allocation tiles (wallet brand, violet fallback).
+- **Gastos / Tarjetas / Préstamos rows:** one shell (`MONTHLY_PANEL_SHELL_CLASS`) plus `AuraRowBloom`, no left accent bar and no tinted gradient fills. Hue comes from `getDueRowTone` in `aura-palette.ts`: pagado emerald, vencido destructive, vence en ≤7 días or falta dato amber, más adelante blue, sin cargo / cancelado neutral. Open rows get a stronger wash, paid rows dim. Wallet label is a neutral chip; the provider icon carries wallet identity.
+- **Bars:** budget fills use `getAuraBarStyle`; the quincena progress is electric blue → violet with a glow (tracks are not `overflow-hidden` so the glow shows).
+- **Tabs:** planner tab groups use `AURA_TAB_INDICATOR_CLASS` (glass pill + `.liquid-glass-pill-aura` halo).
+
 Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914]/55` plus saturate so atmosphere shows through the chrome.
 
 ---

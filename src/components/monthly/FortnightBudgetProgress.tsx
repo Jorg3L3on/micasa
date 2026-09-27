@@ -1,4 +1,5 @@
 import { cn, formatCurrency } from '@/lib/utils';
+import { AURA_TONE_HEX, getAuraBarStyle } from '@/lib/ui/aura-palette';
 
 type FortnightBudgetProgressProps = {
   totalBudget: number;
@@ -6,7 +7,7 @@ type FortnightBudgetProgressProps = {
   className?: string;
 };
 
-const progressFillClass = 'bg-violet-500 dark:bg-violet-400';
+const progressFillStyle = getAuraBarStyle(AURA_TONE_HEX.violet);
 
 /**
  * Presupuesto restante for the sidebar: amount + violet progress bar + usado.
@@ -27,7 +28,7 @@ export const FortnightBudgetProgress = ({
       aria-label="Presupuesto de la quincena"
     >
       <div
-        className="h-2.5 overflow-hidden rounded-full bg-muted/50"
+        className="h-2.5 rounded-full bg-muted/50"
         role="progressbar"
         aria-valuenow={usedPercent}
         aria-valuemin={0}
@@ -35,11 +36,8 @@ export const FortnightBudgetProgress = ({
         aria-label={`${rawUsedPercent}% del presupuesto usado`}
       >
         <div
-          className={cn(
-            'h-full rounded-full transition-[width] duration-500',
-            progressFillClass,
-          )}
-          style={{ width: `${usedPercent}%` }}
+          className="h-full rounded-full transition-[width] duration-500"
+          style={{ width: `${usedPercent}%`, ...progressFillStyle }}
         />
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">

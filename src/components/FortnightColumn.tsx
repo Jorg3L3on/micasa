@@ -1,5 +1,6 @@
 'use client';
 
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getDefaultDateForFortnight } from '@/lib/fortnight-calendar';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
@@ -20,6 +21,11 @@ import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligat
 import { panelSnapshotFromDueItem } from '@/lib/finance/card-period-surfaces';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
 import {
+  GLASS_TAB_ACTIVE_LABEL_CLASS,
+  AURA_TAB_INDICATOR_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -37,6 +43,9 @@ import {
   ArrowUp,
   ArrowUpDown,
   Banknote,
+  CreditCard,
+  HandCoins,
+  Receipt,
   RefreshCw,
 } from 'lucide-react';
 import {
@@ -477,7 +486,15 @@ export default function FortnightColumn({
     async (expenseId: number, isPaid: boolean) => {
       // Update local state optimistically
       setTransactions((prev) =>
-        prev.map((t) => (t.id === expenseId ? { ...t, is_paid: isPaid } : t)),
+        prev.map((t) =>
+          t.id === expenseId
+            ? {
+                ...t,
+                is_paid: isPaid,
+                paid_at: isPaid ? todayCalendarDate() : null,
+              }
+            : t,
+        ),
       );
 
       // Refresh summary to recalculate totals
@@ -845,12 +862,11 @@ export default function FortnightColumn({
     'inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5',
     compactTabs && 'gap-1',
   );
-  const plannerTabBadgeClass = (isActive: boolean, hasPending: boolean) =>
-    cn(
-      'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5',
-      compactTabs && 'h-4 min-w-4 px-1 xl:h-4 xl:min-w-4 xl:px-1',
-      isActive && hasPending && 'bg-primary-foreground/20 text-primary-foreground',
-    );
+  const plannerTabIconClass = 'h-3.5 w-3.5 shrink-0';
+  const plannerTabBadgeClass = cn(
+    'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5',
+    compactTabs && 'h-4 min-w-4 px-1 xl:h-4 xl:min-w-4 xl:px-1',
+  );
 
   return (
     <>
@@ -912,7 +928,12 @@ export default function FortnightColumn({
           variant="pill"
           className="w-full min-w-0"
         >
-          <div className="mb-1.5 flex min-w-0 items-center gap-1 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/30 via-background to-muted/10 p-1 shadow-inner backdrop-blur-sm dark:from-muted/20 dark:via-card dark:to-muted/5 sm:mb-3.5 sm:gap-1.5 sm:p-1.5">
+          <div
+            className={cn(
+              MONTHLY_LIQUID_PANEL_CLASS,
+              'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
+            )}
+          >
             <TabsList
               aria-label="Secciones de la quincena"
               wrapperClassName="min-w-0 flex-1"
@@ -922,16 +943,16 @@ export default function FortnightColumn({
                 value="expenses"
                 stretch
                 className={plannerTabTriggerClass}
+                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+                activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
                 aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
               >
                 <span className={plannerTabLabelClass}>
+                  <Receipt className={plannerTabIconClass} aria-hidden />
                   Gastos
                   <Badge
                     variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
-                    className={plannerTabBadgeClass(
-                      columnTab === 'expenses',
-                      unpaidExpenseCount > 0,
-                    )}
+                    className={plannerTabBadgeClass}
                     aria-hidden
                   >
                     {unpaidExpenseCount}
@@ -942,18 +963,18 @@ export default function FortnightColumn({
                 value="cards"
                 stretch
                 className={plannerTabTriggerClass}
+                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+                activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
                 aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
               >
                 <span className={plannerTabLabelClass}>
-                  Tarjeta
+                  <CreditCard className={plannerTabIconClass} aria-hidden />
+                  Tarjetas
                   <Badge
                     variant={
                       pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
                     }
-                    className={plannerTabBadgeClass(
-                      columnTab === 'cards',
-                      pendingCardPaymentsCount > 0,
-                    )}
+                    className={plannerTabBadgeClass}
                     aria-hidden
                   >
                     {pendingCardPaymentsCount}
@@ -964,9 +985,12 @@ export default function FortnightColumn({
                 value="loans"
                 stretch
                 className={plannerTabTriggerClass}
+                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+                activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
                 aria-label={`Préstamos, ${pendingLoanPaymentsCount} pendientes`}
               >
                 <span className={plannerTabLabelClass}>
+                  <HandCoins className={plannerTabIconClass} aria-hidden />
                   <span className="@min-[6.25rem]:hidden">Prest.</span>
                   <span className="hidden @min-[6.25rem]:inline">
                     Préstamos
@@ -975,10 +999,7 @@ export default function FortnightColumn({
                     variant={
                       pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
                     }
-                    className={plannerTabBadgeClass(
-                      columnTab === 'loans',
-                      pendingLoanPaymentsCount > 0,
-                    )}
+                    className={plannerTabBadgeClass}
                     aria-hidden
                   >
                     {pendingLoanPaymentsCount}

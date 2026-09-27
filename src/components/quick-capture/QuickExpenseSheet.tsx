@@ -215,6 +215,59 @@ export function QuickExpenseSheet({
             <div className={OVERLAY_GROUPED_CARD_CLASS}>
               <FormField
                 control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormGroupedRow label="Nombre">
+                    <div className="flex items-center gap-1">
+                      <FormControl>
+                        <Input
+                          placeholder="Ej. doctor, Oxxo"
+                          autoCapitalize="sentences"
+                          autoComplete="off"
+                          enterKeyHint="done"
+                          spellCheck
+                          disabled={loading || submitting}
+                          className={OVERLAY_ROW_INPUT_CLASS}
+                          {...field}
+                        />
+                      </FormControl>
+                      {field.value ? (
+                        <FieldClearButton
+                          label="Borrar nombre"
+                          onClear={() => field.onChange('')}
+                        />
+                      ) : null}
+                    </div>
+                  </FormGroupedRow>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormAmountRow
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormGroupedRow label="Fecha">
+                    <DateStepper
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormGroupedRow>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="paymentMethodId"
                 render={({ field }) => {
                   const selected = expenseWallets.find(
@@ -270,17 +323,6 @@ export function QuickExpenseSheet({
 
               <FormField
                 control={form.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormAmountRow
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="categoryId"
                 render={({ field }) => (
                   <FormGroupedRow label="Categoría">
@@ -296,48 +338,6 @@ export function QuickExpenseSheet({
                       placeholder="Selecciona"
                       ariaLabel="Categoría"
                       triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
-                    />
-                  </FormGroupedRow>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormGroupedRow label="Nombre">
-                    <div className="flex items-center gap-1">
-                      <FormControl>
-                        <Input
-                          placeholder="Ej. doctor, Oxxo"
-                          autoCapitalize="sentences"
-                          autoComplete="off"
-                          enterKeyHint="done"
-                          spellCheck
-                          disabled={loading || submitting}
-                          className={OVERLAY_ROW_INPUT_CLASS}
-                          {...field}
-                        />
-                      </FormControl>
-                      {field.value ? (
-                        <FieldClearButton
-                          label="Borrar nombre"
-                          onClear={() => field.onChange('')}
-                        />
-                      ) : null}
-                    </div>
-                  </FormGroupedRow>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormGroupedRow label="Fecha">
-                    <DateStepper
-                      value={field.value}
-                      onChange={field.onChange}
                     />
                   </FormGroupedRow>
                 )}

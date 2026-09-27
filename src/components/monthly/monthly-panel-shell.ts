@@ -7,10 +7,28 @@ export const MONTHLY_PANEL_SHELL_CLASS =
 export const MONTHLY_CHROME_PADDING_CLASS =
   'px-2.5 py-2.5 sm:px-4 sm:py-3';
 
-/** Icon pill accent — solid electric blue, white glyph. */
+/** Hero panels (chrome, resumen, presupuesto): planner glass plus a soft rim. */
+export const MONTHLY_LIQUID_PANEL_CLASS = cn(MONTHLY_PANEL_SHELL_CLASS, 'liquid-glass');
+
+/** Active tab indicator: glass pill (same recipe as the mobile dock). */
+export const GLASS_TAB_INDICATOR_CLASS = 'liquid-glass liquid-glass-pill';
+
+/** Panel financiero tab indicator: glass pill plus the electric-blue aura halo. */
+export const AURA_TAB_INDICATOR_CLASS = cn(
+  GLASS_TAB_INDICATOR_CLASS,
+  'liquid-glass-pill-aura',
+);
+
+export const GLASS_TAB_ACTIVE_LABEL_CLASS = 'text-foreground';
+
+/** Tab track under the glass pill: faint tint so the pill reads as the lit surface. */
+export const GLASS_TAB_TRACK_CLASS = 'bg-black/[0.03] dark:bg-white/[0.03]';
+
+/** Icon pill accent — glass pill (same recipe as the active tab), foreground glyph. */
 export const MONTHLY_ICON_PILL_CLASS = cn(
-  'flex size-8 shrink-0 items-center justify-center rounded-xl',
-  'bg-primary text-white shadow-sm dark:bg-[#3a37fc]',
+  'relative flex size-8 shrink-0 items-center justify-center rounded-xl text-foreground',
+  GLASS_TAB_INDICATOR_CLASS,
+  '[&>svg]:relative [&>svg]:z-10',
 );
 
 /**

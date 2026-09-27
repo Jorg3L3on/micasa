@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { AnimatedBadge } from '@/components/motion/animated-badge';
 import { BouncyAccordion } from '@/components/motion/bouncy-accordion';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -13,22 +12,19 @@ import {
   CheckCircle2,
   Clock,
   Pencil,
-  BarChart3,
   Banknote,
 } from 'lucide-react';
-import { FortnightSummaryHero } from '@/components/monthly/FortnightSummaryHero';
 import {
-  MONTHLY_ICON_PILL_CLASS,
-  MONTHLY_PANEL_SHELL_CLASS,
-} from '@/components/monthly/monthly-panel-shell';
+  FortnightAccountMetrics,
+  FortnightSummaryHero,
+} from '@/components/monthly/FortnightSummaryHero';
+import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentMethodTypeIcon';
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
 import {
   getDueToPayComposition,
-  getFortnightStatusBadgeStatus,
-  getFortnightStatusPill,
   getFortnightSummaryHeader,
 } from '@/components/monthly/fortnight-summary-header';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
@@ -42,7 +38,6 @@ import type {
 } from '@/types/catalog';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import {
-  formatFortnightDateRangeCompact,
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
@@ -187,15 +182,6 @@ export default function SummaryBlock({
   });
 
   const obligationGapCount = planningCardStatementDue?.obligationGapCount ?? 0;
-  const statusPill = getFortnightStatusPill(trasPagarPlaneado, {
-    obligationGapCount,
-  });
-
-  const dateRange =
-    year != null && month != null && period != null
-      ? formatFortnightDateRangeCompact(year, month, period)
-      : null;
-
   const fundingWalletTypeLabel = (t: string) => {
     if (t === 'CASH') return 'Efectivo';
     if (t === 'DEBIT_CARD') return 'Débito';
@@ -203,45 +189,23 @@ export default function SummaryBlock({
   };
 
   return (
+    <>
+    {fundingLiquidityApplies ? (
+      <FortnightAccountMetrics
+        fundingInAccounts={fundingWalletBalanceTotal}
+        fundingLiquidity={fundingNetVsPendingExpense}
+      />
+    ) : null}
     <Card
-      className={cn(MONTHLY_PANEL_SHELL_CLASS, 'gap-0 py-0')}
+      className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'gap-0 py-0')}
       role="region"
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
     >
       <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className={MONTHLY_ICON_PILL_CLASS} aria-hidden>
-            <BarChart3 className="h-4 w-4" data-icon="inline-start" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <CardTitle className="text-sm font-bold leading-tight tracking-tight sm:text-base">
-              {headerMeta?.title ?? 'Resumen de la quincena'}
-            </CardTitle>
-            {dateRange ? (
-              <p className="mt-0.5 text-[11px] leading-none text-muted-foreground sm:text-xs">
-                {dateRange}
-              </p>
-            ) : null}
-          </div>
-          <AnimatedBadge
-            status={getFortnightStatusBadgeStatus(statusPill.tone)}
-            size="sm"
-            pulse={false}
-            showIcon={statusPill.tone !== 'shortfall'}
-            contentKey={statusPill.tone}
-            className="h-5 gap-1 px-2 text-[10px] font-semibold uppercase tracking-wider"
-          >
-            {statusPill.label}
-          </AnimatedBadge>
-        </div>
-
         <FortnightSummaryHero
           periodIncome={tenemos}
           incomeRemainder={trasPagarPlaneado}
           dueToPay={comprometidoEfectivo}
-          fundingInAccounts={fundingWalletBalanceTotal}
-          fundingLiquidity={fundingNetVsPendingExpense}
-          fundingLiquidityApplies={fundingLiquidityApplies}
           showIncomeRemainderBreakdown={!isCurrentFortnight}
           paidAmount={pagado}
           pendingAmount={pendiente}
@@ -691,5 +655,6 @@ export default function SummaryBlock({
         />
       </CardContent>
     </Card>
+    </>
   );
 }

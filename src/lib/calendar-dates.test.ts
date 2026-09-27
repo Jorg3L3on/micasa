@@ -4,6 +4,7 @@ import {
   coerceToCalendarDate,
   formatCalendarDate,
   formatDisplayDate,
+  formatDisplayDayMonth,
   formatWallClockDateRange,
   formatWallClockDateShort,
   parseCalendarDate,
@@ -54,6 +55,11 @@ describe('calendar-dates', () => {
   it('formatDisplayDate renders es-MX civil day', () => {
     expect(formatDisplayDate('2026-05-31')).toMatch(/31/);
     expect(formatDisplayDate(parseCalendarDate('2026-05-31'))).toMatch(/31/);
+  });
+
+  it('formatDisplayDayMonth omits the year', () => {
+    expect(formatDisplayDayMonth('2026-10-01')).toBe('1 oct');
+    expect(formatDisplayDayMonth(parseCalendarDate('2026-10-01'))).not.toMatch(/2026/);
   });
 
   it('formatWallClockDateShort keeps stored timestamp date parts', () => {

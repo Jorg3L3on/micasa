@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency, toDisplayAmount, cn } from '@/lib/utils';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   deleteTransaction,
@@ -33,6 +34,8 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { InsufficientWalletExpenseDialog } from '@/components/expenses/insufficient-wallet-expense';
 import { CategoryIcon } from '@/components/categories/CategoryIcon';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { AuraRowBloom } from '@/components/aura/aura-surface';
+import { AURA_TONE_HEX, getDueRowTone } from '@/lib/ui/aura-palette';
 
 import type { TransactionRow, WalletListItem } from '@/types/catalog';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
@@ -42,7 +45,7 @@ import {
   getCalendarFortnightRefForYmd,
   getCurrentCalendarFortnightRef,
 } from '@/lib/fortnight-calendar';
-import { formatDisplayDate, todayCalendarDate } from '@/lib/calendar-dates';
+import { formatDisplayDayMonth, todayCalendarDate } from '@/lib/calendar-dates';
 import {
   sortExpenseListRows,
   type PlannerListSortDir,
@@ -71,37 +74,6 @@ const planningLoanPaymentBadgeLabel = (row: TransactionRow): string =>
 const isPlanningDerivedExpenseRow = (row: TransactionRow): boolean =>
   isPlanningCardPaymentRow(row) || isPlanningLoanPaymentRow(row);
 
-/**
- * Outer shell shared with Pagos tarjeta / Préstamos panels
- * (`FortnightCardPaymentsPanel`, `FortnightLoanPaymentsPanel`).
- */
-const expenseCardShellClass = ({
-  isPaid,
-  isCardCharge,
-  daysRemaining,
-  hasDue,
-}: {
-  isPaid: boolean;
-  isCardCharge: boolean;
-  daysRemaining: number | null;
-  hasDue: boolean;
-}): string => {
-  if (isPaid) {
-    return 'border-emerald-500/20 bg-gradient-to-br from-emerald-500/6 via-card to-emerald-500/2 dark:from-emerald-500/12 dark:via-card/60 dark:to-emerald-500/3';
-  }
-  if (isCardCharge) {
-    // Slate: credit charges are secondary to cash planning (avoid purple chrome).
-    return 'border-slate-500/25 bg-gradient-to-br from-slate-500/8 via-card to-slate-500/3 dark:from-slate-500/14 dark:via-card/60 dark:to-slate-500/5';
-  }
-  if (hasDue && daysRemaining != null && daysRemaining < 0) {
-    return 'border-destructive/25 bg-gradient-to-br from-destructive/10 via-card to-destructive/3 dark:from-destructive/18 dark:via-card/60 dark:to-destructive/5';
-  }
-  if (hasDue && daysRemaining != null && daysRemaining <= 7) {
-    return 'border-amber-500/25 bg-gradient-to-br from-amber-500/8 via-card to-amber-500/2 hover:from-amber-500/12 dark:from-amber-500/14 dark:via-card/60 dark:to-amber-500/4';
-  }
-  return 'border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-card to-blue-500/2 hover:from-blue-500/12 dark:from-blue-500/14 dark:via-card/60 dark:to-blue-500/4';
-};
-
 const expenseStatusBoxClass = (isPaid: boolean, interactive: boolean) =>
   cn(
     'inline-flex h-8 w-8 items-center justify-center rounded-full border [&>svg]:block',
@@ -116,6 +88,46 @@ const expenseStatusBoxClass = (isPaid: boolean, interactive: boolean) =>
 const ExpensePaidCheckIcon = () => (
   <CheckCircle2 className="h-5 w-5" aria-hidden />
 );
+
+const expenseDueYmd = (
+  expense: TransactionRow,
+  year: number | undefined,
+  month: number | undefined,
+  period: 'FIRST' | 'SECOND' | undefined,
+): string | null => {
+  if (year == null || month == null || period == null) return null;
+  const dueDay = expense.due_day;
+  if (dueDay == null || !Number.isFinite(dueDay)) return null;
+  return dueYmdInFortnight(dueDay, year, month, period);
+};
+
+const expenseDueDateLabel = (
+  expense: TransactionRow,
+  year: number | undefined,
+  month: number | undefined,
+  period: 'FIRST' | 'SECOND' | undefined,
+): string | null => {
+  const ymd = expenseDueYmd(expense, year, month, period);
+  return ymd ? formatDisplayDayMonth(ymd) : null;
+};
+
+/**
+ * Unpaid rows without a stored payment_date report `created_at` as `date`
+ * (when the template generated them), so the edit sheet starts from the due date.
+ */
+const expenseEditDefaultDate = (
+  expense: TransactionRow,
+  year: number | undefined,
+  month: number | undefined,
+  period: 'FIRST' | 'SECOND' | undefined,
+): string =>
+  (!expense.is_paid && expenseDueYmd(expense, year, month, period)) ||
+  expense.date;
+
+const expensePaidDateLabel = (expense: TransactionRow): string | null => {
+  if (!expense.is_paid || !expense.paid_at) return null;
+  return formatDisplayDayMonth(expense.paid_at);
+};
 
 type ExpenseWalletLabelProps = {
   expense: TransactionRow;
@@ -136,7 +148,11 @@ const ExpenseWalletLabel = ({
 
   return (
     <span
-      className="inline-flex min-w-0 items-center gap-1.5"
+      className={cn(
+        'inline-flex min-w-0 items-center gap-1.5',
+        wallet &&
+          'rounded-full bg-muted/50 px-1.5 py-px ring-1 ring-inset ring-border/60 dark:bg-white/[0.05] dark:ring-white/[0.08]',
+      )}
       aria-label={walletLabel}
       title={walletLabel}
     >
@@ -151,7 +167,14 @@ const ExpenseWalletLabel = ({
           showTooltipLabel={false}
         />
       ) : null}
-      <span className="truncate text-muted-foreground/65">{walletLabel}</span>
+      <span
+        className={cn(
+          'truncate',
+          wallet ? 'text-foreground/75' : 'text-muted-foreground/65',
+        )}
+      >
+        {walletLabel}
+      </span>
     </span>
   );
 };
@@ -323,7 +346,13 @@ export default function ExpenseTable({
     });
 
     const updatedExpenses = localExpenses.map((e) =>
-      e.id === expenseId ? { ...e, is_paid: newPaidStatus } : e,
+      e.id === expenseId
+        ? {
+            ...e,
+            is_paid: newPaidStatus,
+            paid_at: newPaidStatus ? todayCalendarDate() : null,
+          }
+        : e,
     );
     setLocalExpenses(sortExpenseListRows(updatedExpenses, sortMode, sortDir));
 
@@ -397,6 +426,7 @@ export default function ExpenseTable({
             description: data.description,
             date: data.payment_date,
             due_day: Number(data.payment_date.slice(8, 10)),
+            paid_at: editingExpense.is_paid ? data.payment_date : e.paid_at,
             ...(walletChanged
               ? { wallet_id: data.wallet_id ?? null, paymentMethod: walletName }
               : {}),
@@ -405,8 +435,12 @@ export default function ExpenseTable({
     );
     setLocalExpenses(sortExpenseListRows(updatedExpenses, sortMode, sortDir));
 
+    const originalExpense = editingExpense;
+    setEditError(null);
+    setEditDialogOpen(false);
+    setEditingExpense(null);
+
     try {
-      setEditError(null);
       await updateExpenseAmount(
         expenseId,
         {
@@ -418,23 +452,29 @@ export default function ExpenseTable({
         context,
       );
       if (onExpenseUpdate) {
-        onExpenseUpdate(expenseId, editingExpense.is_paid);
+        onExpenseUpdate(expenseId, originalExpense.is_paid);
       }
-      setEditDialogOpen(false);
-      setEditingExpense(null);
       toast.success('Gasto actualizado.');
     } catch (error) {
-      setLocalExpenses(expenses);
+      setLocalExpenses(sortExpenseListRows(expenses, sortMode, sortDir));
       const { userMessage, logToConsole } = getApiErrorFeedback(
         error,
         'Error al actualizar el gasto',
       );
-      setEditError(userMessage);
       if (logToConsole) {
         console.error('Error updating expense amount:', error);
       }
       toast.error(userMessage);
-      throw error;
+      setEditError(userMessage);
+      setEditingExpense({
+        ...originalExpense,
+        amount: data.amount,
+        description: data.description,
+        date: data.payment_date,
+        due_day: Number(data.payment_date.slice(8, 10)),
+        wallet_id: data.wallet_id ?? null,
+      });
+      setEditDialogOpen(true);
     } finally {
       setUpdatingIds((prev) => {
         const next = new Set(prev);
@@ -692,9 +732,25 @@ export default function ExpenseTable({
                   showCountdown,
                   badgeColor,
                 } = getDueInfo(e);
+                const dueDateLabel = expenseDueDateLabel(e, year, month, period);
+                const paidDateLabel = expensePaidDateLabel(e);
+                const hasCountdown =
+                  !e.is_paid &&
+                  showCountdown &&
+                  daysRemaining !== null &&
+                  daysRemaining >= 0;
+                const showDueBadge =
+                  hasDue && (dueDateLabel == null || hasCountdown);
                 const isReadOnlyStatus =
                   isIncomeRow || isCardPay || isLoanPay;
                 const rowKey = `${e.planning_row_kind ?? 'expense'}-${e.id}`;
+                const rowStatusColor =
+                  AURA_TONE_HEX[
+                    getDueRowTone(
+                      e.is_paid ? 'paid' : 'pending',
+                      hasDue ? daysRemaining : null,
+                    ) ?? 'blue'
+                  ];
                 const swipeEnabled = isMobile && !isReadOnlyStatus;
                 const leftActions: SwipeAction[] = swipeEnabled
                   ? [
@@ -768,18 +824,17 @@ export default function ExpenseTable({
                       rightActions={rightActions}
                       openValue={openSwipe}
                       onOpenChange={setOpenSwipe}
+                      className={swipeEnabled ? 'bg-transparent' : undefined}
                       surfaceClassName={cn(
-                        'group/row relative flex items-center gap-2.5 overflow-hidden rounded-xl border px-3 transition-all [background-color:var(--card)]',
-                        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent dark:before:via-white/5',
+                        MONTHLY_PANEL_SHELL_CLASS,
+                        'group/row isolate flex items-center gap-2.5 overflow-hidden rounded-xl px-3',
                         isCompact ? 'py-2.5' : 'py-3',
-                        expenseCardShellClass({
-                          isPaid: e.is_paid,
-                          isCardCharge,
-                          daysRemaining,
-                          hasDue,
-                        }),
                       )}
                     >
+                    <AuraRowBloom
+                      color={rowStatusColor}
+                      subdued={e.is_paid}
+                    />
                     {/* Status / pay toggle */}
                     <div className="shrink-0">
                       {isReadOnlyStatus ? (
@@ -843,9 +898,12 @@ export default function ExpenseTable({
                         </span>
                       </span>
                       <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                        {e.date ? (
-                          <span className="tabular-nums">
-                            {formatDisplayDate(e.date)}
+                        {dueDateLabel ? (
+                          <span
+                            className="tabular-nums"
+                            aria-label={`Vence ${dueDateLabel}`}
+                          >
+                            {dueDateLabel}
                           </span>
                         ) : null}
                         <ExpenseWalletLabel
@@ -853,7 +911,12 @@ export default function ExpenseTable({
                           walletsById={walletsById}
                           isCompact={isCompact}
                         />
-                        {hasDue && (
+                        {paidDateLabel ? (
+                          <span className="tabular-nums">
+                            Pagado {paidDateLabel}
+                          </span>
+                        ) : null}
+                        {showDueBadge && (
                           <Badge
                             variant={e.is_paid ? 'secondary' : badgeColor}
                             className={cn(
@@ -861,11 +924,9 @@ export default function ExpenseTable({
                               e.is_paid && 'opacity-60',
                             )}
                           >
-                            {e.is_paid
-                              ? `Día ${dueDay}`
-                              : showCountdown &&
-                                  daysRemaining !== null &&
-                                  daysRemaining >= 0
+                            {dueDateLabel
+                              ? `en ${daysRemaining}d`
+                              : hasCountdown
                                 ? `Día ${dueDay} · en ${daysRemaining}d`
                                 : `Día ${dueDay}`}
                           </Badge>
@@ -1056,7 +1117,12 @@ export default function ExpenseTable({
           onSave={handleUpdateAmount}
           defaultAmount={toDisplayAmount(editingExpense.amount)}
           defaultDescription={editingExpense.description}
-          defaultPaymentDate={editingExpense.date}
+          defaultPaymentDate={expenseEditDefaultDate(
+            editingExpense,
+            year,
+            month,
+            period,
+          )}
           defaultWalletId={editingExpense.wallet_id ?? null}
           wallets={wallets}
           isPaid={editingExpense.is_paid}
