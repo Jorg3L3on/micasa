@@ -99,6 +99,8 @@ describe('listPlanningTransactions', () => {
     expect(rows[0]).toMatchObject({
       description: 'Super',
       planning_row_kind: 'expense',
+      is_paid: false,
+      paid_at: null,
     });
     expect(
       rows.some((row) => row.planning_row_kind === 'loan_payment'),
@@ -117,5 +119,39 @@ describe('listPlanningTransactions', () => {
         }),
       }),
     );
+  });
+
+  it('sends the paid calendar day only when the expense is paid', async () => {
+    findManyExpense.mockResolvedValue([
+      {
+        id: 11,
+        description: 'Sky',
+        amount: 269,
+        is_paid: true,
+        payment_date: new Date('2026-09-04T12:00:00.000Z'),
+        created_at: new Date('2026-09-04T19:36:13.876Z'),
+        category: { name: 'Hogar', icon: null },
+        wallet: { name: 'Santander', type: 'DEBIT_CARD' },
+        wallet_id: 3,
+        due_day: 30,
+      },
+    ]);
+
+    const rows = await listPlanningTransactions({
+      ownerFilter,
+      year: '2026',
+      month: '11',
+      period: 'FIRST',
+      type: 'expense',
+      excludeCreditInstallment: true,
+      resolvedFortnightIds: [46],
+    });
+
+    expect(rows[0]).toMatchObject({
+      description: 'Sky',
+      is_paid: true,
+      paid_at: '2026-09-04',
+      due_day: 30,
+    });
   });
 });

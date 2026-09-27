@@ -169,6 +169,14 @@ export const listPlanningTransactions = async (
         dateValue instanceof Date
           ? formatCalendarDate(dateValue)
           : formatCalendarDate(new Date(dateValue));
+      const paidAt =
+        expense.is_paid && expense.payment_date != null
+          ? formatCalendarDate(
+              expense.payment_date instanceof Date
+                ? expense.payment_date
+                : new Date(expense.payment_date),
+            )
+          : null;
       return {
         id: expense.id,
         date: dateStr,
@@ -182,8 +190,8 @@ export const listPlanningTransactions = async (
         planning_row_kind: 'expense' as const,
         type: 'expense' as const,
         is_paid: expense.is_paid,
-        payment_date: expense.payment_date,
-        due_day: (expense as { due_day?: number | null }).due_day ?? null,
+        paid_at: paidAt,
+        due_day: expense.due_day ?? null,
       };
     });
 

@@ -69,6 +69,8 @@ export type TransactionRow = {
   type?: 'income' | 'expense';
   is_paid: boolean;
   due_day?: number | null;
+  /** Civil day the expense was marked paid. Empty while it is still pending. */
+  paid_at?: string | null;
 };
 
 /** Desglose de cargos a TC / tienda en resumen de planificación (`exclude_credit_installment`). */
