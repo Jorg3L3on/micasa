@@ -112,7 +112,7 @@ export const FortnightScrub = () => {
         Exact viewport pin + overflow-hidden (not overflow-y-auto): page scroll
         drives the scrub. Nested overflow-y-auto/overscroll-contain trapped wheel.
       */}
-      <div className="sticky top-[3.75rem] flex h-[calc(100svh-3.75rem)] items-center overflow-hidden">
+      <div className="sticky top-[calc(3.75rem+env(safe-area-inset-top))] flex h-[calc(100svh-3.75rem-env(safe-area-inset-top))] items-center overflow-hidden">
         <div className="mx-auto w-full max-w-6xl px-5 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#911efe]">

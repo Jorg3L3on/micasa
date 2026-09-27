@@ -2,14 +2,16 @@
 
 import {
   createContext,
+  Suspense,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { QuickCaptureChooser } from '@/components/quick-capture/QuickCaptureChooser';
 import { QuickExpenseSheet } from '@/components/quick-capture/QuickExpenseSheet';
@@ -51,6 +53,36 @@ export function useOptionalQuickCapture(): QuickCaptureContextValue | null {
 
 type QuickCaptureHostProps = {
   children?: ReactNode;
+};
+
+/** `?quick=expense|income` (manifest shortcuts) opens the matching sheet once. */
+const QuickCaptureLaunchParam = ({
+  onOpenExpense,
+  onOpenIncome,
+}: {
+  onOpenExpense: () => void;
+  onOpenIncome: () => void;
+}) => {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const quick = searchParams.get('quick');
+
+  useEffect(() => {
+    if (quick !== 'expense' && quick !== 'income') return;
+
+    if (quick === 'expense') onOpenExpense();
+    if (quick === 'income') onOpenIncome();
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('quick');
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [quick, searchParams, pathname, router, onOpenExpense, onOpenIncome]);
+
+  return null;
 };
 
 /**
@@ -179,6 +211,12 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
 
   return (
     <QuickCaptureContext.Provider value={value}>
+      <Suspense fallback={null}>
+        <QuickCaptureLaunchParam
+          onOpenExpense={openExpense}
+          onOpenIncome={openIncome}
+        />
+      </Suspense>
       <MonthlyPanelRefreshProvider refresh={refreshPanel}>
         <MonthlyPanelRefreshRegisterProvider register={registerPanelRefresh}>
           {children}

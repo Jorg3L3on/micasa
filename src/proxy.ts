@@ -9,6 +9,7 @@ const PUBLIC_PATHS = new Set([
   '/register',
   '/privacy',
   '/terms',
+  '/offline',
 ]);
 
 const proxy = auth((req) => {
@@ -67,6 +68,6 @@ export default proxy;
 // Public routes are listed in PUBLIC_PATHS.
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|icon.ico|icon|apple-touch-icon.png|apple-icon|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|icon.ico|icon|apple-touch-icon.png|apple-icon|sw.js|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

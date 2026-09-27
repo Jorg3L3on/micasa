@@ -34,7 +34,7 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
+      <header className="sticky top-0 z-40 pt-[env(safe-area-inset-top)] border-b border-border/80 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
           <Link
             href="/admin"

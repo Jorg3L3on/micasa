@@ -2,6 +2,11 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['@napi-rs/canvas', 'pdfjs-dist'],
+  env: {
+    // Versions the service worker URL so each deploy triggers the update prompt.
+    NEXT_PUBLIC_APP_VERSION:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? 'dev',
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '4mb',
@@ -14,6 +19,14 @@ const nextConfig: NextConfig = {
     const oauthFormActionCsp =
       "form-action 'self' https://chatgpt.com https://chat.openai.com";
     return [
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
       {
         source: '/oauth/consent',
         headers: [{ key: 'Content-Security-Policy', value: oauthFormActionCsp }],

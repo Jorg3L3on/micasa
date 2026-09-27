@@ -28,7 +28,7 @@ export default function CreateWallet() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="w-full max-w-md space-y-6 rounded-lg border bg-card p-8 shadow-sm">
         <h1 className="text-center text-2xl font-semibold">
           Bienvenido a MiCasa

@@ -237,6 +237,60 @@
   }
 }
 
+/* BrandLoader — CSS-only so it animates from streamed HTML before hydration */
+.brand-comet-orbit {
+  animation: brand-comet-orbit 1.1s linear infinite;
+}
+
+.brand-loader-breathe {
+  animation: brand-loader-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes brand-comet-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes brand-loader-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-comet-orbit {
+    animation: brand-loader-breathe 1.4s ease-in-out infinite;
+  }
+
+  .brand-loader-breathe {
+    animation: none;
+  }
+}
+
+/* Installed app (home screen): native-feeling chrome */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  a,
+  button,
+  [role='button'] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  nav a,
+  [data-app-chrome] a {
+    -webkit-touch-callout: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

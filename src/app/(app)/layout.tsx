@@ -13,6 +13,7 @@ import { AppAtmosphere } from '@/components/app-atmosphere';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { ContentEnter } from '@/components/view-transition/SuspenseReveal';
 import { QuickCaptureHost } from '@/components/quick-capture/QuickCaptureHost';
+import { PwaLifecycle } from '@/components/pwa/PwaLifecycle';
 import AppLoading from './loading';
 
 export default async function AppLayout({
@@ -42,11 +43,18 @@ export default async function AppLayout({
           <AppSidebarDynamic />
           <SidebarInset className="relative min-w-0 dark:bg-transparent">
             <QuickCaptureHost>
+              <PwaLifecycle />
               <AppAtmosphere />
               <header
-                className="sticky top-0 z-50 h-16 min-w-0 shrink-0 border-b border-border/80 bg-background/85 shadow-sm backdrop-blur-xl transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 dark:border-white/[0.1] dark:bg-[#060914]/55 dark:shadow-[0_16px_48px_-24px_rgba(0,0,0,0.55)] dark:backdrop-saturate-120"
+                data-app-chrome
+                className="sticky top-0 z-50 h-[calc(4rem+env(safe-area-inset-top))] min-w-0 shrink-0 border-b border-border/80 bg-background/85 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur-xl transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(3rem+env(safe-area-inset-top))] dark:border-white/[0.1] dark:bg-[#060914]/55 dark:shadow-[0_16px_48px_-24px_rgba(0,0,0,0.55)] dark:backdrop-saturate-120"
                 style={{ viewTransitionName: 'app-header' }}
               >
+                {/* Translucent iOS status bar text is white: keep it legible in light mode. */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[env(safe-area-inset-top)] bg-[#060914] dark:hidden"
+                />
                 <AppHeaderToolbarDynamic />
               </header>
               <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 pb-[calc(5rem+env(safe-area-inset-bottom))] dark:bg-transparent md:pb-6">

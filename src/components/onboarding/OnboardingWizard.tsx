@@ -132,7 +132,7 @@ function OnboardingWizardContent() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <motion.div
         className="w-full max-w-[640px]"
         initial={{ opacity: 0, scale: 0.98 }}
