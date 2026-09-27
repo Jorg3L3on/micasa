@@ -44,6 +44,18 @@ const proxy = auth((req) => {
     );
   }
 
+  // PWA start_url: redirect before any HTML streams so the launch loader
+  // renders once (a redirect from the page would reload it mid-animation).
+  // The (app) layout still sends unfinished onboarding to /onboarding.
+  if (isLoggedIn && pathname === '/') {
+    const query = new URLSearchParams();
+    const quick = req.nextUrl.searchParams.get('quick');
+    if (quick === 'expense' || quick === 'income') {
+      query.set('quick', quick);
+    }
+    return Response.redirect(new URL(getAppHomeHref(query), req.nextUrl));
+  }
+
   // Legacy Inicio bookmarks → Panel financiero (preserve owner query).
   if (
     isLoggedIn &&
