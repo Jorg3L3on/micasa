@@ -17,6 +17,8 @@ export type LoanPaymentSnapshot = {
   loan_id: number;
   loan_name: string;
   lender: string;
+  lender_name?: string;
+  lender_icon_key?: string | null;
   payment_source: string;
   amount: number;
   due_date: Date;
@@ -29,6 +31,7 @@ export type DebtWalletSnapshot = {
   name: string;
   type: string;
   amount: number;
+  provider_icon_key?: string | null;
 };
 
 export type MonthOutstandingSnapshot = {
@@ -80,7 +83,13 @@ export const buildLoanDebtItemsAtAsOf = (
 ): MonthDebtItem[] => {
   const byLoan = new Map<
     number,
-    { title: string; subtitle: string; remaining: number }
+    {
+      title: string;
+      subtitle: string;
+      remaining: number;
+      lender_name: string;
+      lender_icon_key: string | null;
+    }
   >();
 
   for (const payment of payments) {
@@ -101,6 +110,8 @@ export const buildLoanDebtItemsAtAsOf = (
       title: payment.loan_name,
       subtitle: pastLoanDebtSubtitle(payment.payment_source, payment.lender),
       remaining: payment.amount,
+      lender_name: payment.lender_name ?? payment.lender,
+      lender_icon_key: payment.lender_icon_key ?? null,
     });
   }
 
@@ -112,6 +123,8 @@ export const buildLoanDebtItemsAtAsOf = (
       title: row.title,
       subtitle: row.subtitle,
       amount: row.remaining,
+      lender_name: row.lender_name,
+      lender_icon_key: row.lender_icon_key,
     }))
     .sort((a, b) => b.amount - a.amount || a.title.localeCompare(b.title, 'es'));
 };
@@ -135,6 +148,7 @@ export const buildCardDebtItemsAtAsOf = (
         title: wallet.name,
         subtitle: 'Adeudo de tarjeta',
         amount: roundMoney(balance),
+        wallet_icon_key: wallet.provider_icon_key ?? null,
       };
     })
     .filter((item) => item.amount > 0)

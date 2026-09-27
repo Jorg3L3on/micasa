@@ -504,6 +504,9 @@ export type LiquidityMonthlySeriesItem = {
     payment_amount?: number;
     /** Civil due date when the schedule knows a day. Never inferred. */
     due_date?: string;
+    lender_name?: string;
+    lender_icon_key?: string | null;
+    wallet_icon_key?: string | null;
   }>;
 };
 
@@ -523,6 +526,8 @@ export type LiquidityProjectionTrack = {
   expense_id?: number;
   wallet_id?: number;
   wallet_name?: string;
+  lender_name?: string;
+  lender_icon_key?: string | null;
 };
 
 export type LiquidityProjectionEventType = 'loan_payoff' | 'msi_complete';

@@ -20,35 +20,12 @@ import {
 } from '@/components/wallets/liquidity/liquidity-personalization';
 import {
   clampCustomChartRangeToAvailable,
+  DEFAULT_LIQUIDITY_CHART_RANGE,
   defaultCustomChartRange,
-  isLiquidityChartRangeId,
-  parseStoredCustomChartRange,
+  resolveDebtPayoffMonthKey,
   resolveLiquidityChartRange,
 } from '@/lib/finance/liquidity-chart-range';
-
-const CHART_RANGE_STORAGE_KEY = 'micasa.liquidity.chartRange';
-const CUSTOM_RANGE_STORAGE_KEY = 'micasa.liquidity.chartRangeCustom';
-
-const readStoredCustomRange = (): LiquidityCustomChartRange | null => {
-  if (typeof window === 'undefined') return null;
-  return parseStoredCustomChartRange(window.localStorage.getItem(CUSTOM_RANGE_STORAGE_KEY));
-};
-
-const readStoredChartRange = (): LiquidityChartRangeId => {
-  if (typeof window === 'undefined') return 'plus_minus_3';
-  const raw = window.localStorage.getItem(CHART_RANGE_STORAGE_KEY);
-  if (!isLiquidityChartRangeId(raw)) return 'plus_minus_3';
-  if (raw === 'custom' && !readStoredCustomRange()) return 'plus_minus_3';
-  return raw;
-};
-
-const persistCustomRange = (range: LiquidityCustomChartRange) => {
-  window.localStorage.setItem(CHART_RANGE_STORAGE_KEY, 'custom');
-  window.localStorage.setItem(
-    CUSTOM_RANGE_STORAGE_KEY,
-    JSON.stringify({ from: range.fromMonthKey, to: range.toMonthKey }),
-  );
-};
+import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
 
 function LoadingSkeleton() {
   return (
@@ -82,24 +59,19 @@ export function LiquidityProjectionTab({
   onSelectedMonthKeyChange,
   refreshToken = 0,
 }: LiquidityProjectionTabProps) {
-  const [chartRange, setChartRange] = useState<LiquidityChartRangeId>(() =>
-    readStoredChartRange(),
+  const [chartRange, setChartRange] = useState<LiquidityChartRangeId>(
+    DEFAULT_LIQUIDITY_CHART_RANGE,
   );
-  const [customRange, setCustomRange] = useState<LiquidityCustomChartRange | null>(() =>
-    readStoredCustomRange(),
-  );
+  const [customRange, setCustomRange] = useState<LiquidityCustomChartRange | null>(null);
 
   const handleChartRangeChange = (next: LiquidityChartRangeId) => {
     setChartRange(next);
-    window.localStorage.setItem(CHART_RANGE_STORAGE_KEY, next);
   };
 
   const handleCustomRangeChange = (range: LiquidityCustomChartRange) => {
     const available = data?.monthly_series.map((month) => month.month_key) ?? [];
-    const next = clampCustomChartRangeToAvailable(range, available);
-    setCustomRange(next);
+    setCustomRange(clampCustomChartRangeToAvailable(range, available));
     setChartRange('custom');
-    persistCustomRange(next);
   };
 
   const availableMonthKeys = useMemo(
@@ -107,18 +79,39 @@ export function LiquidityProjectionTab({
     [data],
   );
 
-  const chartMonthKeys = useMemo(() => {
-    if (!data) return new Set<string>();
+  const payoffMonthKey = useMemo(
+    () =>
+      resolveDebtPayoffMonthKey(
+        (data?.monthly_series ?? []).map((month) => ({
+          monthKey: month.month_key,
+          paymentsDue: monthDebtPaymentsTotal(month.debt_items ?? []),
+        })),
+      ),
+    [data?.monthly_series],
+  );
+
+  const visibleRange = useMemo<LiquidityCustomChartRange | null>(() => {
+    if (!data || availableMonthKeys.length === 0) return null;
     const custom =
       chartRange === 'custom'
-        ? clampCustomChartRangeToAvailable(
-            customRange ?? defaultCustomChartRange(data.as_of, availableMonthKeys),
-            availableMonthKeys,
-          )
+        ? (customRange ?? defaultCustomChartRange(data.as_of, availableMonthKeys))
         : null;
-    const bounds = resolveLiquidityChartRange(chartRange, data.as_of, custom);
-    return new Set(bounds.monthKeys);
-  }, [availableMonthKeys, chartRange, customRange, data]);
+    const bounds = resolveLiquidityChartRange(chartRange, data.as_of, custom, payoffMonthKey);
+    return clampCustomChartRangeToAvailable(bounds, availableMonthKeys);
+  }, [availableMonthKeys, chartRange, customRange, data, payoffMonthKey]);
+
+  const chartMonthKeys = useMemo(
+    () =>
+      new Set(
+        visibleRange
+          ? availableMonthKeys.filter(
+              (monthKey) =>
+                monthKey >= visibleRange.fromMonthKey && monthKey <= visibleRange.toMonthKey,
+            )
+          : [],
+      ),
+    [availableMonthKeys, visibleRange],
+  );
 
   const chartMonths = useMemo(
     () => data?.monthly_series.filter((month) => chartMonthKeys.has(month.month_key)) ?? [],
@@ -177,14 +170,12 @@ export function LiquidityProjectionTab({
           <LiquiditySectionGroup aria-label="Proyección mensual">
             <LiquidityPanelConnector>
               <LiquidityFutureTimeline
-                months={chartMonths}
-                events={projectionEvents}
+                months={data.monthly_series}
+                events={data.projection_events ?? []}
+                visibleRange={visibleRange}
                 chartRange={chartRange}
                 onChartRangeChange={handleChartRangeChange}
-                customRange={customRange}
-                onCustomRangeChange={handleCustomRangeChange}
-                availableMonthKeys={availableMonthKeys}
-                asOfYmd={data.as_of}
+                onVisibleRangeChange={handleCustomRangeChange}
                 selectedMonthKey={resolvedMonthKey}
                 onSelectMonth={onSelectedMonthKeyChange}
                 isRefreshing={false}

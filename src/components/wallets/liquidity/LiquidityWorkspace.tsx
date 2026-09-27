@@ -38,7 +38,6 @@ export const LiquidityWorkspace = () => {
     >
       <TabsList
         aria-label={PLAN_COPY.tabListLabel}
-        wrapperClassName="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 w-full bg-transparent group-has-data-[collapsible=icon]/sidebar-wrapper:top-[calc(3rem+env(safe-area-inset-top))]"
         className="w-full gap-0 border-b border-border/60 bg-transparent p-0"
       >
         <TabsTrigger

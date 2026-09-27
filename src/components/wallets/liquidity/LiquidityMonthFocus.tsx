@@ -104,7 +104,7 @@ export const LiquidityMonthFocus = ({
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-violet-500/50')}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Deudas de este mes
+              Pagos del mes
             </p>
             <p className="mt-1 font-mono text-lg font-bold tabular-nums text-violet-300">
               <CurrencyTicker value={paymentsDue} />
@@ -119,8 +119,6 @@ export const LiquidityMonthFocus = ({
             </p>
           </div>
         </div>
-
-        <LiquidityMonthDebtTabs items={debtItems} outstandingTotal={outstandingTotal} />
 
         {events.length > 0 ? (
           <div className="mt-4 space-y-2">
@@ -146,6 +144,8 @@ export const LiquidityMonthFocus = ({
             </ul>
           </div>
         ) : null}
+
+        <LiquidityMonthDebtTabs items={debtItems} outstandingTotal={outstandingTotal} />
       </motion.div>
     </AnimatePresence>
   );

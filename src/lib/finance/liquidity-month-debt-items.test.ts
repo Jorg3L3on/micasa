@@ -8,6 +8,69 @@ import {
 } from '@/lib/finance/liquidity-month-debt-items';
 
 describe('buildMonthDebtItems', () => {
+  it('carries the prestamista onto loans and the wallet icon onto cards and MSI', () => {
+    const byMonth = buildMonthDebtItems(
+      ['2026-10'],
+      [
+        {
+          due_date: '2026-10-20',
+          obligations: [
+            {
+              source: 'credit_card_statement',
+              next_due_payment: 2665.92,
+              wallet_id: 7,
+              wallet_name: 'Mercado Pago',
+            },
+          ],
+        },
+      ],
+      [
+        {
+          id: 'lender-3',
+          kind: 'loan',
+          title: 'Mercado Libre',
+          subtitle: '5 contratos · 31 pagos',
+          start_month_key: '2026-10',
+          end_month_key: '2026-10',
+          monthly_amount: 4759.61,
+          schedule: [{ month_key: '2026-10', amount: 4759.61 }],
+          lender_name: 'Mercado Libre',
+          lender_icon_key: 'MERCADO_LIBRE',
+        },
+        {
+          id: 'msi-1',
+          kind: 'msi',
+          title: 'iPad',
+          subtitle: 'Liverpool',
+          start_month_key: '2026-10',
+          end_month_key: '2026-10',
+          monthly_amount: 944.33,
+          schedule: [{ month_key: '2026-10', amount: 944.33 }],
+          wallet_id: 9,
+          lender_name: 'Liverpool',
+        },
+      ],
+      [],
+      new Map([
+        [7, 'MERCADO_PAGO'],
+        [9, 'LIVERPOOL'],
+      ]),
+    );
+
+    const items = byMonth.get('2026-10')!;
+    const loan = items.find((item) => item.kind === 'loan');
+    const card = items.find((item) => item.kind === 'card');
+    const msi = items.find((item) => item.kind === 'msi');
+    expect(loan).toMatchObject({
+      lender_name: 'Mercado Libre',
+      lender_icon_key: 'MERCADO_LIBRE',
+    });
+    expect(loan!.wallet_icon_key).toBeUndefined();
+    expect(card!.wallet_icon_key).toBe('MERCADO_PAGO');
+    expect(msi!.wallet_icon_key).toBe('LIVERPOOL');
+    expect(msi!.lender_name).toBeUndefined();
+  });
+
   it('lists remaining balances that decline after each cuota', () => {
     const byMonth = buildMonthDebtItems(
       ['2026-08', '2026-09', '2026-10', '2026-11'],

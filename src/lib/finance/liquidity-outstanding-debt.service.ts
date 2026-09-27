@@ -47,7 +47,7 @@ export const loadHistoricalOutstandingByMonth = async (
           in: [PaymentMethodType.CREDIT_CARD, PaymentMethodType.DEPARTMENT_STORE_CARD],
         },
       },
-      select: { id: true, name: true, type: true, amount: true },
+      select: { id: true, name: true, type: true, amount: true, provider_icon_key: true },
       orderBy: { name: 'asc' },
     }),
     prisma.creditCardPayment.findMany({
@@ -110,6 +110,7 @@ export const loadHistoricalOutstandingByMonth = async (
           id: true,
           name: true,
           lender: true,
+          lender_entity: { select: { name: true, provider_icon_key: true } },
           payment_source: true,
         },
       },
@@ -121,6 +122,7 @@ export const loadHistoricalOutstandingByMonth = async (
     name: wallet.name,
     type: wallet.type,
     amount: Number(wallet.amount),
+    provider_icon_key: wallet.provider_icon_key,
   }));
 
   const movementsByWalletId = new Map<number, WalletMovement[]>();
@@ -140,6 +142,8 @@ export const loadHistoricalOutstandingByMonth = async (
     loan_id: row.loan.id,
     loan_name: row.loan.name,
     lender: row.loan.lender,
+    lender_name: row.loan.lender_entity?.name ?? row.loan.lender,
+    lender_icon_key: row.loan.lender_entity?.provider_icon_key ?? null,
     payment_source: row.loan.payment_source,
     amount: Number(row.amount),
     due_date: row.due_date,

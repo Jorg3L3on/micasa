@@ -44,6 +44,8 @@ export type LiquidityProjectionTrack = {
   installment_plan_id?: number;
   wallet_id?: number;
   wallet_name?: string;
+  lender_name?: string;
+  lender_icon_key?: string | null;
 };
 
 export type LiquidityProjectionTimeline = {
@@ -129,6 +131,7 @@ const collectLoanTimeline = async (
       name: true,
       lender: true,
       lender_id: true,
+      lender_entity: { select: { name: true, provider_icon_key: true } },
       payment_amount: true,
       payment_source: true,
       payments: {
@@ -256,6 +259,8 @@ const collectLoanTimeline = async (
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([month_key, amount]) => ({ month_key, amount })),
       loan_id: groupLoans.length === 1 ? firstLoan.id : undefined,
+      lender_name: firstLoan.lender_entity?.name ?? firstLoan.lender,
+      lender_icon_key: firstLoan.lender_entity?.provider_icon_key ?? null,
     });
   }
 

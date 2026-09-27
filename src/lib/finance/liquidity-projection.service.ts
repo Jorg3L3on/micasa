@@ -792,6 +792,7 @@ export const getLiquidityProjection = async (
         amount: true,
         credit_limit: true,
         temporary_credit_limit: true,
+        provider_icon_key: true,
       },
       orderBy: { name: 'asc' },
     }),
@@ -1222,6 +1223,7 @@ export const getLiquidityProjection = async (
     milestones,
     projectionTracks,
     timeline.payrollLineItems,
+    new Map(creditCardsForUtilization.map((card) => [card.id, card.provider_icon_key])),
   );
 
   const monthly_series: LiquidityMonthlySeriesItem[] = monthKeys.map((month_key) => {

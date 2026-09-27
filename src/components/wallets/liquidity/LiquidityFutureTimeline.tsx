@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useId, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Check, LineChart, Loader2 } from 'lucide-react';
 import { LiquiditySectionHeader } from '@/components/wallets/liquidity/liquidity-section';
 import {
   Area,
+  AreaChart,
+  Brush,
   CartesianGrid,
   ComposedChart,
   Line,
@@ -20,24 +23,24 @@ import type {
   LiquidityMonthlySeriesItem,
   LiquidityProjectionEvent,
 } from '@/types/catalog';
-import { LiquidityChartRangeMenu } from '@/components/wallets/liquidity/LiquidityHorizonMenu';
 import {
   formatMonthYearLabel,
   formatShortMonthLabel,
+  LIQUIDITY_CHART_RANGE_OPTIONS,
   type LiquidityChartRangeId,
   type LiquidityCustomChartRange,
 } from '@/components/wallets/liquidity/liquidity-personalization';
 import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
 
 type LiquidityFutureTimelineProps = {
+  /** Every projected month; the range slider can reach all of them. */
   months: LiquidityMonthlySeriesItem[];
   events: LiquidityProjectionEvent[];
+  /** Months currently drawn in the chart. */
+  visibleRange: LiquidityCustomChartRange | null;
   chartRange: LiquidityChartRangeId;
   onChartRangeChange: (value: LiquidityChartRangeId) => void;
-  customRange: LiquidityCustomChartRange | null;
-  onCustomRangeChange: (range: LiquidityCustomChartRange) => void;
-  availableMonthKeys: readonly string[];
-  asOfYmd: string;
+  onVisibleRangeChange: (range: LiquidityCustomChartRange) => void;
   selectedMonthKey: string;
   onSelectMonth: (monthKey: string) => void;
   isRefreshing?: boolean;
@@ -79,7 +82,7 @@ const ChartTooltip = ({
       <p className="mt-2 font-mono text-sm font-bold tabular-nums text-foreground">
         {formatCurrency(point.monthDebt)}
       </p>
-      <p className="text-[11px] text-muted-foreground">deudas de este mes</p>
+      <p className="text-[11px] text-muted-foreground">pagos del mes</p>
       <p className="mt-2 font-mono text-sm font-bold tabular-nums text-amber-300">
         {formatCurrency(point.outstandingDebt)}
       </p>
@@ -175,15 +178,58 @@ const PayoffLabel = ({ x, y, payload }: LabelProps) => {
   );
 };
 
+type BrushHandleProps = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+};
+
+const BrushHandle = ({ x = 0, y = 0, width = 0, height = 0 }: BrushHandleProps) => {
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} rx={4} fill="#3a37fc" />
+      <line
+        x1={centerX - 1.5}
+        x2={centerX - 1.5}
+        y1={centerY - 5}
+        y2={centerY + 5}
+        stroke="rgba(255,255,255,0.8)"
+        strokeWidth={1}
+      />
+      <line
+        x1={centerX + 1.5}
+        x2={centerX + 1.5}
+        y1={centerY - 5}
+        y2={centerY + 5}
+        stroke="rgba(255,255,255,0.8)"
+        strokeWidth={1}
+      />
+    </g>
+  );
+};
+
+const resolveVisibleIndexes = (
+  rows: readonly ChartPoint[],
+  range: LiquidityCustomChartRange | null,
+): { startIndex: number; endIndex: number } => {
+  const lastIndex = Math.max(0, rows.length - 1);
+  if (!range) return { startIndex: 0, endIndex: lastIndex };
+  const startIndex = rows.findIndex((row) => row.monthKey >= range.fromMonthKey);
+  const endIndex = rows.findLastIndex((row) => row.monthKey <= range.toMonthKey);
+  if (startIndex < 0 || endIndex < startIndex) return { startIndex: 0, endIndex: lastIndex };
+  return { startIndex, endIndex };
+};
+
 export const LiquidityFutureTimeline = ({
   months,
   events,
+  visibleRange,
   chartRange,
   onChartRangeChange,
-  customRange,
-  onCustomRangeChange,
-  availableMonthKeys,
-  asOfYmd,
+  onVisibleRangeChange,
   selectedMonthKey,
   onSelectMonth,
   isRefreshing = false,
@@ -227,18 +273,35 @@ export const LiquidityFutureTimeline = ({
     [eventsByMonth, months],
   );
 
-  const firstEventMonth = chartRows.find((row) => row.eventCount > 0)?.monthKey;
+  const rangeChipsId = useId();
+  const { startIndex, endIndex } = resolveVisibleIndexes(chartRows, visibleRange);
+  const visibleRows = useMemo(
+    () => chartRows.slice(startIndex, endIndex + 1),
+    [chartRows, endIndex, startIndex],
+  );
+
+  const firstEventMonth = visibleRows.find((row) => row.eventCount > 0)?.monthKey;
 
   useEffect(() => {
-    if (chartRows.length === 0) return;
-    if (!chartRows.some((row) => row.monthKey === selectedMonthKey)) {
-      onSelectMonth(firstEventMonth ?? chartRows[0]?.monthKey ?? '');
+    if (visibleRows.length === 0) return;
+    if (!visibleRows.some((row) => row.monthKey === selectedMonthKey)) {
+      onSelectMonth(firstEventMonth ?? visibleRows[0]?.monthKey ?? '');
     }
-  }, [chartRows, firstEventMonth, onSelectMonth, selectedMonthKey]);
+  }, [firstEventMonth, onSelectMonth, selectedMonthKey, visibleRows]);
 
   if (months.length === 0) {
     return <p className="text-sm text-muted-foreground">Aún no hay meses por proyectar.</p>;
   }
+
+  const handleBrushChange = (next: { startIndex?: number; endIndex?: number }) => {
+    const nextStart = next.startIndex ?? startIndex;
+    const nextEnd = next.endIndex ?? endIndex;
+    if (nextStart === startIndex && nextEnd === endIndex) return;
+    const fromMonthKey = chartRows[nextStart]?.monthKey;
+    const toMonthKey = chartRows[nextEnd]?.monthKey;
+    if (!fromMonthKey || !toMonthKey) return;
+    onVisibleRangeChange({ fromMonthKey, toMonthKey });
+  };
 
   const chartShellClass = embedded
     ? 'relative px-3 pb-4 pt-4 sm:px-5'
@@ -261,17 +324,6 @@ export const LiquidityFutureTimeline = ({
           }
           icon={LineChart}
           accent="violet"
-          actions={
-            <LiquidityChartRangeMenu
-              value={chartRange}
-              onChange={onChartRangeChange}
-              customRange={customRange}
-              onCustomRangeChange={onCustomRangeChange}
-              availableMonthKeys={availableMonthKeys}
-              asOfYmd={asOfYmd}
-              isLoading={isRefreshing}
-            />
-          }
         />
       </div>
 
@@ -294,10 +346,43 @@ export const LiquidityFutureTimeline = ({
           </div>
         ) : null}
         <div className={cn(isRefreshing && 'opacity-40 transition-opacity')}>
+        <div
+          role="group"
+          aria-label="Meses que muestra la gráfica"
+          className="mb-3 inline-flex items-center gap-0.5 rounded-full border border-border/50 p-0.5 dark:border-white/[0.07]"
+        >
+          {LIQUIDITY_CHART_RANGE_OPTIONS.map((option) => {
+            const isActive = option.value === chartRange;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={isActive}
+                aria-label={option.description}
+                title={option.description}
+                onClick={() => onChartRangeChange(option.value)}
+                className={cn(
+                  'relative inline-flex min-h-8 items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold leading-none transition-colors',
+                  'outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
+                  isActive ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {isActive ? (
+                  <motion.span
+                    layoutId={`${rangeChipsId}-indicator`}
+                    className="absolute inset-0 rounded-full bg-primary"
+                    transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                  />
+                ) : null}
+                <span className="relative">{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
         <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-0.5 w-5 rounded-full bg-gradient-to-r from-[#3a37fc] to-[#ee477a]" />
-            Deudas del mes (izq.)
+            Pagos del mes (izq.)
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-0.5 w-5 rounded-full bg-amber-400" />
@@ -311,7 +396,7 @@ export const LiquidityFutureTimeline = ({
           </span>
         </div>
 
-        <div className="h-72 w-full sm:h-80">
+        <div className="h-80 w-full sm:h-[22rem] [&_.recharts-brush>rect:first-child]:stroke-white/10 [&_.recharts-brush>rect:first-child]:[rx:8px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={chartRows}
@@ -364,7 +449,7 @@ export const LiquidityFutureTimeline = ({
               {selectedMonthKey ? (
                 <ReferenceLine
                   yAxisId="payments"
-                  x={chartRows.find((row) => row.monthKey === selectedMonthKey)?.label}
+                  x={visibleRows.find((row) => row.monthKey === selectedMonthKey)?.label}
                   stroke="rgba(255,255,255,0.22)"
                   strokeDasharray="3 4"
                 />
@@ -398,7 +483,7 @@ export const LiquidityFutureTimeline = ({
                 }}
                 activeDot={false}
                 label={(labelProps) => {
-                  const row = chartRows[labelProps.index ?? -1];
+                  const row = visibleRows[labelProps.index ?? -1];
                   if (!row?.eventCount) {
                     return <g key={`payoff-label-empty-${labelProps.index}`} />;
                   }
@@ -424,6 +509,30 @@ export const LiquidityFutureTimeline = ({
                 activeDot={{ r: 4, fill: '#fbbf24', stroke: '#0d1327', strokeWidth: 2 }}
                 isAnimationActive
               />
+              <Brush
+                dataKey="label"
+                startIndex={startIndex}
+                endIndex={endIndex}
+                onChange={handleBrushChange}
+                height={32}
+                travellerWidth={12}
+                stroke="#8b89ff"
+                fill="rgba(255,255,255,0.02)"
+                traveller={<BrushHandle />}
+                ariaLabel="Arrastra los extremos para elegir qué meses ver"
+              >
+                <AreaChart data={chartRows}>
+                  <Area
+                    type="monotone"
+                    dataKey="outstandingDebt"
+                    stroke="#fbbf24"
+                    strokeOpacity={0.5}
+                    fill="#fbbf24"
+                    fillOpacity={0.08}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </Brush>
             </ComposedChart>
           </ResponsiveContainer>
         </div>
