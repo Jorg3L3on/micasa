@@ -15,6 +15,9 @@ import { addCalendarDays, APP_TIMEZONE } from '@/lib/calendar-dates';
 export const OVERLAY_ROW_TRIGGER_CLASS =
   'h-11 w-full max-w-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent';
 
+export const OVERLAY_ROW_INPUT_CLASS =
+  'h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0';
+
 export const OVERLAY_GROUPED_LABEL_CLASS =
   'w-[5rem] shrink-0 text-sm font-medium leading-none text-foreground';
 

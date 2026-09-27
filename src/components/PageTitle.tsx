@@ -122,6 +122,9 @@ export function getPageTitle(pathname: string): {
     if (segments[1] === 'account') {
       return { title: 'Cuenta', isHome: false, showBack };
     }
+    if (segments[1] === 'connections') {
+      return { title: 'Conexiones', isHome: false, showBack };
+    }
     return { title: 'Configuración', isHome: false, showBack };
   }
 

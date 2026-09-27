@@ -2,7 +2,8 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { CalendarDays, Check, Sparkles } from 'lucide-react';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import type {
@@ -106,7 +107,7 @@ export const LiquidityMonthFocus = ({
               Deudas de este mes
             </p>
             <p className="mt-1 font-mono text-lg font-bold tabular-nums text-violet-300">
-              {formatCurrency(paymentsDue)}
+              <CurrencyTicker value={paymentsDue} />
             </p>
           </div>
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-amber-500/50')}>
@@ -114,7 +115,7 @@ export const LiquidityMonthFocus = ({
               Adeudo al cierre
             </p>
             <p className="mt-1 font-mono text-lg font-bold tabular-nums text-amber-300">
-              {formatCurrency(outstandingTotal)}
+              <CurrencyTicker value={outstandingTotal} />
             </p>
           </div>
         </div>

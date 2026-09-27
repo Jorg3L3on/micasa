@@ -1,0 +1,3 @@
+/** Income/expense template form fields: calm in light, Orion inset well under `dark:`. */
+export const TEMPLATE_FIELD_SHELL_CLASS =
+  'h-11 rounded-lg border border-border bg-background text-foreground shadow-xs transition-colors placeholder:text-muted-foreground hover:border-foreground/25 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-0 dark:border-white/15 dark:bg-black/35 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] dark:hover:border-white/25 dark:hover:bg-black/45 dark:focus-visible:border-white/35 dark:focus-visible:bg-black/45 dark:focus-visible:ring-white/15';

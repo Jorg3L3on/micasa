@@ -14,8 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import EmptyState from '@/components/EmptyState';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import { TemplateSwipeRow } from '@/components/settings/TemplateSwipeRow';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, type ClientApiError } from '@/lib/api/client-fetch';
 import { deleteExpenseTemplate } from '@/lib/api/expense-templates';
@@ -27,6 +33,7 @@ import {
   formatCategoryLabel,
 } from '@/components/categories/CategoryLabel';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
+import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 
 export default function ExpenseTemplatesPage() {
   const { context } = useFinanceContext();
@@ -248,15 +255,20 @@ export default function ExpenseTemplatesPage() {
               >
                 <Pencil className="h-4 w-4" data-icon="inline-start" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => openDeleteDialog(template)}
-                aria-label={`Eliminar ${template.name}`}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hidden size-8 md:inline-flex"
+                    onClick={() => openDeleteDialog(template)}
+                    aria-label={`Eliminar ${template.name}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" data-icon="inline-start" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Eliminar</TooltipContent>
+              </Tooltip>
             </div>
           );
         },
@@ -265,20 +277,24 @@ export default function ExpenseTemplatesPage() {
     [openEditDialog, openDeleteDialog]
   );
 
-  const addButton = (
-    <Button
-      className="h-9 shrink-0 rounded-xl"
-      onClick={() =>
-        router.push(
-          `/settings/expense-templates/new${queryString ? `?${queryString}` : ''}`,
-        )
-      }
-      aria-label="Agregar plantilla de gastos"
-    >
-      <Plus data-icon="inline-start" className="h-4 w-4" aria-hidden />
-      Agregar plantilla
-    </Button>
+  const handleCreateTemplate = useCallback(() => {
+    router.push(
+      `/settings/expense-templates/new${queryString ? `?${queryString}` : ''}`,
+    );
+  }, [queryString, router]);
+
+  const primaryActionIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
   );
+
+  useRegisterToolbarActions({
+    primaryAction: {
+      label: 'Nueva plantilla de gasto',
+      onClick: handleCreateTemplate,
+      icon: primaryActionIcon,
+    },
+  });
 
   const filterSlot = (
     <>
@@ -316,24 +332,9 @@ export default function ExpenseTemplatesPage() {
 
   return (
     <>
-      <div
-        className="sticky top-16 z-40 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-2 bg-background px-4 py-2 group-has-data-[collapsible=icon]/sidebar-wrapper:top-12"
-        aria-label="Plantillas de gastos"
-      >
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold leading-tight">
-            Plantillas de gastos
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Recurrentes, suscripciones y montos estimados en tu contexto actual.
-          </p>
-        </div>
-        <div className="flex shrink-0">{addButton}</div>
-      </div>
-
-      <div className="relative z-0">
+      <div className="space-y-5">
       {error && (
-        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -355,6 +356,16 @@ export default function ExpenseTemplatesPage() {
               filterSlot={filterSlot}
               columnVisibility
               emptyMessage="No se encontraron plantillas de gastos."
+              renderMobileRow={(template) => (
+                <TemplateSwipeRow
+                  name={template.name}
+                  subtitle={`${formatCategoryLabel(template.category, template.categoryIcon)} · ${template.paymentMethod ?? 'Sin método'}`}
+                  amount={template.totalEstimatedAmount ?? 0}
+                  active={template.active}
+                  onEdit={() => openEditDialog(template)}
+                  onRequestDelete={() => openDeleteDialog(template)}
+                />
+              )}
             />
           )}
         </CardContent>

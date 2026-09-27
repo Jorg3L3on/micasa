@@ -4,16 +4,7 @@ import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -32,6 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ToggleField } from '@/components/ui/toggle';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
 import {
   BUDGET_FREQUENCIES,
   BUDGET_FREQUENCY_LABELS,
@@ -49,6 +43,8 @@ type Props = {
   error?: string | null;
   disabled?: boolean;
 };
+
+const FIELD_HEIGHT_CLASS = 'h-11 md:h-10';
 
 function toDateInputValue(value: string | null) {
   if (!value) return null;
@@ -80,6 +76,7 @@ export default function BudgetTemplateFieldsDialog({
   });
 
   const watchedFrequency = useWatch({ control: form.control, name: 'frequency' });
+  const isBusy = form.formState.isSubmitting || disabled;
 
   useEffect(() => {
     if (!open) return;
@@ -98,167 +95,172 @@ export default function BudgetTemplateFieldsDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Editar plantilla</DialogTitle>
-          <DialogDescription>
-            Actualiza el nombre, monto y frecuencia de esta plantilla.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Editar plantilla"
+      description="Actualiza el nombre, monto y frecuencia de esta plantilla."
+      busy={isBusy}
+    >
+      {({ handleSelectOpenChange }) => (
+        <div className="flex flex-col gap-4">
+          {error ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
 
-        {error ? (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" aria-hidden data-icon="inline-start" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        <Form {...form}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nombre</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej: Supermercado" maxLength={25} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="allocated_amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monto total</FormLabel>
-                  <FormControl>
-                    <CurrencyInput value={field.value} onChange={field.onChange} placeholder="0" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="frequency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Frecuencia</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger
-                        className="w-full"
-                        aria-label="Frecuencia del presupuesto"
-                      >
-                        <SelectValue placeholder="Selecciona frecuencia" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {BUDGET_FREQUENCIES.map((frequency) => (
-                        <SelectItem key={frequency} value={frequency}>
-                          {BUDGET_FREQUENCY_LABELS[frequency]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {watchedFrequency !== 'CUSTOM' && (
+          <Form {...form}>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <FormField
                 control={form.control}
-                name="recurrent"
+                name="name"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-2 space-y-0">
+                  <FormItem>
+                    <FormLabel>Nombre</FormLabel>
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        aria-label="Presupuesto recurrente"
+                      <Input
+                        placeholder="Ej: Supermercado"
+                        maxLength={25}
+                        className={FIELD_HEIGHT_CLASS}
+                        autoCapitalize="sentences"
+                        {...field}
                       />
                     </FormControl>
-                    <FormLabel className="cursor-pointer font-normal">
-                      Recurrente (genera periodos al crear nuevo mes)
-                    </FormLabel>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
 
-            {watchedFrequency === 'CUSTOM' && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="allocated_amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Monto total</FormLabel>
+                    <FormControl>
+                      <CurrencyInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="0"
+                        className={`${FIELD_HEIGHT_CLASS} font-mono tabular-nums`}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="frequency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Frecuencia</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      onOpenChange={handleSelectOpenChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger
+                          className={`${FIELD_HEIGHT_CLASS} w-full`}
+                          aria-label="Frecuencia del presupuesto"
+                        >
+                          <SelectValue placeholder="Selecciona frecuencia" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {BUDGET_FREQUENCIES.map((frequency) => (
+                          <SelectItem key={frequency} value={frequency}>
+                            {BUDGET_FREQUENCY_LABELS[frequency]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {watchedFrequency !== 'CUSTOM' ? (
                 <FormField
                   control={form.control}
-                  name="start_date"
+                  name="recurrent"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fecha inicio</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value || null)}
-                        />
-                      </FormControl>
-                      <FormMessage />
+                    <FormItem className="space-y-0">
+                      <ToggleField
+                        layout="row"
+                        label="Recurrente"
+                        helper="Genera periodos al crear nuevo mes"
+                        checked={Boolean(field.value)}
+                        onCheckedChange={field.onChange}
+                        aria-label="Presupuesto recurrente"
+                      />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="end_date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fecha fin</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value || null)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
+              ) : null}
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 sm:h-9"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                className="h-11 sm:h-9"
-                disabled={form.formState.isSubmitting || disabled}
-              >
-                {form.formState.isSubmitting || disabled ? (
+              {watchedFrequency === 'CUSTOM' ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="start_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha inicio</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            className={FIELD_HEIGHT_CLASS}
+                            value={field.value ?? ''}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="end_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha fin</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            className={FIELD_HEIGHT_CLASS}
+                            value={field.value ?? ''}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ) : null}
+
+              <Button type="submit" className={OVERLAY_PRIMARY_BUTTON_CLASS} disabled={isBusy}>
+                {isBusy ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
+                    <Loader2
+                      className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none"
+                      data-icon="inline-start"
+                    />
                     Guardando…
                   </>
                 ) : (
                   'Guardar cambios'
                 )}
               </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            </form>
+          </Form>
+        </div>
+      )}
+    </ResponsiveOverlay>
   );
 }

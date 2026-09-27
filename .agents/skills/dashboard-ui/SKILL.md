@@ -33,42 +33,49 @@ So a page's top-level wrapper is just spacing:
 
 ```tsx
 <div className="space-y-5">
-  {/* Sticky action bar (optional) */}
   {/* Metric strip (optional) */}
   {/* Primary card / table / grid */}
   {/* Secondary content (charts, side panels) */}
 </div>
 ```
 
-Use `space-y-5` for the standard rhythm; `space-y-6` when sections are visually heavy.
+Page rhythm is always `space-y-5`.
 
-### Sticky action bar
+### Archetypes
 
-Right-aligned filters + primary action. Mirrors `wallets/page.tsx:451`:
+Pick one before building (full contract in `DESIGN.md` → **Logged-in UI contract**):
 
-```tsx
-<div className="sticky top-16 z-20 mb-4 flex flex-wrap items-center justify-end gap-2 border-b border-border/60 bg-background py-2 shadow-sm group-has-data-[collapsible=icon]/sidebar-wrapper:top-12">
-  <Button variant="outline" asChild>…</Button>
-  <Button onClick={…}>…</Button>
-</div>
-```
+| Archetype | Routes | Notes |
+|---|---|---|
+| **Planner** | Panel financiero, quincena (deep links only) | Period controls in-page (glass band with month + icon prev/next). Glass via `MONTHLY_PANEL_SHELL_CLASS` |
+| **Collection** | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | One create action in the header; search/filters in the header |
+| **Detail** | Billetera, estado de cuenta, meta | Back to its collection; card faces stay solid |
+| **Settings** | Configuración | Calm `bg-card` cards, never glass; section nav (side list desktop, chips mobile) |
 
-Match `(app)/layout.tsx`: the shell header is **`h-16`** (`4rem`). Sticky page chrome must use **`top-16`** (not `top-20`) so no scrolled content appears in the strip between the shell header and this bar. When the sidebar is **icon-collapsed**, the header becomes **`h-12`** — add **`group-has-data-[collapsible=icon]/sidebar-wrapper:top-12`** (same pattern as `wallets/page.tsx`). Prefer opaque **`bg-background`** (and optional `border-b`) over semi-transparent + blur for the same reason.
+### Toolbar-first chrome
 
-If the page has both a title and an action, use **justify-between** instead of justify-end so the title sits on the left.
-
-### Page title pattern
-
-Inline title + subtitle, not the legacy `<PageHeader/>` with `text-3xl`. The newer convention (used in wallets, loans, dashboard cards) is:
+The app header owns the **route title, search, filters, and the one primary action**. Pages register them — they do not render their own title or sticky action bar:
 
 ```tsx
-<div>
-  <h2 className="text-lg font-semibold leading-tight">Billeteras</h2>
-  <p className="text-xs text-muted-foreground">Subtítulo breve.</p>
-</div>
+import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
+
+useRegisterToolbarActions({
+  primaryAction: { label: 'Nueva billetera', onClick: handleOpenCreate, icon: <Plus className="h-4 w-4" /> },
+  search: { value: query, onChange: setQuery, placeholder: 'Buscar billetera' },
+  filters: { open: filtersOpen, onOpenChange: setFiltersOpen, activeCount },
+  overflow: { items: [{ key: 'import', label: 'Importar', onClick: handleImport }] },
+});
 ```
 
-Avoid `<PageHeader/>` (`src/components/PageHeader.tsx`) for new pages — it predates the current pattern.
+Render filter fields with `<ToolbarFiltersPortal>`. Rare actions go in `overflow` (or `useRegisterToolbarOverflow` for nested pages).
+
+**Do not:**
+
+- Repeat the header title with an in-page `h1`/`h2` heading or subtitle.
+- Add an in-page `sticky top-16` action bar.
+- Use `<PageHeader/>` (`src/components/PageHeader.tsx`) — it is unused legacy.
+
+The planner's month name inside its glass band is the period control, not a second title — keep it.
 
 ---
 
@@ -164,10 +171,19 @@ For a table that's loaded but filtered to zero, use the table's built-in `emptyM
 
 | Pattern | Use |
 |---|---|
-| `<Sheet side="bottom">` with `rounded-t-2xl` | Mobile-friendly create/edit forms |
-| `<Dialog>` | Confirmations, short modal forms |
-| `<ConfirmDeleteDialog>` | Always for delete confirmations — never a custom dialog |
+| `<ResponsiveOverlay>` (`src/components/overlay/responsive-overlay.tsx`) | **Every** multi-field create/edit: centered Dialog `md+`, bottom Sheet below. Header Cancelar left, centered title, `sr-only` description, one full-width primary (`h-11 w-full rounded-xl`), no footer Cancelar. Never hand-roll `isMobile ? <Sheet> : <Dialog>` |
+| `<ConfirmDeleteDialog>` | Always for delete confirmations — same on both breakpoints, never a custom dialog |
 | `<Collapsible>` | Optional/advanced fields inside a form |
+
+Portaled selects inside an overlay call `useOverlaySelectOpenChange()` so closing the list does not dismiss the sheet.
+
+### Delete
+
+Viewport rule: below `md` swipe-to-delete only (hide the trash); `md+` quiet trash icon, no swipe. Both confirm with `ConfirmDeleteDialog`. Reference: `src/components/categories/CategoryTreeRow.tsx` + `SwipeDeleteAction`.
+
+### Motion
+
+Only the allow-list in `DESIGN.md` (currency ticker on hero totals, motion tabs for 2–3 in-page views, mobile pull to refresh on planner + collections, morph on billeteras/tarjetas, swipe delete below `md`). Use tokens: `duration-(--motion-panel) ease-(--ease-out-soft)`, `.motion-fade-in`, `.motion-slide-up`. Always honor reduced motion.
 
 Form values: validate with Zod schemas from `src/schemas/`, drive with `react-hook-form`. Wire the form's `error` prop back to the same dialog the user is in (don't use a top-level error banner for form errors).
 
@@ -226,8 +242,7 @@ Inline semantic classes — keep these consistent so users recognize them:
 - Primary: default `<Button>` — in dark this is electric blue (`#3a37fc`) with a violet ring. `--primary` is that fill, plus selection / icon-pill fills / toggles. Brand copy on navy (dates, links, Cancelar): `text-primary-text`.
 - Tall primary on a form: add `h-11`
 - Icon-only: `<Button variant="ghost" size="icon">` with `aria-label`
-- Mobile FAB: `fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg sm:hidden`
-- Desktop primary, hidden on mobile (paired with FAB): `hidden h-9 rounded-xl sm:inline-flex`
+- Page primary action: register it in the app header (`primaryAction`), not as an in-page button or FAB
 - Landing-only pills: `.landing-cta` + `rounded-full` — do not use on app routes
 
 ### Layouts
@@ -290,7 +305,8 @@ Read these files — they are the source of truth this skill summarizes:
 - Hero KPI: `src/components/StatCard.tsx`
 - Metric strip constant: `src/components/ui/metric-strip.ts`
 - Empty state: `src/components/EmptyState.tsx`
-- Action-bar reference: `src/app/(app)/wallets/page.tsx`
+- Toolbar registration: `src/context/toolbar-actions-context.tsx` (reference page: `src/app/(app)/wallets/page.tsx`)
+- Responsive overlay: `src/components/overlay/responsive-overlay.tsx`
 - Metric-strip reference: `src/app/(app)/monthly/[year]/[month]/page.tsx`
 - Card-grid list reference: `src/app/(app)/loans/page.tsx`
 - Currency util: `formatCurrency` in `src/lib/utils.ts`

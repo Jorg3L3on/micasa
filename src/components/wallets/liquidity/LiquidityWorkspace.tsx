@@ -1,5 +1,7 @@
 'use client';
 
+import { useCallback, useState } from 'react';
+import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
 import { LiquidityProjectionTab } from '@/components/wallets/liquidity/LiquidityProjectionTab';
 import { CashPlanTab } from '@/components/wallets/liquidity/plan/CashPlanTab';
@@ -16,7 +18,19 @@ export const LiquidityWorkspace = () => {
     setSelectedMonthKey,
   } = useLiquidityProjection();
 
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const handlePullRefresh = useCallback(async () => {
+    await reload({ silent: true });
+    setRefreshToken((token) => token + 1);
+  }, [reload]);
+
   return (
+    <MobilePullToRefresh
+      onRefresh={handlePullRefresh}
+      ariaLabel="Liquidez"
+      errorMessage="No se pudo actualizar tu panorama. Intenta de nuevo."
+    >
     <Tabs
       defaultValue="liquidez"
       variant="underline"
@@ -48,6 +62,7 @@ export const LiquidityWorkspace = () => {
           onReload={() => void reload()}
           selectedMonthKey={selectedMonthKey}
           onSelectedMonthKeyChange={setSelectedMonthKey}
+          refreshToken={refreshToken}
         />
       </TabsContent>
       <TabsContent value="plan" className="mt-0 outline-none">
@@ -60,5 +75,6 @@ export const LiquidityWorkspace = () => {
         />
       </TabsContent>
     </Tabs>
+    </MobilePullToRefresh>
   );
 };

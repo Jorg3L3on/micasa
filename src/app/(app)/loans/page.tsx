@@ -85,6 +85,8 @@ import { LenderOrganizeDialog } from '@/components/loans/LenderOrganizeDialog';
 import { LoanCalendarPaymentOverlay } from '@/components/loans/LoanCalendarPaymentOverlay';
 import { LoanCreateOverlay } from '@/components/loans/LoanCreateOverlay';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { CurrencyTicker } from '@/components/motion/number-ticker';
+import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import {
   DateStepper,
   GroupedRow,
@@ -454,6 +456,7 @@ export default function LoansPage() {
   const [lifecycleSubmitting, setLifecycleSubmitting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [listDeleteLoanId, setListDeleteLoanId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<LoanFormState>(() => defaultForm());
   const [formErrors, setFormErrors] = useState<LoanFormErrors>({});
@@ -509,7 +512,6 @@ export default function LoansPage() {
     if (!options?.silent) {
       setLoading(true);
     }
-    setLoadError(null);
     try {
       const [loanData, lenderData, walletData, templateData] = await Promise.all([
         listLoans(context),
@@ -525,10 +527,11 @@ export default function LoansPage() {
       setLenders(lenderData);
       setWallets(walletData);
       setIncomeTemplates(templateData.filter((template) => template.active));
+      setLoadError(null);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudieron cargar préstamos';
-      setLoadError(message);
+      if (!options?.silent) setLoadError(message);
       toast.error(message);
     } finally {
       setLoading(false);
@@ -538,6 +541,11 @@ export default function LoansPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const handlePullRefresh = useCallback(
+    () => loadData({ silent: true }),
+    [loadData],
+  );
 
   useEffect(() => {
     if (selectedLoanId === null) return;
@@ -581,6 +589,13 @@ export default function LoansPage() {
         ? null
         : loans.find((loan) => loan.id === selectedLoanId) ?? null,
     [loans, selectedLoanId],
+  );
+  const deleteTargetLoan = useMemo(
+    () =>
+      listDeleteLoanId === null
+        ? selectedLoan
+        : loans.find((loan) => loan.id === listDeleteLoanId) ?? null,
+    [listDeleteLoanId, loans, selectedLoan],
   );
   const selectedLoanPayments = useMemo(
     () =>
@@ -939,14 +954,21 @@ export default function LoansPage() {
     }
   };
 
+  const handleRequestDeleteLoanFromList = (loanId: number) => {
+    setDeleteError(null);
+    setListDeleteLoanId(loanId);
+    setDeleteDialogOpen(true);
+  };
+
   const handleDeleteLoan = async () => {
-    if (!selectedLoan) return;
+    if (!deleteTargetLoan) return;
 
     setDeleteError(null);
     try {
-      await deleteLoan(selectedLoan.id, context);
+      await deleteLoan(deleteTargetLoan.id, context);
       toast.success('Préstamo eliminado');
       setDeleteDialogOpen(false);
+      setListDeleteLoanId(null);
       setSelectedLoanId(null);
       resetLoanDetailDrafts();
       clearLoanIdQueryParam();
@@ -1243,6 +1265,7 @@ export default function LoansPage() {
   };
 
   return (
+    <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Préstamos">
     <div className="space-y-5">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
@@ -1362,6 +1385,7 @@ export default function LoansPage() {
             setOrganizeMode('split');
             setOrganizeLenderId(lenderId);
           }}
+          onDeleteLoan={handleRequestDeleteLoanFromList}
           onUndoLastPayment={(lenderId, paymentId) => {
             void undoLenderPayment(lenderId, paymentId, context)
               .then(async () => {
@@ -1656,7 +1680,7 @@ export default function LoansPage() {
                           Saldo pendiente
                         </p>
                         <p className="mt-1 font-mono text-xl font-bold tabular-nums text-foreground">
-                          {formatCurrency(selectedLoan.remainingAmount)}
+                          <CurrencyTicker value={selectedLoan.remainingAmount} />
                         </p>
                       </div>
                       <span className={MONTHLY_ICON_PILL_CLASS}>
@@ -1689,7 +1713,7 @@ export default function LoansPage() {
                           Pagado
                         </p>
                         <p className="mt-1 font-mono text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
-                          {formatCurrency(selectedLoan.paidAmount)}
+                          <CurrencyTicker value={selectedLoan.paidAmount} />
                         </p>
                       </div>
                       <div>
@@ -2731,17 +2755,19 @@ export default function LoansPage() {
       </ResponsiveOverlay>
 
       <ConfirmDeleteDialog
-        open={deleteDialogOpen && selectedLoan !== null}
+        open={deleteDialogOpen && deleteTargetLoan !== null}
         onOpenChange={(open) => {
           setDeleteDialogOpen(open);
-          if (!open) setDeleteError(null);
+          if (open) return;
+          setDeleteError(null);
+          setListDeleteLoanId(null);
         }}
         onConfirm={handleDeleteLoan}
         title="Eliminar préstamo"
         description="Esto eliminará el préstamo, su calendario de pagos y los gastos generados por pagos de este préstamo. Los saldos afectados se revertirán."
         itemName={
-          selectedLoan
-            ? `${selectedLoan.name} · ${formatCurrency(selectedLoan.remainingAmount)} pendiente`
+          deleteTargetLoan
+            ? `${deleteTargetLoan.name} · ${formatCurrency(deleteTargetLoan.remainingAmount)} pendiente`
             : undefined
         }
         error={deleteError}
@@ -2749,5 +2775,6 @@ export default function LoansPage() {
         loadingLabel="Eliminando préstamo..."
       />
     </div>
+    </MobilePullToRefresh>
   );
 }

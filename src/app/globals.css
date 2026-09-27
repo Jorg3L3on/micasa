@@ -57,6 +57,12 @@
   --duration-exit: 170ms;
   --duration-enter: 240ms;
   --duration-move: 450ms;
+  /* Operate motion — see DESIGN.md Motion tokens. Keep operate surfaces ≤ --motion-panel. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-panel: 320ms;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark {
@@ -195,6 +201,40 @@
     display: none;
   }
 
+  .motion-fade-in {
+    animation: motion-fade-in var(--motion-base) var(--ease-out-soft) both;
+  }
+
+  .motion-slide-up {
+    animation: motion-slide-up var(--motion-panel) var(--ease-out-soft) both;
+  }
+}
+
+@keyframes motion-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-fade-in,
+  .motion-slide-up {
+    animation: none;
+  }
 }
 
 @layer base {
@@ -352,7 +392,7 @@ html:has(.landing-root) {
 .orion-panel-glass {
   isolation: isolate;
   background-color: var(--card);
-  box-shadow: 0 10px 28px -18px rgb(15 23 42 / 0.16);
+  box-shadow: var(--shadow-card);
 }
 
 .dark .orion-panel-glass {

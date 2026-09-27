@@ -12,20 +12,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
 import {
   Form,
   FormControl,
@@ -67,7 +55,10 @@ import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { useFinanceContext } from '@/context/finance-context';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
-import { useIsMobile } from '@/hooks/use-mobile';
+
+const FIELD_HEIGHT_CLASS = 'h-11 md:h-10';
+const ALLOCATION_TRIGGER_CLASS = 'h-11 w-full text-sm md:h-8 md:text-xs';
+const ALLOCATION_AMOUNT_CLASS = 'h-11 text-sm md:h-8 md:text-xs';
 
 type Props = {
   open: boolean;
@@ -139,7 +130,6 @@ export default function BudgetFormDialog({
   isPending = false,
   disabled = false,
 }: Props) {
-  const isMobile = useIsMobile();
   const { context } = useFinanceContext();
   const [step, setStep] = useState<1 | 2>(1);
   const [step1Data, setStep1Data] = useState<Step1Values | null>(null);
@@ -148,8 +138,6 @@ export default function BudgetFormDialog({
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const nestedSelectOpenRef = useRef(false);
-  const blockDismissUntilRef = useRef(0);
 
   const form1 = useForm<Step1Input>({
     resolver: zodResolver(step1Schema),
@@ -245,17 +233,6 @@ export default function BudgetFormDialog({
     }
   }, [open, wallets.length, loadOptions]);
 
-  const handleSelectOpenChange = (nextOpen: boolean) => {
-    nestedSelectOpenRef.current = nextOpen;
-    if (!nextOpen) {
-      // Swallow the same touch that dismissed the list (iOS ghost click).
-      blockDismissUntilRef.current = Date.now() + 500;
-    }
-  };
-
-  const shouldBlockDismiss = () =>
-    nestedSelectOpenRef.current || Date.now() < blockDismissUntilRef.current;
-
   const resetForms = () => {
     form1.reset();
     form2.reset({ allocations: [{ wallet_id: 0, category_id: 0, amount: 0 }] });
@@ -264,24 +241,12 @@ export default function BudgetFormDialog({
     setOptionsError(null);
   };
 
-  const handleRootOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && shouldBlockDismiss()) return;
-    if (!nextOpen && (form2.formState.isSubmitting || isPending)) return;
-    if (!nextOpen) {
-      resetForms();
-      onOpenChange(false);
-      return;
-    }
-    onOpenChange(true);
-  };
+  const isBusy = form2.formState.isSubmitting || isPending;
 
-  const preventDismissWhileSelectOpen = (event: {
-    preventDefault: () => void;
-  }) => {
-    if (shouldBlockDismiss()) event.preventDefault();
+  const handleOverlayOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) resetForms();
+    onOpenChange(nextOpen);
   };
-
-  const handleCancel = () => handleRootOpenChange(false);
 
   const handleStep1Submit = form1.handleSubmit((data) => {
     setStep1Data(step1Schema.parse(data));
@@ -327,14 +292,6 @@ export default function BudgetFormDialog({
       ? 'Paso 1 de 2: define el nombre, monto y frecuencia.'
       : 'Paso 2 de 2: distribuye el presupuesto en carteras y categorías.';
 
-  const fieldHeight = isMobile ? 'h-11' : 'h-10';
-  const selectTriggerClass = isMobile
-    ? 'h-11 w-full text-sm'
-    : 'h-11 w-full text-sm sm:h-8 sm:text-xs';
-  const amountTriggerClass = isMobile
-    ? 'h-11 text-sm'
-    : 'h-11 text-sm sm:h-8 sm:text-xs';
-
   const stepIndicator = (
     <div
       className="flex items-center gap-2 text-xs text-muted-foreground"
@@ -371,7 +328,7 @@ export default function BudgetFormDialog({
     </Alert>
   ) : null;
 
-  const step1Form = (
+  const renderStep1Form = (handleSelectOpenChange: (nextOpen: boolean) => void) => (
     <Form {...form1}>
       <form onSubmit={handleStep1Submit} className="space-y-4">
         <FormField
@@ -384,7 +341,7 @@ export default function BudgetFormDialog({
                 <Input
                   placeholder="Ej: Supermercado"
                   maxLength={25}
-                  className={fieldHeight}
+                  className={FIELD_HEIGHT_CLASS}
                   autoCapitalize="sentences"
                   enterKeyHint="next"
                   {...field}
@@ -406,7 +363,7 @@ export default function BudgetFormDialog({
                   value={field.value}
                   onChange={field.onChange}
                   placeholder="0"
-                  className={cn(fieldHeight, 'font-mono tabular-nums')}
+                  className={cn(FIELD_HEIGHT_CLASS, 'font-mono tabular-nums')}
                   enterKeyHint="next"
                 />
               </FormControl>
@@ -428,7 +385,7 @@ export default function BudgetFormDialog({
               >
                 <FormControl>
                   <SelectTrigger
-                    className={cn(fieldHeight, 'w-full')}
+                    className={cn(FIELD_HEIGHT_CLASS, 'w-full')}
                     aria-label="Frecuencia del presupuesto"
                   >
                     <SelectValue placeholder="Selecciona frecuencia" />
@@ -468,10 +425,7 @@ export default function BudgetFormDialog({
 
         {watchedFrequency === 'CUSTOM' ? (
           <div
-            className={cn(
-              'grid grid-cols-1 gap-3',
-              !isMobile && 'sm:grid-cols-2',
-            )}
+            className="grid grid-cols-1 gap-3 md:grid-cols-2"
           >
             <FormField
               control={form1.control}
@@ -482,7 +436,7 @@ export default function BudgetFormDialog({
                   <FormControl>
                     <Input
                       type="date"
-                      className={fieldHeight}
+                      className={FIELD_HEIGHT_CLASS}
                       value={field.value ?? ''}
                       onChange={(e) =>
                         field.onChange(e.target.value || null)
@@ -502,7 +456,7 @@ export default function BudgetFormDialog({
                   <FormControl>
                     <Input
                       type="date"
-                      className={fieldHeight}
+                      className={FIELD_HEIGHT_CLASS}
                       value={field.value ?? ''}
                       onChange={(e) =>
                         field.onChange(e.target.value || null)
@@ -516,39 +470,14 @@ export default function BudgetFormDialog({
           </div>
         ) : null}
 
-        {isMobile ? (
-          <Button type="submit" className="h-11 w-full rounded-xl">
-            Siguiente
-            <ChevronRight
-              className="ml-1 h-4 w-4"
-              aria-hidden
-              data-icon="inline-end"
-            />
-          </Button>
-        ) : (
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 sm:h-9"
-              onClick={handleCancel}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              variant="outline"
-              className="h-11 bg-white sm:h-9 dark:bg-card"
-            >
-              Siguiente
-              <ChevronRight
-                className="ml-1 h-4 w-4"
-                aria-hidden
-                data-icon="inline-end"
-              />
-            </Button>
-          </DialogFooter>
-        )}
+        <Button type="submit" className={OVERLAY_PRIMARY_BUTTON_CLASS}>
+          Siguiente
+          <ChevronRight
+            className="ml-1 h-4 w-4"
+            aria-hidden
+            data-icon="inline-end"
+          />
+        </Button>
       </form>
     </Form>
   );
@@ -574,7 +503,7 @@ export default function BudgetFormDialog({
       'Crear presupuesto'
     );
 
-  const step2Form =
+  const renderStep2Form = (handleSelectOpenChange: (nextOpen: boolean) => void) =>
     step === 2 && step1Data ? (
       <Form {...form2}>
         <form onSubmit={handleStep2Submit} className="space-y-4">
@@ -611,10 +540,7 @@ export default function BudgetFormDialog({
 
           <div
             ref={scrollRef}
-            className={cn(
-              'space-y-3 overflow-y-auto pr-1',
-              isMobile ? 'max-h-[min(50vh,22rem)]' : 'max-h-60',
-            )}
+            className="max-h-[min(50vh,22rem)] space-y-3 overflow-y-auto pr-1 md:max-h-60"
           >
             {loadingOptions ? (
               <div
@@ -653,22 +579,14 @@ export default function BudgetFormDialog({
               fields.map((field, index) => (
                 <div
                   key={field.id}
-                  className={cn(
-                    'grid items-start gap-3 rounded-lg border border-border/60 p-3',
-                    isMobile
-                      ? 'grid-cols-[minmax(0,1fr)_2.75rem]'
-                      : 'grid-cols-[minmax(0,1fr)_2.75rem] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_2.5rem]',
-                  )}
+                  className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-start gap-3 rounded-lg border border-border/60 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem_2.5rem]"
                 >
                   <FormField
                     control={form2.control}
                     name={`allocations.${index}.wallet_id`}
                     render={({ field: f }) => (
                       <FormItem
-                        className={cn(
-                          'min-w-0',
-                          isMobile ? 'col-span-2' : 'col-span-2 sm:col-span-1',
-                        )}
+                        className="col-span-2 min-w-0 md:col-span-1"
                       >
                         <FormLabel className="text-xs">Cartera</FormLabel>
                         <Select
@@ -678,7 +596,7 @@ export default function BudgetFormDialog({
                         >
                           <FormControl>
                             <SelectTrigger
-                              className={selectTriggerClass}
+                              className={ALLOCATION_TRIGGER_CLASS}
                               aria-label={`Cartera de la asignación ${index + 1}`}
                             >
                               <SelectValue placeholder="Cartera" />
@@ -710,10 +628,7 @@ export default function BudgetFormDialog({
                     name={`allocations.${index}.category_id`}
                     render={({ field: f }) => (
                       <FormItem
-                        className={cn(
-                          'min-w-0',
-                          isMobile ? 'col-span-2' : 'col-span-2 sm:col-span-1',
-                        )}
+                        className="col-span-2 min-w-0 md:col-span-1"
                       >
                         <FormLabel className="text-xs">Categoría</FormLabel>
                         <CategoryGroupedSelect
@@ -724,7 +639,7 @@ export default function BudgetFormDialog({
                           includeCategoryId={
                             f.value ? Number(f.value) : null
                           }
-                          triggerClassName={selectTriggerClass}
+                          triggerClassName={ALLOCATION_TRIGGER_CLASS}
                           placeholder="Categoría"
                           ariaLabel={`Categoría de la asignación ${index + 1}`}
                         />
@@ -743,7 +658,7 @@ export default function BudgetFormDialog({
                           <CurrencyInput
                             value={f.value}
                             onChange={f.onChange}
-                            className={amountTriggerClass}
+                            className={ALLOCATION_AMOUNT_CLASS}
                             placeholder="0"
                             enterKeyHint="done"
                             aria-label={`Monto de la asignación ${index + 1}`}
@@ -760,10 +675,7 @@ export default function BudgetFormDialog({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className={cn(
-                        'text-destructive hover:text-destructive',
-                        isMobile ? 'size-11' : 'size-11 sm:size-8',
-                      )}
+                      className="size-11 text-destructive hover:text-destructive md:size-8"
                       onClick={() => remove(index)}
                       disabled={fields.length === 1}
                       aria-label="Eliminar asignación"
@@ -783,7 +695,7 @@ export default function BudgetFormDialog({
             type="button"
             variant="outline"
             size="sm"
-            className={cn('w-full', isMobile ? 'h-11' : 'h-11 sm:h-8')}
+            className="h-11 w-full md:h-8"
             onClick={handleAppend}
             disabled={loadingOptions || Boolean(optionsError)}
           >
@@ -795,118 +707,51 @@ export default function BudgetFormDialog({
             Agregar asignación
           </Button>
 
-          {isMobile ? (
-            <div className="flex flex-col gap-2">
-              <Button
-                type="submit"
-                disabled={createDisabled}
-                className="h-11 w-full rounded-xl"
-              >
-                {createLabel}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 w-full"
-                onClick={() => setStep(1)}
-              >
-                <ChevronLeft
-                  className="mr-1 h-4 w-4"
-                  aria-hidden
-                  data-icon="inline-start"
-                />
-                Anterior
-              </Button>
-            </div>
-          ) : (
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 sm:h-9"
-                onClick={() => setStep(1)}
-              >
-                <ChevronLeft
-                  className="mr-1 h-4 w-4"
-                  aria-hidden
-                  data-icon="inline-start"
-                />
-                Anterior
-              </Button>
-              <Button
-                type="submit"
-                variant="outline"
-                className="h-11 bg-white sm:h-9 dark:bg-card"
-                disabled={createDisabled}
-              >
-                {createLabel}
-              </Button>
-            </DialogFooter>
-          )}
+          <div className="flex flex-col gap-2">
+            <Button
+              type="submit"
+              disabled={createDisabled}
+              className={OVERLAY_PRIMARY_BUTTON_CLASS}
+            >
+              {createLabel}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 w-full"
+              onClick={() => setStep(1)}
+              disabled={isBusy}
+            >
+              <ChevronLeft
+                className="mr-1 h-4 w-4"
+                aria-hidden
+                data-icon="inline-start"
+              />
+              Anterior
+            </Button>
+          </div>
         </form>
       </Form>
     ) : null;
 
-  const formBody = (
-    <div className="flex flex-col gap-4">
-      {stepIndicator}
-      {errorAlert}
-      {step === 1 ? step1Form : step2Form}
-    </div>
-  );
-
-  const sheetHeader = (
-    <div className="relative flex min-h-10 items-center justify-center">
-      <Button
-        type="button"
-        variant="ghost"
-        className="absolute left-0 h-9 px-2 text-primary-text"
-        onClick={handleCancel}
-        disabled={form2.formState.isSubmitting || isPending}
-      >
-        Cancelar
-      </Button>
-      <SheetTitle className="text-base font-semibold">{dialogTitle}</SheetTitle>
-      <SheetDescription className="sr-only">
-        {dialogDescription}
-      </SheetDescription>
-    </div>
-  );
-
-  if (isMobile) {
-    return (
-      <Sheet open={open} onOpenChange={handleRootOpenChange}>
-        <SheetContent
-          side="bottom"
-          showCloseButton={false}
-          className="flex max-h-[92vh] flex-col gap-0 rounded-t-xl p-0"
-          onPointerDownOutside={preventDismissWhileSelectOpen}
-          onFocusOutside={preventDismissWhileSelectOpen}
-          onInteractOutside={preventDismissWhileSelectOpen}
-        >
-          <div className="border-b border-border/50 px-4 py-3">{sheetHeader}</div>
-          <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {open ? formBody : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleRootOpenChange}>
-      <DialogContent
-        className="sm:max-w-2xl"
-        onPointerDownOutside={preventDismissWhileSelectOpen}
-        onFocusOutside={preventDismissWhileSelectOpen}
-        onInteractOutside={preventDismissWhileSelectOpen}
-      >
-        <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>{dialogDescription}</DialogDescription>
-        </DialogHeader>
-        {open ? formBody : null}
-      </DialogContent>
-    </Dialog>
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={handleOverlayOpenChange}
+      title={dialogTitle}
+      description={dialogDescription}
+      busy={isBusy}
+      contentClassName={step === 2 ? 'md:max-w-2xl' : undefined}
+    >
+      {({ handleSelectOpenChange }) => (
+        <div className="flex flex-col gap-4">
+          {stepIndicator}
+          {errorAlert}
+          {step === 1
+            ? renderStep1Form(handleSelectOpenChange)
+            : renderStep2Form(handleSelectOpenChange)}
+        </div>
+      )}
+    </ResponsiveOverlay>
   );
 }

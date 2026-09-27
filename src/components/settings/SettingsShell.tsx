@@ -22,13 +22,6 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-lg font-semibold leading-tight">Configuración</h2>
-        <p className="text-xs text-muted-foreground">
-          Catálogos, automatizaciones y cuenta.
-        </p>
-      </div>
-
       {/* Mobile: horizontal chips */}
       <div className="relative lg:hidden">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-linear-to-r from-background to-transparent" />
