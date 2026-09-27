@@ -99,12 +99,7 @@ type SummaryBlockProps = {
   budgetPanel?: MonthlyBudgetPanelResult | null;
   budgetOwnerQuery?: string;
   onEditIncome?: () => void;
-  onEditIncomeSource?: (
-    incomeTemplateId: number,
-    amount: number,
-    categoryId: number | null,
-    walletId: number | null,
-  ) => void;
+  onEditIncomeSource?: (incomeId: number, amount: number, label: string) => void;
   /** Unpaid cash gastos, card cortes, and wallet cuotas inside the pending row. */
   pendingExpenseItems?: PendingLiquidityLineItem[];
 };
@@ -484,12 +479,7 @@ export default function SummaryBlock({
                                 size="icon"
                                 className="h-6 w-6"
                                 onClick={() =>
-                                  onEditIncomeSource(
-                                    item.incomeTemplateId as number,
-                                    item.templateSuggestedAmount ?? item.amount,
-                                    item.templateCategoryId ?? item.categoryId,
-                                    item.templateWalletId ?? null,
-                                  )
+                                  onEditIncomeSource(item.id, item.amount, label)
                                 }
                                 aria-label={`Modificar ${displayLabel}`}
                                 tabIndex={0}

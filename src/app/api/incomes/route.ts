@@ -65,6 +65,8 @@ const updateIncomeAmountSchema = z.object({
   force_wallet_credit: z.boolean().optional(),
   /** Required when the income has no category yet. */
   category_id: z.number().int().positive().optional(),
+  /** Uncredited incomes keep their wallet balance untouched; credited ones still apply the delta. */
+  planned: z.boolean().optional(),
 });
 
 function serializeIncome(i: {
@@ -155,8 +157,11 @@ export async function PUT(request: NextRequest) {
 
     const oldAmount = Number(income.amount);
     const newAmount = validated.amount;
+    const oldWalletId = income.wallet_id;
+    const wasCredited =
+      income.wallet_credited === true ||
+      (income.wallet_credited == null && oldWalletId != null);
 
-    let nextCategoryId = income.category_id;
     if (validated.category_id !== undefined) {
       await assertOwnedCategoryOfKind(
         prisma,
@@ -165,6 +170,23 @@ export async function PUT(request: NextRequest) {
         validated.category_id,
         'INCOME',
       );
+    }
+
+    if (validated.planned === true && !wasCredited) {
+      const plannedUpdate = await prisma.income.update({
+        where: { id },
+        data: {
+          amount: newAmount,
+          ...(validated.category_id !== undefined
+            ? { category_id: validated.category_id }
+            : {}),
+        },
+      });
+      return NextResponse.json(serializeIncome(plannedUpdate), { status: 200 });
+    }
+
+    let nextCategoryId = income.category_id;
+    if (validated.category_id !== undefined) {
       nextCategoryId = validated.category_id;
     } else if (income.category_id == null) {
       return NextResponse.json(
@@ -176,10 +198,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const oldWalletId = income.wallet_id;
-    const wasCredited =
-      income.wallet_credited === true ||
-      (income.wallet_credited == null && oldWalletId != null);
     const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
 
     const fundingWallet = await prisma.wallet.findFirst({

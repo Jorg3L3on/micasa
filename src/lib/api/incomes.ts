@@ -95,6 +95,7 @@ export async function updateIncomeAmount(
     wallet_id?: number | null;
     force_wallet_credit?: boolean;
     category_id?: number;
+    planned?: boolean;
   },
 ) {
   const payload: {
@@ -102,7 +103,11 @@ export async function updateIncomeAmount(
     wallet_id?: number | null;
     force_wallet_credit?: boolean;
     category_id?: number;
+    planned?: boolean;
   } = { amount };
+  if (options?.planned === true) {
+    payload.planned = true;
+  }
   if (options && 'wallet_id' in options) {
     payload.wallet_id = options.wallet_id;
   }
