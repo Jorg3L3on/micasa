@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -416,7 +417,19 @@ export function AlertsBell() {
     onDismiss,
   } = useAlertsChrome();
 
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [sideOffset, setSideOffset] = useState(0);
+
+  const syncPopoverOffset = useCallback(() => {
+    const trigger = triggerRef.current;
+    const sidebar = trigger?.closest('[data-slot="sidebar-container"]');
+    if (!trigger || !(sidebar instanceof HTMLElement)) return;
+    const gap = sidebar.getBoundingClientRect().right - trigger.getBoundingClientRect().right;
+    setSideOffset(Math.max(0, Math.round(gap)));
+  }, []);
+
   const handleOpenChange = (next: boolean) => {
+    if (next) syncPopoverOffset();
     setOpen(next);
     if (next && isMobile) setOpenMobile(false);
   };
@@ -446,6 +459,7 @@ export function AlertsBell() {
       aria-label="Alertas"
       tabIndex={0}
       onClick={isMobile ? () => handleOpenChange(!open) : undefined}
+      ref={triggerRef}
     >
       <Bell className="size-5" aria-hidden />
       {unseenCount > 0 ? (
@@ -481,9 +495,9 @@ export function AlertsBell() {
       <DropdownMenuContent
         side="right"
         align="end"
-        sideOffset={12}
-        collisionPadding={12}
-        className="w-80 max-h-[min(50vh,22rem)] overflow-y-auto p-2"
+        sideOffset={sideOffset}
+        avoidCollisions={false}
+        className="z-50 w-80 max-h-[min(50vh,22rem)] overflow-y-auto p-2"
       >
         <p className="px-2 py-1.5 text-sm font-medium">Alertas y avisos</p>
         {body}
