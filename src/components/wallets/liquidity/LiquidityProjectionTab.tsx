@@ -26,8 +26,9 @@ import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
-import { Skeleton } from '@/components/ui/skeleton';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { ErrorBanner } from '@/components/error-banner';
+import { PlannerPageSkeleton } from '@/components/loading/page-skeletons';
+import { Button } from '@/components/ui/button';
 import {
   clampCustomChartRangeToAvailable,
   DEFAULT_LIQUIDITY_CHART_RANGE,
@@ -47,28 +48,6 @@ const CHROME_SHELL_CLASS = cn(
 
 /** Always-visible aside: stacks under the main column until `xl`, then docks right like Panel financiero. */
 const LIQUIDITY_ASIDE_CLASS = 'flex min-w-0 flex-col gap-5';
-
-const LoadingSkeleton = () => (
-  <div role="status" aria-busy="true" aria-label="Cargando liquidez">
-    <Skeleton className="mb-5 h-[7.5rem] w-full rounded-2xl border border-border/60 sm:h-16" />
-    <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
-      <div className={cn(MONTHLY_PANEL_MAIN_COLUMN_CLASS, 'space-y-4')}>
-        <div className="grid grid-cols-2 gap-2">
-          <Skeleton className="h-[5.25rem] rounded-xl border border-border/60" />
-          <Skeleton className="h-[5.25rem] rounded-xl border border-border/60" />
-        </div>
-        <Skeleton className="h-[26rem] w-full rounded-2xl border border-border/60" />
-        <Skeleton className="h-12 w-full rounded-2xl border border-border/60" />
-        <Skeleton className="h-16 w-full rounded-xl border border-border/60" />
-        <Skeleton className="h-16 w-full rounded-xl border border-border/60" />
-      </div>
-      <div className={LIQUIDITY_ASIDE_CLASS}>
-        <Skeleton className="h-80 w-full rounded-2xl border border-border/60" />
-        <Skeleton className="h-64 w-full rounded-2xl border border-border/60" />
-      </div>
-    </div>
-  </div>
-);
 
 export type LiquidityProjectionTabProps = {
   data: LiquidityProjectionResponse | null;
@@ -184,18 +163,15 @@ export function LiquidityProjectionTab({
   return (
     <div>
       {error ? (
-        <div
-          className={cn(
-            METRIC_STRIP_CLASS,
-            'mb-5 border-l-[3px] border-l-destructive/50 px-4 py-3 text-sm text-destructive',
-          )}
-          role="alert"
-        >
-          {error}
+        <div className="mb-5 space-y-3">
+          <ErrorBanner>{error}</ErrorBanner>
+          <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={onReload}>
+            Reintentar
+          </Button>
         </div>
       ) : null}
 
-      {loading && !data ? <LoadingSkeleton /> : null}
+      {loading && !data ? <PlannerPageSkeleton /> : null}
 
       {data ? (
         <>

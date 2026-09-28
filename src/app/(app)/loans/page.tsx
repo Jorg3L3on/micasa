@@ -446,7 +446,6 @@ export default function LoansPage() {
 
   const loadData = useCallback(async (options?: { silent?: boolean }) => {
     if (context.type === 'user' && context.id === 0) {
-      setLoading(false);
       return;
     }
     if (!options?.silent) {
