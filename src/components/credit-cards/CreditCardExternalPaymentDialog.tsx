@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,9 +96,7 @@ export const CreditCardExternalPaymentDialog = ({
         aria-busy={submitting}
       >
         {displayError ? (
-          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-            {displayError}
-          </div>
+          <ErrorBanner>{displayError}</ErrorBanner>
         ) : null}
 
         {prefillAmount != null && prefillAmount > 0 ? (

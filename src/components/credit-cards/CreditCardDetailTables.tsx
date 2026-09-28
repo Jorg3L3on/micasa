@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowDown, ArrowUp } from 'lucide-react';
@@ -106,7 +107,7 @@ const PurchaseSortButton = ({
     type="button"
     variant="ghost"
     size="sm"
-    className="h-7 px-1.5 text-caption font-semibold uppercase tracking-wider"
+    className="h-7 px-1.5 overline"
     onClick={() => onSort(sortKey)}
     aria-label={`Ordenar por ${label}${
       activeKey === sortKey ? (dir === 'desc' ? ', descendente' : ', ascendente') : ''
@@ -139,7 +140,7 @@ const PaymentSortButton = ({
     type="button"
     variant="ghost"
     size="sm"
-    className="h-7 px-1.5 text-caption font-semibold uppercase tracking-wider"
+    className="h-7 px-1.5 overline"
     onClick={() => onSort(sortKey)}
     aria-label={`Ordenar pagos por ${label}`}
   >
@@ -243,7 +244,7 @@ export const PurchaseTableBlock = ({
                       {purchase.credit_installment_current != null &&
                       purchase.credit_installment_total != null ? (
                         <span
-                          className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground"
+                          className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 overline text-muted-foreground"
                           title="Compra en cuotas"
                         >
                           {purchase.credit_installment_current}/
@@ -345,11 +346,9 @@ export const PaymentTableBlock = ({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Todavía no hay pagos registrados.</p>
+        <EmptyState message="Todavía no hay pagos registrados." className="py-6" />
       ) : sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay pagos que coincidan con el filtro.
-        </p>
+        <EmptyState message="No hay pagos que coincidan con el filtro." className="py-6" />
       ) : (
         <div className={listScrollClassName}>
           <ul className="space-y-2">

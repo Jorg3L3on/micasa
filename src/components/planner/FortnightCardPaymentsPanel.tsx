@@ -1,9 +1,10 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
-import { Banknote, CreditCard, Loader2, Pencil, Store } from 'lucide-react';
+import { Banknote, CreditCard, Pencil, Store } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -222,18 +223,10 @@ const FortnightCardPaymentsPanel = ({
 
   if (rows.length === 0) {
     return (
-      <div
-        className={cn(
-          'rounded-xl border border-border/40 bg-card px-4 py-8 text-center shadow-sm',
-          isCompact ? 'text-xs' : 'text-sm',
-        )}
-        role="region"
-        aria-label={`Pagos de tarjeta: ${fortnightLabel}`}
-      >
-        <p className="text-muted-foreground">
-          No hay tarjetas con fecha de pago en esta quincena.
-        </p>
-      </div>
+      <EmptyState
+        message="No hay tarjetas con fecha de pago en esta quincena."
+        className="py-8"
+      />
     );
   }
 
@@ -423,7 +416,7 @@ const FortnightCardPaymentsPanel = ({
                     </span>
                     {status === 'pagado' && fortnightPaid > 0 ? (
                       <span
-                        className="text-caption font-medium uppercase tracking-wide text-muted-foreground/80"
+                        className="overline text-muted-foreground/80"
                         aria-hidden
                       >
                         Pagado esta quincena
@@ -433,7 +426,7 @@ const FortnightCardPaymentsPanel = ({
                     fortnightPaid <= 0 &&
                     (item.paymentsAppliedToStatement ?? 0) > 0 ? (
                       <span
-                        className="text-caption font-medium uppercase tracking-wide text-muted-foreground/80"
+                        className="overline text-muted-foreground/80"
                         aria-hidden
                       >
                         Cubierto al corte
@@ -494,16 +487,14 @@ const FortnightCardPaymentsPanel = ({
                               payingWalletId === item.walletId
                             }
                             onClick={() => onPayCard(item)}
-                            aria-label={`Registrar pago: ${item.walletName}`}
+                            aria-busy={payingWalletId === item.walletId}
+                            aria-label={
+                              payingWalletId === item.walletId
+                                ? `Guardando pago: ${item.walletName}`
+                                : `Registrar pago: ${item.walletName}`
+                            }
                           >
-                            {payingWalletId === item.walletId ? (
-                              <Loader2
-                                className="size-3.5 shrink-0 animate-spin"
-                                aria-hidden
-                              />
-                            ) : (
-                              <Banknote className="size-3.5" aria-hidden />
-                            )}
+                            <Banknote className="size-3.5" aria-hidden />
                           </Button>
                         </span>
                       </TooltipTrigger>

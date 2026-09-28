@@ -2,12 +2,12 @@
 
 import { type ReactNode } from 'react';
 import {
-  AlertCircle,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   CircleX,
 } from 'lucide-react';
+import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/form';
 import {
   addCalendarDays,
-  APP_TIMEZONE,
+  formatStepperDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
 import { cn } from '@/lib/utils';
@@ -48,25 +48,6 @@ export const OVERLAY_SECONDARY_BUTTON_CLASS = 'h-9 w-full rounded-xl';
 
 export const OVERLAY_AMOUNT_INPUT_CLASS =
   'h-10 border-0 bg-transparent px-0 font-sans text-2xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-12 md:text-4xl';
-
-const dateStepperFormatter = new Intl.DateTimeFormat('es-MX', {
-  weekday: 'long',
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  timeZone: APP_TIMEZONE,
-});
-
-const formatStepperDate = (ymd: string): string => {
-  try {
-    const [year, month, day] = ymd.split('-').map(Number);
-    return dateStepperFormatter.format(
-      new Date(Date.UTC(year, month - 1, day, 12)),
-    );
-  } catch {
-    return ymd;
-  }
-};
 
 export const FieldClearButton = ({
   label,
@@ -194,13 +175,7 @@ export const GroupedRow = ({
 
 /** The only error style inside an overlay body. */
 export const OverlayErrorBanner = ({ children }: { children: ReactNode }) => (
-  <div
-    role="alert"
-    className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
-  >
-    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-    <div className="min-w-0">{children}</div>
-  </div>
+  <ErrorBanner>{children}</ErrorBanner>
 );
 
 /** Helper or context copy above/below a grouped card. */

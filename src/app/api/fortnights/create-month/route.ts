@@ -8,27 +8,13 @@ import {
 } from '@/lib/finance/template.service';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { generatePeriodsForMonth } from '@/lib/finance/budget-period.service';
+import { formatMonthTitle } from '@/lib/calendar-dates';
 import { planningMonthCreateError } from '@/lib/finance/planning-month';
 
 const createMonthSchema = z.object({
   year: z.number().int().min(2010).max(2030),
   month: z.number().int().min(1).max(12),
 });
-
-const MONTH_NAMES = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-];
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +30,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: monthError }, { status: 400 });
     }
 
-    const monthName = MONTH_NAMES[month - 1] ?? '';
+    const monthName = formatMonthTitle(month);
 
     const existingFirst = await prisma.fortnight.findFirst({
       where: {

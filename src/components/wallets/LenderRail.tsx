@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { LenderIdentity } from '@/components/loans/LenderIdentity';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import { SectionHeader } from '@/components/section-header';
 import { lenderNextCommitment } from '@/lib/finance/lender-next-commitment';
 import {
   PAYROLL_DEDUCTION_COPY,
@@ -31,9 +32,7 @@ const hintFor = (lender: LenderListItem): string => {
 export const LenderRail = ({ lenders, className }: LenderRailProps) => {
   return (
     <section aria-label="Prestamistas" className={cn('min-w-0', className)}>
-      <h2 className="mb-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
-        Prestamistas
-      </h2>
+      <SectionHeader className="mb-2" title="Prestamistas" />
       {lenders.length === 0 ? (
         <p className="rounded-xl border border-border/60 bg-card px-3 py-6 text-center text-xs text-muted-foreground">
           Sin prestamistas

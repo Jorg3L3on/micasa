@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import {
   Activity,
   ArrowDownLeft,
@@ -24,8 +25,11 @@ import {
   YAxis,
 } from 'recharts';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { ChartTooltip } from '@/components/charts/chart-tooltip';
+import { CHART_AXIS_TICK, CHART_COLOR, chartSliceColor } from '@/components/charts/chart-theme';
 import { Card, CardContent } from '@/components/ui/card';
 import type { WalletPeriodAnalytics } from '@/lib/finance/wallet-period-analytics';
+import { formatAxisMoney } from '@/lib/money';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
 type WalletPeriodAnalyticsPanelsProps = {
@@ -35,26 +39,14 @@ type WalletPeriodAnalyticsPanelsProps = {
   runwayDays: number | null;
 };
 
-const FLOW_COLORS = {
-  inflow: '#10b981',
-  outflow: '#f43f5e',
-  cumulative: '#3b82f6',
-};
-
-const MIX_COLORS = ['#10b981', '#f43f5e', '#38bdf8', '#8b5cf6'] as const;
-
-const categoryColor = (index: number) =>
-  ['bg-violet-500', 'bg-blue-500', 'bg-amber-500', 'bg-emerald-500', 'bg-rose-500', 'bg-sky-500'][
-    index % 6
-  ];
-
-const moneyTooltipFormatter = (value: number | string) =>
-  formatCurrency(Number(value));
+const FLOW_FILL = {
+  inflow: CHART_COLOR.income,
+  outflow: CHART_COLOR.expense,
+  cumulative: CHART_COLOR.info,
+} as const;
 
 const EmptyChartState = ({ message }: { message: string }) => (
-  <div className="flex h-52 items-center justify-center rounded-xl border border-dashed border-border/50 bg-muted/10 px-4 text-center text-sm text-muted-foreground">
-    {message}
-  </div>
+  <EmptyState message={message} className="h-52 py-6" />
 );
 
 const InsightStat = ({
@@ -69,7 +61,7 @@ const InsightStat = ({
   tone?: 'neutral' | 'good' | 'warn';
 }) => (
   <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
-    <div className="mb-1 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="mb-1 flex items-center gap-1.5 overline text-muted-foreground">
       <Icon
         className={cn(
           'h-3.5 w-3.5',
@@ -96,22 +88,22 @@ export const WalletPeriodAnalyticsPanels = ({
     {
       name: 'Ingresos',
       value: analytics.movementMix.income,
-      color: MIX_COLORS[0],
+      color: chartSliceColor(0),
     },
     {
       name: 'Egresos',
       value: analytics.movementMix.expense,
-      color: MIX_COLORS[1],
+      color: chartSliceColor(1),
     },
     {
       name: 'Abonos TC',
       value: analytics.movementMix.cardPaymentIn,
-      color: MIX_COLORS[2],
+      color: chartSliceColor(2),
     },
     {
       name: 'Pagos TC',
       value: analytics.movementMix.cardPaymentOut,
-      color: MIX_COLORS[3],
+      color: chartSliceColor(3),
     },
   ].filter((row) => row.value > 0);
 
@@ -142,50 +134,57 @@ export const WalletPeriodAnalyticsPanels = ({
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={analytics.dailyFlow}>
                     <CartesianGrid
-                      stroke="rgba(127,127,127,0.18)"
+                      stroke={CHART_COLOR.grid}
                       strokeDasharray="3 3"
                       vertical={false}
                     />
                     <XAxis
                       dataKey="label"
-                      tick={{ fontSize: 10 }}
+                      tick={CHART_AXIS_TICK}
                       tickLine={false}
                       axisLine={false}
                     />
                     <YAxis
-                      tick={{ fontSize: 10 }}
+                      tick={CHART_AXIS_TICK}
                       tickLine={false}
                       axisLine={false}
                       width={58}
-                      tickFormatter={(value) =>
-                        `$${Math.round(Number(value) / 1000)}k`
-                      }
+                      tickFormatter={formatAxisMoney}
                     />
                     <Tooltip
-                      formatter={moneyTooltipFormatter}
-                      labelFormatter={(_, payload) => {
-                        const date = payload?.[0]?.payload?.date;
-                        return date ? formatDate(date) : '';
+                      content={({ active, payload }) => {
+                        const date = payload?.[0]?.payload?.date as string | undefined;
+                        return (
+                          <ChartTooltip
+                            active={active}
+                            label={date ? formatDate(date) : undefined}
+                            payload={payload?.map((entry) => ({
+                              name: String(entry.name ?? ''),
+                              value: entry.value as number | string,
+                              dataKey: String(entry.dataKey ?? ''),
+                            }))}
+                          />
+                        );
                       }}
                     />
                     <Bar
                       dataKey="inflow"
                       name="Ingresos"
-                      fill={FLOW_COLORS.inflow}
+                      fill={FLOW_FILL.inflow}
                       radius={[4, 4, 0, 0]}
                     />
                     <Bar
                       dataKey="outflow"
                       name="Egresos"
-                      fill={FLOW_COLORS.outflow}
+                      fill={FLOW_FILL.outflow}
                       radius={[4, 4, 0, 0]}
                     />
                     <Area
                       type="monotone"
                       dataKey="cumulativeNet"
                       name="Neto acumulado"
-                      stroke={FLOW_COLORS.cumulative}
-                      fill={`${FLOW_COLORS.cumulative}22`}
+                      stroke={FLOW_FILL.cumulative}
+                      fill="color-mix(in srgb, var(--status-info) 14%, transparent)"
                       strokeWidth={2}
                     />
                   </ComposedChart>
@@ -234,8 +233,11 @@ export const WalletPeriodAnalyticsPanels = ({
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted/50">
                         <div
-                          className={cn('h-full rounded-full', categoryColor(index))}
-                          style={{ width: `${Math.max(row.pct, 3)}%` }}
+                          className="h-full rounded-full"
+                          style={{
+                            background: chartSliceColor(index),
+                            width: `${Math.max(row.pct, 3)}%`,
+                          }}
                         />
                       </div>
                     </li>
@@ -279,7 +281,7 @@ export const WalletPeriodAnalyticsPanels = ({
                             <Cell key={row.name} fill={row.color} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={moneyTooltipFormatter} />
+                        <Tooltip content={<ChartTooltip />} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -370,7 +372,7 @@ export const WalletPeriodAnalyticsPanels = ({
             <div className="space-y-2">
               {analytics.largestOutflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
-                  <p className="mb-1 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1 flex items-center gap-1.5 overline text-muted-foreground">
                     <ArrowUpRight className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" data-icon="inline-start" />
                     Mayor egreso
                   </p>
@@ -384,7 +386,7 @@ export const WalletPeriodAnalyticsPanels = ({
               ) : null}
               {analytics.largestInflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
-                  <p className="mb-1 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1 flex items-center gap-1.5 overline text-muted-foreground">
                     <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
                     Mayor ingreso
                   </p>

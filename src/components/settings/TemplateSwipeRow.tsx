@@ -48,14 +48,17 @@ export const TemplateSwipeRow = ({
               {!active ? (
                 <Badge
                   variant="outline"
-                  className="shrink-0 px-1.5 py-0 text-caption font-semibold uppercase tracking-wider"
+                  className="shrink-0 px-1.5 py-0 overline"
                 >
                   Inactiva
                 </Badge>
               ) : null}
             </span>
             {subtitle ? (
-              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+              <span
+                className="mt-0.5 block text-pretty text-xs text-muted-foreground"
+                title={typeof subtitle === 'string' ? subtitle : undefined}
+              >
                 {subtitle}
               </span>
             ) : null}

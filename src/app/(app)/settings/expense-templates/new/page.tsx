@@ -1,5 +1,7 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
+import { FormPageSkeleton } from '@/components/loading/page-skeletons';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -162,19 +164,14 @@ export default function NewExpenseTemplatePage() {
 
   if (loading) {
     return (
-      <div className="py-8 text-center text-muted-foreground">Cargando…</div>
+      <FormPageSkeleton />
     );
   }
 
   return (
     <div className="space-y-6">
       {Object.keys(form.formState.errors).length > 0 ? (
-        <div
-          className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          Revisa los campos marcados. Hay errores de validación en el formulario.
-        </div>
+        <ErrorBanner>Revisa los campos marcados. Hay errores de validación en el formulario.</ErrorBanner>
       ) : null}
       <ExpenseTemplateForm
         form={form}

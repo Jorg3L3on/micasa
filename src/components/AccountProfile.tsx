@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
@@ -121,7 +122,7 @@ export default function AccountProfile({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 space-y-1">
-              <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="overline text-muted-foreground">
                 Correo electrónico
               </p>
               <p className="truncate text-sm">{email || '—'}</p>
@@ -134,9 +135,7 @@ export default function AccountProfile({
               className="space-y-4"
             >
               {apiError ? (
-                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                  {apiError}
-                </div>
+                <ErrorBanner>{apiError}</ErrorBanner>
               ) : null}
 
               <FormField

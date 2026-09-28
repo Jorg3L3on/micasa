@@ -1,5 +1,6 @@
 'use client';
 
+import { FilterChip } from '@/components/filter-chip';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Target } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,6 +10,7 @@ import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
 import { GoalListCard } from '@/components/wallets/GoalListCard';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
+import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
@@ -283,7 +285,7 @@ export default function MetasPage() {
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 overline text-muted-foreground">
               Estado
             </p>
             <div
@@ -295,22 +297,9 @@ export default function MetasPage() {
                 const selected = statusFilter === value;
                 const count = statusChipCounts[value];
                 return (
-                  <button
-                    key={value}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    onClick={() => setStatusFilter(value)}
-                    className={cn(
-                      'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
-                      selected
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {label}{' '}
-                    <span className="tabular-nums opacity-80">({count})</span>
-                  </button>
+                  <FilterChip key={value} selected={selected} count={count} onClick={() => setStatusFilter(value)}>
+                          {label}
+                        </FilterChip>
                 );
               })}
             </div>
@@ -325,31 +314,20 @@ export default function MetasPage() {
           ))}
         </div>
       ) : displayGoals.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 bg-[oklch(96.8%_0.007_247.896)] px-6 py-14 text-center dark:bg-card/40">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
-            <Target className="h-5 w-5" aria-hidden />
-          </span>
-          <div className="space-y-1">
-            <p className="font-medium">
-              {hasSearch ? 'Ninguna meta coincide con la búsqueda' : emptyTitle}
-            </p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {hasSearch
-                ? 'Prueba otro nombre o limpia la búsqueda.'
-                : emptyDescription}
-            </p>
-          </div>
-          {!hasSearch && statusFilter === 'active' ? (
-            <Button
-              type="button"
-              className="rounded-xl"
-              onClick={openCreateDialog}
-            >
-              <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-              Agregar meta
-            </Button>
-          ) : null}
-        </div>
+        <EmptyState
+          icon={Target}
+          message={hasSearch ? 'Ninguna meta coincide con la búsqueda' : emptyTitle}
+          description={
+            hasSearch
+              ? 'Prueba otro nombre o limpia la búsqueda.'
+              : emptyDescription
+          }
+          action={
+            !hasSearch && statusFilter === 'active'
+              ? { label: 'Agregar meta', onClick: openCreateDialog }
+              : undefined
+          }
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {displayGoals.map((wallet) => (

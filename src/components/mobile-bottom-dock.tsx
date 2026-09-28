@@ -47,9 +47,9 @@ const MENU_TRANSITION: Transition = {
 
 export const MOBILE_DOCK_SHELL_CLASS = cn(
   'relative grid h-(--dock-bar-height) grid-cols-5 items-center overflow-hidden rounded-full',
-  'border border-black/10 bg-background/70 shadow-[0_12px_40px_-16px_rgba(15,23,42,0.35),inset_0_1px_0_rgba(255,255,255,0.5)]',
+  'border border-black/10 bg-background/70 shadow-panel',
   'supports-[backdrop-filter]:bg-background/45 backdrop-blur-2xl backdrop-saturate-180',
-  'dark:border-white/[0.12] dark:bg-[rgb(9_14_29/0.6)] dark:supports-[backdrop-filter]:bg-[rgb(9_14_29/0.4)] dark:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.72),0_32px_80px_-36px_rgba(58,55,252,0.16),inset_0_1px_0_rgba(255,255,255,0.06)]',
+  'dark:border-white/[0.12] dark:bg-[rgb(9_14_29/0.6)] dark:supports-[backdrop-filter]:bg-[rgb(9_14_29/0.4)] dark:shadow-panel',
   'before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-black/20 before:to-transparent',
   'dark:before:via-white/40',
 );
@@ -242,9 +242,9 @@ function MobileBottomDockInner() {
               transition={reduceMotion ? { duration: 0 } : MENU_TRANSITION}
               className={cn(
                 'absolute bottom-[calc(100%+0.75rem)] left-1/2 z-10 w-[min(17.5rem,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden rounded-2xl',
-                'border border-black/10 bg-background/90 p-1.5 shadow-[0_16px_40px_-18px_rgba(15,23,42,0.4)]',
+                'border border-black/10 bg-background/90 p-1.5 shadow-panel',
                 'supports-[backdrop-filter]:bg-background/80 backdrop-blur-2xl backdrop-saturate-150',
-                'dark:border-white/10 dark:bg-[rgb(9_14_29/0.88)] dark:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.72)]',
+                'dark:border-white/10 dark:bg-[rgb(9_14_29/0.88)] dark:shadow-panel',
               )}
             >
               <button
@@ -321,9 +321,8 @@ function MobileBottomDockInner() {
               onKeyDown={handlePlusKeyDown}
               whileTap={reduceMotion ? undefined : { scale: 0.9 }}
               className={cn(
-                'flex size-12 items-center justify-center rounded-full bg-primary text-white shadow-md',
+                'flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md',
                 'ring-2 ring-primary/30 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                'dark:bg-[#3a37fc]',
               )}
             >
               <motion.span

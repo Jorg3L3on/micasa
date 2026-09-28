@@ -28,7 +28,7 @@ export default function WalletDetailLoading() {
               <WalletCardVtPlaceholder walletId={walletId} variant="funding" />
             </ViewTransition>
           ) : (
-            <Skeleton className="mx-auto h-[12rem] w-full max-w-md rounded-[1.375rem] sm:h-[13.5rem]" />
+            <Skeleton className="mx-auto h-[12rem] w-full max-w-md rounded-face sm:h-[13.5rem]" />
           )}
         </div>
         <div className="space-y-3 px-1 py-7 sm:py-9">

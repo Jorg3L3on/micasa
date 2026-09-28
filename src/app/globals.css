@@ -16,6 +16,8 @@
   --radius: 0.75rem;
   /* Light mode – cooler grey canvas so white cards lift clearly */
   --background: oklch(0.94 0.007 265);
+  /* Orion navy used under the iOS status bar in light mode (white system text). */
+  --chrome-ink: #060914;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -53,6 +55,11 @@
   --shadow-card:
     0 1px 2px rgb(15 23 42 / 0.06),
     0 10px 28px -12px rgb(15 23 42 / 0.18);
+  --shadow-panel: var(--shadow-card);
+  --shadow-face:
+    0 12px 32px -14px rgb(15 23 42 / 0.28),
+    0 4px 12px -6px rgb(15 23 42 / 0.16);
+  --shadow-glow: 0 0 12px -1px color-mix(in oklch, var(--primary) 55%, transparent);
   /* View Transition timing — see DESIGN.md Motion tokens */
   --duration-exit: 170ms;
   --duration-enter: 240ms;
@@ -75,6 +82,26 @@
   );
   /* Smallest readable text. JOR-311 adopts this as the caption step. */
   --text-caption-size: 0.6875rem;
+
+  /* Financial status. Text color is the token; soft/border follow it. */
+  --status-success: oklch(0.45 0.13 155);
+  --status-pending: oklch(0.48 0.12 70);
+  --status-overdue: oklch(0.5 0.2 25);
+  --status-income: oklch(0.45 0.14 255);
+  --status-expense: oklch(0.46 0.16 305);
+  --status-info: oklch(0.48 0.1 230);
+  --status-success-soft: color-mix(in oklch, var(--status-success) 14%, transparent);
+  --status-success-border: color-mix(in oklch, var(--status-success) 40%, transparent);
+  --status-pending-soft: color-mix(in oklch, var(--status-pending) 16%, transparent);
+  --status-pending-border: color-mix(in oklch, var(--status-pending) 42%, transparent);
+  --status-overdue-soft: color-mix(in oklch, var(--status-overdue) 14%, transparent);
+  --status-overdue-border: color-mix(in oklch, var(--status-overdue) 40%, transparent);
+  --status-income-soft: color-mix(in oklch, var(--status-income) 14%, transparent);
+  --status-income-border: color-mix(in oklch, var(--status-income) 40%, transparent);
+  --status-expense-soft: color-mix(in oklch, var(--status-expense) 14%, transparent);
+  --status-expense-border: color-mix(in oklch, var(--status-expense) 40%, transparent);
+  --status-info-soft: color-mix(in oklch, var(--status-info) 14%, transparent);
+  --status-info-border: color-mix(in oklch, var(--status-info) 40%, transparent);
 }
 
 .dark {
@@ -114,11 +141,38 @@
   --sidebar-border: rgb(255 255 255 / 0.08);
   --sidebar-ring: #3a37fc;
   --shadow-card: 0 18px 40px -24px rgb(0 0 0 / 0.7), 0 28px 80px -36px rgb(58 55 252 / 0.16);
+  --shadow-panel:
+    0 0 0 1px rgb(255 255 255 / 0.04),
+    0 18px 40px -22px rgb(0 0 0 / 0.72),
+    0 32px 80px -36px rgb(58 55 252 / 0.16);
+  --shadow-face:
+    0 12px 32px -14px rgb(0 0 0 / 0.62),
+    0 4px 12px -6px rgb(0 0 0 / 0.4);
+  --shadow-glow: 0 0 12px -1px rgb(58 55 252 / 0.8);
+  --status-success: oklch(0.78 0.14 155);
+  --status-pending: oklch(0.82 0.12 85);
+  --status-overdue: oklch(0.74 0.16 25);
+  --status-income: oklch(0.78 0.1 250);
+  --status-expense: oklch(0.78 0.12 320);
+  --status-info: oklch(0.8 0.06 240);
+  --status-success-soft: color-mix(in oklch, var(--status-success) 18%, transparent);
+  --status-success-border: color-mix(in oklch, var(--status-success) 45%, transparent);
+  --status-pending-soft: color-mix(in oklch, var(--status-pending) 18%, transparent);
+  --status-pending-border: color-mix(in oklch, var(--status-pending) 45%, transparent);
+  --status-overdue-soft: color-mix(in oklch, var(--status-overdue) 18%, transparent);
+  --status-overdue-border: color-mix(in oklch, var(--status-overdue) 45%, transparent);
+  --status-income-soft: color-mix(in oklch, var(--status-income) 18%, transparent);
+  --status-income-border: color-mix(in oklch, var(--status-income) 45%, transparent);
+  --status-expense-soft: color-mix(in oklch, var(--status-expense) 18%, transparent);
+  --status-expense-border: color-mix(in oklch, var(--status-expense) 45%, transparent);
+  --status-info-soft: color-mix(in oklch, var(--status-info) 18%, transparent);
+  --status-info-border: color-mix(in oklch, var(--status-info) 45%, transparent);
 }
 
 @theme inline {
   /* Map Tailwind theme to CSS variables so light/dark switch works */
   --color-background: var(--background);
+  --color-chrome-ink: var(--chrome-ink);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -143,6 +197,24 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-status-success: var(--status-success);
+  --color-status-success-soft: var(--status-success-soft);
+  --color-status-success-border: var(--status-success-border);
+  --color-status-pending: var(--status-pending);
+  --color-status-pending-soft: var(--status-pending-soft);
+  --color-status-pending-border: var(--status-pending-border);
+  --color-status-overdue: var(--status-overdue);
+  --color-status-overdue-soft: var(--status-overdue-soft);
+  --color-status-overdue-border: var(--status-overdue-border);
+  --color-status-income: var(--status-income);
+  --color-status-income-soft: var(--status-income-soft);
+  --color-status-income-border: var(--status-income-border);
+  --color-status-expense: var(--status-expense);
+  --color-status-expense-soft: var(--status-expense-soft);
+  --color-status-expense-border: var(--status-expense-border);
+  --color-status-info: var(--status-info);
+  --color-status-info-soft: var(--status-info-soft);
+  --color-status-info-border: var(--status-info-border);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -156,8 +228,25 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --radius-face: 1.375rem;
+  --text-display: 1.875rem;
+  --text-display--line-height: 1.15;
+  --text-display--font-weight: 700;
+  --text-display--letter-spacing: -0.025em;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.25;
+  --text-title--font-weight: 600;
+  --text-section: 0.875rem;
+  --text-section--line-height: 1.25;
+  --text-section--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.5;
   --text-caption: var(--text-caption-size);
   --text-caption--line-height: 1.35;
+  --text-overline: var(--text-caption-size);
+  --text-overline--line-height: 1.35;
+  --text-overline--font-weight: 600;
+  --text-overline--letter-spacing: 0.05em;
   --animate-shine: shine var(--duration) infinite linear;
   @keyframes shine {
     0% {
@@ -176,16 +265,37 @@
    Fintech dashboard – card depth, glass, and glow utilities
    ========================================================================== */
 
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility shadow-panel {
+  box-shadow: var(--shadow-panel);
+}
+@utility shadow-face {
+  box-shadow: var(--shadow-face);
+}
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+@utility overline {
+  font-size: var(--text-caption-size);
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 @layer components {
   /* Elevated panel shell: stronger separation in light, calm in dark */
   .card-surface {
-    @apply rounded-xl border border-border/80 bg-card dark:rounded-2xl dark:border-white/[0.08];
+    @apply rounded-xl border border-border/80 bg-card dark:border-white/[0.08];
     box-shadow: var(--shadow-card);
   }
 
   /* Glass card: same language as planner shells (hairline + frost). */
   .card-glass {
-    @apply border border-border/50 backdrop-blur-xl bg-card/60! dark:border-white/[0.12] dark:bg-[#090e1d]/55!;
+    @apply border border-border/50 backdrop-blur-xl bg-card/60! dark:border-white/[0.12] dark:bg-secondary/55!;
   }
 
   /* Inner depth: inset shadow + subtle inset ring (tactile, 3D) */
@@ -214,8 +324,8 @@
 
   /* Status glow: green (Pagado) */
   .glow-status-success {
-    box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
-    @apply border border-green-500/50;
+    box-shadow: 0 0 12px color-mix(in oklch, var(--status-success) 35%, transparent);
+    @apply border border-status-success-border;
   }
 
   /* Utility: hide scrollbar while keeping scroll functionality */
@@ -487,7 +597,7 @@ html:has(.landing-root) {
 .orion-panel-glass {
   isolation: isolate;
   background-color: var(--card);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-panel);
 }
 
 .dark .orion-panel-glass {
@@ -496,10 +606,7 @@ html:has(.landing-root) {
   background-image: none;
   backdrop-filter: blur(28px) saturate(120%);
   -webkit-backdrop-filter: blur(28px) saturate(120%);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.04),
-    0 18px 40px -22px rgb(0 0 0 / 0.72),
-    0 32px 80px -36px rgb(58 55 252 / 0.16);
+  box-shadow: var(--shadow-panel);
 }
 
 /* Soft glass rim: top hairline + faint inner glow. Host must be positioned. */

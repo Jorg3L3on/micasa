@@ -3,8 +3,14 @@ import {
   coerceToCalendarDayStart,
   coerceToCalendarDate,
   formatCalendarDate,
+  formatChartAxisMonth,
+  formatChartMonthRange,
   formatDisplayDate,
   formatDisplayDayMonth,
+  formatMonthHeading,
+  formatMonthInPhrase,
+  formatMonthYearPhrase,
+  formatMonthYearTitle,
   formatWallClockDateRange,
   formatWallClockDateShort,
   parseCalendarDate,
@@ -52,9 +58,27 @@ describe('calendar-dates', () => {
     expect(start.getUTCHours()).toBe(6);
   });
 
-  it('formatDisplayDate renders es-MX civil day', () => {
-    expect(formatDisplayDate('2026-05-31')).toMatch(/31/);
-    expect(formatDisplayDate(parseCalendarDate('2026-05-31'))).toMatch(/31/);
+  it('formatDisplayDate renders es-MX civil day and hides the current year', () => {
+    const now = new Date('2026-09-28T18:00:00.000Z');
+    expect(formatDisplayDate('2026-05-31', now)).toMatch(/31/);
+    expect(formatDisplayDate('2026-05-31', now)).not.toMatch(/2026/);
+    expect(formatDisplayDate('2025-05-31', now)).toMatch(/2025/);
+    expect(formatDisplayDate(parseCalendarDate('2026-05-31'), now)).toMatch(/31/);
+  });
+
+  it('formats month titles, phrases, and chart axes with one year rule', () => {
+    const now = new Date('2026-09-28T18:00:00.000Z');
+    expect(formatMonthHeading(11, 2026, now)).toBe('Noviembre');
+    expect(formatMonthHeading(11, 2025, now)).toBe('Noviembre 2025');
+    expect(formatMonthInPhrase(11, 2026, now)).toBe('noviembre');
+    expect(formatMonthInPhrase(11, 2025, now)).toBe('noviembre 2025');
+    expect(formatMonthYearTitle('2026-11', now)).toBe('Noviembre');
+    expect(formatMonthYearTitle('2025-11', now)).toBe('Noviembre de 2025');
+    expect(formatMonthYearPhrase('2025-11', now)).toBe('noviembre de 2025');
+    expect(formatChartAxisMonth('2026-09', now)).toBe('sep');
+    expect(formatChartAxisMonth('2025-09', now)).toBe('sep 25');
+    expect(formatChartMonthRange('2026-07', '2026-09', now)).toBe('jul – sep');
+    expect(formatChartMonthRange('2025-12', '2026-01', now)).toBe('dic 25 – ene 26');
   });
 
   it('formatDisplayDayMonth omits the year', () => {

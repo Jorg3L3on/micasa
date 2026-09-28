@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import {
   useCallback,
   useEffect,
@@ -510,9 +511,7 @@ const CreditCardQuickPurchaseDialog = ({
       className={cn('flex flex-col gap-4', isMobile && 'pb-1')}
     >
       {error ? (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <ErrorBanner>{error}</ErrorBanner>
       ) : null}
 
       {!alreadyInCardBalance &&
@@ -534,7 +533,7 @@ const CreditCardQuickPurchaseDialog = ({
               <div className="flex min-w-0 items-center gap-2.5">
                 <span
                   className={cn(
-                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]',
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
                     exceedsCreditLimit
                       ? 'bg-destructive/10 dark:bg-destructive/15'
                       : 'bg-black/[0.05] dark:bg-white/[0.08]',
@@ -564,7 +563,7 @@ const CreditCardQuickPurchaseDialog = ({
               </div>
               <p
                 className={cn(
-                  'shrink-0 font-sans text-[15px] font-semibold tabular-nums tracking-tight',
+                  'shrink-0 font-sans text-body font-semibold tabular-nums tracking-tight',
                   exceedsCreditLimit
                     ? 'text-destructive'
                     : 'text-foreground',
@@ -693,7 +692,7 @@ const CreditCardQuickPurchaseDialog = ({
           </div>
 
           <div>
-            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 overline text-muted-foreground">
               Cuotas (opcional)
             </p>
             <div className={OVERLAY_GROUPED_CARD_CLASS}>
@@ -767,7 +766,7 @@ const CreditCardQuickPurchaseDialog = ({
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
-      title="Registrar compra"
+      title="Agregar compra"
       description={a11yDescription}
       busy={submitting}
     >

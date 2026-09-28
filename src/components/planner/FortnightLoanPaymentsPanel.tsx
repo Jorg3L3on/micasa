@@ -1,8 +1,9 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { ArrowRight, HandCoins, Landmark, Loader2 } from 'lucide-react';
+import { ArrowRight, HandCoins, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { LoanDuePaymentItem } from '@/types/loans';
 import type { LenderListItem } from '@/types/lenders';
@@ -188,18 +189,7 @@ export default function FortnightLoanPaymentsPanel({
 
   if (groups.length === 0) {
     return (
-      <div
-        className={cn(
-          'rounded-xl border border-border/40 bg-card px-4 py-8 text-center shadow-sm',
-          isCompact ? 'text-xs' : 'text-sm',
-        )}
-        role="region"
-        aria-label={`Préstamos: ${fortnightLabel}`}
-      >
-        <p className="text-muted-foreground">
-          No hay pagos de préstamos en esta quincena.
-        </p>
-      </div>
+      <EmptyState message="No hay pagos de préstamos en esta quincena." className="py-8" />
     );
   }
 
@@ -331,16 +321,10 @@ export default function FortnightLoanPaymentsPanel({
                           : `Pagar a ${group.lenderName}`
                       }
                     >
-                      {isPayLoading ? (
-                        <Loader2
-                          className="h-3 w-3 animate-spin"
-                          aria-hidden
-                          data-icon="inline-start"
-                        />
-                      ) : (
+                      {isPayLoading ? null : (
                         <ArrowRight className="h-3 w-3" aria-hidden />
                       )}
-                      Pagar
+                      {isPayLoading ? 'Guardando…' : 'Pagar'}
                     </Button>
                   ) : scheduledItems.length > 0 ? (
                     <Button

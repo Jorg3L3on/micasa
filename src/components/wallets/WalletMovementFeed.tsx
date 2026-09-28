@@ -10,6 +10,7 @@ import {
   Inbox,
 } from 'lucide-react';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -139,8 +140,9 @@ export const WalletMovementsFeed = ({
 
   return (
     <div role="region" aria-label="Movimientos" className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Movimientos</h2>
+      <SectionHeader
+        title="Movimientos"
+        actions={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -171,7 +173,8 @@ export const WalletMovementsFeed = ({
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+        }
+      />
 
       <div className={creditCardSegmentedTabChromeClass}>
         <div className="grid w-full grid-cols-3 gap-1" role="tablist" aria-label="Filtrar movimientos">
@@ -214,7 +217,7 @@ export const WalletMovementsFeed = ({
         <div className="space-y-5">
           {grouped.map(([date, rows]) => (
             <section key={date} aria-label={`Movimientos del ${formatDate(date)}`}>
-              <p className="mb-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 overline text-muted-foreground">
                 {formatDate(date)}
               </p>
               <ul className="divide-y divide-border/40 rounded-2xl border border-border/50 bg-muted/10 dark:bg-muted/5">

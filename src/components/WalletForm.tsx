@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import {
-  Loader2,
   Banknote,
   Landmark,
   CreditCard,
@@ -222,16 +221,11 @@ export default function WalletForm({
       ? 'Define nombre, tipo y saldo inicial.'
       : 'Actualiza los datos de esta billetera.';
 
-  const submitLabel = isSubmitting ? (
-    <>
-      <Loader2
-        className="h-4 w-4 animate-spin motion-reduce:animate-none"
-        aria-hidden
-        data-icon="inline-start"
-      />
-      {mode === 'create' ? 'Creando…' : 'Guardando…'}
-    </>
-  ) : mode === 'create' ? (
+  const submitLabel = isSubmitting
+    ? mode === 'create'
+      ? 'Creando…'
+      : 'Guardando…'
+    : mode === 'create' ? (
     isGoalType ? (
       'Agregar meta'
     ) : (

@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, CreditCard, ExternalLink, Pencil } from 'lucide-react';
@@ -17,6 +18,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { LiquidityAccountDebtWhy } from '@/components/wallets/liquidity/LiquidityAccountDebtWhy';
+import { MoneyInText } from '@/components/wallets/liquidity/money-in-text';
 import { LiquidityDebtSummaryStrip } from '@/components/wallets/liquidity/LiquidityDebtSummaryStrip';
 import {
   LIQUIDITY_PANEL_CLASS,
@@ -201,14 +203,16 @@ const AccountCard = ({
             </div>
             <p className="text-caption text-muted-foreground">{view.typeLabel}</p>
             {preview ? (
-              <p className="mt-1 text-caption leading-snug text-muted-foreground">{preview}</p>
+              <p className="mt-1 text-caption leading-snug text-muted-foreground">
+                <MoneyInText text={preview} />
+              </p>
             ) : null}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="overline text-muted-foreground">
               Deuda
             </p>
             <p className={cn('font-sans text-sm font-bold tabular-nums', debtToneClass(view))}>
@@ -216,7 +220,7 @@ const AccountCard = ({
             </p>
           </div>
           <div className="text-right">
-            <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="overline text-muted-foreground">
               Libre
             </p>
             <p
@@ -435,9 +439,10 @@ export const LiquidityAccountsToday = ({
             <Skeleton className="h-28 w-full rounded-xl border border-border/60" />
           </div>
         ) : views.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground">
-            No hay cuentas activas de efectivo, tarjeta o préstamo.
-          </p>
+          <EmptyState
+            message="No hay cuentas activas de efectivo, tarjeta o préstamo."
+            className="py-8"
+          />
         ) : (
           <>
             <LiquidityDebtSummaryStrip
@@ -498,7 +503,11 @@ export const LiquidityAccountsToday = ({
         {whyDetailAccount ? (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              {whyDetailAccount.preview || 'De qué está hecha esta deuda'}
+              {whyDetailAccount.preview ? (
+                <MoneyInText text={whyDetailAccount.preview} size="row" />
+              ) : (
+                'De qué está hecha esta deuda'
+              )}
             </p>
             <LiquidityAccountDebtWhy
               account={whyDetailAccount}

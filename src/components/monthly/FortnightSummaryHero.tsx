@@ -203,7 +203,7 @@ const DueToPayLabel = ({ compositionRows }: DueToPayLabelProps) => {
           sideOffset={6}
           className="max-w-[16rem] space-y-1.5 px-3 py-2 text-left"
         >
-          <p className="text-caption font-semibold uppercase tracking-wider text-background/70">
+          <p className="overline text-background/70">
             Qué incluye
           </p>
           <ul className="space-y-1">
@@ -259,7 +259,7 @@ export const AccountMetric = ({
       >
         <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
       </span>
-      <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="overline text-muted-foreground">
         {label}
       </span>
     </div>
@@ -295,7 +295,7 @@ const LegendItem = ({
           className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClassName)}
           aria-hidden
         />
-        <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="overline text-muted-foreground">
           {label}
         </span>
       </span>
@@ -445,17 +445,17 @@ export const FortnightSummaryHero = ({
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <dl className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-[13px] text-muted-foreground">Entra</dt>
+              <dt className="text-body text-muted-foreground">Entra</dt>
               <dd>
                 <CurrencyTicker
                   value={periodIncome}
-                  className="text-[13px] font-medium text-foreground"
+                  className="text-body font-medium text-foreground"
                 />
               </dd>
             </div>
 
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="flex min-w-0 items-center gap-1 text-[13px] text-muted-foreground">
+              <dt className="flex min-w-0 items-center gap-1 text-body text-muted-foreground">
                 <span
                   className="font-medium text-muted-foreground/80"
                   aria-hidden
@@ -467,14 +467,14 @@ export const FortnightSummaryHero = ({
               <dd>
                 <CurrencyTicker
                   value={dueToPayCash}
-                  className="text-[13px] font-medium text-foreground"
+                  className="text-body font-medium text-foreground"
                 />
               </dd>
             </div>
 
             {showLeftover ? (
               <div className="flex items-baseline justify-between gap-4">
-                <dt className="flex min-w-0 items-center gap-1 text-[13px] text-muted-foreground">
+                <dt className="flex min-w-0 items-center gap-1 text-body text-muted-foreground">
                   <span
                     className="font-medium text-muted-foreground/80"
                     aria-hidden
@@ -486,7 +486,7 @@ export const FortnightSummaryHero = ({
                 <dd>
                   <CurrencyTicker
                     value={leftoverAmount}
-                    className="text-[13px] font-medium text-foreground"
+                    className="text-body font-medium text-foreground"
                   />
                 </dd>
               </div>
@@ -508,7 +508,7 @@ export const FortnightSummaryHero = ({
             <div className="flex items-baseline justify-between gap-3">
               <span
                 className={cn(
-                  'text-caption font-semibold uppercase tracking-wider',
+                  'overline',
                   remainderClass,
                 )}
               >

@@ -1,4 +1,10 @@
 import {
+  formatChartAxisMonth,
+  formatChartMonthRange,
+  formatMonthYearTitle,
+  formatRowDate,
+} from '@/lib/calendar-dates';
+import {
   LIQUIDITY_CHART_RANGE_OPTIONS,
   type LiquidityChartRangeId,
   type LiquidityCustomChartRange,
@@ -7,46 +13,27 @@ import {
 export type { LiquidityChartRangeId, LiquidityCustomChartRange };
 export { LIQUIDITY_CHART_RANGE_OPTIONS };
 
-export const formatLiquidityDateLabel = (ymd: string): string => {
-  const [y, m, day] = ymd.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1, day));
-  return d.toLocaleDateString('es-MX', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-};
+export const formatLiquidityDateLabel = (
+  ymd: string,
+  now: Date = new Date(),
+): string => formatRowDate(ymd, now);
 
-export const formatMonthYearLabel = (monthKey: string): string => {
-  const [year, month] = monthKey.split('-').map(Number);
-  const d = new Date(Date.UTC(year, month - 1, 1));
-  const raw = d.toLocaleDateString('es-MX', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-  return raw.charAt(0).toUpperCase() + raw.slice(1);
-};
+export const formatMonthYearLabel = (
+  monthKey: string,
+  now: Date = new Date(),
+): string => formatMonthYearTitle(monthKey, now);
 
-export const formatShortMonthLabel = (monthKey: string): string => {
-  const [year, month] = monthKey.split('-').map(Number);
-  const d = new Date(Date.UTC(year, month - 1, 1));
-  return d.toLocaleDateString('es-MX', {
-    month: 'short',
-    year: '2-digit',
-    timeZone: 'UTC',
-  });
-};
+export const formatShortMonthLabel = (
+  monthKey: string,
+  now: Date = new Date(),
+): string => formatChartAxisMonth(monthKey, now);
 
-/** Compact trigger copy for a custom from/to window, e.g. "jul 26 – sep 26". */
+/** Compact trigger copy for a custom from/to window, e.g. "jul – sep". */
 export const formatCustomChartRangeLabel = (
   fromMonthKey: string,
   toMonthKey: string,
-): string => {
-  if (fromMonthKey === toMonthKey) return formatShortMonthLabel(fromMonthKey);
-  return `${formatShortMonthLabel(fromMonthKey)} – ${formatShortMonthLabel(toMonthKey)}`;
-};
+  now: Date = new Date(),
+): string => formatChartMonthRange(fromMonthKey, toMonthKey, now);
 
 export const compareMonthKeys = (a: string, b: string): number => a.localeCompare(b);
 

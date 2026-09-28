@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useFinanceContext } from '@/context/finance-context';
+import { formatMonthHeading } from '@/lib/calendar-dates';
 import { getAppHomeHref, formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
 import {
@@ -80,22 +81,11 @@ export function getPageTitle(pathname: string): {
   if (segments[0] === 'monthly' && segments[1] && segments[2]) {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
-    const months = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
-    ];
-    const monthName = months[month - 1] || '';
-    return { title: `${monthName} ${year}`, isHome: true, showBack: false };
+    return {
+      title: formatMonthHeading(month, year),
+      isHome: true,
+      showBack: false,
+    };
   }
 
   if (segments.length === 0 || segments[0] === 'dashboard') {
@@ -238,19 +228,19 @@ export default function PageTitle() {
   const pageTitle = useAppPageTitle();
   if (!pageTitle.periodPrefix) {
     return (
-      <h2 className="truncate text-lg font-semibold leading-tight">
+      <h1 className="truncate text-title">
         {pageTitle.title}
-      </h2>
+      </h1>
     );
   }
   return (
-    <h2
-      className="truncate text-lg font-semibold leading-tight"
+    <h1
+      className="truncate text-title"
       aria-label={pageTitle.title}
     >
       <span className="sm:hidden">{pageTitle.periodPrefix.short}</span>
       <span className="hidden sm:inline">{pageTitle.periodPrefix.full}</span>
       {` · ${pageTitle.baseTitle}`}
-    </h2>
+    </h1>
   );
 }

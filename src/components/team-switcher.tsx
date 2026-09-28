@@ -61,10 +61,10 @@ const TEAM_SWITCHER_TRIGGER_CLASS = [
   'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
   'dark:hover:bg-white/[0.05] dark:hover:text-white',
   'data-[state=open]:border-black/[0.08] data-[state=open]:bg-white/80',
-  'data-[state=open]:shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
+  'data-[state=open]:shadow-panel',
   'dark:data-[state=open]:border-white/20 dark:data-[state=open]:bg-white/[0.10]',
   'dark:data-[state=open]:text-white',
-  'dark:data-[state=open]:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_1px_2px_rgba(0,0,0,0.35)]',
+  'dark:data-[state=open]:shadow-panel',
   'ring-0 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0',
   'group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1!',
 ].join(' ');
@@ -190,7 +190,7 @@ export function TeamSwitcher() {
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl border-border/60 dark:border-white/[0.08] dark:bg-[#0d1327]/95 dark:backdrop-blur-xl"
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl border-border/60 dark:border-white/[0.08] dark:bg-popover/95 dark:backdrop-blur-xl"
               align="start"
               side={isMobile ? 'bottom' : 'right'}
               sideOffset={4}

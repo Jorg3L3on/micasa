@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { AlertTriangle } from 'lucide-react';
+import { ErrorBanner } from '@/components/error-banner';
+import { SectionHeader } from '@/components/section-header';
 import { getMonthlyPanelShellData } from '@/features/monthly/server/monthly.service';
 import { MonthlyPanelContentSuspense } from '@/features/monthly/server/MonthlyPanelContentSection';
 import { fortnightCalendarKey } from '@/features/monthly/server/monthly.queries';
@@ -12,7 +13,7 @@ import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { formatMonthHeading, formatMonthTitle, todayCalendarDate } from '@/lib/calendar-dates';
 import { PLANNING_MONTH_MAX_YEAR } from '@/lib/finance/planning-month';
 import {
   dueDayFallsInFortnight,
@@ -28,34 +29,6 @@ import {
   MONTHLY_PANEL_SHELL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 
-function getMonthName(month: number): string {
-  const months = [
-    'Enero',
-    'Febrero',
-    'Marzo',
-    'Abril',
-    'Mayo',
-    'Junio',
-    'Julio',
-    'Agosto',
-    'Septiembre',
-    'Octubre',
-    'Noviembre',
-    'Diciembre',
-  ];
-  return months[month - 1] || '';
-}
-
-/** Month label; omit year when it matches the calendar current year. */
-function formatMonthLabel(
-  month: number,
-  year: number,
-  currentYear: number,
-): string {
-  const name = getMonthName(month);
-  return year === currentYear ? name : `${name} ${year}`;
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -70,9 +43,8 @@ export async function generateMetadata({
     };
   }
   const { year, month } = parsedParams.value;
-  const monthName = getMonthName(month);
   return {
-    title: `${monthName} ${year}`,
+    title: formatMonthHeading(month, year),
     description: 'Panel financiero: planifica ingresos y gastos por quincena.',
   };
 }
@@ -95,7 +67,7 @@ export default async function MonthlyPage({
   if ('error' in ownerContext) notFound();
 
   const { year, month } = parsedParams.value;
-  const monthName = getMonthName(month);
+  const monthName = formatMonthTitle(month);
 
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
@@ -134,21 +106,12 @@ export default async function MonthlyPage({
     console.error('Error loading monthly financial panel:', error);
     return (
       <div className="space-y-5">
-        <div className="rounded-xl border border-destructive/30 bg-card p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-              <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden data-icon="inline-start" />
-            </span>
-            <div className="space-y-1">
-              <h2 className="text-lg font-semibold leading-tight">
-                No se pudo cargar el panel financiero
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                La información financiera no se muestra con valores de respaldo para evitar lecturas incorrectas. Recarga la página o intenta de nuevo más tarde.
-              </p>
-            </div>
-          </div>
-        </div>
+        <ErrorBanner>
+          <p className="font-medium">No se pudo cargar el panel financiero</p>
+          <p className="mt-1">
+            La información financiera no se muestra con valores de respaldo para evitar lecturas incorrectas. Recarga la página o intenta de nuevo más tarde.
+          </p>
+        </ErrorBanner>
       </div>
     );
   }
@@ -168,9 +131,9 @@ export default async function MonthlyPage({
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null;
   const hasNextMonth = nextFirstInfo !== null || nextSecondInfo !== null;
 
-  const prevMonthLabel = formatMonthLabel(prevMonth, prevYear, currentYear);
-  const nextMonthLabel = formatMonthLabel(nextMonth, nextYear, currentYear);
-  const viewedMonthLabel = formatMonthLabel(month, year, currentYear);
+  const prevMonthLabel = formatMonthHeading(prevMonth, prevYear);
+  const nextMonthLabel = formatMonthHeading(nextMonth, nextYear);
+  const viewedMonthLabel = formatMonthHeading(month, year);
 
   const nextMonthAlreadyCreated = nextFirstInfo !== null && nextSecondInfo !== null;
   const canCreateNextMonth =
@@ -252,9 +215,9 @@ export default async function MonthlyPage({
         <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-5')}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold leading-tight">
-                Falta crear la planificación de {viewedMonthLabel}
-              </h2>
+              <SectionHeader
+                title={`Falta crear la planificación de ${viewedMonthLabel}`}
+              />
               <p className="max-w-2xl text-sm text-muted-foreground">
                 Este mes no tiene las dos quincenas necesarias. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta para evitar datos incompletos.
               </p>

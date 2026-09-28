@@ -61,7 +61,7 @@ export const CreditCardInstallmentPortfolio = ({
     <div className="space-y-4" role="region" aria-label="Cuotas vigentes">
       {!embedded ? (
         <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
-          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="overline text-muted-foreground">
             Saldo del plan
           </p>
           <p className="font-sans text-2xl font-bold tabular-nums tracking-tight">
@@ -101,7 +101,7 @@ export const CreditCardInstallmentPortfolio = ({
 
                 <div className="mb-2 flex items-end justify-between gap-2">
                   <div>
-                    <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="overline text-muted-foreground">
                       Cuota {item.currentInstallment} de {item.totalInstallments}
                     </p>
                     <p className="font-sans text-lg font-bold tabular-nums">

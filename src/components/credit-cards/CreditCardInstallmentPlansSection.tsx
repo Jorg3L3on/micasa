@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarClock, CreditCard, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -194,37 +195,25 @@ export const CreditCardInstallmentPlansSection = ({
       aria-label="Planes de compra a meses"
     >
       {!embedded ? (
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-              <CreditCard
-                className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
-                aria-hidden
-              />
-            </span>
-            <div>
-              <h3 className="text-sm font-semibold leading-none">
-                Planes a meses
-              </h3>
-              <p className="mt-1 text-caption text-muted-foreground">
-                Nombre, progreso y cuotas generadas automáticamente
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            className="h-8 shrink-0 rounded-xl"
-            onClick={handleOpenCreate}
-          >
-            <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
-            Agregar plan
-          </Button>
-        </div>
+        <SectionHeader
+          level={3}
+          icon={CreditCard}
+          title="Planes a meses"
+          subtitle="Nombre, progreso y cuotas generadas automáticamente"
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 shrink-0 rounded-xl"
+              onClick={handleOpenCreate}
+            >
+              <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
+              Agregar plan
+            </Button>
+          }
+        />
       ) : (
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Planes a meses
-        </h4>
+        <SectionHeader level={3} title="Planes a meses" />
       )}
 
       {loading ? (
@@ -256,7 +245,7 @@ export const CreditCardInstallmentPlansSection = ({
         <>
           {!embedded ? (
             <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
-              <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="overline text-muted-foreground">
                 Saldo del plan
               </p>
               <p className="font-sans text-2xl font-bold tabular-nums tracking-tight">

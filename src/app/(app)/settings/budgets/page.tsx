@@ -5,10 +5,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import EmptyState from '@/components/EmptyState';
+import { FilterChip } from '@/components/filter-chip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/motion/tabs';
+import { SegmentedControl } from '@/components/segmented-control';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   ToolbarFiltersPortal,
@@ -32,7 +34,12 @@ import {
   updateBudgetTemplate,
   type BudgetAllocationExpenseGroup,
 } from '@/lib/api/budgets';
-import { formatWallClockDateRange, todayCalendarDate } from '@/lib/calendar-dates';
+import {
+  formatMonthHeading,
+  formatWallClockDateRange,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
+import { STATUS_BADGE_CLASS, STATUS_FILL_CLASS, STATUS_SOFT_CLASS, STATUS_TEXT_CLASS } from '@/lib/status-tone';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetListItem, BudgetPeriodItem } from '@/types/catalog';
 import type { Step1Values, Step2Values } from '@/schemas/budget.schema';
@@ -78,7 +85,7 @@ const MOTION_TABS_LIST_CLASS = cn(
   'dark:from-muted/20 dark:via-card dark:to-muted/5',
 );
 const MOTION_TABS_INDICATOR_CLASS =
-  'shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-primary/35';
+  'shadow-glow ring-1 ring-primary/35';
 const MOTION_TABS_TRIGGER_CLASS = 'min-h-8 px-2.5 py-1.5 text-xs font-semibold leading-none';
 
 const BUDGET_SORT_OPTIONS: ReadonlyArray<{ value: BudgetSort; label: string }> = [
@@ -157,21 +164,6 @@ function useBudgetStatusSwipe(status: BudgetStatus, setStatus: (status: BudgetSt
 const PAGE_SIZE = 10;
 const DETAIL_REVEAL_CLASS =
   'animate-in fade-in-0 slide-in-from-top-1 duration-200 ease-out motion-reduce:animate-none';
-const MONTH_NAMES = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-];
-
 function useExpenseGroupCache() {
   const cacheRef = useRef(new Map<number, BudgetAllocationExpenseGroup[]>());
   const store = useCallback((periodId: number, groups: BudgetAllocationExpenseGroup[]) => {
@@ -212,10 +204,10 @@ function ProgressBar({ spent, total }: { spent: number; total: number }) {
   const clamped = Math.min(Math.max(percent, 0), 100);
   const toneClass =
     percent >= 100
-      ? 'bg-destructive'
+      ? STATUS_FILL_CLASS.overdue
       : percent >= 80
-        ? 'bg-amber-500 dark:bg-amber-400'
-        : 'bg-violet-500 dark:bg-violet-400';
+        ? STATUS_FILL_CLASS.pending
+        : STATUS_FILL_CLASS.expense;
   return (
     <div className="space-y-1.5">
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted/60">
@@ -233,17 +225,7 @@ function ProgressBar({ spent, total }: { spent: number; total: number }) {
 }
 
 function BudgetsEmpty({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-16 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <PiggyBank className="size-5" aria-hidden />
-      </div>
-      <div>
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
+  return <EmptyState icon={PiggyBank} message={title} description={description} />;
 }
 
 function BudgetRow({
@@ -271,10 +253,10 @@ function BudgetRow({
   const remaining = period.allocated_amount - period.spent_amount;
   const remainingTone =
     remaining < 0
-      ? 'text-destructive'
+      ? STATUS_TEXT_CLASS.overdue
       : warning
-        ? 'text-amber-600 dark:text-amber-400'
-        : 'text-emerald-600 dark:text-emerald-400';
+        ? STATUS_TEXT_CLASS.pending
+        : STATUS_TEXT_CLASS.success;
 
   return (
     <article className="border-b border-border/60 last:border-b-0">
@@ -287,12 +269,12 @@ function BudgetRow({
             aria-expanded={expanded}
           >
             <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
+              <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full', STATUS_SOFT_CLASS.expense)}>
                 <PiggyBank className="h-3 w-3" aria-hidden />
               </span>
               <span className="truncate text-sm font-semibold">{period.name}</span>
               {period.recurrent ? (
-                <Repeat2 className="h-3.5 w-3.5 shrink-0 text-violet-500" aria-hidden />
+                <Repeat2 className={cn('h-3.5 w-3.5 shrink-0', STATUS_TEXT_CLASS.expense)} aria-hidden />
               ) : null}
             </div>
             <div className="flex items-center justify-between gap-3 text-xs">
@@ -361,7 +343,7 @@ function BudgetRow({
           </p>
         </div>
         {warning ? (
-          <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+          <div className={cn('mt-2 rounded-md px-3 py-2 text-xs', STATUS_BADGE_CLASS.pending)}>
             Has usado {Math.round(percent)}% de tu presupuesto.
           </div>
         ) : null}
@@ -745,27 +727,20 @@ export default function BudgetsPage() {
       {isBudgetsView ? (
         <ToolbarFiltersPortal>
           <div>
-            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 overline text-muted-foreground">
               Orden
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Ordenar presupuestos">
               {BUDGET_SORT_OPTIONS.map((option) => {
                 const isSelected = sort === option.value;
                 return (
-                  <button
+                  <FilterChip
                     key={option.value}
-                    type="button"
-                    aria-pressed={isSelected}
+                    selected={isSelected}
                     onClick={() => handleSortChange(option.value)}
-                    className={cn(
-                      'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
-                      isSelected
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                    )}
                   >
                     {option.label}
-                  </button>
+                  </FilterChip>
                 );
               })}
             </div>
@@ -773,26 +748,20 @@ export default function BudgetsPage() {
         </ToolbarFiltersPortal>
       ) : null}
 
-      <Tabs
+      <SegmentedControl
         value={view}
         onValueChange={(value) => setView(parseView(value))}
-        variant="pill"
+        ariaLabel="Vista de presupuestos"
+        stretch
         className="mx-auto w-full max-w-[22rem]"
-      >
-        <TabsList aria-label="Vista de presupuestos" className={MOTION_TABS_LIST_CLASS}>
-          {BUDGETS_VIEW_TABS.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              stretch
-              indicatorClassName={MOTION_TABS_INDICATOR_CLASS}
-              className={MOTION_TABS_TRIGGER_CLASS}
-            >
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+        listClassName={MOTION_TABS_LIST_CLASS}
+        indicatorClassName={MOTION_TABS_INDICATOR_CLASS}
+        triggerClassName={MOTION_TABS_TRIGGER_CLASS}
+        options={BUDGETS_VIEW_TABS.map((tab) => ({
+          value: tab.value,
+          label: tab.label,
+        }))}
+      />
 
       {error ? (
         <Alert variant="destructive">
@@ -807,33 +776,27 @@ export default function BudgetsPage() {
       {isBudgetsView ? (
           <Card className="gap-0 py-0">
             <div className="flex flex-col items-center gap-3 px-4 pt-4 sm:px-5">
-              <Tabs
+              <SegmentedControl
                 value={status}
                 onValueChange={(value) => setStatus(parseStatus(value))}
-                variant="pill"
+                ariaLabel="Estado de presupuestos"
+                stretch
                 className="w-full max-w-[22rem]"
-              >
-                <TabsList aria-label="Estado de presupuestos" className={MOTION_TABS_LIST_CLASS}>
-                  {BUDGET_STATUS_TABS.map((tab) => (
-                    <TabsTrigger
-                      key={tab.value}
-                      value={tab.value}
-                      stretch
-                      indicatorClassName={MOTION_TABS_INDICATOR_CLASS}
-                      className={MOTION_TABS_TRIGGER_CLASS}
-                    >
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+                listClassName={MOTION_TABS_LIST_CLASS}
+                indicatorClassName={MOTION_TABS_INDICATOR_CLASS}
+                triggerClassName={MOTION_TABS_TRIGGER_CLASS}
+                options={BUDGET_STATUS_TABS.map((tab) => ({
+                  value: tab.value,
+                  label: tab.label,
+                }))}
+              />
               {status === 'history' ? (
                 <div className="flex items-center rounded-lg border border-border/60 bg-card px-1 py-0.5">
                   <Button variant="ghost" size="icon" className="size-8" onClick={() => moveMonth(-1)} aria-label="Mes anterior">
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <p className="min-w-28 text-center text-sm">
-                    {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+                    {formatMonthHeading(selectedMonth, selectedYear)}
                   </p>
                   <Button variant="ghost" size="icon" className="size-8" onClick={() => moveMonth(1)} disabled={isCurrentMonth} aria-label="Mes siguiente">
                     <ChevronRight className="h-4 w-4" />
@@ -998,7 +961,7 @@ export default function BudgetsPage() {
                   {templateSections.inactiveOpen ? (
                     <div className="divide-y divide-border/60 rounded-lg border border-border/60">
                       {inactiveTemplates.length === 0 ? (
-                        <p className="px-4 py-6 text-sm text-muted-foreground">No hay plantillas inactivas.</p>
+                        <EmptyState message="No hay plantillas inactivas." className="py-6" />
                       ) : (
                         inactiveTemplates.map((template) => (
                           <div key={template.id} className="flex flex-wrap items-center gap-3 px-4 py-3">

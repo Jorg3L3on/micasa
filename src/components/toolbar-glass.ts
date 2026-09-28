@@ -13,10 +13,10 @@ export const TOOLBAR_GLASS_GROUP =
   [
     'flex h-10 shrink-0 items-center overflow-hidden rounded-full px-0.5',
     'border border-black/[0.08] bg-white/80',
-    'shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
+    'shadow-panel',
     'backdrop-blur-xl backdrop-saturate-150',
     'dark:border-white/20 dark:bg-white/[0.10]',
-    'dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_1px_2px_rgba(0,0,0,0.35)]',
+    'dark:shadow-panel',
   ].join(' ');
 
 /** Icon slot inside TOOLBAR_GLASS_GROUP — no second glass disc. */
@@ -38,13 +38,13 @@ export const TOOLBAR_GLASS_ICON =
   [
     'relative size-10 shrink-0 rounded-full',
     'border border-black/[0.08] bg-white/80 text-foreground/90',
-    'shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
+    'shadow-panel',
     'backdrop-blur-xl backdrop-saturate-150',
     'transition-[background-color,box-shadow,border-color,transform,opacity,color] duration-200 ease-out',
     'hover:bg-white hover:text-foreground',
     'active:scale-[0.96] active:opacity-90',
     'dark:border-white/20 dark:bg-white/[0.10] dark:text-foreground/95',
-    'dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_1px_2px_rgba(0,0,0,0.35)]',
+    'dark:shadow-panel',
     'dark:hover:bg-white/[0.16] dark:hover:border-white/28',
     "[&_svg:not([class*='size-'])]:size-5",
     'motion-reduce:transition-none motion-reduce:active:scale-100',
@@ -55,7 +55,7 @@ export const TOOLBAR_GLASS_PRIMARY_ICON =
   [
     'size-11 shrink-0 rounded-full',
     'border border-white/30',
-    'shadow-[inset_0_1px_1px_rgba(255,255,255,0.5),0_8px_22px_-10px_rgba(58,55,252,0.65)]',
+    'shadow-panel',
     'backdrop-blur-md backdrop-saturate-150',
     'transition-[filter,transform,opacity,box-shadow] duration-200 ease-out',
     'hover:brightness-110',
@@ -66,9 +66,9 @@ export const TOOLBAR_GLASS_PRIMARY_ICON =
 
 export const TOOLBAR_GLASS_PRIMARY_PILL =
   [
-    'h-11 shrink-0 rounded-full px-4 text-[15px] font-semibold tracking-tight',
+    'h-11 shrink-0 rounded-full px-4 text-body font-semibold tracking-tight',
     'border border-white/30',
-    'shadow-[inset_0_1px_1px_rgba(255,255,255,0.5),0_8px_22px_-10px_rgba(58,55,252,0.65)]',
+    'shadow-panel',
     'backdrop-blur-md backdrop-saturate-150',
     'transition-[filter,transform,opacity,box-shadow] duration-200 ease-out',
     'hover:brightness-110',
@@ -79,15 +79,15 @@ export const TOOLBAR_GLASS_PRIMARY_PILL =
 /** Cancel / tinted text control — frosted tint, not solid fill. */
 export const TOOLBAR_GLASS_CANCEL =
   [
-    'h-10 shrink-0 rounded-full px-3.5 text-[15px] font-medium text-primary-text',
+    'h-10 shrink-0 rounded-full px-3.5 text-body font-medium text-primary-text',
     'border border-primary/20 bg-primary/10',
-    'shadow-[inset_0_1px_1px_rgba(255,255,255,0.55)]',
+    'shadow-panel',
     'backdrop-blur-xl backdrop-saturate-150',
     'transition-[background-color,border-color,transform,opacity] duration-200 ease-out',
     'hover:bg-primary/15 hover:border-primary/30',
     'active:scale-[0.98] active:opacity-90',
     'dark:border-primary/35 dark:bg-primary/20',
-    'dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.12)]',
+    'dark:shadow-panel',
     'dark:hover:bg-primary/28',
     'motion-reduce:transition-none motion-reduce:active:scale-100',
   ].join(' ');
@@ -96,12 +96,12 @@ export const TOOLBAR_GLASS_CANCEL =
 export const TOOLBAR_GLASS_FIELD =
   [
     'h-10 w-full rounded-full border border-black/[0.08] bg-white/80',
-    'pr-4 pl-11 text-[15px] shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
+    'pr-4 pl-11 text-body shadow-panel',
     'backdrop-blur-xl backdrop-saturate-150',
     'placeholder:text-muted-foreground/80',
     'focus-visible:border-primary/35 focus-visible:ring-2 focus-visible:ring-primary/20',
     'dark:border-white/20 dark:bg-white/[0.10]',
-    'dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_1px_2px_rgba(0,0,0,0.35)]',
+    'dark:shadow-panel',
   ].join(' ');
 
 /**
@@ -112,13 +112,13 @@ export const TOOLBAR_GLASS_SEARCH_PILL =
   [
     'inline-flex h-10 w-[350px] max-w-[350px] shrink-0 items-center gap-2 rounded-full px-3.5',
     'border border-black/[0.08] bg-white/80 text-foreground/70',
-    'shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
+    'shadow-panel',
     'backdrop-blur-xl backdrop-saturate-150',
     'transition-[background-color,border-color,box-shadow,transform,opacity,width] duration-300 ease-out',
     'hover:bg-white hover:text-foreground',
     'active:scale-[0.98]',
     'dark:border-white/20 dark:bg-white/[0.10]',
-    'dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_1px_2px_rgba(0,0,0,0.35)]',
+    'dark:shadow-panel',
     'dark:hover:bg-white/[0.16]',
     'motion-reduce:transition-none motion-reduce:active:scale-100',
   ].join(' ');

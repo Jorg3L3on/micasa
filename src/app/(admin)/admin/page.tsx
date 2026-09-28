@@ -53,7 +53,7 @@ export default async function AdminHomePage({
 
       <div className="overflow-hidden rounded-lg border border-border/60">
         <table className="w-full text-sm">
-          <thead className="bg-muted/30 text-left text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+          <thead className="bg-muted/30 text-left overline text-muted-foreground">
             <tr>
               <th className="px-3 py-2.5">Usuario</th>
               <th className="px-3 py-2.5 hidden sm:table-cell">Estado</th>

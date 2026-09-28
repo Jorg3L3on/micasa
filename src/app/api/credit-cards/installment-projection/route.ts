@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
+import { formatChartAxisMonth } from '@/lib/calendar-dates';
 import { resolveCreditCardStatementWindow } from '@/lib/finance/credit-card-statement.service';
 
-const labelFromMonthKey = (key: string): string => {
-  const [year, month] = key.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, 15));
-  return date
-    .toLocaleDateString('es-MX', { month: 'short', year: 'numeric', timeZone: 'UTC' })
-    .replace('.', '');
-};
+const labelFromMonthKey = (key: string): string => formatChartAxisMonth(key);
 
 export async function GET(request: NextRequest) {
   try {

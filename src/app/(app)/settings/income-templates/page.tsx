@@ -1,5 +1,7 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -149,8 +151,8 @@ export default function IncomeTemplatesPage() {
           <span
             className={`px-2 py-1 text-xs font-semibold rounded-full ${
               row.original.active
-                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                ? 'bg-status-success-soft text-status-success'
+                : 'bg-muted text-muted-foreground'
             }`}
           >
             {row.original.active ? 'Activo' : 'Inactivo'}
@@ -218,21 +220,22 @@ export default function IncomeTemplatesPage() {
     <>
       <div className="space-y-5">
       {error && !deleteDialogOpen && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       <Card>
         <CardContent className="py-4">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Cargando…
+            <div className="space-y-2" aria-busy="true" aria-label="Cargando">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-12 w-full rounded-xl" />
+              ))}
             </div>
           ) : templates.length === 0 ? (
             <EmptyState message="No se encontraron plantillas de ingresos" />
           ) : (
             <DataTable
+              embedded
               data={templates}
               columns={columns}
               filterColumn="name"

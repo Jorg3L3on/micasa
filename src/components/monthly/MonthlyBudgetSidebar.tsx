@@ -1,7 +1,9 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import Link from 'next/link';
 import { PiggyBank, SlidersHorizontal } from 'lucide-react';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import { FortnightBudgetProgress } from '@/components/monthly/FortnightBudgetProgress';
@@ -100,10 +102,11 @@ export const MonthlyBudgetSidebar = ({
           headingAs={headingAs}
           subtitle={`Sin presupuesto activo en la ${periodLabel}`}
         />
-        <p className="mt-3 text-sm text-muted-foreground">
-          No hay presupuestos activos para la {periodLabel}. Crea uno en
-          Presupuestos para ver el resumen aquí.
-        </p>
+        <EmptyState
+          message={`No hay presupuestos activos para la ${periodLabel}.`}
+          description="Crea uno en Presupuestos para ver el resumen aquí."
+          className="py-4"
+        />
         <Button variant="outline" size="sm" className="mt-4 w-full" asChild>
           <Link href={`/settings/budgets${ownerQuery}`}>Ir a presupuestos</Link>
         </Button>
@@ -129,9 +132,12 @@ export const MonthlyBudgetSidebar = ({
 
       {allocations.length > 0 ? (
         <section aria-labelledby={allocationsHeadingId}>
-          <h3 id={allocationsHeadingId} className="sr-only">
-            Asignaciones por categoría y billetera
-          </h3>
+          <SectionHeader
+            level={3}
+            id={allocationsHeadingId}
+            className="sr-only"
+            title="Asignaciones por categoría y billetera"
+          />
           <ul className="space-y-2.5" role="list">
             {allocations.map((row) => (
               <BudgetAllocationRow
@@ -142,9 +148,10 @@ export const MonthlyBudgetSidebar = ({
           </ul>
         </section>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          No hay asignaciones de presupuesto en la {periodLabel}.
-        </p>
+        <EmptyState
+          message={`No hay asignaciones de presupuesto en la ${periodLabel}.`}
+          className="py-4"
+        />
       )}
 
       <Button variant="outline" className="w-full gap-2" asChild>

@@ -190,7 +190,7 @@ export const WalletCardsList = ({
                 className={cn(
                   'h-full transition-[filter] duration-300 ease-out motion-reduce:transition-none',
                   isActive
-                    ? 'drop-shadow-[0_22px_36px_rgba(0,0,0,0.5)] drop-shadow-[0_10px_20px_rgba(58,55,252,0.2)]'
+                    ? 'drop-shadow-xl'
                     : 'drop-shadow-none',
                 )}
               >

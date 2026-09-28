@@ -67,7 +67,7 @@ export const LiquidityMonthEvents = ({ events }: { events: LiquidityProjectionEv
 
   return (
     <section className="space-y-2" aria-label="Buenas noticias del mes">
-      <p className="flex items-center gap-1.5 px-1 text-caption font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+      <p className="flex items-center gap-1.5 px-1 overline text-emerald-600 dark:text-emerald-400">
         <Sparkles className="size-3" aria-hidden />
         Buenas noticias
       </p>
@@ -78,8 +78,8 @@ export const LiquidityMonthEvents = ({ events }: { events: LiquidityProjectionEv
               color={AURA_TONE_HEX.emerald}
               className="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 px-3 py-2.5"
             >
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 dark:bg-emerald-400">
-                <Check className="h-3 w-3 text-white dark:text-[#060914]" aria-hidden />
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-status-success">
+                <Check className="h-3 w-3 text-primary-foreground" aria-hidden />
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-semibold text-foreground">{event.title}</span>

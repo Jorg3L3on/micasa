@@ -1,5 +1,7 @@
 'use client';
 
+import { FilterChip } from '@/components/filter-chip';
+
 import { useMemo, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -24,6 +26,8 @@ import {
   useToolbarFiltersSelectOpenChange,
 } from '@/context/toolbar-actions-context';
 import { Money } from '@/components/money';
+import { STATUS_BADGE_CLASS, STATUS_SOFT_CLASS } from '@/lib/status-tone';
+import { formatMonthPhrase } from '@/lib/calendar-dates';
 import { formatDate, cn } from '@/lib/utils';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { useFinanceContext } from '@/context/finance-context';
@@ -39,7 +43,7 @@ const ALL_VALUE = '__all__';
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
   value: String(i + 1),
-  label: new Date(2000, i).toLocaleString('es-MX', { month: 'long' }),
+  label: formatMonthPhrase(i + 1),
 }));
 
 const TYPE_FILTER_CHIPS = [
@@ -50,8 +54,6 @@ const TYPE_FILTER_CHIPS = [
 
 const TRANSACTION_SERVER_FILTER_KEYS = ['month', 'year', 'period', 'type'] as const;
 
-const FILTER_CHIP_CLASS =
-  'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors';
 
 type TransactionsDataTableProps = {
   transactions: TransactionRow[];
@@ -234,14 +236,14 @@ export default function TransactionsDataTable({
               className={cn(
                 'flex h-6 w-6 items-center justify-center rounded-md shrink-0',
                 row.original.type === 'expense'
-                  ? 'bg-violet-500/10 dark:bg-violet-500/15'
-                  : 'bg-blue-500/10 dark:bg-blue-500/15',
+                  ? STATUS_SOFT_CLASS.expense
+                  : STATUS_SOFT_CLASS.income,
               )}
             >
               {row.original.type === 'expense' ? (
-                <ArrowDownRight className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
+                <ArrowDownRight className="h-3.5 w-3.5" data-icon="inline-start" />
               ) : (
-                <ArrowUpRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
+                <ArrowUpRight className="h-3.5 w-3.5" data-icon="inline-start" />
               )}
             </span>
             <span
@@ -306,11 +308,10 @@ export default function TransactionsDataTable({
           const isExpense = row.original.type === 'expense';
           return (
             <Badge
-              variant={isExpense ? 'destructive' : 'default'}
+              variant="outline"
               className={cn(
                 'whitespace-nowrap',
-                !isExpense &&
-                  'bg-emerald-500/10 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20 hover:bg-emerald-500/20',
+                isExpense ? STATUS_BADGE_CLASS.expense : STATUS_BADGE_CLASS.income,
               )}
             >
               {isExpense ? 'Gasto' : 'Ingreso'}
@@ -328,7 +329,7 @@ export default function TransactionsDataTable({
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 overline text-muted-foreground">
               Tipo
             </p>
             <div
@@ -339,21 +340,13 @@ export default function TransactionsDataTable({
               {TYPE_FILTER_CHIPS.map(({ value, label }) => {
                 const selected = (type || ALL_VALUE) === value;
                 return (
-                  <button
+                  <FilterChip
                     key={value}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
+                    selected={selected}
                     onClick={() => handleServerFilter('type', value)}
-                    className={cn(
-                      FILTER_CHIP_CLASS,
-                      selected
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                    )}
                   >
                     {label}
-                  </button>
+                  </FilterChip>
                 );
               })}
             </div>
@@ -361,7 +354,7 @@ export default function TransactionsDataTable({
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Mes
               </p>
               <Select
@@ -383,7 +376,7 @@ export default function TransactionsDataTable({
               </Select>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Año
               </p>
               <Select
@@ -408,7 +401,7 @@ export default function TransactionsDataTable({
 
           {month && year ? (
             <div>
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Quincena
               </p>
               <Select
@@ -430,7 +423,7 @@ export default function TransactionsDataTable({
 
           {categories.length > 0 ? (
             <div>
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Categoría
               </p>
               <Select
@@ -455,7 +448,7 @@ export default function TransactionsDataTable({
 
           {paymentMethods.length > 0 ? (
             <div>
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Método de pago
               </p>
               <Select
@@ -499,6 +492,7 @@ export default function TransactionsDataTable({
       <Card className="overflow-hidden border-border/60">
         <CardContent className="pt-6">
           <DataTable
+            embedded
             data={filteredTransactions}
             columns={columns}
             emptyMessage={

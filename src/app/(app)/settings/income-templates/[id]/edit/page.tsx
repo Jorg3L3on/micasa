@@ -1,8 +1,11 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
+import { FormPageSkeleton } from '@/components/loading/page-skeletons';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { SectionHeader } from '@/components/section-header';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -200,16 +203,14 @@ export default function EditIncomeTemplatePage() {
 
   if (loading) {
     return (
-      <div className="py-8 text-center text-muted-foreground">Cargando…</div>
+      <FormPageSkeleton />
     );
   }
 
   if (!template) {
     return (
       <div className="space-y-6">
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error || 'Plantilla no encontrada'}
-        </div>
+        <ErrorBanner>{error || 'Plantilla no encontrada'}</ErrorBanner>
         <Button variant="outline" asChild>
           <Link
             href={`/settings/income-templates${queryString ? `?${queryString}` : ''}`}
@@ -224,9 +225,7 @@ export default function EditIncomeTemplatePage() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       <Card>
@@ -378,7 +377,7 @@ export default function EditIncomeTemplatePage() {
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">Aplicación por quincena</h3>
+                <SectionHeader level={3} title="Aplicación por quincena" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <FormField
                     control={form.control}

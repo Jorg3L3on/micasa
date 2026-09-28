@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
@@ -82,13 +81,7 @@ export default function ConfirmDeleteDialog({
           className={OVERLAY_PRIMARY_BUTTON_CLASS}
         >
           {isDeleting ? (
-            <>
-              <Loader2
-                className="mr-2 h-4 w-4 animate-spin"
-                data-icon="inline-start"
-              />
-              {loadingLabel}
-            </>
+            loadingLabel
           ) : (
             confirmLabel
           )}

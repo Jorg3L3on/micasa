@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ErrorBanner } from '@/components/error-banner';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   AmountRow,
@@ -146,13 +147,11 @@ const LenderPayForm = ({
       aria-busy={submitting}
     >
       {displayError ? (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {displayError}
-        </div>
+        <ErrorBanner>{displayError}</ErrorBanner>
       ) : null}
 
       <div className="rounded-xl border border-border/60 bg-card px-3 py-3">
-        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="overline text-muted-foreground">
           Compromiso del periodo
         </p>
         <p className="mt-1 font-sans text-2xl font-bold tabular-nums">

@@ -325,25 +325,70 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
 ## Fintech data UI
 
 - Amounts: **`<Money>`** (`src/components/money.tsx`). Sans with `tabular-nums` — never `font-mono`. Format with `formatMoney` / `formatCurrency` (`es-MX`). Negatives use that formatter’s single hyphen (`-$12.50`); do not prefix another minus or a `+`.
-- Smallest UI text is **caption**: `text-caption` (`--text-caption-size: 0.6875rem`, 11px, line-height 1.35). Do not use `text-[9px]`, `text-[10px]`, or `text-[11px]`. JOR-311 adopts this token as the bottom of the type scale. Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.
-- Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS` (neutral foreground, positive emerald, negative `text-destructive`). JOR-310 swaps that one map for semantic status tokens.
-- Chart axes use `formatAxisMoney` (`$`, `k` from 1,000, `M` from 1,000,000). JOR-315 keeps this helper when it themes charts.
+- Type scale (both themes, `text-*` utilities). Do not use `text-[Npx]`.
+
+  | Step | Utility | Size | Use |
+  | --- | --- | --- | --- |
+  | Display | `text-display` | 30px / 700 | Rare hero words |
+  | Title | `text-title` | 18px / 600 | The page title (`PageTitle`, the only `h1`) |
+  | Section | `text-section` | 14px / 600 | `SectionHeader` (`h2`, nested `h3`) |
+  | Body | `text-body` | 14px / 1.5 | Reading copy |
+  | Caption | `text-caption` | 11px / 1.35 | Minimum size. Labels, hints |
+  | Overline | `overline` | 11px / 600 / uppercase | Eyebrows. One utility, not a copied class string |
+
+- `SectionHeader` (`src/components/section-header.tsx`) is the only section heading. `LiquidityPanelHeader` renders it. Page sections are `h2`; nested sections are `h3`. Do not add a second `h1`.
+- Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.
+- Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS`: neutral `text-foreground`, positive `text-status-income`, negative `text-status-expense`.
+- Chart axes use `formatAxisMoney` (`$`, `k` from 1,000, `M` from 1,000,000).
+- Charts (`src/components/charts/chart-theme.ts`, `chart-tooltip.tsx`): fills and strokes come from `--chart-1`…`--chart-5` and the status tokens (`--status-income`, `--status-expense`, `--status-pending`, `--status-success`, `--status-info`). Axis ticks use `CHART_AXIS_TICK` (11px, `--muted-foreground`). Grid and cursor use `--border` / a foreground mix. Every tooltip is `ChartTooltip` (popover surface, `shadow-panel`, `text-caption`). Do not hardcode hex or a second palette inside a chart component. Slice order cycles `chartSliceColor`.
+- Dates go through `src/lib/calendar-dates.ts` (`America/Mexico_City`). Do not call `toLocaleDateString`, `toLocaleString` for a month name, or keep a month-name array in a screen.
+  - **Titles** (`formatMonthTitle`, `formatMonthHeading`, `formatMonthYearTitle`): capitalized. `Septiembre` in the current Mexico City year; `Septiembre 2025` or `Noviembre de 2025` otherwise.
+  - **Phrases** (`formatMonthPhrase`, `formatMonthInPhrase`, `formatMonthYearPhrase`): lowercase. `septiembre`, or `septiembre de 2025`.
+  - **Rows** (`formatDisplayDate` / `formatRowDate`): `31 may`, or `31 may 2025` when the year is not current.
+  - **Ranges** (`formatWallClockDateRange`, `formatChartMonthRange`, fortnight labels): hide the year inside the current year. Show the year on both ends when the range crosses years.
+  - **Chart axes** (`formatChartAxisMonth`): `sep`, or `sep 25`.
+  - **Steppers** (`formatStepperDate`) always include the year. The control is an input, so the saved day stays unambiguous.
+  - Statement parsers keep a month map because they read bank files. Préstamos adopts these helpers in JOR-320.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
 - Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
-- Semantic left-border / icon-pill colors:
-  - Income / bank — blue
-  - Paid / success — green / emerald
-  - Pending / warning — amber
-  - Balance / available — emerald
-  - Expenses — violet
-  - Overdue / negative — destructive
-- Icon pills: small tinted square (`bg-*-500/10 dark:bg-*-500/15`), not a full card wash.
+- Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.
+  - An expense row uses **expense** for the icon, the amount, and the type badge. A due or paid chip may use **overdue**, **pending**, or **success** — that is the time status, not a second type color.
+  - Income rows use **income** the same way.
+  - Overdue shares the destructive hue; it is its own token so loans and the rest of the app match. Préstamos adopts these tokens in JOR-320.
+- Icon pills: `STATUS_SOFT_CLASS`, not a full card wash.
+- `Button` `default` is `bg-primary` in both themes (no hex override). `destructive` stays full `--destructive` with `--destructive-foreground` in dark — do not fade it to `/60`.
+- Hex in `className` only when no token exists. `#3a37fc` is `--primary`, dark `#060914` is `--background`, the light-mode status-bar strip is `--chrome-ink`, `#0d1327` is `--card` / `--popover`, `#090e1d` is `--secondary` / `--sidebar`. Marketing and login keep their own surfaces.
 - Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in `<Money size="row">`.
 - Horizontal chips (wallets): `overflow-x-auto`, `shrink-0`, edge fades `from-background`.
 
 Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmosphere`, sticky header, `container`). Page rhythm: `space-y-5`. Title, search, filters, and the primary action live in the app header — no in-page sticky action bar (see **Chrome**).
 
 ---
+
+## Filters
+
+- `FilterChip` (`src/components/filter-chip.tsx`) is a single on/off filter: Billeteras, Metas, Operaciones, and the Configuración mobile nav. It sets `aria-pressed` (or `aria-current="page"` when it is a link), can show a count, and uses a 44px target on mobile (`min-h-11`, `sm:min-h-9`) with a visible focus ring.
+- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Plan horizon and strategy, Presupuestos, and Análisis (Liquidez / Plan).
+
+## Surfaces
+
+Three surfaces. Radius does not change with the theme.
+
+| Surface | Where | Radius | Shadow |
+| --- | --- | --- | --- |
+| Panel glass | `orion-panel-glass` / `MONTHLY_PANEL_SHELL_CLASS` | `rounded-2xl` | `--shadow-panel` (`shadow-panel`) |
+| Calm card | `.card-surface`, settings cards | `rounded-xl` | `--shadow-card` (`shadow-card`) |
+| Card face | Wallet and credit-card faces | `rounded-face` (1.375rem) | `--shadow-face` (`shadow-face`) |
+
+Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
+
+## Empty, error, and loading
+
+- Empty lists, filters, and charts use `EmptyState` (`src/components/EmptyState.tsx`).
+- Failures use one banner: `ErrorBanner` (`src/components/error-banner.tsx`). Overlays re-export it as `OverlayErrorBanner`. Route errors use `AppErrorScreen`.
+- Each route `loading.tsx` matches its archetype (planner, collection cards, collection table, detail, settings, form) via `src/components/loading/page-skeletons.tsx`. The root splash stays the Orion brand loader.
+- A button in progress shows a word with an ellipsis (`Guardando…`, `Creando…`). It does not show a spinner.
+- Billeteras hides the “N de N” count until stored filters are applied and the list has finished loading.
 
 ## Glossary
 

@@ -19,6 +19,7 @@ import {
 import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Column } from '@tanstack/react-table';
 
+import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -62,6 +63,8 @@ export type DataTableProps<TData> = {
   enableMultiRowExpansion?: boolean;
   /** Below `md`, replaces the table with a list of these rows (filters and pagination still apply). */
   renderMobileRow?: (row: TData) => React.ReactNode;
+  /** Inside a Card: the card owns the border, so the table does not draw a second one. */
+  embedded?: boolean;
 };
 
 export function DataTable<TData>({
@@ -80,6 +83,7 @@ export function DataTable<TData>({
   getRowCanExpand,
   enableMultiRowExpansion = false,
   renderMobileRow,
+  embedded = false,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -87,6 +91,13 @@ export function DataTable<TData>({
   const [expanded, setExpanded] = React.useState<ExpandedState>({});
 
   const expansionEnabled = renderExpandedRow != null;
+  const resolvedEmpty =
+    typeof emptyMessage === 'string' ? (
+      <EmptyState message={emptyMessage} className="py-8" />
+    ) : (
+      emptyMessage
+    );
+
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns its internal mutable table API.
   const table = useReactTable({
@@ -172,7 +183,10 @@ export function DataTable<TData>({
       )}
       {renderMobileRow ? (
         <ul
-          className="divide-y divide-border/60 overflow-hidden rounded-lg border bg-card md:hidden"
+          className={cn(
+            'divide-y divide-border/60 overflow-hidden md:hidden',
+            !embedded && 'rounded-lg border bg-card',
+          )}
           role="list"
         >
           {table.getRowModel().rows.length ? (
@@ -180,22 +194,14 @@ export function DataTable<TData>({
               <li key={row.id}>{renderMobileRow(row.original)}</li>
             ))
           ) : (
-            <li
-              className={cn(
-                'text-center',
-                typeof emptyMessage === 'string'
-                  ? 'py-8 text-sm text-muted-foreground'
-                  : 'p-2',
-              )}
-            >
-              {emptyMessage}
-            </li>
+            <li className="p-2 text-center">{resolvedEmpty}</li>
           )}
         </ul>
       ) : null}
       <div
         className={cn(
-          'overflow-x-auto rounded-lg border bg-card',
+          'overflow-x-auto',
+          !embedded && 'rounded-lg border bg-card',
           renderMobileRow && 'hidden md:block',
         )}
       >
@@ -286,16 +292,8 @@ export function DataTable<TData>({
               })
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className={cn(
-                    'text-center',
-                    typeof emptyMessage === 'string'
-                      ? 'h-24 text-muted-foreground'
-                      : 'p-2 sm:p-4',
-                  )}
-                >
-                  {emptyMessage}
+                <TableCell colSpan={columns.length} className="p-2 text-center">
+                  {resolvedEmpty}
                 </TableCell>
               </TableRow>
             )}

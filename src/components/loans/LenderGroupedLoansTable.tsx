@@ -154,7 +154,7 @@ const HeaderMetric = ({
       accentClassName,
     )}
   >
-    <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+    <p className="overline text-muted-foreground">
       {label}
     </p>
     <p className="mt-1 font-sans text-sm font-bold tabular-nums leading-none text-foreground">
@@ -311,11 +311,13 @@ const InstitutionCard = ({
               </button>
             </CollapsibleTrigger>
           </div>
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex items-start gap-2">
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="min-w-0 flex-1 truncate text-left text-caption leading-tight text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                title={nextLine(cues, payroll)}
+                aria-label={nextLine(cues, payroll)}
+                className="min-w-0 flex-1 text-pretty text-left text-caption leading-tight text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 {nextLine(cues, payroll)}
               </button>

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Form,
@@ -247,10 +247,6 @@ export default function BudgetTemplateFieldsDialog({
               <Button type="submit" className={OVERLAY_PRIMARY_BUTTON_CLASS} disabled={isBusy}>
                 {isBusy ? (
                   <>
-                    <Loader2
-                      className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none"
-                      data-icon="inline-start"
-                    />
                     Guardando…
                   </>
                 ) : (

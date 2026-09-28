@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
@@ -425,7 +425,6 @@ export default function BudgetAllocationsDialog({
             >
               {isBusy ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                   Guardando…
                 </>
               ) : (

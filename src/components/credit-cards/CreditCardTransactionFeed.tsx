@@ -5,12 +5,12 @@ import Link from 'next/link';
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  Inbox,
   Receipt,
   Search,
   SlidersHorizontal,
   Wallet,
 } from 'lucide-react';
+import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -60,20 +60,11 @@ export const CreditCardFeedEmpty = ({
   description,
   action,
 }: FeedEmptyProps) => (
-  <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/60 bg-muted/15 px-4 py-8 text-center">
-    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50">
-      <Inbox className="h-4 w-4 text-muted-foreground" aria-hidden data-icon="inline-start" />
-    </span>
-    <p className="text-sm font-medium text-foreground">{message}</p>
-    {description ? (
-      <p className="max-w-xs text-xs text-muted-foreground">{description}</p>
-    ) : null}
-    {action ? (
-      <Button type="button" size="sm" variant="outline" className="mt-1 h-8 rounded-lg" onClick={action.onClick}>
-        {action.label}
-      </Button>
-    ) : null}
-  </div>
+  <EmptyState
+    message={message}
+    description={description}
+    action={action ? { label: action.label, onClick: action.onClick } : undefined}
+  />
 );
 
 type MovementFilter = 'all' | 'purchases' | 'payments';
@@ -291,7 +282,7 @@ export const CreditCardRecentMovements = ({
             description="Registra una compra o un pago para verlos aquí."
             action={
               onRegisterPurchase
-                ? { label: 'Registrar compra', onClick: onRegisterPurchase }
+                ? { label: 'Agregar compra', onClick: onRegisterPurchase }
                 : undefined
             }
           />
@@ -301,7 +292,7 @@ export const CreditCardRecentMovements = ({
             description="Registra un gasto con esta tarjeta."
             action={
               onRegisterPurchase
-                ? { label: 'Registrar compra', onClick: onRegisterPurchase }
+                ? { label: 'Agregar compra', onClick: onRegisterPurchase }
                 : undefined
             }
           />
@@ -332,9 +323,9 @@ export const CreditCardRecentMovements = ({
               return (
                 <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
                   <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
-                    <h4 className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="overline text-muted-foreground">
                       {getDateGroupLabel(dateKey)}
-                    </h4>
+                    </p>
                     <span
                       className={cn(
                         'font-sans text-caption font-semibold tabular-nums',
@@ -507,7 +498,7 @@ const ActivityMetric = ({ icon, label, value, tone }: ActivityMetricProps) => (
       {icon}
     </span>
     <div className="min-w-0">
-      <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="overline text-muted-foreground">
         {label}
       </p>
       <p className="truncate font-sans text-sm font-bold tabular-nums text-foreground">
@@ -571,16 +562,14 @@ export const GroupedPurchaseFeed = ({
       ) : null}
 
       {grouped.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay compras que coincidan con el filtro.
-        </p>
+        <EmptyState message="No hay compras que coincidan con el filtro." className="py-6" />
       ) : (
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <h4 className="mb-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 overline text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
-              </h4>
+              </p>
               <ul className="space-y-1">
                 {dayItems.map((purchase) => (
                   <li key={purchase.id}>
@@ -685,16 +674,14 @@ export const GroupedPaymentFeed = ({
       ) : null}
 
       {grouped.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay pagos que coincidan con el filtro.
-        </p>
+        <EmptyState message="No hay pagos que coincidan con el filtro." className="py-6" />
       ) : (
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <h4 className="mb-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 overline text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
-              </h4>
+              </p>
               <ul className="space-y-1">
                 {dayItems.map((payment) => (
                   <li key={payment.id}>

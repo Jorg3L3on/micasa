@@ -214,7 +214,7 @@ export const WalletListCard = ({
         enabled={isMobile}
         onRequestDelete={handleRequestDelete}
         deleteAriaLabel={`Eliminar ${wallet.name}`}
-        className="rounded-[1.375rem]"
+        className="rounded-face"
         railClassName="items-start"
         actionClassName="h-28"
       >
@@ -225,8 +225,8 @@ export const WalletListCard = ({
         >
           <div
             className={cn(
-              'relative w-full min-w-0 overflow-hidden rounded-[1.375rem] border border-white/15 text-white',
-              'shadow-[0_12px_32px_-14px_rgba(0,0,0,0.62),0_4px_12px_-6px_rgba(0,0,0,0.4)]',
+              'relative w-full min-w-0 overflow-hidden rounded-face border border-white/15 text-white',
+              'shadow-face',
               'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
               'active:scale-[0.985]',
               WALLET_LIST_CARD_SHELL_CLASS,
@@ -240,7 +240,7 @@ export const WalletListCard = ({
               onClick={handleOpenDetail}
               onPointerEnter={handlePrefetchDetail}
               onFocus={handlePrefetchDetail}
-              className="absolute inset-0 z-0 rounded-[1.375rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+              className="absolute inset-0 z-0 rounded-face focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
               aria-label={`Abrir ${wallet.name}`}
             />
 
@@ -261,7 +261,7 @@ export const WalletListCard = ({
                       >
                         {wallet.name}
                       </p>
-                      <p className="text-caption uppercase tracking-widest opacity-60">
+                      <p className="overline opacity-60">
                         {cycleLabel ?? typeLabel}
                       </p>
                     </div>
@@ -283,7 +283,7 @@ export const WalletListCard = ({
 
                 <div className="space-y-3">
                   <div>
-                    <p className="text-caption font-semibold uppercase tracking-wider opacity-70">
+                    <p className="overline opacity-70">
                       Deuda total
                     </p>
                     <p
@@ -298,7 +298,7 @@ export const WalletListCard = ({
 
                   <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
                     <div>
-                      <p className="text-caption uppercase tracking-wider opacity-70">
+                      <p className="overline opacity-70">
                         Disponible
                       </p>
                       <p
@@ -314,7 +314,7 @@ export const WalletListCard = ({
                     </div>
                     {hasCreditLimit && effectiveLimit != null ? (
                       <div className="text-right">
-                        <p className="text-caption uppercase tracking-wider opacity-70">
+                        <p className="overline opacity-70">
                           Límite
                         </p>
                         <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -381,7 +381,7 @@ export const WalletListCard = ({
                         >
                           {wallet.name}
                         </p>
-                        <p className="text-caption uppercase tracking-widest opacity-60">
+                        <p className="overline opacity-60">
                           {typeLabel}
                         </p>
                       </div>
@@ -397,7 +397,7 @@ export const WalletListCard = ({
                     ) : null}
                   </div>
                   {assigneeMetric ? (
-                    <p className="truncate text-[13px] font-medium leading-tight text-white/80">
+                    <p className="truncate text-body font-medium leading-tight text-white/80">
                       {assigneeMetric}
                     </p>
                   ) : null}
@@ -414,7 +414,7 @@ export const WalletListCard = ({
                 */}
                 <div className="space-y-3">
                   <div>
-                    <p className="text-caption font-semibold uppercase tracking-wider opacity-70">
+                    <p className="overline opacity-70">
                       Saldo disponible
                     </p>
                     <p
@@ -432,7 +432,7 @@ export const WalletListCard = ({
                     aria-hidden
                   >
                     <div>
-                      <p className="text-caption uppercase tracking-wider">
+                      <p className="overline">
                         Disponible
                       </p>
                       <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -440,7 +440,7 @@ export const WalletListCard = ({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-caption uppercase tracking-wider">Límite</p>
+                      <p className="overline">Límite</p>
                       <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         $0.00
                       </p>

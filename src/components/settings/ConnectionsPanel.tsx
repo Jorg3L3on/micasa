@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useCallback, useMemo, useState } from 'react';
 import {
   Check,
@@ -799,10 +800,11 @@ export default function ConnectionsPanel({
         </CardHeader>
         <CardContent>
           {oauthGrants.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-              Aún no hay conexiones OAuth. Al autorizar ChatGPT u otro cliente
-              MCP con OAuth, aparecerán aquí.
-            </p>
+            <EmptyState
+              message="Aún no hay conexiones OAuth."
+              description="Al autorizar ChatGPT u otro cliente MCP con OAuth, aparecerán aquí."
+              className="py-6"
+            />
           ) : (
             <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60">
               {oauthGrants.map((grant) => {

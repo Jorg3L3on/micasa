@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -127,7 +128,7 @@ export const CreditCardCycleLedger = ({
       <CreditCardFeedEmpty
         message="Sin movimientos en este ciclo"
         description="Registra compras o pagos para ver la actividad del periodo."
-        action={{ label: 'Registrar compra', onClick: onRegisterPurchase }}
+        action={{ label: 'Agregar compra', onClick: onRegisterPurchase }}
       />
     );
   }
@@ -207,17 +208,15 @@ export const CreditCardCycleLedger = ({
           />
         </div>
       ) : grouped.length === 0 ? (
-        <div className="p-4" role="status">
-          <p className="text-sm font-medium text-foreground">Sin movimientos</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            No hay entradas para mostrar en este ciclo.
-          </p>
-        </div>
+        <EmptyState
+          message="Sin movimientos"
+          description="No hay entradas para mostrar en este ciclo."
+        />
       ) : (
         <div className="divide-y divide-border/40">
           {grouped.map(([dateKey, rows]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <p className="sticky top-0 z-[1] bg-card/95 px-4 py-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur-sm">
+              <p className="sticky top-0 z-[1] bg-card/95 px-4 py-2 overline text-muted-foreground backdrop-blur-sm">
                 {getDateGroupLabel(dateKey)}
               </p>
               <ul className="px-2 pb-2">

@@ -8,7 +8,12 @@
  * - Last day of M belongs to FIRST of M+1
  */
 
-import { addCalendarDays, todayCalendarDate } from '@/lib/calendar-dates';
+import {
+  addCalendarDays,
+  formatMonthPhrase,
+  formatMonthShort,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 
 export type CalendarFortnightPeriod = 'FIRST' | 'SECOND';
 
@@ -267,36 +272,6 @@ export function getAppHomeHref(
   return `${base}?${qs}`;
 }
 
-const MONTH_NAMES_ES_LOWER = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre',
-] as const;
-
-const MONTH_ABBR_ES_LOWER = [
-  'ene',
-  'feb',
-  'mar',
-  'abr',
-  'may',
-  'jun',
-  'jul',
-  'ago',
-  'sep',
-  'oct',
-  'nov',
-  'dic',
-] as const;
-
 export type FortnightCalendarBounds = {
   startYmd: string;
   endYmd: string;
@@ -368,7 +343,7 @@ export function formatDayMonthLabel(
   month: number,
   day: number,
 ): string {
-  const monthName = MONTH_NAMES_ES_LOWER[month - 1] ?? '';
+  const monthName = formatMonthPhrase(month);
   return `${day} de ${monthName}`;
 }
 
@@ -397,8 +372,8 @@ export function formatFortnightDateRangeCompact(
   const { startYmd, endYmd } = getFortnightYmdBounds(year, month, period);
   const start = parseYmdParts(startYmd);
   const end = parseYmdParts(endYmd);
-  const startAbbr = MONTH_ABBR_ES_LOWER[start.month - 1] ?? '';
-  const endAbbr = MONTH_ABBR_ES_LOWER[end.month - 1] ?? '';
+  const startAbbr = formatMonthShort(start.month);
+  const endAbbr = formatMonthShort(end.month);
 
   if (start.month === end.month && start.year === end.year) {
     return `${start.day}–${end.day} ${startAbbr}`;

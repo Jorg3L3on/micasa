@@ -235,7 +235,7 @@ export const GoalListCard = ({
         enabled={isMobile}
         onRequestDelete={handleRequestDelete}
         deleteAriaLabel={`Eliminar ${wallet.name}`}
-        className="h-full rounded-xl dark:rounded-2xl"
+        className="h-full rounded-xl"
         contentClassName="h-full"
       >
         <Card

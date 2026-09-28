@@ -5,6 +5,7 @@ import {
 } from '@/lib/finance/template.service';
 import { generatePeriodsForMonth } from '@/lib/finance/budget-period.service';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { formatMonthTitle } from '@/lib/calendar-dates';
 import { planningMonthCreateError } from '@/lib/finance/planning-month';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { FortnightPeriod } from '@/generated/prisma/client';
@@ -38,21 +39,6 @@ export async function listFortnightsForCatalog(ownerFilter: OwnerFilter) {
   }));
 }
 
-const MONTH_NAMES = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-];
-
 export type CreateMonthFortnightsInput = {
   ownerType: 'user' | 'house';
   ownerId: number;
@@ -72,7 +58,7 @@ export async function createMonthFortnightsForOwner(
     throw new Error(monthError);
   }
 
-  const monthName = MONTH_NAMES[month - 1] ?? '';
+  const monthName = formatMonthTitle(month);
 
   const existingFirst = await prisma.fortnight.findFirst({
     where: { ...ownerFilter, year, month, period: 'FIRST' },

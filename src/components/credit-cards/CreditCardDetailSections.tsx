@@ -107,7 +107,7 @@ export const CreditCardCycleSpendingBar = ({
     >
       <div className="mb-2 flex items-end justify-between gap-2">
         <div>
-          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="overline text-muted-foreground">
             {cycleLabel}
           </p>
           <p className="font-sans text-xl font-bold tabular-nums tracking-tight">
@@ -196,7 +196,7 @@ export const CreditCardVisualHero = ({
         className={cn(
           // Grow with content (no fixed aspect): utilization + amounts clip on
           // narrow viewports when locked to aspect-[1.586/1] + overflow-hidden.
-          'relative w-full overflow-hidden rounded-[1.375rem] border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
+          'relative w-full overflow-hidden rounded-face border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
           !cardStyle &&
             'border-slate-500/40 bg-linear-to-br from-slate-700 via-slate-900 to-slate-950',
         )}
@@ -235,7 +235,7 @@ export const CreditCardVisualHero = ({
                 >
                   {card.name}
                 </p>
-                <p className="text-caption uppercase tracking-widest opacity-60">
+                <p className="overline opacity-60">
                   Corte {card.cutoff_day} · Pago {card.due_day}
                 </p>
               </div>
@@ -247,7 +247,7 @@ export const CreditCardVisualHero = ({
 
           <div className="space-y-3">
             <div>
-              <p className="text-caption font-semibold uppercase tracking-wider opacity-70">
+              <p className="overline opacity-70">
                 Deuda total
               </p>
               <p className="text-3xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-4xl">
@@ -257,7 +257,7 @@ export const CreditCardVisualHero = ({
 
             <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
               <div>
-                <p className="text-caption uppercase tracking-wider opacity-70">
+                <p className="overline opacity-70">
                   Disponible
                 </p>
                 <p
@@ -273,7 +273,7 @@ export const CreditCardVisualHero = ({
               </div>
               {limit > 0 ? (
                 <div className="text-right">
-                  <p className="text-caption uppercase tracking-wider opacity-70">
+                  <p className="overline opacity-70">
                     Límite
                   </p>
                   <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -351,7 +351,7 @@ export const CreditCardDuePaymentStrip = ({
       aria-label="Toca pagar este corte"
     >
       <div className="min-w-0">
-        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="overline text-muted-foreground">
           Toca pagar este corte
         </p>
         <p className="text-caption text-muted-foreground">
@@ -443,7 +443,7 @@ export const CreditCardCycleSummary = ({
           <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
         </Button>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
-          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="overline text-muted-foreground">
             {isCurrentCycle ? 'Ciclo actual' : 'Ciclo seleccionado'}
           </p>
           <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">

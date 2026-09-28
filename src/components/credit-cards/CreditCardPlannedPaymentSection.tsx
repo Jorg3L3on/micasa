@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Banknote, CalendarRange, Loader2, Pencil } from 'lucide-react';
+import { Banknote, CalendarRange, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -239,7 +239,7 @@ export const CreditCardPlannedPaymentSection = ({
                       · {timingLabel}
                     </span>
                     {isStalePlan ? (
-                      <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                      <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 overline text-amber-700 dark:text-amber-300">
                         Plan cubierto
                       </span>
                     ) : null}
@@ -363,15 +363,14 @@ export const CreditCardPlannedPaymentSection = ({
                               payingFortnightId === item.fortnightId
                             }
                             onClick={() => onPayCard(item)}
-                            aria-label={`Registrar pago: ${item.fortnightLabel}`}
+                            aria-busy={payingFortnightId === item.fortnightId}
+                            aria-label={
+                              payingFortnightId === item.fortnightId
+                                ? `Guardando pago: ${item.fortnightLabel}`
+                                : `Registrar pago: ${item.fortnightLabel}`
+                            }
                           >
-                            {payingFortnightId === item.fortnightId ? (
-                              <Loader2
-                                className="size-3.5 shrink-0 animate-spin"
-                                aria-hidden data-icon="inline-start" />
-                            ) : (
-                              <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
-                            )}
+                            <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
                           </Button>
                         </span>
                       </TooltipTrigger>

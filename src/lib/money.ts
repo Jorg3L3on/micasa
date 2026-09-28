@@ -14,13 +14,13 @@ export type MoneyTone = 'auto' | 'neutral' | 'positive' | 'negative';
 export type ResolvedMoneyTone = Exclude<MoneyTone, 'auto'>;
 
 /**
- * One mapping from tone to the current theme classes.
- * Positive uses the existing emerald pair; negative uses `text-destructive`.
+ * One mapping from tone to semantic status tokens (JOR-310).
+ * Positive money is income; negative money is expense.
  */
 export const MONEY_TONE_CLASS: Record<ResolvedMoneyTone, string> = {
   neutral: 'text-foreground',
-  positive: 'text-emerald-600 dark:text-emerald-400',
-  negative: 'text-destructive',
+  positive: 'text-status-income',
+  negative: 'text-status-expense',
 };
 
 /** Weight and size. Sans + tabular figures — never the mono face. */

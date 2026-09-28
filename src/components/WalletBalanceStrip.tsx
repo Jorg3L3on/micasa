@@ -572,7 +572,7 @@ const WalletBalanceStrip = ({
                         <CurrencyTicker
                           value={effectiveAmount}
                           className={cn(
-                            'text-[13px] font-black sm:text-sm',
+                            'text-body font-black sm:text-sm',
                             effectiveAmount < 0
                               ? onDarkSurface
                                 ? 'text-red-100'
@@ -672,8 +672,8 @@ const WalletBalanceStrip = ({
                         'cursor-grabbing scale-[1.04] shadow-xl',
                       useProviderGradient &&
                         (onDarkSurface
-                          ? 'border-white/25 shadow-[0_10px_24px_-14px_rgba(15,23,42,0.9)] hover:border-white/40 hover:shadow-[0_16px_34px_-14px_rgba(15,23,42,0.95)] hover:after:opacity-70'
-                          : 'border-border/70 shadow-[0_8px_18px_-12px_rgba(15,23,42,0.2)] hover:border-border hover:shadow-[0_12px_24px_-12px_rgba(15,23,42,0.22)] hover:after:opacity-70'),
+                          ? 'border-white/25 shadow-face hover:border-white/40 hover:shadow-face hover:after:opacity-70'
+                          : 'border-border/70 shadow-face hover:border-border hover:shadow-face hover:after:opacity-70'),
                       !useProviderGradient &&
                         accent === 'violet' &&
                         'hover:border-violet-500/60 hover:shadow-violet-500/15',

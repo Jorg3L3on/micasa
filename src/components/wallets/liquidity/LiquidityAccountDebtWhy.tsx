@@ -1,7 +1,9 @@
 'use client';
 
+import { Money } from '@/components/money';
+import { MoneyInText } from '@/components/wallets/liquidity/money-in-text';
 import { cn, formatCurrency } from '@/lib/utils';
-import { formatPlazosFootnote } from '@/lib/finance/liquidity-debt-breakdown';
+import { roundMoney } from '@/lib/finance/liquidity-debt-breakdown';
 import type { DebtAccountBreakdown, DebtWhyBlock, DebtWhyLine } from '@/types/catalog';
 
 type LiquidityAccountDebtWhyProps = {
@@ -17,12 +19,24 @@ const lineRightLabel = (line: DebtWhyLine): string => {
   return formatCurrency(line.amount);
 };
 
-const moreLabel = (block: DebtWhyBlock, accountKind: DebtAccountBreakdown['kind']): string => {
-  if (block.moreCount <= 0) return '';
-  const count = `${block.moreCount} más · ${formatCurrency(block.moreAmount)}`;
-  if (accountKind === 'loan') return `${count} · ver préstamo`;
-  if (block.key === 'plazos') return `${count} · ver tarjeta`;
-  return count;
+const moreLabel = (
+  block: DebtWhyBlock,
+  accountKind: DebtAccountBreakdown['kind'],
+) => {
+  if (block.moreCount <= 0) return null;
+  const suffix =
+    accountKind === 'loan'
+      ? ' · ver préstamo'
+      : block.key === 'plazos'
+        ? ' · ver tarjeta'
+        : '';
+  return (
+    <>
+      {block.moreCount} más ·{' '}
+      <Money value={block.moreAmount} size="caption" tone="neutral" />
+      {suffix}
+    </>
+  );
 };
 
 export const LiquidityAccountDebtWhy = ({
@@ -42,16 +56,19 @@ export const LiquidityAccountDebtWhy = ({
     <div className={cn('space-y-4', className)}>
       {account.blocks.map((block) => {
         const footnote =
-          block.key === 'plazos'
-            ? formatPlazosFootnote(block.total, block.beyondBalance)
+          block.key === 'plazos' && block.beyondBalance > 0
+            ? {
+                inSaldo: block.total,
+                remaining: roundMoney(block.total + block.beyondBalance),
+              }
             : null;
         const more = moreLabel(block, account.kind);
         return (
           <section key={block.key} aria-label={block.title}>
             <div className="flex items-baseline justify-between gap-3">
-              <h4 className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="overline text-muted-foreground">
                 {block.title}
-              </h4>
+              </p>
               <p className="font-sans text-xs font-semibold tabular-nums text-foreground">
                 {formatCurrency(block.total)}
               </p>
@@ -70,11 +87,17 @@ export const LiquidityAccountDebtWhy = ({
                         line.status === 'overdue' && 'text-amber-300',
                       )}
                     >
-                      {line.subtitle}
+                      <MoneyInText text={line.subtitle} />
                     </p>
                     {line.amountKind === 'monthly' && (line.remainingAmount ?? 0) > 0 ? (
                       <p className="text-caption text-muted-foreground">
-                        quedan {formatCurrency(line.remainingAmount ?? 0)} a meses
+                        quedan{' '}
+                        <Money
+                          value={line.remainingAmount ?? 0}
+                          size="caption"
+                          tone="neutral"
+                        />{' '}
+                        a meses
                       </p>
                     ) : null}
                   </div>
@@ -85,7 +108,12 @@ export const LiquidityAccountDebtWhy = ({
               ))}
             </ul>
             {footnote ? (
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{footnote}</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                En el saldo de hoy{' '}
+                <Money value={footnote.inSaldo} size="caption" tone="neutral" />.
+                {' '}A meses quedan{' '}
+                <Money value={footnote.remaining} size="caption" tone="neutral" />.
+              </p>
             ) : null}
             {more ? (
               onMore ? (

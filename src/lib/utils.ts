@@ -1,4 +1,4 @@
-import { formatDisplayDate } from '@/lib/calendar-dates';
+import { formatDisplayDate, formatMonthPhrase } from '@/lib/calendar-dates';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -34,8 +34,9 @@ export function formatCurrency(amount: number | string): string {
   }).format(Number.isFinite(numAmount) ? numAmount : 0);
 }
 
+/** Lowercase month name for phrases. Titles use `formatMonthTitle`. */
 export function formatMonth(month: number): string {
-  return new Date(0, month - 1).toLocaleString('es-MX', { month: 'long' });
+  return formatMonthPhrase(month);
 }
 
 export function formatYear(year: number): string {

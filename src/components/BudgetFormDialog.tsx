@@ -7,7 +7,6 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   Plus,
   Trash2,
 } from 'lucide-react';
@@ -492,13 +491,7 @@ export default function BudgetFormDialog({
 
   const createLabel =
     form2.formState.isSubmitting || isPending || disabled ? (
-      <>
-        <Loader2
-          className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none"
-          data-icon="inline-start"
-        />
-        Creando…
-      </>
+      'Creando…'
     ) : (
       'Agregar presupuesto'
     );

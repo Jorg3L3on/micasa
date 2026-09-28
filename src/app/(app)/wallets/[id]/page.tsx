@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import {
   useCallback,
   useEffect,
@@ -61,7 +62,7 @@ import {
   buildWalletPeriodAnalytics,
   estimateWalletRunwayDays,
 } from '@/lib/finance/wallet-period-analytics';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { formatMonthHeading, todayCalendarDate } from '@/lib/calendar-dates';
 import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
 import type {
   WalletDetail,
@@ -86,21 +87,6 @@ const firstDayOfMonth = (year: number, monthIdx: number): string =>
 const lastDayOfMonth = (year: number, monthIdx: number): string => {
   const last = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate();
   return `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
-};
-
-const MONTH_LABEL: Record<number, string> = {
-  0: 'Enero',
-  1: 'Febrero',
-  2: 'Marzo',
-  3: 'Abril',
-  4: 'Mayo',
-  5: 'Junio',
-  6: 'Julio',
-  7: 'Agosto',
-  8: 'Septiembre',
-  9: 'Octubre',
-  10: 'Noviembre',
-  11: 'Diciembre',
 };
 
 const parseYearMonth = (fromDate: string): { year: number; monthIdx: number } => {
@@ -563,7 +549,7 @@ export default function WalletDetailPage() {
 
   const rangeLabel = useMemo(() => {
     const { year, monthIdx } = parseYearMonth(range.from);
-    return `${MONTH_LABEL[monthIdx]} ${year}`;
+    return formatMonthHeading(monthIdx + 1, year);
   }, [range.from]);
 
   const analytics = useMemo(
@@ -658,9 +644,7 @@ export default function WalletDetailPage() {
 
   if ((error && !wallet && !stashReady) || (!wallet && !stashReady)) {
     return (
-      <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-        {error ?? 'No se pudo cargar la billetera'}
-      </div>
+      <ErrorBanner>{error ?? 'No se pudo cargar la billetera'}</ErrorBanner>
     );
   }
 
