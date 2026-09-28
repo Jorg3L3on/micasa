@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 
 import { LandingPage } from '@/components/landing/landing-page';
 import { auth } from '@/lib/auth';
@@ -30,31 +31,49 @@ export const metadata: Metadata = {
 
 const QUICK_CAPTURE_VALUES = new Set(['expense', 'income']);
 
-export default async function Home({
+/**
+ * Same redirect as before (onboarding, then the current panel). It sits in its
+ * own Suspense so a guest does not wait on auth behind the root splash.
+ * The proxy already sends a signed-in `/` to the panel before HTML streams.
+ */
+async function RedirectSignedInUser({
   searchParams,
 }: {
   searchParams: Promise<{ quick?: string | string[] }>;
 }) {
   const session = await auth();
 
-  if (session?.user?.id) {
-    const userId = Number(session.user.id);
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { onboarding_completed: true },
-    });
+  if (!session?.user?.id) return null;
 
-    if (!user?.onboarding_completed) {
-      redirect('/onboarding');
-    }
+  const userId = Number(session.user.id);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { onboarding_completed: true },
+  });
 
-    const { quick } = await searchParams;
-    const query = new URLSearchParams();
-    if (typeof quick === 'string' && QUICK_CAPTURE_VALUES.has(quick)) {
-      query.set('quick', quick);
-    }
-    redirect(getAppHomeHref(query));
+  if (!user?.onboarding_completed) {
+    redirect('/onboarding');
   }
 
-  return <LandingPage />;
+  const { quick } = await searchParams;
+  const query = new URLSearchParams();
+  if (typeof quick === 'string' && QUICK_CAPTURE_VALUES.has(quick)) {
+    query.set('quick', quick);
+  }
+  redirect(getAppHomeHref(query));
+}
+
+export default function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ quick?: string | string[] }>;
+}) {
+  return (
+    <>
+      <Suspense fallback={null}>
+        <RedirectSignedInUser searchParams={searchParams} />
+      </Suspense>
+      <LandingPage />
+    </>
+  );
 }

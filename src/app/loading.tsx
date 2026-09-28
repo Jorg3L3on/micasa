@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { ViewTransition } from 'react';
 
 import { BrandLoader } from '@/components/brand/BrandLoader';
@@ -8,8 +9,14 @@ import { BrandLoader } from '@/components/brand/BrandLoader';
  * scripts/generate-ios-splash.mjs (centered on the full screen, no insets) so
  * the iOS startup image hands off without a jump. Fades out instead of
  * cutting to the app shell.
+ *
+ * `/` is the public landing. The proxy marks that request so this fallback
+ * stays empty and the page is the first paint. App routes keep the splash.
  */
-export default function RootLoading() {
+export default async function RootLoading() {
+  const pathname = (await headers()).get('x-micasa-pathname');
+  if (pathname === '/') return null;
+
   return (
     <ViewTransition exit="fade-out">
       <div className="dark fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-background px-6 text-foreground">

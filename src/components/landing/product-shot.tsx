@@ -33,8 +33,11 @@ type ShotTheme = 'light' | 'dark';
  * strategy) shows one picture and hides the other. Nothing swaps `src` after
  * paint. Every img is `loading="lazy"`, so a `display: none` picture is not
  * fetched. The hero preloads only the picture that is visible for this class.
+ * It uses that picture's srcset: the <source> from 768px, otherwise the <img>.
+ * next/image sets `src` to the 3840w candidate. Preloading that URL fetches the
+ * wrong file and leaves the mobile frame empty until the real srcset entry arrives.
  */
-const HERO_PRELOAD_SCRIPT = `(function(){var s=document.currentScript;if(!s||!s.parentElement)return;var dark=document.documentElement.classList.contains("dark");var picture=s.parentElement.querySelector(dark?".landing-shot-dark":".landing-shot-light");if(!picture)return;var source=Array.prototype.find.call(picture.querySelectorAll("source"),function(node){return node.media&&window.matchMedia(node.media).matches;});var img=picture.querySelector("img");var link=document.createElement("link");link.rel="preload";link.as="image";link.setAttribute("fetchpriority","high");if(source){link.setAttribute("imagesrcset",source.getAttribute("srcset")||"");link.setAttribute("imagesizes",source.getAttribute("sizes")||"");}else if(img){link.href=img.getAttribute("src")||"";}else{return;}document.head.appendChild(link);})();`;
+const HERO_PRELOAD_SCRIPT = `(function(){var s=document.currentScript;if(!s||!s.parentElement)return;var dark=document.documentElement.classList.contains("dark");var picture=s.parentElement.querySelector(dark?".landing-shot-dark":".landing-shot-light");if(!picture)return;var source=Array.prototype.find.call(picture.querySelectorAll("source"),function(node){return node.media&&window.matchMedia(node.media).matches;});var img=picture.querySelector("img");var srcset=source?source.getAttribute("srcset"):img&&img.getAttribute("srcset");var sizes=source?source.getAttribute("sizes"):img&&img.getAttribute("sizes");var link=document.createElement("link");link.rel="preload";link.as="image";link.setAttribute("fetchpriority","high");if(srcset){link.setAttribute("imagesrcset",srcset);if(sizes)link.setAttribute("imagesizes",sizes);}else if(img&&img.getAttribute("src")){link.href=img.getAttribute("src");}else{return;}document.head.appendChild(link);})();`;
 
 const ThemePicture = ({
   id,

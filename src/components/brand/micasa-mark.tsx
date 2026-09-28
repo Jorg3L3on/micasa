@@ -6,13 +6,15 @@ type MicasaMarkProps = {
   className?: string;
   /** Accessible name when the mark stands alone. Omit when adjacent text labels it. */
   title?: string;
+  /** Header mark. Preloads so the first paint is not an empty box. */
+  priority?: boolean;
 };
 
 /**
  * Brand isotipo. Display asset is the 160px `public/brand/mark-160.png`.
  * Icon generation still reads the source `public/brand/mark.png`.
  */
-export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
+export const MicasaMark = ({ className, title, priority = false }: MicasaMarkProps) => {
   const isDecorative = !title;
 
   return (
@@ -25,6 +27,7 @@ export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
         alt={isDecorative ? '' : title}
         fill
         sizes="48px"
+        priority={priority}
         className="object-contain"
       />
     </span>
