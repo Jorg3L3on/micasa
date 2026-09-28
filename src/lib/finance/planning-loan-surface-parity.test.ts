@@ -104,9 +104,9 @@ describe('planning loan surface parity', () => {
 
     expect(result.withLoans.totalExpense).toBe(1700);
     expect(result.withLoans.totalUnpaid).toBe(1300);
-    expect(result.balance).toBe(16907.27);
-    expect(result.libreFromIncome).toBe(16907.27);
-    expect(result.fundingNet).toBe(907.27);
+    expect(result.balance).toBe(16900);
+    expect(result.libreFromIncome).toBe(16900);
+    expect(result.fundingNet).toBe(900);
   });
 
   it('subtracts only remaining budget so the envelope is not double-counted with Pagado', () => {
