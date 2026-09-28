@@ -19,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   ToolbarFiltersPortal,
   useRegisterToolbarActions,
@@ -54,6 +53,57 @@ const TYPE_FILTER_CHIPS = [
 
 const TRANSACTION_SERVER_FILTER_KEYS = ['month', 'year', 'period', 'type'] as const;
 
+const TransactionMobileRow = ({ transaction }: { transaction: TransactionRow }) => {
+  const isExpense = transaction.type === 'expense';
+  const amount = Math.abs(Number(transaction.amount));
+
+  return (
+    <div className="flex min-w-0 items-start gap-3 px-3 py-3">
+      <span
+        className={cn(
+          'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+          isExpense ? STATUS_SOFT_CLASS.expense : STATUS_SOFT_CLASS.income,
+        )}
+        aria-hidden
+      >
+        {isExpense ? (
+          <ArrowDownRight className="h-4 w-4" />
+        ) : (
+          <ArrowUpRight className="h-4 w-4" />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <p className="min-w-0 flex-1 break-words text-body font-medium text-foreground">
+            {transaction.description}
+          </p>
+          <Money
+            value={isExpense ? -amount : amount}
+            size="row"
+            tone={isExpense ? 'negative' : 'positive'}
+            className="shrink-0"
+          />
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-muted-foreground">
+          <span className="whitespace-nowrap">{formatDate(transaction.date)}</span>
+          <span className="inline-flex min-w-0 items-center gap-1">
+            <Wallet className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="truncate">{transaction.paymentMethod}</span>
+          </span>
+          <Badge
+            variant="outline"
+            className={cn(
+              'whitespace-nowrap',
+              isExpense ? STATUS_BADGE_CLASS.expense : STATUS_BADGE_CLASS.income,
+            )}
+          >
+            {isExpense ? 'Gasto' : 'Ingreso'}
+          </Badge>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 type TransactionsDataTableProps = {
   transactions: TransactionRow[];
@@ -325,7 +375,7 @@ export default function TransactionsDataTable({
 
   return (
     <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Operaciones">
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
@@ -489,21 +539,22 @@ export default function TransactionsDataTable({
         </div>
       </ToolbarFiltersPortal>
 
-      <Card className="overflow-hidden border-border/60">
-        <CardContent className="pt-6">
-          <DataTable
-            embedded
-            data={filteredTransactions}
-            columns={columns}
-            emptyMessage={
-              hasActiveFilters
-                ? 'No se encontraron movimientos con los filtros seleccionados.'
-                : 'No hay movimientos registrados.'
-            }
-            columnVisibility
-          />
-        </CardContent>
-      </Card>
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-card">
+        <DataTable
+          embedded
+          data={filteredTransactions}
+          columns={columns}
+          emptyMessage={
+            hasActiveFilters
+              ? 'No se encontraron movimientos con los filtros seleccionados.'
+              : 'No hay movimientos registrados.'
+          }
+          columnVisibility
+          renderMobileRow={(transaction) => (
+            <TransactionMobileRow transaction={transaction} />
+          )}
+        />
+      </div>
     </div>
     </MobilePullToRefresh>
   );

@@ -130,10 +130,19 @@ export function DataTable<TData>({
   const filterValue =
     (filterColumn && (table.getColumn(filterColumn)?.getFilterValue() as string)) ?? '';
 
+  const columnToggleIsDesktopOnly = Boolean(renderMobileRow && columnVisibility);
+  const toolbarOnlyColumnToggle =
+    columnToggleIsDesktopOnly && !filterColumn && !filterSlot && !toolbarExtra;
+
   return (
     <div className="w-full min-w-0 space-y-4">
       {(filterColumn || filterSlot || columnVisibility || toolbarExtra) && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div
+          className={cn(
+            'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4',
+            toolbarOnlyColumnToggle && 'hidden md:flex',
+          )}
+        >
           <div className="flex flex-1 flex-wrap items-center gap-3 sm:gap-4">
             {filterColumn && (
               <Input
@@ -150,7 +159,11 @@ export function DataTable<TData>({
             {columnVisibility && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(columnToggleIsDesktopOnly && 'hidden md:inline-flex')}
+                  >
                     Columnas <ChevronDown className="ml-2 h-4 w-4" data-icon="inline-end" />
                   </Button>
                 </DropdownMenuTrigger>
