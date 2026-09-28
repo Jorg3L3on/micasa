@@ -7,6 +7,10 @@ import { LandingHeader } from '@/components/landing/landing-header';
 import { ProductShot, type ProductShotId } from '@/components/landing/product-shot';
 import { Button } from '@/components/ui/button';
 
+/** Sticky header: safe-area + py-3 + the h-9 row + the bottom border. */
+const LANDING_ANCHOR_OFFSET =
+  'scroll-mt-[calc(3.75rem+1px+env(safe-area-inset-top))]';
+
 type ProductSection = {
   id: ProductShotId;
   eyebrow: string;
@@ -80,7 +84,7 @@ export const LandingPage = () => {
       <LandingHeader />
 
       <main id="contenido">
-        <section id="inicio" className="relative mx-auto w-full max-w-6xl scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] px-4 pt-10 pb-16 sm:px-6 md:pt-16">
+        <section id="inicio" className={`relative mx-auto w-full max-w-6xl ${LANDING_ANCHOR_OFFSET} px-4 pt-10 pb-16 sm:px-6 md:pt-16`}>
           <div className="landing-hero-wash relative overflow-hidden px-5 py-8 sm:px-8 sm:py-10">
             <div className="relative z-10 grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
               <div className="motion-fade-in min-w-0">
@@ -113,9 +117,13 @@ export const LandingPage = () => {
           </div>
         </section>
 
-        <div id="producto" className="mx-auto flex w-full max-w-6xl scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] flex-col gap-16 px-4 pb-8 sm:px-6 md:gap-20">
+        <div id="producto" className={`mx-auto flex w-full max-w-6xl ${LANDING_ANCHOR_OFFSET} flex-col gap-16 px-4 pb-8 sm:px-6 md:gap-20`}>
           {PRODUCTS.map((section) => (
-            <section key={section.id} className="grid items-center gap-6 md:grid-cols-2 md:gap-10">
+            <section
+              id={section.id}
+              key={section.id}
+              className={`grid ${LANDING_ANCHOR_OFFSET} items-center gap-6 md:grid-cols-2 md:gap-10`}
+            >
               <div className="min-w-0">
                 <p className="eyebrow text-muted-foreground">{section.eyebrow}</p>
                 <h2 className="mt-2 text-title">{section.title}</h2>
@@ -126,7 +134,7 @@ export const LandingPage = () => {
           ))}
         </div>
 
-        <section id="estado-de-cuenta" className="mx-auto w-full max-w-6xl scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] px-4 py-16 sm:px-6">
+        <section id="estado-de-cuenta" className={`mx-auto w-full max-w-6xl ${LANDING_ANCHOR_OFFSET} px-4 py-16 sm:px-6`}>
           <div className="max-w-2xl">
             <p className="eyebrow text-muted-foreground">Estado de cuenta</p>
             <h2 className="mt-2 text-title">Importa el estado de cuenta</h2>
@@ -141,7 +149,7 @@ export const LandingPage = () => {
           </div>
         </section>
 
-        <section id="quincena" className="mx-auto w-full max-w-6xl scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] px-4 pb-16 sm:px-6" aria-labelledby="quincena-titulo">
+        <section id="quincena" className={`mx-auto w-full max-w-6xl ${LANDING_ANCHOR_OFFSET} px-4 pb-16 sm:px-6`} aria-labelledby="quincena-titulo">
           <div className="max-w-2xl">
             <p className="eyebrow text-muted-foreground">Quincena</p>
             <h2 id="quincena-titulo" className="mt-2 text-title">
