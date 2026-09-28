@@ -138,7 +138,7 @@ const WalletQuickIncomeDialog = ({
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
-      title="Registrar ingreso"
+      title="Agregar ingreso"
       description={description}
       busy={submitting}
     >

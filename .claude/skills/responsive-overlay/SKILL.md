@@ -21,7 +21,7 @@ Every hit is a candidate for replacement with a kit primitive.
 <ResponsiveOverlay
   open={open}
   onOpenChange={onOpenChange}
-  title="Registrar ingreso"
+  title="Agregar ingreso"
   description="Una frase para lectores de pantalla."
   busy={submitting}
 >

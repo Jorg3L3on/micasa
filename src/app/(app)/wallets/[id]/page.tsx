@@ -627,7 +627,7 @@ export default function WalletDetailPage() {
     primaryAction:
       wallet && canImport
         ? {
-            label: 'Registrar',
+            label: 'Agregar movimiento',
             onClick: handleOpenExpense,
             icon: registrarIcon,
           }

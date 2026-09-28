@@ -245,7 +245,7 @@ export function TeamSwitcher() {
               >
                 <SidebarGlyph icon={Plus} size="sm" />
                 <div className="text-muted-foreground font-medium">
-                  Crear casa
+                  Agregar casa
                 </div>
               </DropdownMenuItem>
 

@@ -675,7 +675,7 @@ export default function CreditCardDetailPage() {
   useRegisterToolbarActions({
     primaryAction: card
       ? {
-          label: 'Compra',
+          label: 'Agregar compra',
           onClick: handleOpenPurchase,
           icon: compraIcon,
         }
