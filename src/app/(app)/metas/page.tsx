@@ -290,7 +290,7 @@ export default function MetasPage() {
             </p>
             <div
               className="flex flex-wrap gap-2"
-              role="tablist"
+              role="group"
               aria-label="Filtrar metas"
             >
               {STATUS_FILTER_CHIPS.map(({ value, label }) => {

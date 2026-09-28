@@ -161,7 +161,7 @@ export function ExpenseTemplateForm({
                         />
                       </FormControl>
                       <FormDescription className="text-xs">
-                        Si lo dejas vacio, el monto se define al crear el gasto.
+                        Si lo dejas vacío, el monto se define al crear el gasto.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -172,7 +172,7 @@ export function ExpenseTemplateForm({
                   name="paymentMethodId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Metodo de pago (opcional)</FormLabel>
+                      <FormLabel>Método de pago (opcional)</FormLabel>
                       <Select
                         value={field.value != null ? String(field.value) : 'none'}
                         onValueChange={(value) =>
@@ -182,13 +182,13 @@ export function ExpenseTemplateForm({
                         <FormControl>
                           <SelectTrigger
                             className={TEMPLATE_FIELD_SHELL_CLASS}
-                            aria-label="Seleccionar metodo de pago"
+                            aria-label="Seleccionar método de pago"
                           >
-                            <SelectValue placeholder="Sin metodo por defecto" />
+                            <SelectValue placeholder="Sin método por defecto" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="none">Sin metodo por defecto</SelectItem>
+                          <SelectItem value="none">Sin método por defecto</SelectItem>
                           {paymentMethods.map((paymentMethod) => (
                             <SelectItem
                               key={paymentMethod.id}
@@ -210,7 +210,7 @@ export function ExpenseTemplateForm({
               </div>
 
               <div className="space-y-3 rounded-xl border border-border/60 p-4">
-                <SectionHeader level={3} title="Programacion recurrente" />
+                <SectionHeader level={3} title="Programación recurrente" />
                 <FormField
                   control={form.control}
                   name="isRecurring"
@@ -229,15 +229,15 @@ export function ExpenseTemplateForm({
                               form.setValue('dueDaySecond', null);
                             }
                           }}
-                          aria-label="Se repite de forma periodica"
+                          aria-label="Se repite de forma periódica"
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel className="text-sm font-medium">
-                          Se repite de forma periodica
+                          Se repite de forma periódica
                         </FormLabel>
                         <FormDescription className="text-xs">
-                          Activalo para decidir en que quincenas aparece automaticamente.
+                          Actívalo para decidir en qué quincenas aparece automáticamente.
                         </FormDescription>
                       </div>
                     </FormItem>
@@ -282,7 +282,7 @@ export function ExpenseTemplateForm({
                                 className={TEMPLATE_FIELD_SHELL_CLASS}
                                 min={1}
                                 max={15}
-                                aria-label="Dia de vencimiento primera quincena"
+                                aria-label="Día de vencimiento primera quincena"
                                 value={field.value}
                                 onChange={field.onChange}
                                 onBlur={field.onBlur}
@@ -331,7 +331,7 @@ export function ExpenseTemplateForm({
                                 className={TEMPLATE_FIELD_SHELL_CLASS}
                                 min={16}
                                 max={31}
-                                aria-label="Dia de vencimiento segunda quincena"
+                                aria-label="Día de vencimiento segunda quincena"
                                 value={field.value}
                                 onChange={field.onChange}
                                 onBlur={field.onBlur}
@@ -359,9 +359,9 @@ export function ExpenseTemplateForm({
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   )}
                   aria-expanded={cutoffSectionOpen}
-                  aria-label="Mostrar u ocultar dia de corte opcional"
+                  aria-label="Mostrar u ocultar día de corte opcional"
                 >
-                  <span>Dia de corte (opcional)</span>
+                  <span>Día de corte (opcional)</span>
                   <ChevronDown
                     className={cn(
                       'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
@@ -370,7 +370,7 @@ export function ExpenseTemplateForm({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-2 px-3 pb-3 pt-0">
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Util para suscripciones o cargos fijos. No cambia como se reparte
+                    Útil para suscripciones o cargos fijos. No cambia cómo se reparte
                     por quincenas.
                   </p>
                   <FormField
@@ -378,14 +378,14 @@ export function ExpenseTemplateForm({
                     name="cutoffDay"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm">Dia del mes</FormLabel>
+                        <FormLabel className="text-sm">Día del mes</FormLabel>
                         <FormControl>
                           <BoundedDayFieldInput
                             className={TEMPLATE_FIELD_SHELL_CLASS}
                             min={1}
                             max={31}
-                            placeholder="Vacio = sin corte"
-                            aria-label="Dia de corte del mes"
+                            placeholder="Vacío = sin corte"
+                            aria-label="Día de corte del mes"
                             value={field.value}
                             onChange={field.onChange}
                             onBlur={field.onBlur}
@@ -437,10 +437,10 @@ export function ExpenseTemplateForm({
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-sm font-medium">
-                            Es una suscripcion
+                            Es una suscripción
                           </FormLabel>
                           <FormDescription className="text-xs">
-                            Marca esta opcion para servicios tipo Netflix o Spotify.
+                            Marca esta opción para servicios tipo Netflix o Spotify.
                           </FormDescription>
                         </div>
                       </FormItem>

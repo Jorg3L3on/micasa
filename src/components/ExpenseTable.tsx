@@ -14,6 +14,7 @@ import {
 import { Money } from '@/components/money';
 import { STATUS_BADGE_CLASS, STATUS_SOFT_CLASS } from '@/lib/status-tone';
 import { formatCurrency, toDisplayAmount, cn } from '@/lib/utils';
+import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { useFinanceContext } from '@/context/finance-context';
@@ -225,13 +226,13 @@ const getApiErrorFeedback = (
   const is4xx =
     typeof status === 'number' && status >= 400 && status < 500;
   if (is4xx && err.message.trim()) {
-    return { userMessage: err.message, logToConsole: false };
+    return { userMessage: userFacingErrorMessage(err, fallback), logToConsole: false };
   }
   if (typeof status === 'number' && status >= 500) {
     return { userMessage: fallback, logToConsole: true };
   }
   return {
-    userMessage: err.message.trim() ? err.message : fallback,
+    userMessage: userFacingErrorMessage(err, fallback),
     logToConsole: true,
   };
 };

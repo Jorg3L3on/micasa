@@ -384,7 +384,7 @@ export default function TransactionsDataTable({
             </p>
             <div
               className="flex flex-wrap gap-2"
-              role="tablist"
+              role="group"
               aria-label="Filtrar por tipo"
             >
               {TYPE_FILTER_CHIPS.map(({ value, label }) => {
