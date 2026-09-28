@@ -103,7 +103,7 @@ export const LoanCreateOverlay = ({
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
-      title="Nuevo préstamo"
+      title="Agregar préstamo"
       description="Captura el total, frecuencia y origen de pago para generar el calendario."
       busy={submitting}
       contentClassName="sm:max-w-lg"
@@ -441,7 +441,7 @@ export const LoanCreateOverlay = ({
                 data-icon="inline-start"
               />
             ) : null}
-            {submitting ? 'Creando…' : 'Crear préstamo'}
+            {submitting ? 'Creando…' : 'Agregar préstamo'}
           </Button>
         </form>
       )}

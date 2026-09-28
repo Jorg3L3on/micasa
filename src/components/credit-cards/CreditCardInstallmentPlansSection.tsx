@@ -218,7 +218,7 @@ export const CreditCardInstallmentPlansSection = ({
             onClick={handleOpenCreate}
           >
             <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
-            Nuevo plan
+            Agregar plan
           </Button>
         </div>
       ) : (
@@ -248,7 +248,7 @@ export const CreditCardInstallmentPlansSection = ({
               className="mt-4 rounded-xl"
               onClick={handleOpenCreate}
             >
-              Crear plan de cuotas
+              Agregar plan de cuotas
             </Button>
           </div>
         )

@@ -500,7 +500,7 @@ export default function BudgetFormDialog({
         Creando…
       </>
     ) : (
-      'Crear presupuesto'
+      'Agregar presupuesto'
     );
 
   const renderStep2Form = (handleSelectOpenChange: (nextOpen: boolean) => void) =>

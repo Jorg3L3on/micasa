@@ -172,7 +172,7 @@ export const CreditCardCuotasTab = ({
             <DropdownMenuItem
               onClick={() => onCreatePlanDialogOpenChange?.(true)}
             >
-              Nuevo plan a meses
+              Agregar plan a meses
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleOpenCreateScheduled}>
               Cuota futura programada

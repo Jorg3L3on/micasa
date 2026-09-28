@@ -309,7 +309,7 @@ export default function ConnectionsPanel({
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Nueva conexión',
+      label: 'Agregar conexión',
       onClick: handleOpenCreate,
       icon: primaryActionIcon,
     },
@@ -596,7 +596,7 @@ export default function ConnectionsPanel({
         disabled={creating || createContexts.length === 0}
         className="h-11 w-full rounded-xl"
       >
-        {creating ? 'Creando…' : 'Crear conexión'}
+        {creating ? 'Creando…' : 'Agregar conexión'}
       </Button>
     </div>
   );
@@ -992,7 +992,7 @@ export default function ConnectionsPanel({
       <ResponsiveOverlay
         open={createOpen}
         onOpenChange={handleCreateOpenChange}
-        title={createdToken ? 'Token de conexión' : 'Nueva conexión'}
+        title={createdToken ? 'Token de conexión' : 'Agregar conexión'}
         description={
           createdToken
             ? 'Copia el token; solo se muestra una vez.'

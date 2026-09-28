@@ -1206,7 +1206,7 @@ export default function LoansPage() {
       activeCount: statusFilter === 'ALL' ? 0 : 1,
     },
     primaryAction: {
-      label: 'Nuevo préstamo',
+      label: 'Agregar préstamo',
       onClick: openCreateLoan,
       icon: primaryActionIcon,
     },
@@ -1351,7 +1351,7 @@ export default function LoansPage() {
             message="No tienes préstamos registrados."
             description="Crea un préstamo para ver sus pagos en el inicio."
             action={{
-              label: 'Crear préstamo',
+              label: 'Agregar préstamo',
               onClick: openCreateLoan,
             }}
           />
@@ -2749,7 +2749,7 @@ export default function LoansPage() {
             className={OVERLAY_PRIMARY_BUTTON_CLASS}
             disabled={newLenderSubmitting || !newLenderName.trim()}
           >
-            {newLenderSubmitting ? 'Creando…' : 'Crear prestamista'}
+            {newLenderSubmitting ? 'Creando…' : 'Agregar prestamista'}
           </Button>
         </form>
       </ResponsiveOverlay>

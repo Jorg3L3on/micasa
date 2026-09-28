@@ -212,7 +212,7 @@ export default function WalletForm({
       ? 'Agregar meta'
       : 'Editar meta'
     : mode === 'create'
-      ? 'Nueva billetera'
+      ? 'Agregar billetera'
       : 'Editar billetera';
   const dialogDescription = isGoalType
     ? mode === 'create'
@@ -233,9 +233,9 @@ export default function WalletForm({
     </>
   ) : mode === 'create' ? (
     isGoalType ? (
-      'Crear meta'
+      'Agregar meta'
     ) : (
-      'Crear billetera'
+      'Agregar billetera'
     )
   ) : (
     'Guardar cambios'

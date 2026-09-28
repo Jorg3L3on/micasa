@@ -107,7 +107,7 @@ export default function CategoryForm({
     <ResponsiveOverlay
       open={open}
       onOpenChange={handleOpenChange}
-      title={mode === 'create' ? 'Nueva categoría' : 'Editar categoría'}
+      title={mode === 'create' ? 'Agregar categoría' : 'Editar categoría'}
       description={
         mode === 'create'
           ? 'Puedes crear una categoría raíz o una subcategoría bajo un padre existente.'
