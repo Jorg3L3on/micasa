@@ -20,7 +20,7 @@ const Metric = ({
   children: ReactNode;
 }) => (
   <div className="min-w-0">
-    <p className="overline text-muted-foreground">{label}</p>
+    <p className="eyebrow text-muted-foreground">{label}</p>
     <div className="mt-1">{children}</div>
   </div>
 );
@@ -84,18 +84,18 @@ export const LoanBalanceSummary = ({
 
       <dl className="mt-4 space-y-3 border-t border-border/60 pt-3 text-caption">
         <div>
-          <dt className="overline text-muted-foreground">Origen de pago</dt>
+          <dt className="eyebrow text-muted-foreground">Origen de pago</dt>
           <dd className="mt-1 font-medium text-foreground">{paymentSource}</dd>
         </div>
         <div>
-          <dt className="overline text-muted-foreground">Billetera relacionada</dt>
+          <dt className="eyebrow text-muted-foreground">Billetera relacionada</dt>
           <dd className="mt-1 font-medium text-foreground">
             {loan.linkedWalletName ?? 'Sin cuenta vinculada'}
           </dd>
         </div>
         {loan.notes ? (
           <div>
-            <dt className="overline text-muted-foreground">Notas</dt>
+            <dt className="eyebrow text-muted-foreground">Notas</dt>
             <dd className="mt-1 text-foreground/85">{loan.notes}</dd>
           </div>
         ) : null}

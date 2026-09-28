@@ -113,7 +113,7 @@ export const LiquiditySpendingCategories = ({
               'flex items-center justify-between gap-2 border-l-[3px] border-l-status-expense',
             )}
           >
-            <span className="overline text-muted-foreground">
+            <span className="eyebrow text-muted-foreground">
               Top 5 acumulado
             </span>
             <span className="font-sans text-sm font-bold tabular-nums text-foreground">

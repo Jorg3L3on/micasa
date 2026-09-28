@@ -416,7 +416,7 @@ const FortnightCardPaymentsPanel = ({
                     </span>
                     {status === 'pagado' && fortnightPaid > 0 ? (
                       <span
-                        className="overline text-muted-foreground/80"
+                        className="eyebrow text-muted-foreground/80"
                         aria-hidden
                       >
                         Pagado esta quincena
@@ -426,7 +426,7 @@ const FortnightCardPaymentsPanel = ({
                     fortnightPaid <= 0 &&
                     (item.paymentsAppliedToStatement ?? 0) > 0 ? (
                       <span
-                        className="overline text-muted-foreground/80"
+                        className="eyebrow text-muted-foreground/80"
                         aria-hidden
                       >
                         Cubierto al corte

@@ -92,7 +92,7 @@ function PeriodMetric({
         accent === 'available' && 'bg-emerald-500/[0.04]',
       )}
     >
-      <p className="overline text-muted-foreground">
+      <p className="eyebrow text-muted-foreground">
         {label}
       </p>
       <p

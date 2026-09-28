@@ -107,7 +107,7 @@ const PurchaseSortButton = ({
     type="button"
     variant="ghost"
     size="sm"
-    className="h-7 px-1.5 overline"
+    className="h-7 px-1.5 eyebrow"
     onClick={() => onSort(sortKey)}
     aria-label={`Ordenar por ${label}${
       activeKey === sortKey ? (dir === 'desc' ? ', descendente' : ', ascendente') : ''
@@ -140,7 +140,7 @@ const PaymentSortButton = ({
     type="button"
     variant="ghost"
     size="sm"
-    className="h-7 px-1.5 overline"
+    className="h-7 px-1.5 eyebrow"
     onClick={() => onSort(sortKey)}
     aria-label={`Ordenar pagos por ${label}`}
   >
@@ -244,7 +244,7 @@ export const PurchaseTableBlock = ({
                       {purchase.credit_installment_current != null &&
                       purchase.credit_installment_total != null ? (
                         <span
-                          className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 overline text-muted-foreground"
+                          className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 eyebrow text-muted-foreground"
                           title="Compra en cuotas"
                         >
                           {purchase.credit_installment_current}/

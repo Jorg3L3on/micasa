@@ -220,7 +220,7 @@ const CreditCardMercadoPagoImportDialog = ({
                 role="region"
                 aria-label="Importaciones recientes"
               >
-                <p className="border-b border-border/60 px-3 py-2 overline text-muted-foreground">
+                <p className="border-b border-border/60 px-3 py-2 eyebrow text-muted-foreground">
                   Importaciones recientes
                 </p>
                 <ul className={cn('divide-y divide-border/60', IMPORT_LIST_SCROLL_CLASS)}>

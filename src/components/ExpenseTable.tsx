@@ -658,7 +658,7 @@ export default function ExpenseTable({
             'flex items-center justify-between gap-2 border-l-[3px] border-l-status-success/50',
           )}
         >
-          <span className="overline text-muted-foreground">
+          <span className="eyebrow text-muted-foreground">
             Total efectivo/débito
           </span>
           <span
@@ -678,7 +678,7 @@ export default function ExpenseTable({
             )}
           >
             <div className="flex min-w-0 flex-col">
-              <span className="overline text-slate-700 dark:text-slate-300">
+              <span className="eyebrow text-slate-700 dark:text-slate-300">
                 Cargos a tarjeta
               </span>
               <span className="text-caption text-muted-foreground">
@@ -1062,7 +1062,7 @@ export default function ExpenseTable({
                       'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px] border-l-status-success/50',
                     )}
                   >
-                    <span className="overline text-muted-foreground">
+                    <span className="eyebrow text-muted-foreground">
                       Total efectivo/débito
                     </span>
                     <span className="font-sans text-base font-bold tabular-nums text-foreground">
@@ -1077,7 +1077,7 @@ export default function ExpenseTable({
                       )}
                     >
                       <div className="flex min-w-0 flex-col">
-                        <span className="overline text-slate-700 dark:text-slate-300">
+                        <span className="eyebrow text-slate-700 dark:text-slate-300">
                           Cargos a tarjeta
                         </span>
                         <span className="text-caption text-muted-foreground">

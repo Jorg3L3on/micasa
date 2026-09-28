@@ -692,7 +692,7 @@ const CreditCardQuickPurchaseDialog = ({
           </div>
 
           <div>
-            <p className="mb-1.5 overline text-muted-foreground">
+            <p className="mb-1.5 eyebrow text-muted-foreground">
               Cuotas (opcional)
             </p>
             <div className={OVERLAY_GROUPED_CARD_CLASS}>

@@ -7,7 +7,7 @@ type SectionHeaderProps = {
   id?: string;
   title: ReactNode;
   subtitle?: ReactNode;
-  /** Small label above the title. Uses the overline utility. */
+  /** Small label above the title. Uses the eyebrow utility. */
   eyebrow?: ReactNode;
   icon?: LucideIcon;
   actions?: ReactNode;
@@ -42,7 +42,7 @@ export const SectionHeader = ({
           </span>
         ) : null}
         <div className="min-w-0 pt-0.5">
-          {eyebrow ? <p className="overline text-muted-foreground">{eyebrow}</p> : null}
+          {eyebrow ? <p className="eyebrow text-muted-foreground">{eyebrow}</p> : null}
           <Heading id={id} className={cn('text-section text-foreground', titleClassName)}>
             {title}
           </Heading>

@@ -576,7 +576,7 @@ const CreditCardStatementImportDialog = ({
                   role="region"
                   aria-label="Movimientos detectados"
                 >
-                  <p className="px-3 py-2 overline text-muted-foreground">
+                  <p className="px-3 py-2 eyebrow text-muted-foreground">
                     Movimientos
                   </p>
                   <ul className="max-h-[min(12rem,32vh)] divide-y divide-border/60 overflow-y-auto scrollbar-hide">
@@ -585,7 +585,7 @@ const CreditCardStatementImportDialog = ({
                         key={`${row.kind}-${row.payment_date}-${row.amount}-${index}`}
                         className="flex items-start gap-2 px-3 py-2"
                       >
-                        <span className="mt-0.5 shrink-0 rounded-full border border-border/60 bg-background px-1.5 py-0.5 overline text-muted-foreground">
+                        <span className="mt-0.5 shrink-0 rounded-full border border-border/60 bg-background px-1.5 py-0.5 eyebrow text-muted-foreground">
                           {MOVEMENT_KIND_LABEL[row.kind]}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -619,7 +619,7 @@ const CreditCardStatementImportDialog = ({
               role="region"
               aria-label="Importaciones recientes"
             >
-              <p className="px-3 py-2 overline text-muted-foreground">
+              <p className="px-3 py-2 eyebrow text-muted-foreground">
                 Recientes
               </p>
               <ul className="max-h-[min(10rem,28vh)] divide-y divide-border/60 overflow-y-auto scrollbar-hide">

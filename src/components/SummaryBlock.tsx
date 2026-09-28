@@ -250,7 +250,7 @@ export default function SummaryBlock({
                         data-icon="inline-start"
                       />
                     </span>
-                    <span className="truncate overline text-blue-600/80 dark:text-blue-400/80">
+                    <span className="truncate eyebrow text-blue-600/80 dark:text-blue-400/80">
                       Ingresos
                     </span>
                   </div>
@@ -298,7 +298,7 @@ export default function SummaryBlock({
                       data-icon="inline-start"
                     />
                   </span>
-                  <span className="truncate overline text-emerald-600/80 dark:text-emerald-400/80">
+                  <span className="truncate eyebrow text-emerald-600/80 dark:text-emerald-400/80">
                     Pagado
                   </span>
                 </div>
@@ -328,7 +328,7 @@ export default function SummaryBlock({
                       data-icon="inline-start"
                     />
                   </span>
-                  <span className="truncate overline text-amber-600/80 dark:text-amber-400/80">
+                  <span className="truncate eyebrow text-amber-600/80 dark:text-amber-400/80">
                     Pendiente
                   </span>
                 </div>

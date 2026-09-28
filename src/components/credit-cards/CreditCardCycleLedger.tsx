@@ -216,7 +216,7 @@ export const CreditCardCycleLedger = ({
         <div className="divide-y divide-border/40">
           {grouped.map(([dateKey, rows]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <p className="sticky top-0 z-[1] bg-card/95 px-4 py-2 overline text-muted-foreground backdrop-blur-sm">
+              <p className="sticky top-0 z-[1] bg-card/95 px-4 py-2 eyebrow text-muted-foreground backdrop-blur-sm">
                 {getDateGroupLabel(dateKey)}
               </p>
               <ul className="px-2 pb-2">

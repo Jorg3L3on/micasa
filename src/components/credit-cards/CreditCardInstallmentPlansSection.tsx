@@ -245,7 +245,7 @@ export const CreditCardInstallmentPlansSection = ({
         <>
           {!embedded ? (
             <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
-              <p className="overline text-muted-foreground">
+              <p className="eyebrow text-muted-foreground">
                 Saldo del plan
               </p>
               <p className="font-sans text-2xl font-bold tabular-nums tracking-tight">

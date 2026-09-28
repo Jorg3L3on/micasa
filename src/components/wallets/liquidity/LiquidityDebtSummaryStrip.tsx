@@ -62,7 +62,7 @@ export const LiquidityDebtSummaryStrip = ({
       role="region"
       aria-label="Resumen de deudas"
     >
-      <p className="overline text-muted-foreground">
+      <p className="eyebrow text-muted-foreground">
         Debes
       </p>
       <p className="mt-1 font-sans text-xl font-bold tabular-nums text-amber-700 dark:text-amber-300">

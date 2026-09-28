@@ -323,7 +323,7 @@ export const CreditCardRecentMovements = ({
               return (
                 <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
                   <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
-                    <p className="overline text-muted-foreground">
+                    <p className="eyebrow text-muted-foreground">
                       {getDateGroupLabel(dateKey)}
                     </p>
                     <span
@@ -498,7 +498,7 @@ const ActivityMetric = ({ icon, label, value, tone }: ActivityMetricProps) => (
       {icon}
     </span>
     <div className="min-w-0">
-      <p className="overline text-muted-foreground">
+      <p className="eyebrow text-muted-foreground">
         {label}
       </p>
       <p className="truncate font-sans text-sm font-bold tabular-nums text-foreground">
@@ -567,7 +567,7 @@ export const GroupedPurchaseFeed = ({
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <p className="mb-2 overline text-muted-foreground">
+              <p className="mb-2 eyebrow text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
               </p>
               <ul className="space-y-1">
@@ -679,7 +679,7 @@ export const GroupedPaymentFeed = ({
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <p className="mb-2 overline text-muted-foreground">
+              <p className="mb-2 eyebrow text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
               </p>
               <ul className="space-y-1">

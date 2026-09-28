@@ -154,7 +154,7 @@ const HeaderMetric = ({
       accentClassName,
     )}
   >
-    <p className="overline text-muted-foreground">
+    <p className="eyebrow text-muted-foreground">
       {label}
     </p>
     <p className="mt-1 font-sans text-sm font-bold tabular-nums leading-none text-foreground">

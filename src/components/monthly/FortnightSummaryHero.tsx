@@ -205,7 +205,7 @@ const DueToPayLabel = ({ compositionRows }: DueToPayLabelProps) => {
           sideOffset={6}
           className="max-w-[16rem] space-y-1.5 px-3 py-2 text-left"
         >
-          <p className="overline text-background/70">
+          <p className="eyebrow text-background/70">
             Qué incluye
           </p>
           <ul className="space-y-1">
@@ -261,7 +261,7 @@ export const AccountMetric = ({
       >
         <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
       </span>
-      <span className="overline text-muted-foreground">
+      <span className="eyebrow text-muted-foreground">
         {label}
       </span>
     </div>
@@ -296,7 +296,7 @@ const LegendItem = ({
         className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClassName)}
         aria-hidden
       />
-      <span className="overline min-w-0 truncate text-muted-foreground">
+      <span className="eyebrow min-w-0 truncate text-muted-foreground">
         {label}
       </span>
     </div>
@@ -507,7 +507,7 @@ export const FortnightSummaryHero = ({
             <div className="flex items-baseline justify-between gap-3">
               <span
                 className={cn(
-                  'overline',
+                  'eyebrow',
                   remainderClass,
                 )}
               >

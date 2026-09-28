@@ -217,7 +217,7 @@ export const WalletMovementsFeed = ({
         <div className="space-y-5">
           {grouped.map(([date, rows]) => (
             <section key={date} aria-label={`Movimientos del ${formatDate(date)}`}>
-              <p className="mb-2 overline text-muted-foreground">
+              <p className="mb-2 eyebrow text-muted-foreground">
                 {formatDate(date)}
               </p>
               <ul className="divide-y divide-border/40 rounded-2xl border border-border/50 bg-muted/10 dark:bg-muted/5">

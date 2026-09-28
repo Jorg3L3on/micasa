@@ -212,7 +212,7 @@ const AccountCard = ({
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="overline text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               Deuda
             </p>
             <p className={cn('font-sans text-sm font-bold tabular-nums', debtToneClass(view))}>
@@ -220,7 +220,7 @@ const AccountCard = ({
             </p>
           </div>
           <div className="text-right">
-            <p className="overline text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               Libre
             </p>
             <p

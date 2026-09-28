@@ -48,7 +48,7 @@ export const TemplateSwipeRow = ({
               {!active ? (
                 <Badge
                   variant="outline"
-                  className="shrink-0 px-1.5 py-0 overline"
+                  className="shrink-0 px-1.5 py-0 eyebrow"
                 >
                   Inactiva
                 </Badge>

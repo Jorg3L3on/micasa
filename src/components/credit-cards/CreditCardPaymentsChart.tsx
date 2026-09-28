@@ -271,7 +271,7 @@ export const CreditCardPaymentsChart = ({
 
             {pendingMonths.length > 0 ? (
               <div className="space-y-2">
-                <p className="overline text-muted-foreground">
+                <p className="eyebrow text-muted-foreground">
                   Desglose de la gráfica
                 </p>
                 <div className="space-y-2">

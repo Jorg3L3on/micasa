@@ -115,7 +115,7 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
       ) : (
         <div className="space-y-2">
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px]', accent)}>
-            <p className="overline text-muted-foreground">{label}</p>
+            <p className="eyebrow text-muted-foreground">{label}</p>
             <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
               <CurrencyTicker value={amount} />
             </p>

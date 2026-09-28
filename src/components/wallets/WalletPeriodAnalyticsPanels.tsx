@@ -61,7 +61,7 @@ const InsightStat = ({
   tone?: 'neutral' | 'good' | 'warn';
 }) => (
   <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
-    <div className="mb-1 flex items-center gap-1.5 overline text-muted-foreground">
+    <div className="mb-1 flex items-center gap-1.5 eyebrow text-muted-foreground">
       <Icon
         className={cn(
           'h-3.5 w-3.5',
@@ -372,7 +372,7 @@ export const WalletPeriodAnalyticsPanels = ({
             <div className="space-y-2">
               {analytics.largestOutflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
-                  <p className="mb-1 flex items-center gap-1.5 overline text-muted-foreground">
+                  <p className="mb-1 flex items-center gap-1.5 eyebrow text-muted-foreground">
                     <ArrowUpRight className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" data-icon="inline-start" />
                     Mayor egreso
                   </p>
@@ -386,7 +386,7 @@ export const WalletPeriodAnalyticsPanels = ({
               ) : null}
               {analytics.largestInflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
-                  <p className="mb-1 flex items-center gap-1.5 overline text-muted-foreground">
+                  <p className="mb-1 flex items-center gap-1.5 eyebrow text-muted-foreground">
                     <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
                     Mayor ingreso
                   </p>

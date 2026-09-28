@@ -224,7 +224,7 @@ const FortnightProgressStatus = ({
             </span>
           </p>
           {tone === 'upcoming' ? (
-            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 overline text-muted-foreground">
+            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 eyebrow text-muted-foreground">
               Próxima
             </span>
           ) : (

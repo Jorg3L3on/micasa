@@ -1206,7 +1206,7 @@ export default function LoansPage() {
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 overline text-muted-foreground">Estado</p>
+            <p className="mb-1.5 eyebrow text-muted-foreground">Estado</p>
             <div
               className="flex flex-wrap gap-2"
               role="group"
