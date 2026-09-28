@@ -231,13 +231,13 @@ Mobile sheets follow Apple’s [Sheets](https://developer.apple.com/design/human
 
 **Reference implementation:** **Agregar gasto** — `src/components/quick-capture/QuickExpenseSheet.tsx` (Panel financiero). `AddTransactionDialog.tsx`, `WalletForm.tsx` (Nueva meta / billetera), and `WalletTransferDialog.tsx` follow it exactly. When in doubt, open Agregar gasto and copy it.
 
-Live references (dark, this app):
+Open these components in the running app. Do not commit overlay screenshots: the old files named wallets and issuers.
 
-| Overlay | Desktop Dialog | Mobile Sheet |
-| --- | --- | --- |
-| Agregar gasto | [`agregar-gasto-desktop.png`](docs/images/overlays/agregar-gasto-desktop.png) | [`agregar-gasto-mobile.png`](docs/images/overlays/agregar-gasto-mobile.png) |
-| Nueva meta | [`nueva-meta-desktop.png`](docs/images/overlays/nueva-meta-desktop.png) | [`nueva-meta-mobile.png`](docs/images/overlays/nueva-meta-mobile.png) |
-| Transferir saldo | [`transferir-desktop.png`](docs/images/overlays/transferir-desktop.png) | [`transferir-mobile.png`](docs/images/overlays/transferir-mobile.png) |
+| Overlay | Component |
+| --- | --- |
+| Agregar gasto | `src/components/quick-capture/QuickExpenseSheet.tsx` |
+| Nueva meta / billetera | `src/components/WalletForm.tsx` |
+| Transferir saldo | `src/components/wallets/WalletTransferDialog.tsx` |
 
 - The breakpoint lives **inside** `ResponsiveOverlay` (`useIsMobile()` from `src/hooks/use-mobile.ts`). Callers never branch on `isMobile` for layout or field sizes.
 - Same fields, order, and actions on both breakpoints.
@@ -450,13 +450,6 @@ When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
 
 ## Refreshing README screenshots
 
-Replace files under `docs/images/` with captures of localhost (or production) — never with external mockups.
+Product captures for the README live in `public/landing/` (fictional house Hogar). One file per screen, viewport, and theme: `{id}-{desktop|mobile}-{dark|light}.webp`. Screens: `panel`, `billeteras`, `liquidez`, `plan`, `prestamos`, `metas`, `operaciones`, `toca-pagar`. The README links those files. Do not add a second copy under `docs/images/`, and do not commit captures that show a real name, email, wallet, issuer, or amount.
 
-| File | What to capture |
-| --- | --- |
-| `docs/images/landing-hero.jpg` | `/` hero (headline + Panel screenshot) |
-| `docs/images/login.jpg` | `/login` |
-
-TODO: add a Panel financiero screenshot captured from fictional data.
-
-`docs/images/orion-tokens.svg` is drawn from the table above; update it if hex values change.
+`docs/images/orion-tokens.svg` is the palette swatch drawn from the table above; update it if hex values change.
