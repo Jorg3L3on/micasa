@@ -91,14 +91,14 @@ describe('getLiquidityDebtBreakdown', () => {
     listLoansByOwner.mockResolvedValue([
       {
         id: 15,
-        name: 'Fonacot Luis',
+        name: 'Préstamo nómina B',
         status: 'ACTIVE',
-        remainingAmount: 50269,
+        remainingAmount: 50400,
         remainingPayments: 18,
         overduePayment: null,
-        nextPayment: { dueDate: '2026-04-01', amount: 2793 },
+        nextPayment: { dueDate: '2026-04-01', amount: 2800 },
         payments: [
-          { id: 1, dueDate: '2026-04-01', amount: 2793, status: 'SCHEDULED' },
+          { id: 1, dueDate: '2026-04-01', amount: 2800, status: 'SCHEDULED' },
         ],
       },
       {
@@ -118,7 +118,7 @@ describe('getLiquidityDebtBreakdown', () => {
     expect(findManyWallet).toHaveBeenCalledTimes(1);
     expect(findManyExpense).toHaveBeenCalledTimes(1);
     expect(listLoansByOwner).toHaveBeenCalledWith(ownerFilter);
-    expect(breakdown.loansTotal).toBe(50269);
+    expect(breakdown.loansTotal).toBe(50400);
     expect(breakdown.cardCount).toBe(1);
     expect(breakdown.loanCount).toBe(1);
     expect(breakdown.accounts.map((account) => account.id)).toEqual([

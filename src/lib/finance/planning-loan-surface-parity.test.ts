@@ -62,7 +62,7 @@ describe('planning loan surface parity', () => {
       loanName: 'FONACOT',
       lender: 'Banco',
       lenderId: null,
-      amount: 2792.73,
+      amount: 2800,
       dueDate: '2026-06-15',
       paidAt: null,
       status: 'SCHEDULED',
@@ -90,7 +90,7 @@ describe('planning loan surface parity', () => {
     };
 
     const parts = partitionLoanPaymentsForPlanningTotals([payroll, wallet]);
-    expect(parts.payrollDeduction.total).toBe(2792.73);
+    expect(parts.payrollDeduction.total).toBe(2800);
     expect(parts.walletDue.total).toBe(200);
 
     const result = buildPlannerBalance({

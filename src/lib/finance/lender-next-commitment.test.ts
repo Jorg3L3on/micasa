@@ -41,7 +41,7 @@ const loan = (
 ): Pick<LoanListItem, 'status' | 'paymentSource' | 'nextPayment'> => ({
   status: 'ACTIVE',
   paymentSource: 'PAYROLL_DEDUCTION',
-  nextPayment: nextPayment({ id: 1, dueDate: '2026-10-01', amount: 1243.68 }),
+  nextPayment: nextPayment({ id: 1, dueDate: '2026-10-01', amount: 1250 }),
   ...overrides,
 });
 
@@ -66,10 +66,10 @@ describe('lenderNextCommitment', () => {
   it('sums active payroll next payments when there is no wallet window', () => {
     const result = lenderNextCommitment(emptyWindow, [
       loan({
-        nextPayment: nextPayment({ id: 10, dueDate: '2026-10-01', amount: 1243.68 }),
+        nextPayment: nextPayment({ id: 10, dueDate: '2026-10-01', amount: 1250 }),
       }),
       loan({
-        nextPayment: nextPayment({ id: 11, dueDate: '2026-10-01', amount: 1243.68 }),
+        nextPayment: nextPayment({ id: 11, dueDate: '2026-10-01', amount: 1250 }),
       }),
       loan({
         status: 'PAUSED',
@@ -78,7 +78,7 @@ describe('lenderNextCommitment', () => {
     ]);
 
     expect(result.kind).toBe('payroll');
-    expect(result.amount).toBe(2487.36);
+    expect(result.amount).toBe(2500);
     expect(result.date).toBe('2026-10-01');
     expect(result.isRange).toBe(false);
   });

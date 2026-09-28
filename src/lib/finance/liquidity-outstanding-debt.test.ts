@@ -61,7 +61,7 @@ describe('buildMonthOutstandingSnapshot', () => {
           loan_name: 'Fonacot',
           lender: 'FONACOT',
           payment_source: 'PAYROLL_DEDUCTION',
-          amount: 1243.68,
+          amount: 1250,
           due_date: new Date(Date.UTC(2026, 9, 16)),
           paid_at: null,
           status: 'SCHEDULED',

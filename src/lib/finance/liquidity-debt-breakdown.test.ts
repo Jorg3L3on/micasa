@@ -121,30 +121,30 @@ describe('composeCardDebtAccount', () => {
     const account = composeCardDebtAccount({
       walletId: 7,
       name: 'DIDI Card',
-      outstanding: 1179.43,
+      outstanding: 1100,
       msi: [
-        { id: 1, title: 'Laptop a 12 meses', current: 2, total: 12, monthlyAmount: 850 },
+        { id: 1, title: 'Laptop a 12 meses', current: 2, total: 12, monthlyAmount: 900 },
         {
           id: 2,
           title: 'Televisor Liverpool 6 meses',
           current: 3,
           total: 6,
-          monthlyAmount: 1200,
+          monthlyAmount: 1300,
         },
       ],
       plans: [],
       cycle: [],
     });
 
-    expect(account.debt).toBe(1179.43);
-    expect(account.plazosTotal).toBe(1179.43);
+    expect(account.debt).toBe(1100);
+    expect(account.plazosTotal).toBe(1100);
     expect(account.restoTotal).toBe(0);
     expect(account.plazosTotal + account.restoTotal).toBe(account.debt);
     const plazos = account.blocks[0];
-    expect(plazos?.total).toBe(1179.43);
-    expect(plazos?.beyondBalance).toBe(8500 + 3600 - 1179.43);
+    expect(plazos?.total).toBe(1100);
+    expect(plazos?.beyondBalance).toBe(9000 + 3900 - 1100);
     expect(plazos?.lines.every((line) => line.amountKind === 'monthly')).toBe(true);
-    expect(plazos?.lines.map((line) => line.amount)).toEqual([850, 1200]);
+    expect(plazos?.lines.map((line) => line.amount)).toEqual([900, 1300]);
     expect(plazos?.lines.map((line) => line.subtitle)).toEqual(['2 de 12', '3 de 6']);
     expect(formatPlazosFootnote(plazos!.total, plazos!.beyondBalance)).toContain(
       'saldo de hoy',
@@ -273,11 +273,11 @@ describe('composeLoanDebtAccount', () => {
 
     const account = composeLoanDebtAccount({
       loanId: 15,
-      name: 'Fonacot Luis',
-      remainingAmount: 50269,
+      name: 'Préstamo nómina B',
+      remainingAmount: 50400,
       remainingPayments: 18,
       nextDueDate: '2026-03-01',
-      nextAmount: 2793,
+      nextAmount: 2800,
       payments,
       todayYmd: '2026-03-15',
     });
@@ -307,14 +307,14 @@ describe('composeLoanDebtAccount', () => {
   it('says vencidas instead of próxima when every cuota is past due', () => {
     const account = composeLoanDebtAccount({
       loanId: 4,
-      name: 'Fonacot Luis',
+      name: 'Préstamo nómina B',
       remainingAmount: 50000,
       remainingPayments: 18,
       nextDueDate: '2026-03-01',
-      nextAmount: 2793,
+      nextAmount: 2800,
       payments: [
-        { id: 1, dueDate: '2026-03-01', amount: 2793, status: 'SCHEDULED' },
-        { id: 2, dueDate: '2026-03-16', amount: 2793, status: 'SCHEDULED' },
+        { id: 1, dueDate: '2026-03-01', amount: 2800, status: 'SCHEDULED' },
+        { id: 2, dueDate: '2026-03-16', amount: 2800, status: 'SCHEDULED' },
       ],
       todayYmd: '2026-09-21',
     });
@@ -364,13 +364,13 @@ describe('summarizeDebtBreakdown', () => {
     });
     const fonacot = composeLoanDebtAccount({
       loanId: 3,
-      name: 'Fonacot Luis',
-      remainingAmount: 50269,
+      name: 'Préstamo nómina B',
+      remainingAmount: 50400,
       remainingPayments: 18,
       nextDueDate: '2026-03-01',
-      nextAmount: 2793,
+      nextAmount: 2800,
       payments: [
-        { id: 1, dueDate: '2026-03-01', amount: 2793, status: 'SCHEDULED' },
+        { id: 1, dueDate: '2026-03-01', amount: 2800, status: 'SCHEDULED' },
       ],
       todayYmd: '2026-03-15',
     });
@@ -388,7 +388,7 @@ describe('summarizeDebtBreakdown', () => {
     expect(didi.plazosTotal + didi.restoTotal).toBe(didi.debt);
     expect(summary.plazosTotal).toBe(didi.plazosTotal);
     expect(summary.restoTotal).toBe(didi.restoTotal + liverpool.restoTotal);
-    expect(summary.loansTotal).toBe(50269);
+    expect(summary.loansTotal).toBe(50400);
     expect(summary.debtTotal).toBe(
       summary.plazosTotal + summary.restoTotal + summary.loansTotal,
     );
@@ -403,7 +403,7 @@ describe('summarizeDebtBreakdown', () => {
       { key: 'loans', label: 'Préstamos', amount: 10 },
     ]);
     expect(summary.topConcepts).toEqual([
-      { title: 'Fonacot Luis', amount: 50269 },
+      { title: 'Préstamo nómina B', amount: 50400 },
       { title: 'Liverpool', amount: 5705 },
       {
         title: didi.plazosTotal >= didi.restoTotal ? 'DIDI Card plazos' : 'DIDI Card',

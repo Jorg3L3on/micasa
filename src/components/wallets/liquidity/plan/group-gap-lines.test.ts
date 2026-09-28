@@ -16,7 +16,7 @@ describe('groupGapBreakdownLines', () => {
       loan('a', 'Meses sin Tarjeta', 420.79, 'Mercado Libre'),
       loan('b', 'Préstamo ML ago', 746.82, 'Mercado Libre'),
       { id: 'spotify', label: 'Spotify', amount: 189, detail: 'Gasto sin pagar' },
-      loan('c', 'FONACOT Luis', 100, 'Fonacot'),
+      loan('c', 'Préstamo nómina', 100, 'Fonacot'),
     ]);
 
     expect(rows).toEqual([
@@ -36,7 +36,7 @@ describe('groupGapBreakdownLines', () => {
         id: 'Fonacot',
         label: 'Fonacot',
         total: 100,
-        lines: [loan('c', 'FONACOT Luis', 100, 'Fonacot')],
+        lines: [loan('c', 'Préstamo nómina', 100, 'Fonacot')],
       },
     ]);
   });
