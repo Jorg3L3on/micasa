@@ -38,12 +38,12 @@ const ctxWithToken = (token?: string) => ({
   },
 });
 
-const houseArgs = { ownerType: 'house' as const, ownerId: 3 };
+const houseArgs = { ownerType: 'house' as const, ownerId: 42 };
 
 beforeEach(() => {
   vi.clearAllMocks();
   updateApiKey.mockResolvedValue({});
-  findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 3 }]);
+  findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 42 }]);
 });
 
 describe('runAgentTool', () => {
@@ -61,7 +61,7 @@ describe('runAgentTool', () => {
 
     expect(result.isError).toBeUndefined();
     expect(JSON.parse(result.content[0].text)).toEqual({
-      ownerFilter: { user_id: null, house_id: 3 },
+      ownerFilter: { user_id: null, house_id: 42 },
     });
   });
 

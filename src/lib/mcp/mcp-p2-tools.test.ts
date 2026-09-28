@@ -204,7 +204,7 @@ const writeApiKey = {
   user: { id: 2, active: true },
 };
 
-const houseArgs = { ownerType: 'house' as const, ownerId: 3 };
+const houseArgs = { ownerType: 'house' as const, ownerId: 42 };
 const userArgs = { ownerType: 'user' as const, ownerId: 2 };
 
 const ctxWithToken = (token?: string) => ({
@@ -240,18 +240,18 @@ beforeEach(() => {
   findFirstMembership.mockResolvedValue({ role: 'OWNER' });
   findManyAllowedContexts.mockResolvedValue([
     { owner_type: 'USER', owner_id: 2 },
-    { owner_type: 'HOUSE', owner_id: 3 },
+    { owner_type: 'HOUSE', owner_id: 42 },
   ]);
   resolveCategoryRef.mockResolvedValue(10);
   resolveWalletRef.mockResolvedValue({ id: 4, name: 'Efectivo', type: 'CASH' });
   userFindUnique.mockResolvedValue({ id: 2, active: true });
-  houseFindUnique.mockResolvedValue({ id: 3 });
+  houseFindUnique.mockResolvedValue({ id: 42 });
   fortnightFindUnique.mockImplementation(({ where }: { where: { id: number } }) => {
     if (where.id === 10) {
       return Promise.resolve({ id: 10, user_id: 2, house_id: null });
     }
     if (where.id === 20) {
-      return Promise.resolve({ id: 20, user_id: null, house_id: 3 });
+      return Promise.resolve({ id: 20, user_id: null, house_id: 42 });
     }
     return Promise.resolve(null);
   });
@@ -287,7 +287,7 @@ describe('registered MCP P2 tools auth fail-closed', () => {
 
     const result = await invokeTool('transfer_to_house', {
       ...userArgs,
-      house_id: 3,
+      house_id: 42,
       amount: 100,
       user_fortnight_id: 1,
       house_fortnight_id: 2,
@@ -310,7 +310,7 @@ describe('registered list_house_members', () => {
 
     expect(result.isError).toBeFalsy();
     expect(findManyHouseMembers).toHaveBeenCalledWith({
-      where: { house_id: 3 },
+      where: { house_id: 42 },
       include: { user: { select: { id: true, name: true } } },
       orderBy: { user: { name: 'asc' } },
     });
@@ -417,7 +417,7 @@ describe('registered budget allocation tools', () => {
     expect(resolveWalletRef).not.toHaveBeenCalled();
     expect(createBudget).toHaveBeenCalledWith(
       'house',
-      3,
+      42,
       expect.objectContaining({
         allocations: [{ wallet_id: null, category_id: 10, amount: 300 }],
       }),
@@ -457,7 +457,7 @@ describe('registered transfer_to_house', () => {
       id: 99,
       amount: '150',
       user_id: 2,
-      house_id: 3,
+      house_id: 42,
       user_expense_id: 501,
       house_income_id: 601,
       created_at: new Date('2026-08-01T12:00:00.000Z'),
@@ -465,7 +465,7 @@ describe('registered transfer_to_house', () => {
 
     const result = await invokeTool('transfer_to_house', {
       ...userArgs,
-      house_id: 3,
+      house_id: 42,
       amount: 150,
       user_fortnight_id: 10,
       house_fortnight_id: 20,
@@ -475,7 +475,7 @@ describe('registered transfer_to_house', () => {
     expect(createUserToHouseTransfer).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 2,
-        houseId: 3,
+        houseId: 42,
         amount: 150,
         userFortnightId: 10,
         houseFortnightId: 20,
@@ -485,11 +485,11 @@ describe('registered transfer_to_house', () => {
   });
 
   it('rejects house context when personal account is not on allow-list', async () => {
-    findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 3 }]);
+    findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 42 }]);
 
     const result = await invokeTool('transfer_to_house', {
       ...houseArgs,
-      house_id: 3,
+      house_id: 42,
       amount: 150,
       user_fortnight_id: 10,
       house_fortnight_id: 20,
@@ -506,14 +506,14 @@ describe('registered transfer_to_house', () => {
         return Promise.resolve({ id: 10, user_id: 99, house_id: null });
       }
       if (where.id === 20) {
-        return Promise.resolve({ id: 20, user_id: null, house_id: 3 });
+        return Promise.resolve({ id: 20, user_id: null, house_id: 42 });
       }
       return Promise.resolve(null);
     });
 
     const result = await invokeTool('transfer_to_house', {
       ...userArgs,
-      house_id: 3,
+      house_id: 42,
       amount: 150,
       user_fortnight_id: 10,
       house_fortnight_id: 20,

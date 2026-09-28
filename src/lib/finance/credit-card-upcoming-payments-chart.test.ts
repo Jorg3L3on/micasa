@@ -136,7 +136,7 @@ describe('buildUpcomingCreditCardPaymentsChart', () => {
         },
       ],
       fromMonthKey: '2026-09',
-    }, '?ownerType=house&ownerId=3');
+    }, '?ownerType=house&ownerId=42');
 
     expect(rows.map((row) => `${row.monthKey}:${row.kind}`)).toEqual([
       '2026-11:msi',
@@ -149,7 +149,7 @@ describe('buildUpcomingCreditCardPaymentsChart', () => {
       title: 'Laptop',
       subtitle: 'MSI · cuota 2 de 3',
       fortnightHref:
-        '/fortnight/2026/09/FIRST?ownerType=house&ownerId=3',
+        '/fortnight/2026/09/FIRST?ownerType=house&ownerId=42',
     });
     expect(rows[1]).toMatchObject({
       kind: 'plan',

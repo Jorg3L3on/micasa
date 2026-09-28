@@ -218,8 +218,8 @@ describe('getAppHomeHref', () => {
 
   it('appends owner query params', () => {
     expect(
-      getAppHomeHref('ownerType=house&ownerId=3', mxNoon('2026-08-02')),
-    ).toBe('/monthly/2026/08?ownerType=house&ownerId=3');
+      getAppHomeHref('ownerType=house&ownerId=42', mxNoon('2026-08-02')),
+    ).toBe('/monthly/2026/08?ownerType=house&ownerId=42');
   });
 
   it('accepts URLSearchParams and strips a leading ?', () => {

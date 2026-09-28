@@ -7,9 +7,19 @@ mkdir -p output/playwright
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
 BASE="${PLAYWRIGHT_BASE_URL:-http://localhost:3000}"
-EMAIL="${PLAYWRIGHT_EMAIL:-jorgeleon983@gmail.com}"
-PASSWORD="${PLAYWRIGHT_PASSWORD:-temp1234}"
-OWNER="${PLAYWRIGHT_OWNER_QUERY:-ownerType=house&ownerId=3}"
+# E2E_EMAIL and E2E_PASSWORD: login for a local seeded account. Not stored in this script.
+if [[ -z "${E2E_EMAIL:-}" || -z "${E2E_PASSWORD:-}" ]]; then
+  echo "E2E_EMAIL and E2E_PASSWORD must be set to a local seeded account before running this script." >&2
+  exit 1
+fi
+EMAIL="$E2E_EMAIL"
+PASSWORD="$E2E_PASSWORD"
+# PLAYWRIGHT_OWNER_QUERY: owner scope for that account, e.g. ownerType=house&ownerId=1
+if [[ -z "${PLAYWRIGHT_OWNER_QUERY:-}" ]]; then
+  echo "PLAYWRIGHT_OWNER_QUERY must be set (for example ownerType=house&ownerId=<house id>)." >&2
+  exit 1
+fi
+OWNER="$PLAYWRIGHT_OWNER_QUERY"
 TEST_NAME="QA Icon $(date +%s)"
 
 if ! "$PWCLI" run-code "async (page) => {
