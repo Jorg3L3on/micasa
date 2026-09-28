@@ -84,7 +84,7 @@ export const LandingPage = () => {
           <div className="landing-hero-wash relative overflow-hidden px-5 py-8 sm:px-8 sm:py-10">
             <div className="relative z-10 grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
               <div className="motion-fade-in min-w-0">
-                <p className="overline text-muted-foreground">Planificación por quincenas</p>
+                <p className="eyebrow text-muted-foreground">Planificación por quincenas</p>
                 <h1 className="mt-3 text-balance text-display">
                   Tu quincena, clara de punta a punta.
                 </h1>
@@ -102,7 +102,7 @@ export const LandingPage = () => {
                 </div>
               </div>
               <div className="min-w-0">
-                <p className="overline mb-3 text-muted-foreground">Panel</p>
+                <p className="eyebrow mb-3 text-muted-foreground">Panel</p>
                 <ProductShot
                   id="panel"
                   priority
@@ -117,7 +117,7 @@ export const LandingPage = () => {
           {PRODUCTS.map((section) => (
             <section key={section.id} className="grid items-center gap-6 md:grid-cols-2 md:gap-10">
               <div className="min-w-0">
-                <p className="overline text-muted-foreground">{section.eyebrow}</p>
+                <p className="eyebrow text-muted-foreground">{section.eyebrow}</p>
                 <h2 className="mt-2 text-title">{section.title}</h2>
                 <p className="mt-3 max-w-prose text-body text-muted-foreground">{section.body}</p>
               </div>
@@ -128,7 +128,7 @@ export const LandingPage = () => {
 
         <section id="importar" className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
           <div className="max-w-2xl">
-            <p className="overline text-muted-foreground">Estados de cuenta</p>
+            <p className="eyebrow text-muted-foreground">Estados de cuenta</p>
             <h2 className="mt-2 text-title">Importa el estado de cuenta. No hay conexión al banco.</h2>
             <p className="mt-3 text-body text-muted-foreground">
               Subes el estado de cuenta y MiCasa propone los movimientos. No hay enlace directo
@@ -139,7 +139,7 @@ export const LandingPage = () => {
 
         <section id="quincena" className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6" aria-labelledby="quincena-titulo">
           <div className="max-w-2xl">
-            <p className="overline text-muted-foreground">Quincena</p>
+            <p className="eyebrow text-muted-foreground">Quincena</p>
             <h2 id="quincena-titulo" className="mt-2 text-title">
               De un cobro al siguiente
             </h2>
@@ -155,7 +155,7 @@ export const LandingPage = () => {
 
         <section className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6" aria-labelledby="conexiones-titulo">
           <div className="rounded-xl border border-border bg-card p-5 shadow-card sm:p-6">
-            <p className="overline text-muted-foreground">Opcional</p>
+            <p className="eyebrow text-muted-foreground">Opcional</p>
             <h2 id="conexiones-titulo" className="mt-2 text-title">
               Un conector, si lo quieres
             </h2>

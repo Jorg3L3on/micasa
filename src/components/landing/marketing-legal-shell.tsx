@@ -34,7 +34,7 @@ export const MarketingLegalShell = ({
       </header>
 
       <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 md:py-14">
-        <p className="overline text-muted-foreground">{updatedLabel}</p>
+        <p className="eyebrow text-muted-foreground">{updatedLabel}</p>
         <h1 className="mt-2 text-display">{title}</h1>
         <div className="mt-8 space-y-6 text-body text-muted-foreground [&_h2]:mt-10 [&_h2]:text-section [&_h2]:text-foreground [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
           {children}

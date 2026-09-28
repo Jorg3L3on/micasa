@@ -28,7 +28,7 @@ const SECOND_ROWS: FortnightRow[] = [
 const FortnightCard = ({ period, rows, due }: FortnightCardProps) => {
   return (
     <article className="rounded-xl border border-border bg-card p-4 shadow-card">
-      <p className="overline text-muted-foreground">{period}</p>
+      <p className="eyebrow text-muted-foreground">{period}</p>
       <ul className="mt-3 flex flex-col gap-2">
         {rows.map((row) => (
           <li key={row.label} className="flex items-center justify-between gap-3">

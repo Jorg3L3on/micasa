@@ -57,7 +57,7 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 The landing follows the signed-in theme. `ThemeProvider` (`attribute="class"`, `defaultTheme="dark"`, `enableSystem`) wraps the root layout, and the landing uses the same `--background`, `--card`, `--foreground`, type scale, `Button`, and `<Money>` as the app. Light is a working theme here, not a dark-only exception.
 
 - **Fonts:** Geist for body, Manrope for `h1`–`h3`. No Nunito and no landing-only font variables.
-- **Type scale:** `text-display`, `text-title`, `text-section`, `text-body`, `text-caption`, `overline`. Nothing smaller than caption.
+- **Type scale:** `text-display`, `text-title`, `text-section`, `text-body`, `text-caption`, `eyebrow`. Nothing smaller than caption.
 - **Canvas:** `bg-background`. `LandingAtmosphere` orbs use `color-mix` of `--primary`, `--chart-2`, and `--chart-4`. Loops run only under `prefers-reduced-motion: no-preference`. No pointer spotlight, parallax, or magnetic controls.
 - **Hero:** `.landing-hero-wash` is a marketing-only wash built from those tokens and `--shadow-panel`. One primary `Button` (`Crear cuenta`); the second action is `ghost`.
 - **Product:** real screenshots in `public/landing/` (`next/image`, webp), desktop and mobile, light and dark. There is no pricing section — the product has no paid plans; copy may say it is free to use. Statement import is described as a file the user brings, not a bank connection.
