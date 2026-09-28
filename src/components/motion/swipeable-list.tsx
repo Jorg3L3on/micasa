@@ -121,8 +121,8 @@ const RELEASE_VELOCITY_LIMIT = 1500;
 const ACTION_TONE_CLASS: Record<SwipeActionTone, string> = {
   neutral: 'text-muted-foreground group-hover:text-foreground',
   primary: 'text-foreground',
-  success: 'text-emerald-600 dark:text-emerald-400',
-  warning: 'text-amber-600 dark:text-amber-400',
+  success: 'text-status-income',
+  warning: 'text-status-pending',
   danger: 'text-destructive',
 };
 

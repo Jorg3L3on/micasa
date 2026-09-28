@@ -8,7 +8,7 @@ import {
 } from '@/lib/finance/template.service';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { generatePeriodsForMonth } from '@/lib/finance/budget-period.service';
-import { formatMonthTitle } from '@/lib/calendar-dates';
+import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
 import { planningMonthCreateError } from '@/lib/finance/planning-month';
 
 const createMonthSchema = z.object({
@@ -29,8 +29,6 @@ export async function POST(request: NextRequest) {
     if (monthError) {
       return NextResponse.json({ error: monthError }, { status: 400 });
     }
-
-    const monthName = formatMonthTitle(month);
 
     const existingFirst = await prisma.fortnight.findFirst({
       where: {
@@ -69,7 +67,7 @@ export async function POST(request: NextRequest) {
         year,
         month,
         period: 'FIRST',
-        label: `Primera quincena - ${monthName} ${year}`,
+        label: formatFortnightPeriodTitle('FIRST', month, year),
       });
       created.push({
         id: first.id,
@@ -91,7 +89,7 @@ export async function POST(request: NextRequest) {
         year,
         month,
         period: 'SECOND',
-        label: `Segunda quincena - ${monthName} ${year}`,
+        label: formatFortnightPeriodTitle('SECOND', month, year),
       });
       created.push({
         id: second.id,

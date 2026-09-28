@@ -20,6 +20,5 @@ export const HorizonToggle = ({ value, onChange }: HorizonToggleProps) => (
     onValueChange={(next) => onChange(next as PlanHorizon)}
     ariaLabel={PLAN_COPY.horizonLabel}
     options={OPTIONS}
-    listClassName="rounded-full border border-border/60 bg-muted/40 p-0.5"
   />
 );

@@ -382,9 +382,8 @@ const WalletBalanceStrip = ({
           <div
             ref={listRef}
             className={cn(
-              '-mx-3 -my-4 flex items-stretch gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide px-3 py-4 [-webkit-overflow-scrolling:touch]',
-              '[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]',
-              draggingId != null && 'touch-none',
+              '-mx-3 -my-4 flex items-stretch gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide px-3 py-4 snap-x snap-mandatory [-webkit-overflow-scrolling:touch]',
+              draggingId != null && 'touch-none snap-none',
             )}
           >
               {orderedWallets.map((wallet) => {
@@ -511,7 +510,7 @@ const WalletBalanceStrip = ({
                               'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
                               isDuePast
                                 ? 'bg-destructive animate-pulse'
-                                : 'bg-amber-500',
+                                : 'bg-status-pending',
                             )}
                             aria-hidden
                           />
@@ -522,11 +521,11 @@ const WalletBalanceStrip = ({
                         className={cn(
                           'relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 shadow-sm',
                           accent === 'violet' &&
-                            'bg-gradient-to-br from-violet-500/25 to-violet-600/10 ring-violet-500/30 dark:from-violet-400/25 dark:to-violet-500/10',
+                            'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                           accent === 'blue' &&
-                            'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
+                            'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                           accent === 'emerald' &&
-                            'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10',
+                            'bg-gradient-to-br from-status-income/25 to-status-income/10 ring-status-income/30 dark:from-status-income/25 dark:to-status-income/10',
                           accent === 'neutral' &&
                             'bg-muted/60 ring-border/60',
                         )}
@@ -535,11 +534,11 @@ const WalletBalanceStrip = ({
                           className={cn(
                             'h-3 w-3',
                             accent === 'violet' &&
-                              'text-violet-600 dark:text-violet-300',
+                              'text-status-info',
                             accent === 'blue' &&
-                              'text-blue-600 dark:text-blue-300',
+                              'text-status-info',
                             accent === 'emerald' &&
-                              'text-emerald-600 dark:text-emerald-300',
+                              'text-status-income',
                             accent === 'neutral' && 'text-muted-foreground',
                           )}
                           aria-hidden data-icon="inline-start" />
@@ -549,7 +548,7 @@ const WalletBalanceStrip = ({
                               'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
                               isDuePast
                                 ? 'bg-destructive animate-pulse'
-                                : 'bg-amber-500',
+                                : 'bg-status-pending',
                             )}
                             aria-hidden
                           />
@@ -574,9 +573,7 @@ const WalletBalanceStrip = ({
                           className={cn(
                             'text-body font-black sm:text-sm',
                             effectiveAmount < 0
-                              ? onDarkSurface
-                                ? 'text-red-100'
-                                : 'text-destructive'
+                              ? 'text-status-expense'
                               : onDarkSurface
                                 ? 'text-white'
                                 : 'text-foreground',
@@ -601,7 +598,7 @@ const WalletBalanceStrip = ({
                               'h-full rounded-full transition-all',
                               onDarkSurface
                                 ? 'bg-white/85'
-                                : 'bg-gradient-to-r from-emerald-500 to-emerald-400 dark:from-emerald-400 dark:to-emerald-300',
+                                : 'bg-status-info',
                             )}
                             style={{
                               width: `${isCreditType ? percentUsed : 0}%`,
@@ -614,21 +611,15 @@ const WalletBalanceStrip = ({
                             className={cn(
                               'whitespace-nowrap rounded-full px-1.5 py-0.5 text-caption font-semibold leading-none tabular-nums',
                               walletAlreadyPaid
-                                ? onDarkSurface
-                                  ? 'bg-emerald-500/25 text-emerald-50'
-                                  : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                ? 'bg-status-success-soft text-status-success'
                                 : !isCurrentMonth
                                   ? onDarkSurface
                                     ? 'text-white/75'
                                     : 'text-muted-foreground/70'
                                   : isDuePast
-                                    ? onDarkSurface
-                                      ? 'text-red-100'
-                                      : 'text-destructive'
+                                    ? 'text-status-overdue'
                                     : isDueNear
-                                      ? onDarkSurface
-                                        ? 'text-amber-100'
-                                        : 'text-amber-600 dark:text-amber-400'
+                                      ? 'text-status-pending'
                                       : onDarkSurface
                                         ? 'text-white/75'
                                         : 'text-muted-foreground/70',
@@ -643,7 +634,9 @@ const WalletBalanceStrip = ({
                 );
 
                 const cardClasses = cn(
-                  'group relative isolate flex h-full min-w-[136px] shrink-0 flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 pr-6 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2 sm:pr-7',
+                  'group relative isolate flex h-full min-w-[136px] shrink-0 snap-start flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 pr-6 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2 sm:pr-7',
+                  orderedWallets.length > 1 &&
+                    'max-md:w-[min(17rem,calc(100%-2.75rem))]',
                   'backdrop-blur-sm ring-1 ring-inset transition-all duration-300 [-webkit-touch-callout:none]',
                   onDarkSurface ? 'ring-white/5' : 'ring-black/5',
                   'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:to-transparent',
@@ -652,11 +645,11 @@ const WalletBalanceStrip = ({
                     : 'before:via-black/10',
                   'after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(120deg,transparent_25%,rgba(255,255,255,0.12)_48%,transparent_72%)] after:opacity-45 after:transition-opacity after:duration-300',
                   accent === 'violet' &&
-                    'border-violet-500/30 bg-gradient-to-br from-violet-500/12 via-background to-violet-500/4 dark:from-violet-500/20 dark:via-card dark:to-violet-500/5',
+                    'border-status-info/30 bg-gradient-to-br from-status-info/12 via-background to-status-info/4 dark:from-status-info/20 dark:via-card dark:to-status-info/5',
                   accent === 'blue' &&
-                    'border-blue-500/30 bg-gradient-to-br from-blue-500/12 via-background to-blue-500/4 dark:from-blue-500/20 dark:via-card dark:to-blue-500/5',
+                    'border-status-info/30 bg-gradient-to-br from-status-info/12 via-background to-status-info/4 dark:from-status-info/20 dark:via-card dark:to-status-info/5',
                   accent === 'emerald' &&
-                    'border-emerald-500/30 bg-gradient-to-br from-emerald-500/12 via-background to-emerald-500/4 dark:from-emerald-500/20 dark:via-card dark:to-emerald-500/5',
+                    'border-status-income/30 bg-gradient-to-br from-status-income/12 via-background to-status-income/4 dark:from-status-income/20 dark:via-card dark:to-status-income/5',
                   accent === 'neutral' &&
                     'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
                   (isCreditType || isFunding) &&
@@ -676,13 +669,13 @@ const WalletBalanceStrip = ({
                           : 'border-border/70 shadow-face hover:border-border hover:shadow-face hover:after:opacity-70'),
                       !useProviderGradient &&
                         accent === 'violet' &&
-                        'hover:border-violet-500/60 hover:shadow-violet-500/15',
+                        'hover:border-status-info/60 hover:shadow-status-info/15',
                       !useProviderGradient &&
                         accent === 'blue' &&
-                        'hover:border-blue-500/60 hover:shadow-blue-500/15',
+                        'hover:border-status-info/60 hover:shadow-status-info/15',
                       !useProviderGradient &&
                         accent === 'emerald' &&
-                        'hover:border-emerald-500/60 hover:shadow-emerald-500/15',
+                        'hover:border-status-income/60 hover:shadow-status-income/15',
                       !useProviderGradient &&
                         accent === 'neutral' &&
                         'hover:border-border',
@@ -752,7 +745,7 @@ const WalletBalanceStrip = ({
                           '-z-10 fill-transparent [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]',
                           onDarkSurface
                             ? 'stroke-white/[0.06]'
-                            : 'stroke-slate-900/[0.06]',
+                            : 'stroke-foreground/[0.06]',
                         )}
                         style={{ color: auraColors?.glow }}
                       />
@@ -795,6 +788,18 @@ const WalletBalanceStrip = ({
                 );
               })}
           </div>
+          {orderedWallets.length > 1 ? (
+            <>
+              <div
+                className="pointer-events-none absolute inset-y-3 left-0 z-10 w-6 bg-gradient-to-r from-background to-transparent"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute inset-y-3 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent"
+                aria-hidden
+              />
+            </>
+          ) : null}
       </div>
 
       {selectedWallet && context ? (

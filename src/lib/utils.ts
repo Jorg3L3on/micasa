@@ -1,6 +1,23 @@
 import { formatDisplayDate, formatMonthPhrase } from '@/lib/calendar-dates';
 import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { extendTailwindMerge } from 'tailwind-merge';
+
+/**
+ * Custom type-scale sizes from `@theme` (`text-display`, `text-title`, …).
+ * Without this group, tailwind-merge treats them as text colors and drops
+ * them next to `text-foreground`.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [
+        {
+          text: ['display', 'title', 'section', 'body', 'caption', 'eyebrow'],
+        },
+      ],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

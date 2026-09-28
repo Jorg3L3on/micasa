@@ -379,7 +379,7 @@ export const LiquidityFutureTimeline = ({
               <YAxis
                 yAxisId="payments"
                 tickFormatter={formatAxisMoney}
-                tick={{ ...CHART_AXIS_TICK, fill: CHART_COLOR.slices[3] }}
+                tick={CHART_AXIS_TICK}
                 tickLine={false}
                 axisLine={false}
                 width={42}
@@ -388,7 +388,7 @@ export const LiquidityFutureTimeline = ({
                 yAxisId="outstanding"
                 orientation="right"
                 tickFormatter={formatAxisMoney}
-                tick={{ ...CHART_AXIS_TICK, fill: CHART_COLOR.pending }}
+                tick={CHART_AXIS_TICK}
                 tickLine={false}
                 axisLine={false}
                 width={42}

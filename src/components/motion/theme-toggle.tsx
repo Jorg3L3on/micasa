@@ -104,7 +104,15 @@ const ensureThemeTransitionStyles = () => {
 };
 
 type ViewTransitionDocument = Document & {
-  startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+  startViewTransition?: (callback: () => void) => {
+    finished: Promise<void>;
+    ready?: Promise<void>;
+    updateCallbackDone?: Promise<void>;
+  };
+};
+
+const ignoreAbortedTransition = (promise?: Promise<void>) => {
+  promise?.catch(() => {});
 };
 
 export const startThemeViewTransition = (
@@ -148,9 +156,13 @@ export const startThemeViewTransition = (
 
   try {
     const transition = viewDocument.startViewTransition(run);
-    transition.finished.finally(() => {
-      delete root.dataset.beuiVt;
-    });
+    ignoreAbortedTransition(transition.ready);
+    ignoreAbortedTransition(transition.updateCallbackDone);
+    transition.finished
+      .finally(() => {
+        delete root.dataset.beuiVt;
+      })
+      .catch(() => {});
   } catch {
     run();
     delete root.dataset.beuiVt;

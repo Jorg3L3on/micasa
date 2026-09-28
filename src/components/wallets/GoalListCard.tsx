@@ -95,10 +95,10 @@ function PrimaryGoalAction({
       className={cn(
         'flex shrink-0 items-center gap-2.5 rounded-xl px-1 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isFinishedVisual
-          ? 'hover:bg-emerald-500/5'
+          ? 'hover:bg-status-income/5'
           : visual === 'muted'
             ? 'hover:bg-[oklch(37.3%_0.034_259.733_/_.06)]'
-            : 'hover:bg-blue-600/5 dark:hover:bg-blue-500/10',
+            : 'hover:bg-status-info/5 dark:hover:bg-status-info/10',
       )}
     >
       <span

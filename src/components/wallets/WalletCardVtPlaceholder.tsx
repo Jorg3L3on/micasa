@@ -94,7 +94,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
                 >
                   {snapshot.name}
                 </p>
-                <p className="overline opacity-60">
+                <p className="eyebrow opacity-60">
                   {snapshot.cycleLabel ?? snapshot.typeLabel}
                 </p>
               </div>
@@ -106,7 +106,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
 
           <div className="space-y-3">
             <div>
-              <p className="overline opacity-70">
+              <p className="eyebrow opacity-70">
                 Deuda total
               </p>
               <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
@@ -116,7 +116,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
 
             <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
               <div>
-                <p className="overline opacity-70">
+                <p className="eyebrow opacity-70">
                   Disponible
                 </p>
                 <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -127,7 +127,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
               </div>
               {snapshot.creditLimit != null && snapshot.creditLimit > 0 ? (
                 <div className="text-right">
-                  <p className="overline opacity-70">
+                  <p className="eyebrow opacity-70">
                     Límite
                   </p>
                   <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -192,7 +192,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             >
               {snapshot.name}
             </p>
-            <p className="overline opacity-60">
+            <p className="eyebrow opacity-60">
               {snapshot.typeLabel}
             </p>
           </div>
@@ -200,7 +200,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
 
         <div className="space-y-3">
           <div>
-            <p className="overline opacity-70">
+            <p className="eyebrow opacity-70">
               Saldo disponible
             </p>
             <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
@@ -213,13 +213,13 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             aria-hidden
           >
             <div>
-              <p className="overline">Disponible</p>
+              <p className="eyebrow">Disponible</p>
               <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                 $0.00
               </p>
             </div>
             <div className="text-right">
-              <p className="overline">Límite</p>
+              <p className="eyebrow">Límite</p>
               <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                 $0.00
               </p>

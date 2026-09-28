@@ -16,6 +16,10 @@ import type {
 } from '@/types/catalog';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import {
+  NETWORK_ERROR_MESSAGE,
+  isBrowserNetworkError,
+} from '@/lib/user-facing-error';
+import {
   buildOwnerQuery,
   getClientApiBaseUrl,
   clientFetchFromApi,
@@ -150,14 +154,24 @@ export async function downloadCreditCardStatementImportFile(
   }
 
   const baseUrl = getClientApiBaseUrl();
-  const res = await fetch(`${baseUrl}${url}`, { credentials: 'include' });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}${url}`, { credentials: 'include' });
+  } catch (error) {
+    if (isBrowserNetworkError(error)) {
+      throw new Error(NETWORK_ERROR_MESSAGE);
+    }
+    throw error;
+  }
 
   if (!res.ok) {
     let message = 'No se pudo descargar el PDF';
     try {
       const body = (await res.json()) as { error?: string };
       if (body.error) {
-        message = body.error;
+        message = isBrowserNetworkError(new Error(body.error))
+          ? NETWORK_ERROR_MESSAGE
+          : body.error;
       }
     } catch {
       // ignore

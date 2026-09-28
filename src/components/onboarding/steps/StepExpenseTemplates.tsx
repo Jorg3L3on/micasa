@@ -509,7 +509,7 @@ export default function StepExpenseTemplates() {
         ))}
       </div>
       {!canContinue ? (
-        <p className="text-sm text-amber-700 dark:text-amber-400">
+        <p className="text-sm text-status-pending">
           Para continuar, agrega al menos dos gastos con nombre, monto mayor a
           0, categoría y billetera.
         </p>

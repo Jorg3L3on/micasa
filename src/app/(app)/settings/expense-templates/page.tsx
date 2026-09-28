@@ -367,6 +367,7 @@ export default function ExpenseTemplatesPage() {
                   name={template.name}
                   subtitle={`${formatCategoryLabel(template.category, template.categoryIcon)} · ${template.paymentMethod ?? 'Sin método'}`}
                   amount={template.totalEstimatedAmount ?? 0}
+                  tone="negative"
                   active={template.active}
                   onEdit={() => openEditDialog(template)}
                   onRequestDelete={() => openDeleteDialog(template)}

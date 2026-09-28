@@ -31,9 +31,9 @@ export const QuickCaptureChooser = ({
             onClick={onChooseExpense}
             aria-label="Agregar gasto"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 ring-1 ring-status-info/25">
               <ArrowDownCircle
-                className="h-4 w-4 text-violet-600 dark:text-violet-400"
+                className="h-4 w-4 text-status-info"
                 aria-hidden
               />
             </span>
@@ -50,9 +50,9 @@ export const QuickCaptureChooser = ({
             onClick={onChooseIncome}
             aria-label="Agregar ingreso"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/25">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 ring-1 ring-status-info/25">
               <ArrowUpCircle
-                className="h-4 w-4 text-blue-600 dark:text-blue-400"
+                className="h-4 w-4 text-status-info"
                 aria-hidden
               />
             </span>

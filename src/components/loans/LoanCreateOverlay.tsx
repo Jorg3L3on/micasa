@@ -1,6 +1,5 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   AmountRow,
@@ -434,13 +433,6 @@ export const LoanCreateOverlay = ({
             disabled={submitting}
             aria-busy={submitting}
           >
-            {submitting ? (
-              <Loader2
-                className="h-4 w-4 animate-spin"
-                aria-hidden
-                data-icon="inline-start"
-              />
-            ) : null}
             {submitting ? 'Creando…' : 'Agregar préstamo'}
           </Button>
         </form>

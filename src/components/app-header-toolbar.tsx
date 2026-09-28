@@ -240,9 +240,13 @@ export default function AppHeaderToolbar() {
     }, 0);
   };
 
+  const isCreateAction = Boolean(primaryAction?.label.startsWith('Agregar'));
   const overflowItems = overflow?.items ?? [];
-  const hasOverflow = overflowItems.length > 0;
-  const showActionsGroup = Boolean(primaryAction || filters || hasOverflow);
+  const hasPersistentOverflow = overflowItems.length > 0;
+  const hasOverflow = hasPersistentOverflow || isCreateAction;
+  const showActionsGroup = Boolean(
+    (primaryAction && !isCreateAction) || filters || hasOverflow,
+  );
 
   const overflowMenu = hasOverflow ? (
     <DropdownMenu>
@@ -253,7 +257,10 @@ export default function AppHeaderToolbar() {
               type="button"
               variant="ghost"
               size="icon"
-              className={TOOLBAR_GLASS_GROUP_ITEM}
+              className={cn(
+                TOOLBAR_GLASS_GROUP_ITEM,
+                !hasPersistentOverflow && 'md:hidden',
+              )}
               aria-label="Más acciones"
             >
               <MoreHorizontal data-icon="inline-start" />
@@ -263,6 +270,15 @@ export default function AppHeaderToolbar() {
         <TooltipContent side="bottom">Más</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-52">
+        {isCreateAction && primaryAction ? (
+          <DropdownMenuItem
+            className="cursor-pointer md:hidden"
+            onClick={primaryAction.onClick}
+          >
+            {primaryAction.icon}
+            {primaryAction.label}
+          </DropdownMenuItem>
+        ) : null}
         {overflowItems.map((item) => (
           <DropdownMenuItem
             key={item.key}
@@ -279,16 +295,22 @@ export default function AppHeaderToolbar() {
     </DropdownMenu>
   ) : null;
 
+  const groupHasDesktopContent = Boolean(filters || hasPersistentOverflow);
+
   const actionsGroup = showActionsGroup ? (
-    <div className={TOOLBAR_GLASS_GROUP} role="group" aria-label="Acciones">
-      {primaryAction ? (
+    <div
+      className={cn(TOOLBAR_GLASS_GROUP, !groupHasDesktopContent && 'md:hidden')}
+      role="group"
+      aria-label="Acciones"
+    >
+      {primaryAction && !isCreateAction ? (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className={TOOLBAR_GLASS_GROUP_ITEM}
+              className={cn(TOOLBAR_GLASS_GROUP_ITEM, 'md:hidden')}
               aria-label={primaryAction.label}
               onClick={primaryAction.onClick}
             >
@@ -298,8 +320,8 @@ export default function AppHeaderToolbar() {
           <TooltipContent side="bottom">{primaryAction.label}</TooltipContent>
         </Tooltip>
       ) : null}
-      {primaryAction && (filters || hasOverflow) ? (
-        <span className={TOOLBAR_GLASS_GROUP_DIVIDER} aria-hidden />
+      {primaryAction && !isCreateAction && (filters || hasOverflow) ? (
+        <span className={cn(TOOLBAR_GLASS_GROUP_DIVIDER, 'md:hidden')} aria-hidden />
       ) : null}
       {filters ? (
         <ToolbarFiltersControl
@@ -309,7 +331,13 @@ export default function AppHeaderToolbar() {
         />
       ) : null}
       {filters && hasOverflow ? (
-        <span className={TOOLBAR_GLASS_GROUP_DIVIDER} aria-hidden />
+        <span
+          className={cn(
+            TOOLBAR_GLASS_GROUP_DIVIDER,
+            !hasPersistentOverflow && 'md:hidden',
+          )}
+          aria-hidden
+        />
       ) : null}
       {overflowMenu}
     </div>
@@ -481,6 +509,17 @@ export default function AppHeaderToolbar() {
               ref={rightClusterRef}
               className="z-10 ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1.5 sm:gap-2"
             >
+              {primaryAction ? (
+                <Button
+                  type="button"
+                  className="hidden h-9 rounded-xl px-3 md:inline-flex"
+                  onClick={primaryAction.onClick}
+                  aria-label={primaryAction.label}
+                >
+                  {primaryAction.icon ?? <Plus className="size-4" data-icon="inline-start" />}
+                  {primaryAction.label}
+                </Button>
+              ) : null}
               {actionsGroup}
               {idleSearchPill}
             </div>

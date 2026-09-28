@@ -176,7 +176,7 @@ export default function NewExpenseTemplatePage() {
       <ExpenseTemplateForm
         form={form}
         title="Agregar plantilla de gastos"
-        description="Configura una plantilla reutilizable para registrar gastos mas rapido."
+        description="Configura una plantilla reutilizable para registrar gastos más rápido."
         submitLabel="Agregar plantilla"
         isSubmitting={isSubmitting}
         categories={categories}

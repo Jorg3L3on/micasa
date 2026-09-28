@@ -121,9 +121,9 @@ export const MonthlyMonthPicker = ({
               />
             </span>
             {showCurrentBadge ? (
-              <span className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 overline text-foreground">
+              <span className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 eyebrow text-foreground">
                 <span
-                  className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                  className="size-1.5 rounded-full bg-status-income"
                   aria-hidden
                 />
                 Actual
@@ -185,7 +185,7 @@ export const MonthlyMonthPicker = ({
                     'bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground',
                   !isViewed &&
                     isCalendarCurrent &&
-                    'border border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
+                    'border border-status-income/40 text-status-income',
                 )}
                 onSelect={(event) => {
                   event.preventDefault();
@@ -199,7 +199,7 @@ export const MonthlyMonthPicker = ({
                       'absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full',
                       isViewed
                         ? 'bg-primary-foreground/80'
-                        : 'bg-emerald-500 dark:bg-emerald-400',
+                        : 'bg-status-income',
                     )}
                     aria-hidden
                   />
@@ -216,7 +216,7 @@ export const MonthlyMonthPicker = ({
         {createdKeys != null ? (
           <p className="mt-2 flex items-center justify-center gap-1.5 text-caption text-muted-foreground">
             <span
-              className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400"
+              className="h-1 w-1 rounded-full bg-status-income"
               aria-hidden
             />
             Con quincenas

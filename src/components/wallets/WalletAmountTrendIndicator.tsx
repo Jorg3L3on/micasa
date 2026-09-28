@@ -38,18 +38,18 @@ export const WalletAmountTrendIndicator = ({
   const Icon = isPositive ? TrendingUp : TrendingDown;
   const iconColorClass = onGradient
     ? isPositive
-      ? 'text-emerald-200/90'
-      : 'text-rose-200/90'
+      ? 'text-status-income/90'
+      : 'text-status-expense/90'
     : isPositive
-      ? 'text-green-600/70 dark:text-green-400/70'
-      : 'text-red-600/70 dark:text-red-400/70';
+      ? 'text-status-success/70'
+      : 'text-status-expense/70';
   const amountColorClass = onGradient
     ? isPositive
-      ? 'text-emerald-200'
-      : 'text-rose-200'
+      ? 'text-status-income'
+      : 'text-status-expense'
     : isPositive
-      ? 'text-green-700 dark:text-green-400'
-      : 'text-red-600 dark:text-red-400';
+      ? 'text-status-success'
+      : 'text-status-expense';
   const labelColorClass = onGradient
     ? 'text-white/70'
     : 'text-muted-foreground';

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { findFortnightByCalendarPeriod } from '@/features/monthly/server/monthly.queries';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { listFortnightsForCatalog } from '@/lib/finance/fortnight.service';
+import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
 
 /**
  * GET /fortnights?ownerType=user|house&ownerId=number
@@ -40,7 +41,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(
         {
           id: fortnight.id,
-          label: fortnight.label,
+          label: formatFortnightPeriodTitle(
+            fortnight.period,
+            parseInt(month, 10),
+            parseInt(year, 10),
+          ),
           year: parseInt(year, 10),
           month: parseInt(month, 10),
           period: fortnight.period,

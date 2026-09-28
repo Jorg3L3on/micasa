@@ -15,7 +15,6 @@ import { MonthlyMonthPicker } from '@/components/monthly/MonthlyMonthPicker';
 import {
   GLASS_TAB_ACTIVE_LABEL_CLASS,
   AURA_TAB_INDICATOR_CLASS,
-  GLASS_TAB_TRACK_CLASS,
   MONTHLY_ACCENT_TEXT_CLASS,
   MONTHLY_ICON_PILL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
@@ -95,7 +94,7 @@ export const statusGlyphClass = (tone: ProgressTone) => {
   if (tone === 'complete') {
     return cn(
       'flex size-8 shrink-0 items-center justify-center rounded-xl',
-      'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300',
+      'bg-status-income/15 text-status-income',
     );
   }
   return cn(
@@ -206,29 +205,25 @@ const FortnightProgressStatus = ({
 
   return (
     <div className={chromeTileClass} aria-live="polite">
-      <span
-        className={cn(
-          'flex @min-[42rem]:hidden @min-[62rem]:flex',
-          statusGlyphClass(tone),
-        )}
-        aria-hidden
-      >
-        <StatusIcon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-baseline justify-between gap-2">
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
           <p
-            className="min-w-0 truncate text-sm font-semibold leading-tight tracking-tight"
+            className="flex min-w-0 items-center gap-2 text-sm font-semibold leading-tight tracking-tight"
             aria-label={titleSr}
           >
-            {position.kind === 'current' && position.remainingDays > 1 ? (
-              <span className="tabular-nums">{title}</span>
-            ) : (
-              title
-            )}
+            <span className={statusGlyphClass(tone)} aria-hidden>
+              <StatusIcon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 truncate">
+              {position.kind === 'current' && position.remainingDays > 1 ? (
+                <span className="tabular-nums">{title}</span>
+              ) : (
+                title
+              )}
+            </span>
           </p>
           {tone === 'upcoming' ? (
-            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 overline text-muted-foreground">
+            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 eyebrow text-muted-foreground">
               Próxima
             </span>
           ) : (
@@ -242,11 +237,13 @@ const FortnightProgressStatus = ({
             </span>
           )}
         </div>
-        <FortnightProgressTrack
-          percent={percent}
-          tone={tone}
-          label={progressLabel}
-        />
+        <div className="py-1">
+          <FortnightProgressTrack
+            percent={percent}
+            tone={tone}
+            label={progressLabel}
+          />
+        </div>
         <div className="flex items-center justify-between gap-2 text-caption leading-none text-muted-foreground sm:text-caption">
           <span className={cn('min-w-0 truncate', accentEmphasisClass)}>
             {leftDate}
@@ -305,13 +302,8 @@ export const MonthlyChromeHeader = ({
       stretch
       className="w-full @min-[42rem]:w-auto"
       wrapperClassName="w-full @min-[42rem]:w-auto"
-      listClassName={cn(
-        'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:w-max',
-        GLASS_TAB_TRACK_CLASS,
-      )}
       indicatorClassName={AURA_TAB_INDICATOR_CLASS}
       activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-      triggerClassName="px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
       options={[
         {
           value: 'FIRST',

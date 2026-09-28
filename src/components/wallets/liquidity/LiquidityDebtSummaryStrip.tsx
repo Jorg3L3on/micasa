@@ -25,7 +25,7 @@ export const LiquidityDebtSummaryStrip = ({
       <div
         className={cn(
           METRIC_STRIP_CLASS,
-          'border-l-[3px] border-l-amber-500/50',
+          'border-l-[3px] border-l-status-expense',
           className,
         )}
         role="alert"
@@ -56,16 +56,16 @@ export const LiquidityDebtSummaryStrip = ({
     <div
       className={cn(
         METRIC_STRIP_CLASS,
-        'border-l-[3px] border-l-amber-500/50',
+        'border-l-[3px] border-l-status-expense',
         className,
       )}
       role="region"
       aria-label="Resumen de deudas"
     >
-      <p className="overline text-muted-foreground">
+      <p className="eyebrow text-muted-foreground">
         Debes
       </p>
-      <p className="mt-1 font-sans text-xl font-bold tabular-nums text-amber-700 dark:text-amber-300">
+      <p className="mt-1 font-sans text-xl font-bold tabular-nums text-status-expense">
         {formatCurrency(breakdown.debtTotal)}
       </p>
       {composition.length > 0 ? (

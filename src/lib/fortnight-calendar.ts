@@ -10,6 +10,8 @@
 
 import {
   addCalendarDays,
+  currentCalendarYear,
+  formatMonthHeading,
   formatMonthPhrase,
   formatMonthShort,
   todayCalendarDate,
@@ -351,6 +353,35 @@ export function formatDayMonthLabel(
 export function formatDayMonthLabelFromYmd(ymd: string): string {
   const [year, month, day] = ymd.split('-').map(Number);
   return formatDayMonthLabel(year, month, day);
+}
+
+/**
+ * Named quincena for titles: `Primera quincena · Octubre`.
+ * The year is included only when it is not the current Mexico City year.
+ */
+export function formatFortnightPeriodTitle(
+  period: CalendarFortnightPeriod,
+  month: number,
+  year: number,
+  now: Date = new Date(),
+): string {
+  const name = period === 'FIRST' ? 'Primera quincena' : 'Segunda quincena';
+  return `${name} · ${formatMonthHeading(month, year, now)}`;
+}
+
+/**
+ * Toolbar range for a quincena. Appends ` · {year}` only when that year is
+ * not the current Mexico City year.
+ */
+export function formatFortnightToolbarTitle(
+  year: number,
+  month: number,
+  period: CalendarFortnightPeriod,
+  now: Date = new Date(),
+): string {
+  const range = formatFortnightDateRangeLabel(year, month, period);
+  if (year === currentCalendarYear(now)) return range;
+  return `${range} · ${year}`;
 }
 
 /** Spanish range for a named quincena, e.g. `31 de mayo al 14 de junio`. */

@@ -626,7 +626,7 @@ const CreditCardQuickPurchaseDialog = ({
                     onPickPeriod={handlePickPeriod}
                   />
                   {fortnightMismatchesDate ? (
-                    <p className="text-caption leading-snug text-amber-700 dark:text-amber-400">
+                    <p className="text-caption leading-snug text-status-pending">
                       No coincide con la fecha
                       {dateMatchedFortnight
                         ? ` (${dateMatchedFortnight.name})`
@@ -692,7 +692,7 @@ const CreditCardQuickPurchaseDialog = ({
           </div>
 
           <div>
-            <p className="mb-1.5 overline text-muted-foreground">
+            <p className="mb-1.5 eyebrow text-muted-foreground">
               Cuotas (opcional)
             </p>
             <div className={OVERLAY_GROUPED_CARD_CLASS}>

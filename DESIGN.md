@@ -98,7 +98,7 @@ Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914
 
 ## Logged-in UI contract
 
-Panel financiero is the reference for **tokens, glass, overlay chrome, and operate motion** — not a layout to paste onto Configuración or onto wallet and goal card faces. These decisions are locked; do not invent a second pattern.
+Panel financiero is the reference for **tokens, glass, overlay chrome, and operate motion** — not a layout to paste onto Configuración or onto wallet and goal card faces. These decisions are locked; do not invent a second pattern. F1 and F2 live in **Glossary**, **Fintech data UI**, **Filters**, **Surfaces**, **Empty, error, and loading**, and **Chrome**. F3 screen choices (Operaciones as a mobile list, Billeteras rows vs desktop faces, Alertas, onboarding, one mobile plus) are in **Surfaces** and **Chrome**.
 
 ### Page archetypes
 
@@ -106,8 +106,8 @@ Every logged-in route is one of four archetypes:
 
 | Archetype | Purpose | Routes | Surface |
 | --- | --- | --- | --- |
-| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
-| **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell |
+| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Liquidez / Plan), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
+| **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell. Operaciones below `md` is a row list, not a table |
 | **Detail** | One object, back to its collection | Billetera, estado de cuenta (tarjeta), meta | Same as collection; card faces stay solid |
 | **Settings** | Quiet catalogs and account | Configuración (cuenta, categorías, plantillas, usuarios, conexiones) | Calm `bg-card` cards — **never** glass |
 
@@ -116,11 +116,12 @@ The quincena route stays for deep links and adopts planner chrome. It is **not**
 ### Chrome (toolbar-first)
 
 - The **app header** owns the route title, search, filters, and the **one primary action** — register them with `useRegisterToolbarActions` (`src/context/toolbar-actions-context.tsx`). Rare actions go in the header overflow (`overflow` / `useRegisterToolbarOverflow`).
+- **Create actions.** From `md` up, the primary action is a labeled button (`Agregar …`, or the action’s own verb such as `Ahorrar`). Below `md`, the dock’s central **+** is the only floating action. Page create actions whose label starts with **Agregar** are not a second **+**; they live in the header **Más** menu. Other primaries stay an icon button on small screens.
 - Do **not** repeat the header title with an in-page heading. Do **not** add an in-page sticky action bar.
 - Page rhythm under the header is **`space-y-5`**.
 - The month name in the planner glass band stays — that band is the period control, not a second page title.
 - Glass uses the single planner shell. Wallet and goal card faces stay solid. Do not glass-wash Configuración.
-- Do not revive the unused `PageHeader` component. Do not put a grid or a tinted wash on glass panels.
+- Do not put a grid or a tinted wash on glass panels.
 
 ### Mobile map
 
@@ -140,7 +141,7 @@ Apply **only**:
 | --- | --- |
 | Currency ticker | Hero money amounts (planner summary, liquidez hero, préstamos / metas / presupuestos totals). **Not** table cells or list rows |
 | Motion tabs | In-page choice of two or three views (quincena toggle, Presupuestos vs Plantillas, budget status views) |
-| Pull to refresh (mobile only) | Planner, Billeteras, Metas, Préstamos, Operaciones, Análisis. **Not** Configuración (incl. Presupuestos) |
+| Pull to refresh (mobile only) | Planner, Billeteras, Metas, Préstamos, Operaciones, Análisis, and Presupuestos. The rest of Configuración (cuenta, categorías, plantillas, usuarios, conexiones) does not pull to refresh |
 | Shared-element morph | Billeteras and tarjetas only. Do not add one for metas or préstamos |
 | Swipe to delete | Below `md` only, then `ConfirmDeleteDialog` (see **Viewport delete**). Billeteras, metas, préstamos, plantillas, categorías, expense rows |
 
@@ -334,7 +335,7 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
   | Section | `text-section` | 14px / 600 | `SectionHeader` (`h2`, nested `h3`) |
   | Body | `text-body` | 14px / 1.5 | Reading copy |
   | Caption | `text-caption` | 11px / 1.35 | Minimum size. Labels, hints |
-  | Overline | `overline` | 11px / 600 / uppercase | Eyebrows. One utility, not a copied class string |
+  | Eyebrow | `eyebrow` | 11px / 600 / uppercase | Eyebrows. One utility, not a copied class string |
 
 - `SectionHeader` (`src/components/section-header.tsx`) is the only section heading. `LiquidityPanelHeader` renders it. Page sections are `h2`; nested sections are `h3`. Do not add a second `h1`.
 - Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.
@@ -348,13 +349,13 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
   - **Ranges** (`formatWallClockDateRange`, `formatChartMonthRange`, fortnight labels): hide the year inside the current year. Show the year on both ends when the range crosses years.
   - **Chart axes** (`formatChartAxisMonth`): `sep`, or `sep 25`.
   - **Steppers** (`formatStepperDate`) always include the year. The control is an input, so the saved day stays unambiguous.
-  - Statement parsers keep a month map because they read bank files. Préstamos adopts these helpers in JOR-320.
+  - Statement parsers keep a month map because they read bank files. Préstamos uses these helpers.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
 - Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
 - Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.
   - An expense row uses **expense** for the icon, the amount, and the type badge. A due or paid chip may use **overdue**, **pending**, or **success** — that is the time status, not a second type color.
   - Income rows use **income** the same way.
-  - Overdue shares the destructive hue; it is its own token so loans and the rest of the app match. Préstamos adopts these tokens in JOR-320.
+  - Overdue shares the destructive hue; it is its own token so Préstamos and the rest of the app match.
 - Icon pills: `STATUS_SOFT_CLASS`, not a full card wash.
 - `Button` `default` is `bg-primary` in both themes (no hex override). `destructive` stays full `--destructive` with `--destructive-foreground` in dark — do not fade it to `/60`.
 - Hex in `className` only when no token exists. `#3a37fc` is `--primary`, dark `#060914` is `--background`, the light-mode status-bar strip is `--chrome-ink`, `#0d1327` is `--card` / `--popover`, `#090e1d` is `--secondary` / `--sidebar`. Marketing and login keep their own surfaces.
@@ -378,7 +379,13 @@ Three surfaces. Radius does not change with the theme.
 | --- | --- | --- | --- |
 | Panel glass | `orion-panel-glass` / `MONTHLY_PANEL_SHELL_CLASS` | `rounded-2xl` | `--shadow-panel` (`shadow-panel`) |
 | Calm card | `.card-surface`, settings cards | `rounded-xl` | `--shadow-card` (`shadow-card`) |
-| Card face | Wallet and credit-card faces | `rounded-face` (1.375rem) | `--shadow-face` (`shadow-face`) |
+| Card face | Wallet and credit-card faces, desktop Billeteras only | `rounded-face` (1.375rem) | `--shadow-face` (`shadow-face`) |
+
+**Billeteras layout.** Below `md`, Billeteras is a list of calm rows (`bg-card`, one row per wallet). Disponible, Límite, and saldo sit in the row, and rows do not overlap. From `md` up, the same wallets are card faces in a grid. That face uses the `wow` tone: dark plastic in light and dark, like a physical card, not a theme surface (`isProviderCardDarkSurface`). Do not paint a light-theme version of the face. The Panel wallet strip may still use the theme-adaptive `aura` tone. The Prestamistas chip stays off this page.
+
+**Alertas.** The bell sits in the sidebar footer. Below `md` it opens a `ResponsiveOverlay` sheet titled Alertas and closes the sidebar. From `md` it opens a menu to the right of the footer so the panel wallet strip stays visible. Severity uses status tokens (`overdue`, `pending`, `info`). Empty, error, and loading use `EmptyState`, `ErrorBanner`, and skeletons.
+
+**Onboarding** sits outside the `(app)` layout, so it draws `AppAtmosphere` itself and uses the planner glass shell, the type scale, and one progress bar. Create copy starts with **Agregar**.
 
 Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
 

@@ -42,9 +42,9 @@ export default function CreateWallet() {
           onClick={handleCreateWallet}
           disabled={loading}
           className="w-full rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-          aria-label="Crear mi primera billetera"
+          aria-label="Agregar mi primera billetera"
         >
-          {loading ? 'Creando…' : 'Crear mi primera billetera'}
+          {loading ? 'Agregando…' : 'Agregar mi primera billetera'}
         </button>
       </div>
     </div>

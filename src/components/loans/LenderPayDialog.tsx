@@ -151,7 +151,7 @@ const LenderPayForm = ({
       ) : null}
 
       <div className="rounded-xl border border-border/60 bg-card px-3 py-3">
-        <p className="overline text-muted-foreground">
+        <p className="eyebrow text-muted-foreground">
           Compromiso del periodo
         </p>
         <p className="mt-1 font-sans text-2xl font-bold tabular-nums">

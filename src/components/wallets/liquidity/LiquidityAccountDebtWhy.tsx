@@ -66,7 +66,7 @@ export const LiquidityAccountDebtWhy = ({
         return (
           <section key={block.key} aria-label={block.title}>
             <div className="flex items-baseline justify-between gap-3">
-              <p className="overline text-muted-foreground">
+              <p className="eyebrow text-muted-foreground">
                 {block.title}
               </p>
               <p className="font-sans text-xs font-semibold tabular-nums text-foreground">
@@ -84,7 +84,7 @@ export const LiquidityAccountDebtWhy = ({
                     <p
                       className={cn(
                         'text-caption text-muted-foreground',
-                        line.status === 'overdue' && 'text-amber-300',
+                        line.status === 'overdue' && 'text-status-pending',
                       )}
                     >
                       <MoneyInText text={line.subtitle} />

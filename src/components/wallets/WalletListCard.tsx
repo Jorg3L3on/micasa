@@ -22,6 +22,7 @@ import {
   getProviderCardStyle,
   getWalletBrandCssVars,
 } from '@/lib/provider-card-style';
+import { Money } from '@/components/money';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -202,6 +203,60 @@ export const WalletListCard = ({
       ? `${wallet.name}, inactiva`
       : wallet.name;
 
+  const actionMenuItems = (
+    <>
+      {canTransfer && onTransfer ? (
+        <DropdownMenuItem
+          onClick={() => onTransfer(wallet)}
+          className="cursor-pointer"
+        >
+          <ArrowLeftRight className="mr-2 h-4 w-4" />
+          Transferir saldo
+        </DropdownMenuItem>
+      ) : null}
+      <DropdownMenuItem
+        onClick={() => onOpenBalance(wallet)}
+        className="cursor-pointer"
+      >
+        <SlidersHorizontal className="mr-2 h-4 w-4" />
+        Ajustar saldo
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => onEdit(wallet)}
+        className="cursor-pointer"
+      >
+        <Pencil className="mr-2 h-4 w-4" />
+        Editar
+      </DropdownMenuItem>
+    </>
+  );
+
+  const rowMetrics = isCard
+    ? [
+        {
+          label: 'Deuda',
+          value: amountNumber,
+          tone: 'neutral' as const,
+        },
+        {
+          label: 'Disponible',
+          value: availableCredit,
+          tone: (availableCredit ?? 0) < 0 ? ('negative' as const) : ('neutral' as const),
+        },
+        {
+          label: 'Límite',
+          value: hasCreditLimit ? effectiveLimit : null,
+          tone: 'neutral' as const,
+        },
+      ]
+    : [
+        {
+          label: 'Saldo',
+          value: amountNumber,
+          tone: isNegativeBalance ? ('negative' as const) : ('neutral' as const),
+        },
+      ];
+
   return (
     <article
       className={cn(
@@ -210,8 +265,82 @@ export const WalletListCard = ({
       )}
       aria-label={articleLabel}
     >
+      <div className="md:hidden">
+        <SwipeDeleteRow
+          enabled={isMobile}
+          onRequestDelete={handleRequestDelete}
+          deleteAriaLabel={`Eliminar ${wallet.name}`}
+          className="rounded-xl"
+        >
+          <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card px-3 py-3 shadow-card">
+            <Link
+              href={detailHref}
+              onClick={handleOpenDetail}
+              onPointerEnter={handlePrefetchDetail}
+              onFocus={handlePrefetchDetail}
+              className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+              aria-label={`Abrir ${wallet.name}`}
+            />
+            <div className="relative z-10 flex min-w-0 items-start gap-3 pr-8">
+              <WalletProviderIcon
+                providerIconKey={wallet.provider_icon_key}
+                className="h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-muted"
+                iconClassName="h-4 w-4"
+                showTooltipLabel={false}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="min-w-0 truncate text-body font-medium text-foreground" title={wallet.name}>
+                    {wallet.name}
+                  </p>
+                  {!wallet.active ? (
+                    <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-caption">
+                      Inactivo
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="eyebrow text-muted-foreground">{cycleLabel ?? typeLabel}</p>
+                <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                  {rowMetrics.map((metric) => (
+                    <div key={metric.label} className="min-w-0">
+                      <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
+                      <dd className="mt-0.5">
+                        {metric.value == null ? (
+                          <span className="text-caption text-muted-foreground">Sin línea</span>
+                        ) : (
+                          <Money value={metric.value} size="row" tone={metric.tone} />
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
+            <div className="absolute top-1.5 right-1.5 z-20">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-8 rounded-full"
+                    aria-label={`Más opciones para ${wallet.name}`}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  {actionMenuItems}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </SwipeDeleteRow>
+      </div>
+
+      <div className="hidden md:block">
       <SwipeDeleteRow
-        enabled={isMobile}
+        enabled={false}
         onRequestDelete={handleRequestDelete}
         deleteAriaLabel={`Eliminar ${wallet.name}`}
         className="rounded-face"
@@ -230,7 +359,7 @@ export const WalletListCard = ({
               'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
               'active:scale-[0.985]',
               WALLET_LIST_CARD_SHELL_CLASS,
-              hasAlert && 'ring-2 ring-inset ring-rose-400/70',
+              hasAlert && 'ring-2 ring-inset ring-status-expense/70',
             )}
             style={cardStyle}
             data-wallet-vt={viewTransitionName}
@@ -261,7 +390,7 @@ export const WalletListCard = ({
                       >
                         {wallet.name}
                       </p>
-                      <p className="overline opacity-60">
+                      <p className="eyebrow opacity-60">
                         {cycleLabel ?? typeLabel}
                       </p>
                     </div>
@@ -283,13 +412,13 @@ export const WalletListCard = ({
 
                 <div className="space-y-3">
                   <div>
-                    <p className="overline opacity-70">
+                    <p className="eyebrow opacity-70">
                       Deuda total
                     </p>
                     <p
                       className={cn(
                         'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-rose-200',
+                        hasAlert && 'text-status-expense',
                       )}
                     >
                       {formatCurrency(amountNumber)}
@@ -298,13 +427,13 @@ export const WalletListCard = ({
 
                   <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
                     <div>
-                      <p className="overline opacity-70">
+                      <p className="eyebrow opacity-70">
                         Disponible
                       </p>
                       <p
                         className={cn(
                           'font-sans text-sm font-semibold tabular-nums leading-snug',
-                          (availableCredit ?? 0) < 0 && 'text-red-200',
+                          (availableCredit ?? 0) < 0 && 'text-status-expense',
                         )}
                       >
                         {availableCredit == null
@@ -314,7 +443,7 @@ export const WalletListCard = ({
                     </div>
                     {hasCreditLimit && effectiveLimit != null ? (
                       <div className="text-right">
-                        <p className="overline opacity-70">
+                        <p className="eyebrow opacity-70">
                           Límite
                         </p>
                         <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -331,7 +460,7 @@ export const WalletListCard = ({
                         <span
                           className={cn(
                             'font-sans tabular-nums',
-                            isOverLimit && 'text-rose-200',
+                            isOverLimit && 'text-status-expense',
                           )}
                         >
                           {isOverLimit ? 'Excedido' : `${usagePercent}%`}
@@ -348,7 +477,7 @@ export const WalletListCard = ({
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
-                            isOverLimit ? 'bg-rose-300' : 'bg-white/85',
+                            isOverLimit ? 'bg-status-expense' : 'bg-white/85',
                           )}
                           style={{ width: `${Math.min(usagePercent, 100)}%` }}
                         />
@@ -381,7 +510,7 @@ export const WalletListCard = ({
                         >
                           {wallet.name}
                         </p>
-                        <p className="overline opacity-60">
+                        <p className="eyebrow opacity-60">
                           {typeLabel}
                         </p>
                       </div>
@@ -414,13 +543,13 @@ export const WalletListCard = ({
                 */}
                 <div className="space-y-3">
                   <div>
-                    <p className="overline opacity-70">
+                    <p className="eyebrow opacity-70">
                       Saldo disponible
                     </p>
                     <p
                       className={cn(
                         'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-rose-200',
+                        hasAlert && 'text-status-expense',
                       )}
                     >
                       {formatCurrency(amountNumber)}
@@ -432,7 +561,7 @@ export const WalletListCard = ({
                     aria-hidden
                   >
                     <div>
-                      <p className="overline">
+                      <p className="eyebrow">
                         Disponible
                       </p>
                       <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -440,7 +569,7 @@ export const WalletListCard = ({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="overline">Límite</p>
+                      <p className="eyebrow">Límite</p>
                       <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         $0.00
                       </p>
@@ -487,35 +616,14 @@ export const WalletListCard = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
-                  {canTransfer && onTransfer ? (
-                    <DropdownMenuItem
-                      onClick={() => onTransfer(wallet)}
-                      className="cursor-pointer"
-                    >
-                      <ArrowLeftRight className="mr-2 h-4 w-4" />
-                      Transferir saldo
-                    </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuItem
-                    onClick={() => onOpenBalance(wallet)}
-                    className="cursor-pointer"
-                  >
-                    <SlidersHorizontal className="mr-2 h-4 w-4" />
-                    Ajustar saldo
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onEdit(wallet)}
-                    className="cursor-pointer"
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar
-                  </DropdownMenuItem>
+                  {actionMenuItems}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
         </ViewTransition>
       </SwipeDeleteRow>
+      </div>
     </article>
   );
 };

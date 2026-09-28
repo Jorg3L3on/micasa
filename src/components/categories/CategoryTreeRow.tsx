@@ -58,7 +58,7 @@ export function CategoryTreeRow({
           {!active ? (
             <Badge
               variant="outline"
-              className="shrink-0 px-1.5 py-0 overline"
+              className="shrink-0 px-1.5 py-0 eyebrow"
             >
               Inactiva
             </Badge>
@@ -88,7 +88,7 @@ export function CategoryTreeRow({
               <Power
                 className={cn(
                   'h-4 w-4',
-                  active ? 'text-muted-foreground' : 'text-emerald-600',
+                  active ? 'text-muted-foreground' : 'text-status-income',
                 )}
                 data-icon="inline-start"
               />

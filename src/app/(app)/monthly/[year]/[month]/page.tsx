@@ -17,7 +17,7 @@ import { formatMonthHeading, formatMonthTitle, todayCalendarDate } from '@/lib/c
 import { PLANNING_MONTH_MAX_YEAR } from '@/lib/finance/planning-month';
 import {
   dueDayFallsInFortnight,
-  formatFortnightDateRangeLabel,
+  formatFortnightPeriodTitle,
   getCurrentCalendarFortnightRef,
   getCurrentMonthlyPanelHref,
   getSuggestedFortnightPeriodForMonth,
@@ -143,9 +143,8 @@ export default async function MonthlyPage({
       (nextYear === currentYear && nextMonth >= currentMonth)) &&
     nextYear <= PLANNING_MONTH_MAX_YEAR;
 
-  const firstLabel = firstFortnightInfo?.label || formatFortnightDateRangeLabel(year, month, 'FIRST');
-  const secondLabel =
-    secondFortnightInfo?.label || formatFortnightDateRangeLabel(year, month, 'SECOND');
+  const firstLabel = formatFortnightPeriodTitle('FIRST', month, year);
+  const secondLabel = formatFortnightPeriodTitle('SECOND', month, year);
   const firstFortnightId = firstFortnightInfo?.id || 0;
   const secondFortnightId = secondFortnightInfo?.id || 0;
   const monthIsMissing = firstFortnightInfo === null || secondFortnightInfo === null;

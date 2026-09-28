@@ -389,7 +389,7 @@ export default function StepWallets() {
         ))}
       </div>
       {!canContinue ? (
-        <p className="text-sm text-amber-700 dark:text-amber-400">
+        <p className="text-sm text-status-pending">
           Para continuar, agrega al menos una billetera de Efectivo y una de
           Débito, ambas con nombre.
         </p>

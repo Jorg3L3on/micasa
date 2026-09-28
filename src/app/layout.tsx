@@ -11,6 +11,7 @@ import { Toaster } from 'sonner';
 import { DOCUMENT_TITLE_TEMPLATE, SITE_NAME } from '@/lib/document-title';
 import { IOS_SPLASH_IMAGES } from '@/lib/pwa/ios-splash';
 import { buildLaunchRedirectScript } from '@/lib/pwa/pwa-launch';
+import { VIEW_TRANSITION_GUARD_SCRIPT } from '@/lib/ui/view-transition-guard';
 import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 import { ServiceWorkerRegistrar } from '@/components/pwa/ServiceWorkerRegistrar';
 
@@ -88,6 +89,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${display.variable} antialiased`}
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: VIEW_TRANSITION_GUARD_SCRIPT,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: buildLaunchRedirectScript(getCurrentMonthlyPanelHref()),

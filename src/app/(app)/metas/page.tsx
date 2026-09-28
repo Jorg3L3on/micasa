@@ -285,12 +285,12 @@ export default function MetasPage() {
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 overline text-muted-foreground">
+            <p className="mb-1.5 eyebrow text-muted-foreground">
               Estado
             </p>
             <div
               className="flex flex-wrap gap-2"
-              role="tablist"
+              role="group"
               aria-label="Filtrar metas"
             >
               {STATUS_FILTER_CHIPS.map(({ value, label }) => {

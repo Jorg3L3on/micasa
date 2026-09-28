@@ -93,8 +93,8 @@ function AllocationSummary({
           className={cn(
             'font-sans font-semibold tabular-nums',
             isOver && 'text-destructive',
-            !isOver && !isExact && 'text-amber-600 dark:text-amber-400',
-            isExact && 'text-emerald-600 dark:text-emerald-400',
+            !isOver && !isExact && 'text-status-pending',
+            isExact && 'text-status-income',
           )}
         >
           {formatCurrency(remaining)}
@@ -252,7 +252,7 @@ export default function BudgetAllocationsDialog({
             />
 
             {hasEmptyAllocation ? (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              <div className="rounded-lg border border-status-pending/30 bg-status-pending/10 px-3 py-2 text-xs text-status-pending">
                 Elige {ANY_WALLET_LABEL} o una billetera, una categoría y un monto mayor a $0.00.
               </div>
             ) : null}

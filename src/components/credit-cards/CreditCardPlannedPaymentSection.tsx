@@ -39,7 +39,7 @@ const statusAmountClass = (
   hasCustomPlan: boolean,
 ) => {
   if (status === 'pagado') {
-    return 'text-emerald-600 dark:text-emerald-400';
+    return 'text-status-income';
   }
   if (status === 'vencido') {
     return 'text-destructive';
@@ -48,10 +48,10 @@ const statusAmountClass = (
     return 'text-muted-foreground';
   }
   if (status === 'falta_dato') {
-    return 'text-amber-700 dark:text-amber-300';
+    return 'text-status-pending';
   }
   return hasCustomPlan
-    ? 'text-blue-600 dark:text-blue-400'
+    ? 'text-status-info'
     : 'text-foreground';
 };
 
@@ -167,13 +167,13 @@ export const CreditCardPlannedPaymentSection = ({
   return (
     <>
       <div
-        className="rounded-xl border border-border/60 bg-card p-4"
+        className="rounded-xl bg-card p-4"
         role="region"
         aria-label="Pagos planeados por quincena"
       >
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-            <CalendarRange className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-status-info/10 dark:bg-status-info/15">
+            <CalendarRange className="h-3.5 w-3.5 text-status-info" data-icon="inline-start" />
           </span>
           <div>
             <p className="text-sm font-semibold leading-none">
@@ -239,7 +239,7 @@ export const CreditCardPlannedPaymentSection = ({
                       · {timingLabel}
                     </span>
                     {isStalePlan ? (
-                      <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 overline text-amber-700 dark:text-amber-300">
+                      <span className="ml-1.5 inline-flex items-center rounded-full border border-status-pending/40 bg-status-pending/10 px-1.5 py-0.5 eyebrow text-status-pending">
                         Plan cubierto
                       </span>
                     ) : null}
@@ -270,7 +270,7 @@ export const CreditCardPlannedPaymentSection = ({
                     {isStalePlan ? (
                       <>
                         <span className="text-muted-foreground/30"> · </span>
-                        <span className="text-amber-700 dark:text-amber-300">
+                        <span className="text-status-pending">
                           Limpia el plan; ya no afecta pendientes
                         </span>
                       </>
@@ -288,7 +288,7 @@ export const CreditCardPlannedPaymentSection = ({
                         <span className="text-muted-foreground/30"> · </span>
                         <span
                           className={cn(
-                            item.isEstimate && 'text-amber-700 dark:text-amber-300',
+                            item.isEstimate && 'text-status-pending',
                           )}
                         >
                           {sourceHint}
@@ -319,7 +319,7 @@ export const CreditCardPlannedPaymentSection = ({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-8 shrink-0 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+                      className="h-8 shrink-0 px-2 text-xs font-medium text-status-pending hover:text-status-pending"
                       onClick={() => handleOpenDialog(item)}
                       aria-label={`Capturar pago del corte: ${item.fortnightLabel}`}
                     >
@@ -353,10 +353,10 @@ export const CreditCardPlannedPaymentSection = ({
                             variant="outline"
                             size="icon"
                             className={cn(
-                              'h-8 w-8 rounded-full border-dashed border-emerald-500/40 bg-transparent shadow-none',
-                              'transition-colors hover:border-emerald-500/70 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15',
+                              'h-8 w-8 rounded-full border-dashed border-status-income/40 bg-transparent shadow-none',
+                              'transition-colors hover:border-status-income/70 hover:bg-status-income/10 dark:hover:bg-status-income/15',
                               'disabled:pointer-events-none disabled:opacity-40',
-                              '[&_svg]:text-emerald-600 dark:[&_svg]:text-emerald-400',
+                              '[&_svg]:text-status-income dark:[&_svg]:text-status-income',
                             )}
                             disabled={
                               item.outstandingBalance <= 0 ||

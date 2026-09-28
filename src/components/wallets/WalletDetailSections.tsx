@@ -126,9 +126,9 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
           'relative w-full overflow-hidden rounded-face border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
           !cardStyle &&
             (isCash
-              ? 'border-emerald-500/40 bg-linear-to-br from-emerald-700 via-emerald-900 to-slate-950'
-              : 'border-blue-500/40 bg-linear-to-br from-blue-700 via-slate-900 to-slate-950'),
-          isNegative && 'ring-rose-400/55',
+              ? 'border-status-income-border bg-linear-to-br from-status-income to-background'
+              : 'border-status-info-border bg-linear-to-br from-status-info to-background'),
+          isNegative && 'ring-status-expense/55',
         )}
         style={cardStyle}
       >
@@ -145,7 +145,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
           aria-hidden
         />
         {isNegative ? (
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-rose-400/80 to-transparent" />
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-status-expense/80 to-transparent" />
         ) : null}
 
         <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
@@ -167,33 +167,33 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
                 <p className="truncate text-sm font-semibold leading-tight opacity-95">
                   {wallet.name}
                 </p>
-                <p className="overline opacity-60">
+                <p className="eyebrow opacity-60">
                   {typeLabel}
                 </p>
               </div>
             </div>
             {!wallet.active ? (
-              <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 overline opacity-80">
+              <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 eyebrow opacity-80">
                 Inactiva
               </span>
             ) : null}
           </div>
 
           <div className="min-w-0 space-y-1">
-            <p className="overline opacity-70">
+            <p className="eyebrow opacity-70">
               Saldo disponible
             </p>
             <p
               className={cn(
                 // leading-snug: WebKit clips glyph ink at line-height:1 inside overflow-hidden
                 'break-words text-2xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-3xl',
-                isNegative && 'text-rose-200',
+                isNegative && 'text-status-expense',
               )}
             >
               {formatCurrency(wallet.amount)}
             </p>
             {isNegative ? (
-              <p className="text-xs font-medium text-rose-200/90">
+              <p className="text-xs font-medium text-status-expense/90">
                 Saldo en rojo — revisa movimientos del periodo
               </p>
             ) : null}
@@ -273,7 +273,7 @@ export const WalletPeriodSummary = ({
       key: 'inflow',
       label: 'Ingresos',
       value: formatCurrency(inflow),
-      tone: 'emerald',
+      tone: 'income',
     },
     {
       key: 'outflow',
@@ -307,7 +307,7 @@ export const WalletPeriodSummary = ({
           <TooltipContent side="bottom">Mes anterior</TooltipContent>
         </Tooltip>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
-          <p className="overline text-muted-foreground">
+          <p className="eyebrow text-muted-foreground">
             {isCurrentMonth ? 'Mes actual' : 'Periodo'}
           </p>
           <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">

@@ -1,9 +1,10 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useFinanceContext } from '@/context/finance-context';
 import { formatMonthHeading } from '@/lib/calendar-dates';
-import { getAppHomeHref, formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
+import { getAppHomeHref, formatFortnightToolbarTitle } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
 import {
   monthlyHeaderPeriodLabel,
@@ -150,9 +151,8 @@ export function getPageTitle(pathname: string): {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
     const period = segments[3].toUpperCase() as 'FIRST' | 'SECOND';
-    const periodLabel = formatFortnightDateRangeLabel(year, month, period);
     return {
-      title: `${periodLabel} · ${year}`,
+      title: formatFortnightToolbarTitle(year, month, period),
       isHome: false,
       showBack,
     };
@@ -223,19 +223,46 @@ export function useAppHomeHref() {
   return getAppHomeHref(ownerQs);
 }
 
+/** Native tooltip only once the heading is actually clipped. */
+export const pageTitleTooltip = (
+  isTruncated: boolean,
+  fullText: string,
+): string | undefined => (isTruncated ? fullText : undefined);
+
 /** Centered toolbar title (Apple-style principal). */
 export default function PageTitle() {
   const pageTitle = useAppPageTitle();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const node = headingRef.current;
+    if (!node) return;
+
+    const measure = () => {
+      setIsTruncated(node.scrollWidth > node.clientWidth);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [pageTitle.title]);
+
+  const title = pageTitleTooltip(isTruncated, pageTitle.title);
+
   if (!pageTitle.periodPrefix) {
     return (
-      <h1 className="truncate text-title">
+      <h1 ref={headingRef} className="truncate text-title" title={title}>
         {pageTitle.title}
       </h1>
     );
   }
   return (
     <h1
+      ref={headingRef}
       className="truncate text-title"
+      title={title}
       aria-label={pageTitle.title}
     >
       <span className="sm:hidden">{pageTitle.periodPrefix.short}</span>

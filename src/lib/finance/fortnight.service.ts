@@ -5,7 +5,7 @@ import {
 } from '@/lib/finance/template.service';
 import { generatePeriodsForMonth } from '@/lib/finance/budget-period.service';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
-import { formatMonthTitle } from '@/lib/calendar-dates';
+import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
 import { planningMonthCreateError } from '@/lib/finance/planning-month';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { FortnightPeriod } from '@/generated/prisma/client';
@@ -17,7 +17,6 @@ export async function listFortnightsForCatalog(ownerFilter: OwnerFilter) {
     orderBy: [{ year: 'desc' }, { month: 'desc' }, { period: 'desc' }],
     select: {
       id: true,
-      label: true,
       start_date: true,
       end_date: true,
       closed: true,
@@ -29,7 +28,7 @@ export async function listFortnightsForCatalog(ownerFilter: OwnerFilter) {
 
   return fortnights.map((f) => ({
     id: f.id,
-    name: f.label,
+    name: formatFortnightPeriodTitle(f.period, f.month, f.year),
     startDay: new Date(f.start_date).getDate(),
     endDay: new Date(f.end_date).getDate(),
     active: !f.closed,
@@ -58,8 +57,6 @@ export async function createMonthFortnightsForOwner(
     throw new Error(monthError);
   }
 
-  const monthName = formatMonthTitle(month);
-
   const existingFirst = await prisma.fortnight.findFirst({
     where: { ...ownerFilter, year, month, period: 'FIRST' },
   });
@@ -87,7 +84,7 @@ export async function createMonthFortnightsForOwner(
       year,
       month,
       period: 'FIRST',
-      label: `Primera quincena - ${monthName} ${year}`,
+      label: formatFortnightPeriodTitle('FIRST', month, year),
     });
     created.push({ id: first.id, label: first.label, period: 'FIRST' });
     expensesByPeriod.FIRST = await expandExpenseTemplatesForFortnight(
@@ -107,7 +104,7 @@ export async function createMonthFortnightsForOwner(
       year,
       month,
       period: 'SECOND',
-      label: `Segunda quincena - ${monthName} ${year}`,
+      label: formatFortnightPeriodTitle('SECOND', month, year),
     });
     created.push({ id: second.id, label: second.label, period: 'SECOND' });
     expensesByPeriod.SECOND = await expandExpenseTemplatesForFortnight(

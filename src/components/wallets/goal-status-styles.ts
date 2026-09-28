@@ -61,14 +61,14 @@ export const goalCardShellClass = (visual: GoalVisualStyle): string => {
   switch (visual) {
     case 'finished':
       return cnShell(
-        'border-emerald-500/40 dark:border-emerald-500/45',
+        'border-status-success/40 dark:border-status-success/45',
         GOAL_CARD_SURFACE_CLASS,
       );
     case 'muted':
       return cnShell('border', GOAL_CARD_SURFACE_CLASS);
     default:
       return cnShell(
-        'border dark:border-blue-500/45',
+        'border dark:border-status-info/45',
         GOAL_CARD_SURFACE_CLASS,
       );
   }
@@ -81,7 +81,7 @@ function cnShell(...parts: string[]): string {
 export const goalStatusBadgeClass = (visual: GoalVisualStyle): string => {
   switch (visual) {
     case 'finished':
-      return 'border-transparent bg-emerald-500/15 font-medium text-emerald-800 dark:text-emerald-100';
+      return 'border-transparent bg-status-success/15 font-medium text-status-success';
     case 'muted':
       return OVERDUE_BADGE_CLASS;
     default:
@@ -93,44 +93,44 @@ export const goalStatusBadgeClass = (visual: GoalVisualStyle): string => {
 export const goalMetricPanelClass = (visual: GoalVisualStyle): string => {
   switch (visual) {
     case 'finished':
-      return 'rounded-2xl bg-emerald-500/[0.08] px-4 py-4 dark:bg-emerald-500/15';
+      return 'rounded-2xl bg-status-success/[0.08] px-4 py-4 dark:bg-status-success/15';
     case 'muted':
       return 'rounded-2xl bg-[oklch(37.3%_0.034_259.733_/_.08)] px-4 py-4 dark:bg-[oklch(37.3%_0.034_259.733_/_.16)]';
     default:
-      return 'rounded-2xl bg-blue-600/[0.06] px-4 py-4 dark:bg-blue-500/12';
+      return 'rounded-2xl bg-status-info/[0.06] px-4 py-4 dark:bg-status-info/12';
   }
 };
 
 export const goalMetricInkClass = (visual: GoalVisualStyle): string => {
   switch (visual) {
     case 'finished':
-      return 'text-emerald-800 dark:text-emerald-100';
+      return 'text-status-success';
     case 'muted':
       return 'text-[oklch(37.3%_0.034_259.733)] dark:text-[oklch(82%_0.02_259.733)]';
     default:
-      return 'text-blue-600 dark:text-blue-400';
+      return 'text-status-info';
   }
 };
 
 export const goalProgressTrackClass = (visual: GoalVisualStyle): string => {
   switch (visual) {
     case 'finished':
-      return 'bg-emerald-500/15';
+      return 'bg-status-success/15';
     case 'muted':
       return 'bg-[oklch(37.3%_0.034_259.733_/_.15)]';
     default:
-      return 'bg-blue-600/10 dark:bg-blue-500/20';
+      return 'bg-status-info/10 dark:bg-status-info/20';
   }
 };
 
 export const goalProgressFillClass = (visual: GoalVisualStyle): string => {
   switch (visual) {
     case 'finished':
-      return 'bg-emerald-600 dark:bg-emerald-500';
+      return 'bg-status-success';
     case 'muted':
       return 'bg-[oklch(37.3%_0.034_259.733)]';
     default:
-      return 'bg-blue-600 dark:bg-blue-500';
+      return 'bg-status-info';
   }
 };
 
@@ -138,18 +138,18 @@ export const goalProgressFillClass = (visual: GoalVisualStyle): string => {
 export const goalSolidIconClass = (visual: GoalVisualStyle): string => {
   switch (visual) {
     case 'finished':
-      return 'bg-emerald-600 text-white dark:bg-emerald-500';
+      return 'bg-status-success text-white dark:bg-status-success';
     case 'muted':
       return 'bg-[oklch(37.3%_0.034_259.733)] text-white';
     default:
-      return 'bg-blue-600 text-white dark:bg-blue-500';
+      return 'bg-status-info text-white dark:bg-status-info';
   }
 };
 
 export const goalActionIconClass = (visual: GoalVisualStyle): string => {
   switch (visual) {
     case 'finished':
-      return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
+      return 'bg-status-success/15 text-status-success';
     case 'muted':
       return 'bg-[oklch(37.3%_0.034_259.733_/_.15)] text-[oklch(37.3%_0.034_259.733)] dark:text-[oklch(82%_0.02_259.733)]';
     default:
@@ -160,7 +160,7 @@ export const goalActionIconClass = (visual: GoalVisualStyle): string => {
 export const goalTipStripClass = (visual: GoalVisualStyle): string => {
   switch (visual) {
     case 'finished':
-      return 'border-emerald-500/20 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100';
+      return 'border-status-success/20 bg-status-success/10 text-status-success';
     case 'muted':
       return [
         'border border-[oklch(37.3%_0.034_259.733_/_.25)] bg-[oklch(37.3%_0.034_259.733_/_.10)]',
@@ -169,6 +169,6 @@ export const goalTipStripClass = (visual: GoalVisualStyle): string => {
         'dark:border-[oklch(37.3%_0.034_259.733_/_.35)] dark:bg-[oklch(37.3%_0.034_259.733_/_.18)]',
       ].join(' ');
     default:
-      return 'border border-blue-600/20 bg-blue-600/10 text-blue-950 dark:text-blue-100';
+      return 'border border-status-info/20 bg-status-info/10 text-status-info';
   }
 };

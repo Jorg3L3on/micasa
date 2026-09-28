@@ -1,6 +1,5 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   DateStepper,
@@ -167,7 +166,7 @@ export const LoanCalendarPaymentOverlay = ({
             aria-busy={submitting}
           >
             <div className="rounded-xl border border-border/60 bg-card px-3 py-3">
-              <p className="overline text-muted-foreground">
+              <p className="eyebrow text-muted-foreground">
                 Pago #{payment.sequence}
               </p>
               <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
@@ -283,18 +282,7 @@ export const LoanCalendarPaymentOverlay = ({
               className={OVERLAY_PRIMARY_BUTTON_CLASS}
               disabled={submitting}
             >
-              {submitting ? (
-                <>
-                  <Loader2
-                    className="h-4 w-4 animate-spin"
-                    aria-hidden
-                    data-icon="inline-start"
-                  />
-                  Guardando…
-                </>
-              ) : (
-                submitLabel(draft.action, payment.amount)
-              )}
+              {submitting ? 'Guardando…' : submitLabel(draft.action, payment.amount)}
             </Button>
           </form>
         ) : null
