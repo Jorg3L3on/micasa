@@ -144,16 +144,19 @@ const HeaderMetric = ({
   amount,
   hint,
   tone,
+  className,
 }: {
   label: string;
   amount: string;
   hint?: string;
   tone: KpiMetricTone;
+  className?: string;
 }) => (
   <div
     className={cn(
       kpiMetricCardShellClass(tone),
       'flex min-w-0 flex-col justify-between',
+      className,
     )}
   >
     <p className="eyebrow text-muted-foreground">
@@ -350,6 +353,7 @@ const InstitutionCard = ({
               label="Pendiente"
               amount={formatCurrency(remaining)}
               tone="destructive"
+              className="h-fit self-start"
             />
             <div className="flex min-w-0 flex-col gap-2">
               {cues.overdue ? (
