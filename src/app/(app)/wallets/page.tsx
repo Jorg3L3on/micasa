@@ -250,7 +250,7 @@ const parseStoredFilters = (): StoredWalletListFilters | null => {
 const ScrollFadeChipRow = ({
   ariaLabel,
   children,
-  mode = 'tablist',
+  mode = 'group',
 }: {
   ariaLabel: string;
   children: ReactNode;

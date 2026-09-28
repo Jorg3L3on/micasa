@@ -4,6 +4,7 @@ import { ErrorBanner } from '@/components/error-banner';
 import EmptyState from '@/components/EmptyState';
 import { PlannerPageSkeleton } from '@/components/loading/page-skeletons';
 import { useMemo, useState } from 'react';
+import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { SegmentedControl } from '@/components/segmented-control';
 import { Button } from '@/components/ui/button';
 import { parseCalendarDate } from '@/lib/calendar-dates';
@@ -175,6 +176,7 @@ export const CashPlanTab = ({
             value={strategy}
             onValueChange={(next) => handleStrategyChange(next as 'avalanche' | 'snowball')}
             ariaLabel={PLAN_COPY.strategyLabel}
+            frameClassName={cn(MONTHLY_LIQUID_PANEL_CLASS, 'inline-flex w-fit max-w-full p-1 sm:p-1.5')}
             options={[
               { value: 'avalanche', label: PLAN_COPY.avalanche },
               { value: 'snowball', label: PLAN_COPY.snowball },

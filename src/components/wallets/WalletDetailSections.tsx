@@ -21,12 +21,8 @@ import {
   kpiMetricValueClass,
   type KpiMetricTone,
 } from '@/components/finance/kpi-metric-card-styles';
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  creditCardDetailTabTriggerClass,
-  creditCardSegmentedTabChromeClass,
-  creditCardSegmentedTabListClass,
-} from '@/components/credit-cards/credit-card-segmented-tabs';
+import { SegmentedControl, type SegmentedOption } from '@/components/segmented-control';
+import { creditCardSegmentedTabChromeClass } from '@/components/credit-cards/credit-card-segmented-tabs';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import type { PaymentMethodType } from '@/domain/payment-method';
@@ -74,27 +70,22 @@ export const WalletPeriodWorkspaceShell = ({
   </div>
 );
 
-export const WalletDetailTabsList = ({ children }: { children: ReactNode }) => (
-  <div className={creditCardSegmentedTabChromeClass}>
-    <TabsList
-      variant="line"
-      className={cn(creditCardSegmentedTabListClass, '!grid-cols-3')}
-    >
-      {children}
-    </TabsList>
-  </div>
-);
-
-export const WalletDetailTabTrigger = ({
-  value,
-  children,
+export const WalletDetailTabsList = ({
+  options,
 }: {
-  value: string;
-  children: ReactNode;
+  options: readonly SegmentedOption[];
 }) => (
-  <TabsTrigger value={value} className={creditCardDetailTabTriggerClass}>
-    {children}
-  </TabsTrigger>
+  <SegmentedControl
+    embedded
+    ariaLabel="Secciones de la billetera"
+    stretch
+    frameClassName={cn(
+      creditCardSegmentedTabChromeClass,
+      'flex w-full min-w-0 items-center',
+    )}
+    wrapperClassName="min-w-0 flex-1"
+    options={options}
+  />
 );
 
 type VisualHeroProps = {

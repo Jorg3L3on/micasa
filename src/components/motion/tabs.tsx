@@ -485,9 +485,10 @@ export const TabsTrigger = ({
         title={title}
         tabIndex={active ? 0 : -1}
         data-tabs-value={value}
+        data-state={active ? 'active' : 'inactive'}
         onClick={() => setValue(value)}
         className={cn(
-          'relative z-10 inline-flex items-center justify-center whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium outline-none',
+          'group relative z-10 inline-flex items-center justify-center whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium outline-none',
           'text-muted-foreground hover:text-foreground',
           'focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           radius,

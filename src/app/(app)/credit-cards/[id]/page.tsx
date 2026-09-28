@@ -39,7 +39,6 @@ import {
 } from '@/lib/ui/wallet-detail-prefetch';
 import {
   CreditCardCycleSummary,
-  CreditCardDetailTabTrigger,
   CreditCardDetailTabsList,
   CreditCardDuePaymentStrip,
   CreditCardHeroZone,
@@ -61,7 +60,7 @@ import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/motion/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import {
   useRegisterToolbarActions,
@@ -775,24 +774,29 @@ export default function CreditCardDetailPage() {
           </div>
         )}
 
-        <CreditCardDetailTabsList>
-          <CreditCardDetailTabTrigger value="movimientos">
-            Movimientos
-          </CreditCardDetailTabTrigger>
-          <CreditCardDetailTabTrigger value="cuotas">
-            Cuotas
-            {statementReady &&
-            statement.installment_active_purchases.length > 0 ? (
-              <Badge
-                variant="default"
-                className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-caption font-sans font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-caption"
-                aria-hidden
-              >
-                {statement.installment_active_purchases.length}
-              </Badge>
-            ) : null}
-          </CreditCardDetailTabTrigger>
-        </CreditCardDetailTabsList>
+        <CreditCardDetailTabsList
+          options={[
+            { value: 'movimientos', label: 'Movimientos' },
+            {
+              value: 'cuotas',
+              label: (
+                <>
+                  Cuotas
+                  {statementReady &&
+                  statement.installment_active_purchases.length > 0 ? (
+                    <Badge
+                      variant="default"
+                      className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-caption font-sans font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-caption"
+                      aria-hidden
+                    >
+                      {statement.installment_active_purchases.length}
+                    </Badge>
+                  ) : null}
+                </>
+              ),
+            },
+          ]}
+        />
       </CreditCardHeroZone>
 
         <CreditCardCycleWorkspaceShell>

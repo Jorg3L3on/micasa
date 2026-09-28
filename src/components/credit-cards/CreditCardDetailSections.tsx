@@ -13,12 +13,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  creditCardDetailTabTriggerClass,
-  creditCardSegmentedTabChromeClass,
-  creditCardSegmentedTabListClass,
-} from '@/components/credit-cards/credit-card-segmented-tabs';
+import { SegmentedControl, type SegmentedOption } from '@/components/segmented-control';
+import { creditCardSegmentedTabChromeClass } from '@/components/credit-cards/credit-card-segmented-tabs';
 import { canAdvanceToNextCreditCardCycle } from '@/lib/finance/credit-card-cycle-types';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
@@ -30,27 +26,21 @@ import type {
 } from '@/types/catalog';
 
 export const CreditCardDetailTabsList = ({
-  children,
+  options,
 }: {
-  children: ReactNode;
+  options: readonly SegmentedOption[];
 }) => (
-  <div className={creditCardSegmentedTabChromeClass}>
-    <TabsList variant="line" className={creditCardSegmentedTabListClass}>
-      {children}
-    </TabsList>
-  </div>
-);
-
-export const CreditCardDetailTabTrigger = ({
-  value,
-  children,
-}: {
-  value: string;
-  children: ReactNode;
-}) => (
-  <TabsTrigger value={value} className={creditCardDetailTabTriggerClass}>
-    {children}
-  </TabsTrigger>
+  <SegmentedControl
+    embedded
+    ariaLabel="Secciones de la tarjeta"
+    stretch
+    frameClassName={cn(
+      creditCardSegmentedTabChromeClass,
+      'flex w-full min-w-0 items-center',
+    )}
+    wrapperClassName="min-w-0 flex-1"
+    options={options}
+  />
 );
 
 const CATEGORY_BAR_COLORS = [
