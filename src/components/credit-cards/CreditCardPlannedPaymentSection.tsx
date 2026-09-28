@@ -178,7 +178,7 @@ export const CreditCardPlannedPaymentSection = ({
           </span>
           <div>
             <p className="text-sm font-semibold leading-none">
-              Pago en planificación
+              Pago en planeación
             </p>
             <p className="mt-1 text-caption text-muted-foreground">
               Cuánto pagarás en la quincena; no cambia la deuda total.

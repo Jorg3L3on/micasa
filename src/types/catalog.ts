@@ -46,7 +46,7 @@ export type ExpenseWalletType =
   | 'DEPARTMENT_STORE_CARD'
   | 'GOAL';
 
-/** Gasto normal vs filas derivadas de planificación (no editables como gasto). */
+/** Gasto normal vs filas derivadas de planeación (no editables como gasto). */
 export type PlanningExpenseRowKind =
   | 'expense'
   | 'card_payment'
@@ -62,7 +62,7 @@ export type TransactionRow = {
   paymentMethod: string;
   wallet_id?: number | null;
   wallet_type?: ExpenseWalletType | null;
-  /** Solo planificación: filas derivadas no editables como gasto. */
+  /** Solo planeación: filas derivadas no editables como gasto. */
   planning_row_kind?: PlanningExpenseRowKind;
   /** Solo loan_payment: origen WALLET vs deducción nómina. */
   loan_payment_source?: 'WALLET' | 'PAYROLL_DEDUCTION';
@@ -73,7 +73,7 @@ export type TransactionRow = {
   paid_at?: string | null;
 };
 
-/** Desglose de cargos a TC / tienda en resumen de planificación (`exclude_credit_installment`). */
+/** Desglose de cargos a TC / tienda en resumen de planeación (`exclude_credit_installment`). */
 export type PlannerCardChargesSummary = {
   total: number;
   paid: number;
@@ -81,7 +81,7 @@ export type PlannerCardChargesSummary = {
   expenseCount: number;
 };
 
-/** Pagos a tarjeta contados en planificación sin fila de gasto vinculada. */
+/** Pagos a tarjeta contados en planeación sin fila de gasto vinculada. */
 export type PlannerOrphanCardPaymentsSummary = {
   total: number;
   count: number;
@@ -395,7 +395,7 @@ export type CreditCardPaymentPlanResponse = {
   items: CreditCardPaymentPlanView[];
 };
 
-/** GET /api/wallets/due-payments?year=&month= — planificación mensual por quincena */
+/** GET /api/wallets/due-payments?year=&month= — planeación mensual por quincena */
 export type PlannerDuePaymentsResponse = {
   first: DuePaymentItem[];
   second: DuePaymentItem[];

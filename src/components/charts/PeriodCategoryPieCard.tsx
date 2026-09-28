@@ -54,7 +54,7 @@ type PeriodCategoryPieCardProps = {
 export const PeriodCategoryPieCard = ({
   title = 'Gasto por categoría',
   scopeLabel,
-  subtitle = 'Planificación (efectivo/débito); sin cargos solo TC ni cuotas MSI.',
+  subtitle = 'Planeación (efectivo/débito); sin cargos solo TC ni cuotas MSI.',
   rows,
   compact = false,
 }: PeriodCategoryPieCardProps) => {

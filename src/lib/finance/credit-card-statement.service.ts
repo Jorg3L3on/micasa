@@ -1689,7 +1689,7 @@ const getDuePaymentsForPlannerMonthCached = cache(
     ),
 );
 
-/** Due card payments for Planificación: primera vs segunda quincena del mes mostrado. */
+/** Due card payments for Planeación: primera vs segunda quincena del mes mostrado. */
 export function getDuePaymentsForPlannerMonth(
   ownerFilter: OwnerFilter,
   year: number,

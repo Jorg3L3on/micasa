@@ -249,7 +249,7 @@ type ExpenseTableProps = {
   period?: 'FIRST' | 'SECOND';
   density?: ExpenseTableDensity;
   wallets?: WalletListItem[];
-  /** When true (planificación por quincena), totals follow the full list in page flow. */
+  /** When true (planeación por quincena), totals follow the full list in page flow. */
   pinTotalsToBottom?: boolean;
   /** How to order rows when syncing from props (default: mayor monto). */
   sortMode?: PlannerListSortMode;

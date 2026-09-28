@@ -2,7 +2,7 @@ import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment
 import type { DuePaymentItem, PlannerCardPaymentStatusUi } from '@/types/catalog';
 import type { LoanDuePaymentItem, LoanPaymentStatusValue } from '@/types/loans';
 
-/** Shared sort modes for Gastos / Tarjeta / Préstamos in planificación. */
+/** Shared sort modes for Gastos / Tarjeta / Préstamos in planeación. */
 export type PlannerListSortMode = 'amount' | 'due_day';
 export type PlannerListSortDir = 'asc' | 'desc';
 

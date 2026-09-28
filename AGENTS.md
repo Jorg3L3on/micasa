@@ -188,7 +188,7 @@ Cursor workflow (PRD → GitHub issues → feat branch → PRs): [docs/agents/wo
 
 ### Design system
 
-[`DESIGN.md`](DESIGN.md) is the visual source of truth (navy canvas, glass, orange CTAs). Do not commit third-party mockup images — tokens live in `src/app/globals.css`; README product captures live in `public/landing/` and the palette swatch lives in `docs/images/orion-tokens.svg`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`. Toolbar migrations: `.claude/skills/toolbar-page/SKILL.md` (`/toolbar-page`) + `tasks/prd-app-header-toolbar.md`. Overlay Dialog/Sheet standard: `DESIGN.md` → Overlays (reference: Agregar gasto, `src/components/quick-capture/QuickExpenseSheet.tsx`; kit: `src/components/overlay/overlay-form.tsx`) + recipe `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`). Rule: `.cursor/rules/responsive-overlays.mdc` (always on).
+[`DESIGN.md`](DESIGN.md) is the visual source of truth: navy canvas, glass cards, and electric-blue primary buttons (`#3a37fc`) with a violet ring. Do not commit third-party mockup images — tokens live in `src/app/globals.css`; README product captures live in `public/landing/` and the palette swatch lives in `docs/images/orion-tokens.svg`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`. Toolbar migrations: `.claude/skills/toolbar-page/SKILL.md` (`/toolbar-page`) + `tasks/prd-app-header-toolbar.md`. Overlay Dialog/Sheet standard: `DESIGN.md` → Overlays (reference: Agregar gasto, `src/components/quick-capture/QuickExpenseSheet.tsx`; kit: `src/components/overlay/overlay-form.tsx`) + recipe `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`). Rule: `.cursor/rules/responsive-overlays.mdc` (always on).
 
 ## Cursor Cloud specific instructions
 
@@ -235,3 +235,13 @@ Seed a local database with `npx prisma db seed`. The command replaces existing d
 - After schema changes, run `npx prisma generate` before starting the dev server.
 - The `npm run ci` script runs: `validate:metric-strips` → `validate:prisma-imports` → `validate:calendar-dates` → `prisma generate` → `vitest run --coverage` (≈70% floor on `src/lib/finance/**`) → isolation tests → `next build`.
 - The dev server uses Turbopack by default (`npm run dev`). Webpack mode is available via `npm run dev:webpack`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

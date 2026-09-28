@@ -42,7 +42,7 @@ const PRODUCTS: ProductSection[] = [
     eyebrow: 'Préstamos',
     title: 'El contrato y cada cuota',
     body: 'Un préstamo con calendario, lo pagado y lo que sigue, ligado a la quincena.',
-    alt: 'Préstamos del hogar, con un contrato y sus cuotas.',
+    alt: 'Préstamos de Hogar: un préstamo vigente con prestamista, saldo pendiente y la próxima cuota.',
   },
   {
     id: 'metas',
@@ -84,13 +84,13 @@ export const LandingPage = () => {
           <div className="landing-hero-wash relative overflow-hidden px-5 py-8 sm:px-8 sm:py-10">
             <div className="relative z-10 grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
               <div className="motion-fade-in min-w-0">
-                <p className="eyebrow text-muted-foreground">Planificación por quincenas</p>
+                <p className="eyebrow text-muted-foreground">Planeación por quincenas</p>
                 <h1 className="mt-3 text-balance text-display">
                   Tu quincena, clara de punta a punta.
                 </h1>
                 <p className="mt-4 max-w-xl text-body text-muted-foreground">
                   Organiza ingresos, gastos, billeteras y préstamos al ritmo de cobrar y pagar.
-                  Personal o en casa. Gratis para usar.
+                  Personal o en casa.
                 </p>
                 <div className="mt-6 flex flex-wrap items-center gap-2">
                   <Button size="lg" asChild>
@@ -129,7 +129,7 @@ export const LandingPage = () => {
         <section id="estado-de-cuenta" className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
           <div className="max-w-2xl">
             <p className="eyebrow text-muted-foreground">Estado de cuenta</p>
-            <h2 className="mt-2 text-title">Importa el estado de cuenta.</h2>
+            <h2 className="mt-2 text-title">Importa el estado de cuenta</h2>
             <p className="mt-3 text-body text-muted-foreground">
               En la tarjeta, Más → Estado de cuenta abre Importar estado de cuenta. Subes el PDF,
               revisas los movimientos y confirmas. No hay conexión al banco: el archivo lo traes tú.
@@ -148,7 +148,7 @@ export const LandingPage = () => {
               De un cobro al siguiente
             </h2>
             <p className="mt-3 text-body text-muted-foreground">
-              La primera va del último día del mes al 14. La segunda, del 15 al penúltimo. El
+              La primera va del último día del mes anterior al 14. La segunda, del 15 al penúltimo. El
               último día pertenece a la primera del mes que sigue.
             </p>
           </div>

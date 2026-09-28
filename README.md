@@ -20,7 +20,7 @@ El isotipo es `public/brand/mark-160.png`, el mismo archivo que muestra `MicasaM
 
 ## Producto
 
-Capturas de la casa ficticia **Hogar**: escritorio (1440×900) y móvil (780×1688), en oscuro y en claro. Están en `public/landing/` y este README las referencia ahí, sin una segunda copia.
+Capturas de la casa ficticia **Hogar**: escritorio (1440×900) y móvil (780×1688). Plan, Liquidez y Toca pagar en móvil se recortan arriba del dock (780×1528). Claro y oscuro. Están en `public/landing/` y este README las referencia ahí, sin una segunda copia.
 
 ### Panel
 
@@ -209,9 +209,9 @@ Cuando miras una quincena que no es la de hoy, el panel marca lo que toca pagar.
 ## Funciones
 
 - **Quincenas.** La unidad de planeación. La primera va del último día del mes anterior al 14. La segunda, del 15 al penúltimo. El último día del mes pertenece a la primera quincena del mes siguiente. Las fechas de negocio usan `America/Mexico_City` (`src/lib/calendar-dates.ts`).
-- **Panel.** Home de la app: `/monthly/{año}/{mes}`. Resume la quincena, las billeteras y las obligaciones del periodo.
+- **Panel.** Inicio de la app: `/monthly/{año}/{mes}`. Resume la quincena, las billeteras y las obligaciones del periodo.
 - **Billeteras y tarjetas.** Efectivo y débito son dinero que sale al pagar. El crédito se sigue por el ciclo del estado de cuenta: pagar con tarjeta aumenta el crédito usado, no el efectivo gastado. Una cuota a meses no se vuelve a sumar en los agregados de la quincena.
-- **Análisis.** Nav, título y pestaña del navegador dicen Análisis. Dentro hay dos vistas: **Liquidez** y **Plan**.
+- **Análisis.** La navegación, el título y la pestaña del navegador dicen Análisis. Dentro hay dos vistas: **Liquidez** y **Plan**.
 - **Préstamos.** Calendario de cuotas, ligado a la quincena. Una cuota pagada con billetera puede quedar registrada como gasto.
 - **Metas.** Billetera con monto objetivo y avance.
 - **Operaciones.** Así se llama la sección, el título y la pestaña. Cada registro es un movimiento.
@@ -369,7 +369,7 @@ CI en GitHub (push a `main` y pull requests) corre el mismo pipeline que `npm ru
 
 ## Contribuir
 
-Lee [CONTRIBUTING.md](CONTRIBUTING.md) y el flujo de contribución en [`docs/agents/workflow.md`](docs/agents/workflow.md). El despliegue está en [`docs/agents/deployment.md`](docs/agents/deployment.md): el trabajo de feature entra por `feat/<slug>` y producción es `main`.
+Lee [CONTRIBUTING.md](CONTRIBUTING.md) y el flujo de contribución en [`docs/agents/workflow.md`](docs/agents/workflow.md). El despliegue está en [`docs/agents/deployment.md`](docs/agents/deployment.md): el trabajo entra por ramas `jl/…` y producción es `main`.
 
 Antes de abrir un PR, corre `npm run ci`.
 

@@ -1,5 +1,5 @@
 /**
- * Planificación por quincena/mes:
+ * Planeación por quincena/mes:
  * - Cuotas en meses (installment): fuera de agregados (sigue en estado de cuenta de la TC).
  * - Cargos con tarjeta de crédito o tienda: fuera del total de “salida de efectivo”.
  * - La salida de efectivo por tarjeta viene de: gastos con billetera débito/efectivo
@@ -50,7 +50,7 @@ export const isCreditInstallmentExpense = (e: CreditInstallmentFields): boolean 
   return t >= 1 && c >= 1 && c <= t;
 };
 
-/** Filas con ambas cuotas definidas quedan fuera (solo planificación). */
+/** Filas con ambas cuotas definidas quedan fuera (solo planeación). */
 export const whereExcludeCreditInstallments = (): Prisma.ExpenseWhereInput => ({
   OR: [{ credit_installment_current: null }, { credit_installment_total: null }],
 });
@@ -68,7 +68,7 @@ export const whereCreditOrStoreCardWalletOnly = (): Prisma.ExpenseWhereInput => 
 });
 
 /**
- * Solo gastos que implican salida de efectivo / débito en la planificación.
+ * Solo gastos que implican salida de efectivo / débito en la planeación.
  * Sin wallet se trata como efectivo (histórico).
  */
 export const whereExcludeCreditStoreCardWallet = (): Prisma.ExpenseWhereInput => ({
@@ -87,7 +87,7 @@ export const whereExcludeCreditStoreCardWallet = (): Prisma.ExpenseWhereInput =>
   ],
 });
 
-/** Agregados de planificación: sin cuotas en TC y sin cargos a tarjeta/tienda. */
+/** Agregados de planeación: sin cuotas en TC y sin cargos a tarjeta/tienda. */
 export const wherePlanningCashFlowExpenses = (): Prisma.ExpenseWhereInput => ({
   AND: [
     whereExcludeCreditInstallments(),
