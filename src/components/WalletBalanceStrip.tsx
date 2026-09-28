@@ -382,9 +382,8 @@ const WalletBalanceStrip = ({
           <div
             ref={listRef}
             className={cn(
-              '-mx-3 -my-4 flex items-stretch gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide px-3 py-4 [-webkit-overflow-scrolling:touch]',
-              '[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]',
-              draggingId != null && 'touch-none',
+              '-mx-3 -my-4 flex items-stretch gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide px-3 py-4 snap-x snap-mandatory [-webkit-overflow-scrolling:touch]',
+              draggingId != null && 'touch-none snap-none',
             )}
           >
               {orderedWallets.map((wallet) => {
@@ -643,7 +642,9 @@ const WalletBalanceStrip = ({
                 );
 
                 const cardClasses = cn(
-                  'group relative isolate flex h-full min-w-[136px] shrink-0 flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 pr-6 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2 sm:pr-7',
+                  'group relative isolate flex h-full min-w-[136px] shrink-0 snap-start flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 pr-6 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2 sm:pr-7',
+                  orderedWallets.length > 1 &&
+                    'max-md:w-[min(17rem,calc(100%-2.75rem))]',
                   'backdrop-blur-sm ring-1 ring-inset transition-all duration-300 [-webkit-touch-callout:none]',
                   onDarkSurface ? 'ring-white/5' : 'ring-black/5',
                   'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:to-transparent',
@@ -795,6 +796,18 @@ const WalletBalanceStrip = ({
                 );
               })}
           </div>
+          {orderedWallets.length > 1 ? (
+            <>
+              <div
+                className="pointer-events-none absolute inset-y-3 left-0 z-10 w-6 bg-gradient-to-r from-background to-transparent"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute inset-y-3 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent"
+                aria-hidden
+              />
+            </>
+          ) : null}
       </div>
 
       {selectedWallet && context ? (

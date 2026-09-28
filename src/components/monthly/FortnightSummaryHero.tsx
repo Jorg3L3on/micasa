@@ -13,7 +13,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Money } from '@/components/money';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
+import { STATUS_FILL_CLASS } from '@/lib/status-tone';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Banknote, Info, Wallet } from 'lucide-react';
 
@@ -289,21 +291,21 @@ const LegendItem = ({
   dotClassName,
 }: LegendItemProps) => (
   <div className="min-w-0">
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="flex min-w-0 items-center gap-1.5">
-        <span
-          className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClassName)}
-          aria-hidden
-        />
-        <span className="overline text-muted-foreground">
-          {label}
-        </span>
-      </span>
-      <CurrencyTicker
-        value={amount}
-        className="shrink-0 text-xs font-semibold text-foreground"
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span
+        className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClassName)}
+        aria-hidden
       />
+      <span className="overline min-w-0 truncate text-muted-foreground">
+        {label}
+      </span>
     </div>
+    <Money
+      value={amount}
+      size="caption"
+      tone="neutral"
+      className="mt-1 block pl-3"
+    />
     <p className="mt-0.5 pl-3 text-caption text-muted-foreground">{subtitle}</p>
   </div>
 );
@@ -413,21 +415,21 @@ export const FortnightSummaryHero = ({
               label="Pagado"
               amount={paidAmount}
               subtitle={paidSubtitle}
-              dotClassName="bg-emerald-500 dark:bg-emerald-400"
+              dotClassName={STATUS_FILL_CLASS.success}
             />
           ) : null}
           <LegendItem
             label="Pendiente"
             amount={pendingAmount}
             subtitle={pendingSubtitle}
-            dotClassName="bg-amber-400 dark:bg-amber-500"
+            dotClassName={STATUS_FILL_CLASS.pending}
           />
           {showLeftover ? (
             <LegendItem
               label="Presupuesto"
               amount={leftoverAmount}
               subtitle="Aún no gastado"
-              dotClassName="bg-violet-500 dark:bg-violet-400"
+              dotClassName={STATUS_FILL_CLASS.info}
             />
           ) : null}
           {freeAmount > 0 && !showIncomeRemainderBreakdown ? (
@@ -476,18 +478,15 @@ export const FortnightSummaryHero = ({
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="flex min-w-0 items-center gap-1 text-body text-muted-foreground">
                   <span
-                    className="font-medium text-muted-foreground/80"
+                    className="shrink-0 font-medium text-muted-foreground/80"
                     aria-hidden
                   >
                     −
                   </span>
-                  <span>Presupuesto</span>
+                  <span className="min-w-0 truncate">Presupuesto</span>
                 </dt>
-                <dd>
-                  <CurrencyTicker
-                    value={leftoverAmount}
-                    className="text-body font-medium text-foreground"
-                  />
+                <dd className="shrink-0">
+                  <Money value={leftoverAmount} size="row" tone="neutral" />
                 </dd>
               </div>
             ) : null}

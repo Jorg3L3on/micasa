@@ -206,26 +206,22 @@ const FortnightProgressStatus = ({
 
   return (
     <div className={chromeTileClass} aria-live="polite">
-      <span
-        className={cn(
-          'flex @min-[42rem]:hidden @min-[62rem]:flex',
-          statusGlyphClass(tone),
-        )}
-        aria-hidden
-      >
-        <StatusIcon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-baseline justify-between gap-2">
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
           <p
-            className="min-w-0 truncate text-sm font-semibold leading-tight tracking-tight"
+            className="flex min-w-0 items-center gap-2 text-sm font-semibold leading-tight tracking-tight"
             aria-label={titleSr}
           >
-            {position.kind === 'current' && position.remainingDays > 1 ? (
-              <span className="tabular-nums">{title}</span>
-            ) : (
-              title
-            )}
+            <span className={statusGlyphClass(tone)} aria-hidden>
+              <StatusIcon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 truncate">
+              {position.kind === 'current' && position.remainingDays > 1 ? (
+                <span className="tabular-nums">{title}</span>
+              ) : (
+                title
+              )}
+            </span>
           </p>
           {tone === 'upcoming' ? (
             <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 overline text-muted-foreground">
@@ -242,11 +238,13 @@ const FortnightProgressStatus = ({
             </span>
           )}
         </div>
-        <FortnightProgressTrack
-          percent={percent}
-          tone={tone}
-          label={progressLabel}
-        />
+        <div className="py-1">
+          <FortnightProgressTrack
+            percent={percent}
+            tone={tone}
+            label={progressLabel}
+          />
+        </div>
         <div className="flex items-center justify-between gap-2 text-caption leading-none text-muted-foreground sm:text-caption">
           <span className={cn('min-w-0 truncate', accentEmphasisClass)}>
             {leftDate}
