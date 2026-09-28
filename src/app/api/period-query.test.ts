@@ -115,48 +115,118 @@ describe('period query normalization', () => {
     );
   });
 
-  it('rejects a whitespace-only period and still accepts a missing one', async () => {
-    const spaced = await getJson(
-      getFortnights,
+  it('rejects an empty or whitespace period on fortnights and lists the catalog when it is absent', async () => {
+    for (const path of [
+      '/api/fortnights?year=2026&month=9&period=',
       '/api/fortnights?year=2026&month=9&period=%20%20',
-    );
-    expect(spaced.status).toBe(400);
-    expect(spaced.body).toEqual({ error: 'period must be FIRST or SECOND' });
+    ]) {
+      const response = await getJson(getFortnights, path);
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'period must be FIRST or SECOND' });
+    }
     expect(findFortnightByCalendarPeriod).not.toHaveBeenCalled();
 
     const missing = await getJson(getFortnights, '/api/fortnights');
     expect(missing.status).toBe(200);
     expect(listFortnightsForCatalog).toHaveBeenCalled();
+  });
 
-    const report = await getJson(
+  it('treats an empty or whitespace period like a missing one on reports, alerts, and transactions', async () => {
+    const reportMissing = await getJson(
+      getReports,
+      '/api/reports?type=summary&year=2026&month=9',
+    );
+    const reportEmpty = await getJson(
+      getReports,
+      '/api/reports?type=summary&year=2026&month=9&period=',
+    );
+    const reportSpaces = await getJson(
       getReports,
       '/api/reports?type=summary&year=2026&month=9&period=%20%20',
     );
-    const alerts = await getJson(
+    expect([reportMissing.status, reportEmpty.status, reportSpaces.status]).toEqual([
+      200, 200, 200,
+    ]);
+    const reportCalls = getReportSummary.mock.calls.map((call) => call[0]);
+    expect(reportCalls[1]).toEqual(reportCalls[0]);
+    expect(reportCalls[2]).toEqual(reportCalls[0]);
+    expect(reportCalls[0].period).toBeUndefined();
+
+    const alertsMissing = await getJson(
+      getAlertsRoute,
+      '/api/alerts?year=2026&month=9',
+    );
+    const alertsEmpty = await getJson(
+      getAlertsRoute,
+      '/api/alerts?year=2026&month=9&period=',
+    );
+    const alertsSpaces = await getJson(
       getAlertsRoute,
       '/api/alerts?year=2026&month=9&period=%20%20',
     );
-    const transactions = await getJson(
+    expect([alertsMissing.status, alertsEmpty.status, alertsSpaces.status]).toEqual([
+      200, 200, 200,
+    ]);
+    const alertCalls = getAlerts.mock.calls.map((call) => call[0]);
+    expect(alertCalls[1]).toEqual(alertCalls[0]);
+    expect(alertCalls[2]).toEqual(alertCalls[0]);
+    expect(alertCalls[0].period).toBeNull();
+
+    const transactionsMissing = await getJson(
+      getTransactions,
+      '/api/transactions?year=2026&month=9',
+    );
+    const transactionsEmpty = await getJson(
+      getTransactions,
+      '/api/transactions?year=2026&month=9&period=',
+    );
+    const transactionsSpaces = await getJson(
       getTransactions,
       '/api/transactions?year=2026&month=9&period=%20%20',
     );
-    for (const response of [report, alerts, transactions]) {
+    expect([
+      transactionsMissing.status,
+      transactionsEmpty.status,
+      transactionsSpaces.status,
+    ]).toEqual([200, 200, 200]);
+    const transactionCalls = listPlanningTransactions.mock.calls.map(
+      (call) => call[0],
+    );
+    expect(transactionCalls[1]).toEqual(transactionCalls[0]);
+    expect(transactionCalls[2]).toEqual(transactionCalls[0]);
+    expect(transactionCalls[0].period).toBeUndefined();
+  });
+
+  it('rejects garbage periods on fortnights, reports, alerts, and transactions', async () => {
+    const cases: Array<
+      [(request: NextRequest) => Promise<Response>, string]
+    > = [
+      [getFortnights, '/api/fortnights?year=2026&month=9&period=abc'],
+      [getFortnights, '/api/fortnights?year=2026&month=9&period=undefined'],
+      [getFortnights, '/api/fortnights?year=2026&month=9&period=THIRD'],
+      [getReports, '/api/reports?type=summary&year=2026&month=9&period=abc'],
+      [getReports, '/api/reports?type=summary&year=2026&month=9&period=undefined'],
+      [getReports, '/api/reports?type=summary&year=2026&month=9&period=foo'],
+      [getAlertsRoute, '/api/alerts?year=2026&month=9&period=abc'],
+      [getAlertsRoute, '/api/alerts?year=2026&month=9&period=undefined'],
+      [getAlertsRoute, '/api/alerts?year=2026&month=9&period=nope'],
+      [getTransactions, '/api/transactions?year=2026&month=9&period=abc'],
+      [getTransactions, '/api/transactions?year=2026&month=9&period=undefined'],
+      [getTransactions, '/api/transactions?year=2026&month=9&period=9'],
+    ];
+
+    for (const [handler, path] of cases) {
+      const response = await getJson(handler, path);
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('period must be FIRST or SECOND');
     }
-  });
-
-  it('rejects a garbage period on GET /api/fortnights', async () => {
-    const response = await getJson(
-      getFortnights,
-      '/api/fortnights?year=2026&month=9&period=THIRD',
-    );
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: 'period must be FIRST or SECOND' });
     expect(findFortnightByCalendarPeriod).not.toHaveBeenCalled();
+    expect(getReportSummary).not.toHaveBeenCalled();
+    expect(getAlerts).not.toHaveBeenCalled();
+    expect(listPlanningTransactions).not.toHaveBeenCalled();
   });
 
-  it('normalizes period=1 and rejects garbage on reports, alerts, and transactions', async () => {
+  it('normalizes period=1 and period=2 on reports, alerts, and transactions', async () => {
     const report = await getJson(
       getReports,
       '/api/reports?type=summary&year=2026&month=9&period=1',
@@ -165,13 +235,6 @@ describe('period query normalization', () => {
     expect(getReportSummary).toHaveBeenCalledWith(
       expect.objectContaining({ period: FortnightPeriod.FIRST }),
     );
-
-    const reportGarbage = await getJson(
-      getReports,
-      '/api/reports?type=summary&year=2026&month=9&period=foo',
-    );
-    expect(reportGarbage.status).toBe(400);
-    expect(reportGarbage.body.error).toBe('period must be FIRST or SECOND');
 
     const alerts = await getJson(
       getAlertsRoute,
@@ -182,12 +245,6 @@ describe('period query normalization', () => {
       expect.objectContaining({ period: FortnightPeriod.SECOND }),
     );
 
-    const alertsGarbage = await getJson(
-      getAlertsRoute,
-      '/api/alerts?year=2026&month=9&period=nope',
-    );
-    expect(alertsGarbage.status).toBe(400);
-
     const transactions = await getJson(
       getTransactions,
       '/api/transactions?year=2026&month=9&period=1',
@@ -196,12 +253,5 @@ describe('period query normalization', () => {
     expect(listPlanningTransactions).toHaveBeenCalledWith(
       expect.objectContaining({ period: FortnightPeriod.FIRST }),
     );
-
-    const transactionsGarbage = await getJson(
-      getTransactions,
-      '/api/transactions?year=2026&month=9&period=9',
-    );
-    expect(transactionsGarbage.status).toBe(400);
-    expect(transactionsGarbage.body.error).toBe('period must be FIRST or SECOND');
   });
 });

@@ -3,8 +3,8 @@ import { findFortnightByCalendarPeriod } from '@/features/monthly/server/monthly
 import { getOwnerContext } from '@/lib/server/get-owner-context';
 import { listFortnightsForCatalog } from '@/lib/finance/fortnight.service';
 import {
-  fortnightPeriodParamError,
   parseFortnightPeriod,
+  strictFortnightPeriodParamError,
 } from '@/lib/finance/report-helpers';
 import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const year = searchParams.get('year');
     const month = searchParams.get('month');
     const period = searchParams.get('period');
-    const periodError = fortnightPeriodParamError(period);
+    const periodError = strictFortnightPeriodParamError(period);
     if (periodError) {
       return NextResponse.json({ error: periodError }, { status: 400 });
     }
