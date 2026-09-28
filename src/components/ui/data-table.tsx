@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useSyncExternalStore } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -38,6 +39,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
+const MAX_MD_QUERY = '(max-width: 767px)';
+
+const subscribeMaxMd = (onStoreChange: () => void) => {
+  const media = window.matchMedia(MAX_MD_QUERY);
+  media.addEventListener('change', onStoreChange);
+  return () => media.removeEventListener('change', onStoreChange);
+};
+
+const getMaxMdSnapshot = () => window.matchMedia(MAX_MD_QUERY).matches;
+
+/** SSR and the first client render use the mobile list so a wide table is not in the document. */
+const getMaxMdServerSnapshot = () => true;
+
+const useIsMaxMd = () =>
+  useSyncExternalStore(subscribeMaxMd, getMaxMdSnapshot, getMaxMdServerSnapshot);
 
 export type DataTableProps<TData> = {
   data: TData[];
@@ -130,6 +147,8 @@ export function DataTable<TData>({
   const filterValue =
     (filterColumn && (table.getColumn(filterColumn)?.getFilterValue() as string)) ?? '';
 
+  const isMaxMd = useIsMaxMd();
+  const showMobileList = Boolean(renderMobileRow) && isMaxMd;
   const columnToggleIsDesktopOnly = Boolean(renderMobileRow && columnVisibility);
   const toolbarOnlyColumnToggle =
     columnToggleIsDesktopOnly && !filterColumn && !filterSlot && !toolbarExtra;
@@ -194,28 +213,30 @@ export function DataTable<TData>({
           )}
         </div>
       )}
-      {renderMobileRow ? (
+      {showMobileList && renderMobileRow ? (
         <ul
           className={cn(
-            'divide-y divide-border/60 overflow-hidden md:hidden',
+            'w-full min-w-0 max-w-full divide-y divide-border/60 overflow-hidden',
             !embedded && 'rounded-lg border bg-card',
           )}
           role="list"
         >
           {table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
-              <li key={row.id}>{renderMobileRow(row.original)}</li>
+              <li key={row.id} className="min-w-0 max-w-full">
+                {renderMobileRow(row.original)}
+              </li>
             ))
           ) : (
             <li className="p-2 text-center">{resolvedEmpty}</li>
           )}
         </ul>
       ) : null}
+      {showMobileList ? null : (
       <div
         className={cn(
           'overflow-x-auto',
           !embedded && 'rounded-lg border bg-card',
-          renderMobileRow && 'hidden md:block',
         )}
       >
         <Table>
@@ -313,6 +334,7 @@ export function DataTable<TData>({
           </TableBody>
         </Table>
       </div>
+      )}
       {pagination && table.getPageCount() > 1 && (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
