@@ -4,20 +4,25 @@
 #
 #   SENTRY_USER_TOKEN='sntryu_…' ./scripts/create-sentry-error-spike-alert.sh
 #
-# Defaults: ≥10 events in 5 minutes → email Jorge (user 4814957)
+# Defaults: ≥10 events in 5 minutes → email the Sentry user in SENTRY_ALERT_USER_ID
 
 set -euo pipefail
 
 ORG="${SENTRY_ORG:-ziglabs}"
 REGION="${SENTRY_REGION:-us}"
 TOKEN="${SENTRY_USER_TOKEN:-${SENTRY_AUTH_TOKEN:-}}"
-USER_ID="${SENTRY_ALERT_USER_ID:-4814957}"
+USER_ID="${SENTRY_ALERT_USER_ID:-}"
 THRESHOLD="${SENTRY_SPIKE_COUNT:-10}"
 # Workflow API intervals: 1m | 5m | 15m | 1h | 1d | 1w | 30d
 INTERVAL="${SENTRY_SPIKE_INTERVAL:-5m}"
 
 if [[ -z "$TOKEN" ]]; then
   echo "Set SENTRY_USER_TOKEN (org token with alerts:write)." >&2
+  exit 1
+fi
+
+if [[ -z "$USER_ID" ]]; then
+  echo "Set SENTRY_ALERT_USER_ID to the Sentry user that should receive the alert." >&2
   exit 1
 fi
 

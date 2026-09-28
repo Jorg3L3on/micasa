@@ -61,23 +61,23 @@ describe('getPendingLiquidityLineItems', () => {
     expect(
       getPendingLiquidityLineItems({
         transactions: [
-          expense({ id: 1, description: 'Transporte Carmen', amount: 400 }),
+          expense({ id: 1, description: 'Transporte', amount: 400 }),
           expense({
             id: 2,
             description: 'Renta',
-            amount: 8950,
+            amount: 7000,
             is_paid: true,
           }),
           expense({
             id: 3,
-            description: 'TELMEX',
-            amount: 658,
+            description: 'Teléfono',
+            amount: 650,
             wallet_type: 'CREDIT_CARD',
           }),
         ],
       }),
     ).toEqual([
-      { id: 'expense-1', name: 'Transporte Carmen', amount: 400 },
+      { id: 'expense-1', name: 'Transporte', amount: 400 },
     ]);
   });
 
@@ -88,9 +88,9 @@ describe('getPendingLiquidityLineItems', () => {
         cardDueItems: [
           card({
             walletId: 9,
-            walletName: 'DIDI Card',
-            remainingPlannerAmount: 104.3,
-            statementPayoff: 104.3,
+            walletName: 'Tarjeta digital',
+            remainingPlannerAmount: 100,
+            statementPayoff: 100,
           }),
         ],
         loanDueItems: [
@@ -108,7 +108,7 @@ describe('getPendingLiquidityLineItems', () => {
         ],
       }),
     ).toEqual([
-      { id: 'card-9', name: 'Pago tarjeta: DIDI Card', amount: 104.3 },
+      { id: 'card-9', name: 'Pago tarjeta: Tarjeta digital', amount: 100 },
       {
         id: 'loan-4',
         name: 'Pago préstamo: Auto (Banco)',

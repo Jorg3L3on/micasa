@@ -35,7 +35,7 @@ describe('setTemporaryPasswordForUser', () => {
     const result = await setTemporaryPasswordForUser({
       admin: { userId: 1, email: 'a@test.com' },
       targetUserId: 2,
-      temporaryPassword: 'temp1234',
+      temporaryPassword: 'demo-pass',
     });
     expect(result).toEqual({ ok: false, reason: 'not_found' });
     expect(updateUser).not.toHaveBeenCalled();
@@ -48,7 +48,7 @@ describe('setTemporaryPasswordForUser', () => {
     const result = await setTemporaryPasswordForUser({
       admin: { userId: 1, email: 'a@test.com' },
       targetUserId: 2,
-      temporaryPassword: 'temp1234',
+      temporaryPassword: 'demo-pass',
     });
 
     expect(result).toEqual({ ok: true, targetEmail: 'u@test.com' });
@@ -63,7 +63,7 @@ describe('setTemporaryPasswordForUser', () => {
         action: 'admin.password_override',
         metadata: {
           target_email: 'u@test.com',
-          password_length: 8,
+          password_length: 9,
         },
       }),
     });
@@ -72,6 +72,6 @@ describe('setTemporaryPasswordForUser', () => {
       unknown
     >;
     expect(metadata).not.toHaveProperty('temporaryPassword');
-    expect(JSON.stringify(metadata)).not.toContain('temp1234');
+    expect(JSON.stringify(metadata)).not.toContain('demo-pass');
   });
 });

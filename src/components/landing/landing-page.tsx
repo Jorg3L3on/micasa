@@ -56,7 +56,7 @@ const PRODUCTS: ProductSection[] = [
     eyebrow: 'Operaciones',
     title: 'Cada movimiento, en orden',
     body: 'Gastos, ingresos y pagos quedan como movimientos en Operaciones.',
-    alt: 'Operaciones con movimientos de despensa, renta y servicios.',
+    alt: 'Operaciones con movimientos de Despensa, Nómina y Renta.',
   },
   {
     id: 'toca-pagar',

@@ -96,16 +96,16 @@ describe('getDueToPayComposition', () => {
     expect(
       getDueToPayComposition({
         pagado: 0,
-        pendiente: 25_671.62,
+        pendiente: 25_000,
         statementDue: 850,
         walletLoanDue: 1_800,
-        payrollDeduction: 4_036.41,
+        payrollDeduction: 4_000,
       }),
     ).toEqual([
-      { label: 'Pendiente de gastos', amount: 25_671.62 },
+      { label: 'Pendiente de gastos', amount: 25_000 },
       { label: 'De eso, estado de cuenta', amount: 850 },
       { label: 'De eso, cuotas de préstamo', amount: 1_800 },
-      { label: 'Deducciones de nómina', amount: 4_036.41 },
+      { label: 'Deducciones de nómina', amount: 4_000 },
     ]);
   });
 

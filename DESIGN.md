@@ -456,6 +456,7 @@ Replace files under `docs/images/` with captures of localhost (or production) â€
 | --- | --- |
 | `docs/images/landing-hero.jpg` | `/` hero (headline + Panel screenshot) |
 | `docs/images/login.jpg` | `/login` |
-| `docs/images/panel-financiero.jpg` | Panel financiero with a seeded month |
+
+TODO: add a Panel financiero screenshot captured from fictional data.
 
 `docs/images/orion-tokens.svg` is drawn from the table above; update it if hex values change.

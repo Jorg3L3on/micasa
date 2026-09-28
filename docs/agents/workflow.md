@@ -18,7 +18,7 @@ Shared skills: `~/.cursor/skills/` (`prd`, `to-prd`, `to-issues`, `implement-iss
 Install skills once (from Zigzag or any repo with the kit):
 
 ```bash
-bash /Users/jorgeleon/Developer/Projects/zigzag/docs/agent-workflow/scripts/install-shared-agent-skills.sh
+bash ~/Developer/Projects/zigzag/docs/agent-workflow/scripts/install-shared-agent-skills.sh
 ```
 
 ## Quick start

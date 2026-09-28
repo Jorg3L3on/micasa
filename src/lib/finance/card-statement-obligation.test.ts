@@ -342,7 +342,7 @@ describe('computeNextDuePayment (re-export parity)', () => {
       computeNextDuePayment({
         lastStatementBalance: 0,
         paymentsAppliedToStatement: 0,
-        importedTotalDue: 7646.7,
+        importedTotalDue: 7600,
         outstandingBalance: 0,
         dueDay: 17,
         cutoffDay: 7,
@@ -355,12 +355,12 @@ describe('computeNextDuePayment (re-export parity)', () => {
       computeNextDuePayment({
         lastStatementBalance: 0,
         paymentsAppliedToStatement: 0,
-        importedTotalDue: 7646.7,
-        outstandingBalance: 2913.07,
+        importedTotalDue: 7600,
+        outstandingBalance: 2900,
         dueDay: 17,
         cutoffDay: 7,
       }),
-    ).toBe(7646.7);
+    ).toBe(7600);
   });
 });
 

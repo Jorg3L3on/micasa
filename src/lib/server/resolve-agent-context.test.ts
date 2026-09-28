@@ -197,7 +197,7 @@ describe('resolveAgentUser', () => {
 });
 
 describe('resolveOwnerForAgent', () => {
-  const allowedHouse = [{ ownerType: 'house' as const, ownerId: 3 }];
+  const allowedHouse = [{ ownerType: 'house' as const, ownerId: 42 }];
   const allowedPersonal = [{ ownerType: 'user' as const, ownerId: 2 }];
 
   it('403 en casa sin membresía', async () => {
@@ -210,8 +210,8 @@ describe('resolveOwnerForAgent', () => {
 
   it('devuelve ownerFilter de casa para miembros', async () => {
     findFirstMembership.mockResolvedValue({ role: 'MEMBER' });
-    const owner = await resolveOwnerForAgent(2, 'house', 3, allowedHouse);
-    expect(owner.ownerFilter).toEqual({ user_id: null, house_id: 3 });
+    const owner = await resolveOwnerForAgent(2, 'house', 42, allowedHouse);
+    expect(owner.ownerFilter).toEqual({ user_id: null, house_id: 42 });
     expect(owner.role).toBe('member');
   });
 
@@ -239,16 +239,16 @@ describe('resolveOwnerForAgent', () => {
 describe('resolveAgentContext', () => {
   it('compone token + owner en un contexto completo', async () => {
     findUniqueApiKey.mockResolvedValue(activeApiKey);
-    findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 3 }]);
+    findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 42 }]);
     findFirstMembership.mockResolvedValue({ role: 'OWNER' });
     const agent = await resolveAgentContext(
       `Bearer ${VALID_TOKEN}`,
       'house',
-      3,
+      42,
     );
     expect(agent.userId).toBe(2);
     expect(agent.ownerType).toBe('house');
-    expect(agent.ownerFilter).toEqual({ user_id: null, house_id: 3 });
+    expect(agent.ownerFilter).toEqual({ user_id: null, house_id: 42 });
     expect(agent.scopes).toContain('write');
   });
 });
