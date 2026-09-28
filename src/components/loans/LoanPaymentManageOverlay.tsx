@@ -5,11 +5,11 @@ import {
   CheckCircle2,
   CircleSlash,
   History,
-  Loader2,
   Undo2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -530,11 +530,9 @@ export const LoanPaymentManageOverlay = ({
             ) : null}
 
             {loadingWallets ? (
-              <div className="flex justify-center py-6">
-                <Loader2
-                  className="h-6 w-6 animate-spin text-muted-foreground"
-                  data-icon="inline-start"
-                />
+              <div className="space-y-2 py-2" aria-busy="true" aria-label="Cargando billeteras">
+                <Skeleton className="h-12 w-full rounded-xl" />
+                <Skeleton className="h-12 w-full rounded-xl" />
               </div>
             ) : action == null ? (
               allScheduled ? (
