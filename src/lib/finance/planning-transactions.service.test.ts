@@ -84,7 +84,7 @@ describe('listPlanningTransactions', () => {
     });
   });
 
-  it('keeps planner loan payments out of the gastos transaction list', async () => {
+  it('lists scheduled loan payments with the fortnight expenses', async () => {
     const rows = await listPlanningTransactions({
       ownerFilter,
       year: '2026',
@@ -95,16 +95,10 @@ describe('listPlanningTransactions', () => {
       resolvedFortnightIds: [1],
     });
 
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({
-      description: 'Super',
-      planning_row_kind: 'expense',
-      is_paid: false,
-      paid_at: null,
-    });
+    expect(rows.some((row) => row.description === 'Super')).toBe(true);
     expect(
       rows.some((row) => row.planning_row_kind === 'loan_payment'),
-    ).toBe(false);
+    ).toBe(true);
     expect(findManyExpense).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -113,12 +107,13 @@ describe('listPlanningTransactions', () => {
               user_id: 1,
               house_id: null,
               fortnight_id: { in: [1] },
-              loan_payment_id: null,
             }),
           ]),
         }),
       }),
     );
+    const expenseWhere = findManyExpense.mock.calls[0]?.[0]?.where;
+    expect(JSON.stringify(expenseWhere)).not.toContain('loan_payment_id');
   });
 
   it('queries FIRST when the period query is 1', async () => {

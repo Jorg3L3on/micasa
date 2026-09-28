@@ -87,9 +87,6 @@ export const listPlanningTransactions = async (
   if (isPaid !== undefined) {
     expenseWhere.is_paid = isPaid;
   }
-  if (excludeCreditInstallment && type === 'expense') {
-    expenseWhere.loan_payment_id = null;
-  }
   if (excludeCreditInstallment) {
     expenseWhere = {
       AND: [expenseWhere, whereExcludeCreditInstallments()],
@@ -150,9 +147,11 @@ export const listPlanningTransactions = async (
           : resolvedPeriod === 'SECOND'
             ? second
             : [...first, ...second];
-      linkedLoanPaymentExpenses = linkedLoanPaymentExpenseIds(periodPayments);
       loanPaymentsForPlanning = periodPayments.filter(
         (payment) => payment.status === 'SCHEDULED',
+      );
+      linkedLoanPaymentExpenses = linkedLoanPaymentExpenseIds(
+        loanPaymentsForPlanning,
       );
     }
   }
@@ -202,7 +201,7 @@ export const listPlanningTransactions = async (
       : cardPaymentsForPlanning.map(mapCreditCardPaymentToTransactionRow);
 
   const loanPaymentTransactions =
-    isPaid === false || type === 'expense'
+    isPaid === false
       ? []
       : mapScheduledLoanPaymentsToTransactionRows(loanPaymentsForPlanning);
 
@@ -221,6 +220,12 @@ export const listPlanningTransactions = async (
   const incomes = await prisma.income.findMany({
     where: incomeWhere,
     orderBy: { received_at: 'desc' },
+    include: {
+      wallet: { select: { name: true } },
+      income_template: {
+        select: { wallet: { select: { name: true } } },
+      },
+    },
   });
 
   const incomeTransactions: TransactionRow[] = incomes.map((income) => {
@@ -236,7 +241,10 @@ export const listPlanningTransactions = async (
       amount: decimalToNumber(income.amount),
       category: '',
       categoryIcon: null,
-      paymentMethod: 'Ingreso',
+      paymentMethod:
+        income.wallet?.name ??
+        income.income_template?.wallet?.name ??
+        'Sin billetera',
       type: 'income' as const,
       is_paid: true,
       due_day: null,
