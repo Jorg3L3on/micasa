@@ -14,17 +14,10 @@ export function walletCardViewTransitionName(walletId: number): string {
 
 /**
  * Shared list-card shell (funding + credit/store): fixed min-height, not aspect-ratio.
- * Keep in sync with mobile stack overlap below.
+ * Desktop Billeteras card faces only. Mobile is a calm row list.
  */
 export const WALLET_LIST_CARD_SHELL_CLASS =
   'min-h-[12rem] p-4 pb-5 sm:min-h-[13.5rem] sm:p-5 sm:pb-6';
-
-/**
- * Mobile stacked peek (~7rem of each card under the next).
- * Uses fixed shell heights: 12rem / sm 13.5rem (not width% from the old aspect).
- */
-export const WALLET_LIST_STACK_OVERLAP_CLASS =
-  'max-md:mt-[calc(7rem-12rem)] max-md:sm:mt-[calc(7rem-13.5rem)]';
 
 export type WalletCardVtSnapshot = {
   id: number;

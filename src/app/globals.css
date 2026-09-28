@@ -293,41 +293,6 @@
     box-shadow: var(--shadow-card);
   }
 
-  /* Glass card: same language as planner shells (hairline + frost). */
-  .card-glass {
-    @apply border border-border/50 backdrop-blur-xl bg-card/60! dark:border-white/[0.12] dark:bg-secondary/55!;
-  }
-
-  /* Inner depth: inset shadow + subtle inset ring (tactile, 3D) */
-  .card-depth {
-    box-shadow: inset 0 1px 2px 0 rgb(0 0 0 / 0.06);
-    @apply ring-1 ring-inset ring-white/5;
-  }
-
-  /* Orange glow for active/highlighted elements */
-  .glow-orange {
-    box-shadow: 0 0 15px rgba(249, 115, 22, 0.15);
-    @apply border-orange-500/50 border;
-  }
-
-  /* Indigo glow for primary accent elements */
-  .glow-primary {
-    box-shadow: 0 0 18px rgb(58 55 252 / 0.28);
-    @apply border-primary/40 border;
-  }
-
-  /* Status glow: red (Vencido) */
-  .glow-status-destructive {
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
-    @apply border border-destructive/50;
-  }
-
-  /* Status glow: green (Pagado) */
-  .glow-status-success {
-    box-shadow: 0 0 12px color-mix(in oklch, var(--status-success) 35%, transparent);
-    @apply border border-status-success-border;
-  }
-
   /* Utility: hide scrollbar while keeping scroll functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;
