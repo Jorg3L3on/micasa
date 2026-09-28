@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import {
   Activity,
   ArrowDownLeft,
@@ -52,9 +53,7 @@ const moneyTooltipFormatter = (value: number | string) =>
   formatCurrency(Number(value));
 
 const EmptyChartState = ({ message }: { message: string }) => (
-  <div className="flex h-52 items-center justify-center rounded-xl border border-dashed border-border/50 bg-muted/10 px-4 text-center text-sm text-muted-foreground">
-    {message}
-  </div>
+  <EmptyState message={message} className="h-52 py-6" />
 );
 
 const InsightStat = ({

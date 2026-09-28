@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -716,8 +717,8 @@ export default function ExpenseTable({
           )}
         >
           {localExpenses.length === 0 ? (
-            <li className="rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground">
-              Sin gastos
+            <li>
+              <EmptyState message="Sin gastos" className="py-8" />
             </li>
           ) : (
             <>

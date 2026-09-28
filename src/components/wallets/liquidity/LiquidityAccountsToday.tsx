@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, CreditCard, ExternalLink, Pencil } from 'lucide-react';
@@ -435,9 +436,10 @@ export const LiquidityAccountsToday = ({
             <Skeleton className="h-28 w-full rounded-xl border border-border/60" />
           </div>
         ) : views.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground">
-            No hay cuentas activas de efectivo, tarjeta o préstamo.
-          </p>
+          <EmptyState
+            message="No hay cuentas activas de efectivo, tarjeta o préstamo."
+            className="py-8"
+          />
         ) : (
           <>
             <LiquidityDebtSummaryStrip

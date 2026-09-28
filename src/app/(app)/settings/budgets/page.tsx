@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -234,17 +235,7 @@ function ProgressBar({ spent, total }: { spent: number; total: number }) {
 }
 
 function BudgetsEmpty({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-16 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <PiggyBank className="size-5" aria-hidden />
-      </div>
-      <div>
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
+  return <EmptyState icon={PiggyBank} message={title} description={description} />;
 }
 
 function BudgetRow({
@@ -999,7 +990,7 @@ export default function BudgetsPage() {
                   {templateSections.inactiveOpen ? (
                     <div className="divide-y divide-border/60 rounded-lg border border-border/60">
                       {inactiveTemplates.length === 0 ? (
-                        <p className="px-4 py-6 text-sm text-muted-foreground">No hay plantillas inactivas.</p>
+                        <EmptyState message="No hay plantillas inactivas." className="py-6" />
                       ) : (
                         inactiveTemplates.map((template) => (
                           <div key={template.id} className="flex flex-wrap items-center gap-3 px-4 py-3">

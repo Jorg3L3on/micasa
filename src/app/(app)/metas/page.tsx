@@ -9,6 +9,7 @@ import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
 import { GoalListCard } from '@/components/wallets/GoalListCard';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
+import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
@@ -325,31 +326,20 @@ export default function MetasPage() {
           ))}
         </div>
       ) : displayGoals.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 bg-[oklch(96.8%_0.007_247.896)] px-6 py-14 text-center dark:bg-card/40">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-status-info-soft text-status-info">
-            <Target className="h-5 w-5" aria-hidden />
-          </span>
-          <div className="space-y-1">
-            <p className="font-medium">
-              {hasSearch ? 'Ninguna meta coincide con la búsqueda' : emptyTitle}
-            </p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {hasSearch
-                ? 'Prueba otro nombre o limpia la búsqueda.'
-                : emptyDescription}
-            </p>
-          </div>
-          {!hasSearch && statusFilter === 'active' ? (
-            <Button
-              type="button"
-              className="rounded-xl"
-              onClick={openCreateDialog}
-            >
-              <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-              Agregar meta
-            </Button>
-          ) : null}
-        </div>
+        <EmptyState
+          icon={Target}
+          message={hasSearch ? 'Ninguna meta coincide con la búsqueda' : emptyTitle}
+          description={
+            hasSearch
+              ? 'Prueba otro nombre o limpia la búsqueda.'
+              : emptyDescription
+          }
+          action={
+            !hasSearch && statusFilter === 'active'
+              ? { label: 'Agregar meta', onClick: openCreateDialog }
+              : undefined
+          }
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {displayGoals.map((wallet) => (

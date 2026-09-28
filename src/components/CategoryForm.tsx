@@ -1,8 +1,8 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
-import { Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
@@ -122,9 +122,7 @@ export default function CategoryForm({
             className="space-y-4"
           >
             {error && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {error}
-              </div>
+              <ErrorBanner>{error}</ErrorBanner>
             )}
             {mode === 'create' && parentOptions.length > 0 ? (
               <FormField
@@ -226,10 +224,7 @@ export default function CategoryForm({
               className={OVERLAY_PRIMARY_BUTTON_CLASS}
             >
               {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" aria-hidden />
-                  {mode === 'create' ? 'Creando…' : 'Guardando…'}
-                </>
+                mode === 'create' ? 'Creando…' : 'Guardando…'
               ) : mode === 'create' ? (
                 'Crear'
               ) : (

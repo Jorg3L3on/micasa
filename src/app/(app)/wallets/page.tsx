@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
+import { ErrorBanner } from '@/components/error-banner';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import WalletDeleteDialog from '@/components/wallets/WalletDeleteDialog';
@@ -1402,11 +1403,9 @@ export default function WalletsPage() {
       </ToolbarFiltersPortal>
 
       <div className="relative z-0">
-      {error && !deleteDialogOpen && (
-        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      {error && !deleteDialogOpen ? (
+        <ErrorBanner className="mb-4">{error}</ErrorBanner>
+      ) : null}
 
       <div className="min-w-0">
           {loading && wallets.length === 0 ? (
@@ -1421,9 +1420,7 @@ export default function WalletsPage() {
                 <div className="@container w-full min-w-0">
                   <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
                     {displayWallets.length === 0 ? (
-                      <p className="py-8 text-center text-muted-foreground">
-                        Ninguna billetera coincide con los filtros.
-                      </p>
+                      <EmptyState message="Ninguna billetera coincide con los filtros." />
                     ) : (
                       <WalletCardsList
                         wallets={displayWallets}
@@ -1441,17 +1438,19 @@ export default function WalletsPage() {
                       />
                     )}
 
-                    <div
-                      className="flex flex-wrap items-baseline justify-center gap-2"
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <p className="text-body text-muted-foreground">
-                        {displayWallets.length} de {wallets.length}{' '}
-                        {wallets.length === 1 ? 'billetera' : 'billeteras'}
-                        {listIsFiltered ? ' · filtrado' : ''}
-                      </p>
-                    </div>
+                    {filtersReady && !loading ? (
+                      <div
+                        className="flex flex-wrap items-baseline justify-center gap-2"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <p className="text-body text-muted-foreground">
+                          {displayWallets.length} de {wallets.length}{' '}
+                          {wallets.length === 1 ? 'billetera' : 'billeteras'}
+                          {listIsFiltered ? ' · filtrado' : ''}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}

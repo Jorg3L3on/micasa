@@ -1,5 +1,7 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
+import { ErrorBanner } from '@/components/error-banner';
 import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from 'next-themes';
 import {
@@ -140,13 +142,9 @@ export function CreditCardInstallmentProjectionBlock() {
       {expanded && (
         <CardContent className="pt-0">
           {error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-              {error}
-            </div>
+            <ErrorBanner>{error}</ErrorBanner>
           ) : data.length === 0 ? (
-            <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-3 text-xs text-muted-foreground">
-              No hay items en MSI activos en este momento.
-            </div>
+            <EmptyState message="No hay items en MSI activos en este momento." className="py-4" />
           ) : (
           <div className="h-48 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">

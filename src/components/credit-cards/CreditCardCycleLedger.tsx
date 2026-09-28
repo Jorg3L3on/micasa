@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -207,12 +208,10 @@ export const CreditCardCycleLedger = ({
           />
         </div>
       ) : grouped.length === 0 ? (
-        <div className="p-4" role="status">
-          <p className="text-sm font-medium text-foreground">Sin movimientos</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            No hay entradas para mostrar en este ciclo.
-          </p>
-        </div>
+        <EmptyState
+          message="Sin movimientos"
+          description="No hay entradas para mostrar en este ciclo."
+        />
       ) : (
         <div className="divide-y divide-border/40">
           {grouped.map(([dateKey, rows]) => (

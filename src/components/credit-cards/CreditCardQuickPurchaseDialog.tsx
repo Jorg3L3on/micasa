@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import {
   useCallback,
   useEffect,
@@ -510,9 +511,7 @@ const CreditCardQuickPurchaseDialog = ({
       className={cn('flex flex-col gap-4', isMobile && 'pb-1')}
     >
       {error ? (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <ErrorBanner>{error}</ErrorBanner>
       ) : null}
 
       {!alreadyInCardBalance &&

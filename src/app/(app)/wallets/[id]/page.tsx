@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import {
   useCallback,
   useEffect,
@@ -658,9 +659,7 @@ export default function WalletDetailPage() {
 
   if ((error && !wallet && !stashReady) || (!wallet && !stashReady)) {
     return (
-      <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-        {error ?? 'No se pudo cargar la billetera'}
-      </div>
+      <ErrorBanner>{error ?? 'No se pudo cargar la billetera'}</ErrorBanner>
     );
   }
 

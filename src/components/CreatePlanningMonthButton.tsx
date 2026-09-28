@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { CalendarPlus, Loader2 } from 'lucide-react';
+import { CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { parseOwnerQuery } from '@/lib/api/client-fetch';
@@ -84,13 +84,7 @@ export default function CreatePlanningMonthButton({
         )}
         aria-hidden
       >
-        {submitting ? (
-          <Loader2
-            className={cn(
-              'h-4 w-4 animate-spin',
-              variant === 'compact' && 'text-violet-600 dark:text-violet-400',
-            )} data-icon="inline-start" />
-        ) : (
+        {submitting ? null : (
           <CalendarPlus
             className={cn(
               'h-4 w-4',

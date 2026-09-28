@@ -1,5 +1,7 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -334,16 +336,16 @@ export default function ExpenseTemplatesPage() {
     <>
       <div className="space-y-5">
       {error && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       <Card className="overflow-hidden">
         <CardContent className="p-6">
           {loading ? (
-            <div className="py-12 text-center text-muted-foreground">
-              Cargando…
+            <div className="space-y-2" aria-busy="true" aria-label="Cargando">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-12 w-full rounded-xl" />
+              ))}
             </div>
           ) : templates.length === 0 ? (
             <EmptyState message="No se encontraron plantillas de gastos" />

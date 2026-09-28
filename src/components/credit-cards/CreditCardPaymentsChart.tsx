@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
@@ -212,9 +213,7 @@ export const CreditCardPaymentsChart = ({
       />
       <div className="space-y-4">
         {!hasData ? (
-          <p className="text-sm text-muted-foreground">
-            No hay pagos ni cuotas pendientes desde este mes.
-          </p>
+          <EmptyState message="No hay pagos ni cuotas pendientes desde este mes." className="py-6" />
         ) : (
           <>
             <div className="h-52 w-full min-w-0">

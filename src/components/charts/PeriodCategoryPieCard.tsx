@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useId, useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { PieChart as PieChartIcon } from 'lucide-react';
@@ -86,9 +87,7 @@ export const PeriodCategoryPieCard = ({
       />
 
       {chartData.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          No hay gastos categorizados en este periodo.
-        </p>
+        <EmptyState message="No hay gastos categorizados en este periodo." className="py-8" />
       ) : (
         <div className="relative flex flex-col items-center">
           <div className={cn('relative w-full max-w-[280px]', chartHeight)}>

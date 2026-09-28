@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { LenderIcon } from '@/components/loans/LenderIdentity';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
@@ -85,14 +86,7 @@ export const LiquidityMonthDebtItemsList = ({
 
   if (rows.length === 0) {
     return (
-      <p
-        className={cn(
-          'rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground',
-          className,
-        )}
-      >
-        {emptyMessage}
-      </p>
+      <EmptyState message={emptyMessage} className={cn('py-8', className)} />
     );
   }
 

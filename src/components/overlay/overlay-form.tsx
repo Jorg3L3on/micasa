@@ -2,12 +2,12 @@
 
 import { type ReactNode } from 'react';
 import {
-  AlertCircle,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   CircleX,
 } from 'lucide-react';
+import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
@@ -194,13 +194,7 @@ export const GroupedRow = ({
 
 /** The only error style inside an overlay body. */
 export const OverlayErrorBanner = ({ children }: { children: ReactNode }) => (
-  <div
-    role="alert"
-    className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
-  >
-    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-    <div className="min-w-0">{children}</div>
-  </div>
+  <ErrorBanner>{children}</ErrorBanner>
 );
 
 /** Helper or context copy above/below a grouped card. */

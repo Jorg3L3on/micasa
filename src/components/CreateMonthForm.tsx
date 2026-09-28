@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useFinanceContext } from '@/context/finance-context';
@@ -221,11 +221,6 @@ export default function CreateMonthForm({
         >
           {isSubmitting ? (
             <>
-              <Loader2
-                className="mr-2 h-4 w-4 animate-spin"
-                aria-hidden
-                data-icon="inline-start"
-              />
               Creando…
             </>
           ) : (

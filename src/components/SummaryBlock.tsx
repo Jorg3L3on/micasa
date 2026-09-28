@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -552,9 +553,10 @@ export default function SummaryBlock({
                     })}
                   </div>
                 ) : (
-                  <p className="mb-2 text-caption leading-snug text-muted-foreground">
-                    No hay billeteras activas de efectivo o débito.
-                  </p>
+                  <EmptyState
+                    message="No hay billeteras activas de efectivo o débito."
+                    className="py-4"
+                  />
                 )}
                 <Separator className="my-2 bg-emerald-500/15" />
                 <div className="space-y-1.5">

@@ -1,8 +1,9 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
+import EmptyState from '@/components/EmptyState';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
-import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import { cn } from '@/lib/utils';
@@ -113,19 +114,19 @@ export const CashPlanTab = ({
 
   if (loading && !data) {
     return (
-      <div className="space-y-3 animate-pulse" aria-busy="true" aria-label={PLAN_COPY.loading}>
-        <div className="h-11 w-56 rounded-full bg-muted/40" />
-        <div className="h-28 rounded-2xl border border-border/30 bg-muted/30" />
-        <div className="h-40 rounded-2xl border border-border/30 bg-muted/30" />
+      <div className="space-y-3" aria-busy="true" aria-label={PLAN_COPY.loading}>
+        <Skeleton className="h-11 w-56 rounded-full" />
+        <Skeleton className="h-28 rounded-2xl" />
+        <Skeleton className="h-40 rounded-2xl" />
       </div>
     );
   }
 
   if (error && !data) {
     return (
-      <div className="rounded-xl border border-l-[3px] border-l-destructive/50 px-4 py-3" role="alert">
-        <p className="text-sm text-destructive">No se pudo armar el plan.</p>
-        <Button type="button" variant="outline" className="mt-3 rounded-xl" onClick={onReload}>
+      <div className="space-y-3">
+        <ErrorBanner>No se pudo armar el plan.</ErrorBanner>
+        <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={onReload}>
           {PLAN_COPY.retry}
         </Button>
       </div>
@@ -139,12 +140,11 @@ export const CashPlanTab = ({
   const hasCash = data.summary.funding_total > 0 || data.funding_wallets.length > 0;
   if (!hasMovement && !hasCash) {
     return (
-      <div className="rounded-2xl border border-border/60 bg-card px-4 py-6">
-        <SectionHeader title={PLAN_COPY.emptyTitle} subtitle={PLAN_COPY.emptyBody} />
-        <Button asChild className="mt-4">
-          <Link href="/wallets">{PLAN_COPY.emptyCta}</Link>
-        </Button>
-      </div>
+      <EmptyState
+        message={PLAN_COPY.emptyTitle}
+        description={PLAN_COPY.emptyBody}
+        action={{ label: PLAN_COPY.emptyCta, href: '/wallets' }}
+      />
     );
   }
 
@@ -165,9 +165,9 @@ export const CashPlanTab = ({
   return (
     <div className="space-y-6">
       {error ? (
-        <div className="rounded-xl border border-l-[3px] border-l-destructive/50 px-4 py-3" role="alert">
-          <p className="text-sm text-destructive">No se pudo actualizar el panorama.</p>
-          <Button type="button" variant="ghost" className="mt-2 h-9" onClick={onReload}>
+        <div className="space-y-2">
+          <ErrorBanner>No se pudo actualizar el panorama.</ErrorBanner>
+          <Button type="button" variant="ghost" className="h-9" onClick={onReload}>
             {PLAN_COPY.retry}
           </Button>
         </div>

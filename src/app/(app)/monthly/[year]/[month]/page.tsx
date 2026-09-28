@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { AlertTriangle } from 'lucide-react';
+import { ErrorBanner } from '@/components/error-banner';
 import { SectionHeader } from '@/components/section-header';
 import { getMonthlyPanelShellData } from '@/features/monthly/server/monthly.service';
 import { MonthlyPanelContentSuspense } from '@/features/monthly/server/MonthlyPanelContentSection';
@@ -135,22 +135,12 @@ export default async function MonthlyPage({
     console.error('Error loading monthly financial panel:', error);
     return (
       <div className="space-y-5">
-        <div className="rounded-xl border border-destructive/30 bg-card p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-              <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden data-icon="inline-start" />
-            </span>
-            <div className="space-y-1">
-              <SectionHeader
-                icon={AlertTriangle}
-                title="No se pudo cargar el panel financiero"
-              />
-              <p className="text-sm text-muted-foreground">
-                La información financiera no se muestra con valores de respaldo para evitar lecturas incorrectas. Recarga la página o intenta de nuevo más tarde.
-              </p>
-            </div>
-          </div>
-        </div>
+        <ErrorBanner>
+          <p className="font-medium">No se pudo cargar el panel financiero</p>
+          <p className="mt-1">
+            La información financiera no se muestra con valores de respaldo para evitar lecturas incorrectas. Recarga la página o intenta de nuevo más tarde.
+          </p>
+        </ErrorBanner>
       </div>
     );
   }

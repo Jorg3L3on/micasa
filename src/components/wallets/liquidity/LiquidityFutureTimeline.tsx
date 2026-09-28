@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { Check, LineChart, Loader2 } from 'lucide-react';
+import { Check, LineChart } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   LIQUIDITY_PANEL_CLASS,
   LiquidityPanelHeader,
@@ -311,7 +312,7 @@ export const LiquidityFutureTimeline = ({
           role="status"
           aria-live="polite"
         >
-          <Loader2 className="size-5 animate-spin text-primary-text" aria-hidden />
+          <Skeleton className="h-8 w-40 rounded-full" />
           <p className="text-xs font-medium text-muted-foreground">Actualizando rango…</p>
         </div>
       ) : null}

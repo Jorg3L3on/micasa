@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Banknote, CalendarRange, Loader2, Pencil } from 'lucide-react';
+import { Banknote, CalendarRange, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -363,15 +363,14 @@ export const CreditCardPlannedPaymentSection = ({
                               payingFortnightId === item.fortnightId
                             }
                             onClick={() => onPayCard(item)}
-                            aria-label={`Registrar pago: ${item.fortnightLabel}`}
+                            aria-busy={payingFortnightId === item.fortnightId}
+                            aria-label={
+                              payingFortnightId === item.fortnightId
+                                ? `Guardando pago: ${item.fortnightLabel}`
+                                : `Registrar pago: ${item.fortnightLabel}`
+                            }
                           >
-                            {payingFortnightId === item.fortnightId ? (
-                              <Loader2
-                                className="size-3.5 shrink-0 animate-spin"
-                                aria-hidden data-icon="inline-start" />
-                            ) : (
-                              <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
-                            )}
+                            <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
                           </Button>
                         </span>
                       </TooltipTrigger>

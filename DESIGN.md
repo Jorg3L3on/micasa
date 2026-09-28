@@ -356,6 +356,14 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 
 ---
 
+## Empty, error, and loading
+
+- Empty lists, filters, and charts use `EmptyState` (`src/components/EmptyState.tsx`).
+- Failures use one banner: `ErrorBanner` (`src/components/error-banner.tsx`). Overlays re-export it as `OverlayErrorBanner`. Route errors use `AppErrorScreen`.
+- Each route `loading.tsx` matches its archetype (planner, collection cards, collection table, detail, settings, form) via `src/components/loading/page-skeletons.tsx`. The root splash stays the Orion brand loader.
+- A button in progress shows a word with an ellipsis (`Guardando…`, `Creando…`). It does not show a spinner.
+- Billeteras hides the “N de N” count until stored filters are applied and the list has finished loading.
+
 ## Glossary
 
 Use these names in the UI, in `PageTitle`, and in the browser tab. The document title (`documentTitle`) matches the header for that route.

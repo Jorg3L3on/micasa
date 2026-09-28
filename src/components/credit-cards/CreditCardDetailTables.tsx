@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowDown, ArrowUp } from 'lucide-react';
@@ -345,11 +346,9 @@ export const PaymentTableBlock = ({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Todavía no hay pagos registrados.</p>
+        <EmptyState message="Todavía no hay pagos registrados." className="py-6" />
       ) : sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay pagos que coincidan con el filtro.
-        </p>
+        <EmptyState message="No hay pagos que coincidan con el filtro." className="py-6" />
       ) : (
         <div className={listScrollClassName}>
           <ul className="space-y-2">

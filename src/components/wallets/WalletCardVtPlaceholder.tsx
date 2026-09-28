@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { cn, formatCurrency } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import {
   getCachedWalletCardVtSnapshot,
@@ -50,9 +51,9 @@ export function WalletCardVtPlaceholder({
       {snapshot ? (
         <StashedCardFace snapshot={snapshot} />
       ) : (
-        <div
+        <Skeleton
           className={cn(
-            'w-full animate-pulse rounded-[1.375rem] border border-border/60 bg-muted/40',
+            'w-full rounded-[1.375rem] border border-border/60',
             'min-h-[12rem] sm:min-h-[13.5rem]',
           )}
         />

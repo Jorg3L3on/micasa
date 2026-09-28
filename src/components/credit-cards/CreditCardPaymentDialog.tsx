@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -117,9 +118,7 @@ const CreditCardPaymentDialog = ({
           aria-busy={submitting}
         >
           {displayError ? (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {displayError}
-            </div>
+            <ErrorBanner>{displayError}</ErrorBanner>
           ) : null}
 
           <div className={OVERLAY_GROUPED_CARD_CLASS}>

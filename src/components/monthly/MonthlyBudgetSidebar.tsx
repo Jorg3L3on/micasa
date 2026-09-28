@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import Link from 'next/link';
 import { PiggyBank, SlidersHorizontal } from 'lucide-react';
 import { SectionHeader } from '@/components/section-header';
@@ -101,10 +102,11 @@ export const MonthlyBudgetSidebar = ({
           headingAs={headingAs}
           subtitle={`Sin presupuesto activo en la ${periodLabel}`}
         />
-        <p className="mt-3 text-sm text-muted-foreground">
-          No hay presupuestos activos para la {periodLabel}. Crea uno en
-          Presupuestos para ver el resumen aquí.
-        </p>
+        <EmptyState
+          message={`No hay presupuestos activos para la ${periodLabel}.`}
+          description="Crea uno en Presupuestos para ver el resumen aquí."
+          className="py-4"
+        />
         <Button variant="outline" size="sm" className="mt-4 w-full" asChild>
           <Link href={`/settings/budgets${ownerQuery}`}>Ir a presupuestos</Link>
         </Button>
@@ -146,9 +148,10 @@ export const MonthlyBudgetSidebar = ({
           </ul>
         </section>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          No hay asignaciones de presupuesto en la {periodLabel}.
-        </p>
+        <EmptyState
+          message={`No hay asignaciones de presupuesto en la ${periodLabel}.`}
+          className="py-4"
+        />
       )}
 
       <Button variant="outline" className="w-full gap-2" asChild>

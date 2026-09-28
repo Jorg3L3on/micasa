@@ -1,5 +1,7 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
+import { ErrorBanner } from '@/components/error-banner';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PieChart } from 'lucide-react';
 import { useFinanceContext } from '@/context/finance-context';
@@ -96,12 +98,7 @@ export const LiquiditySpendingCategories = ({
       />
 
       {error ? (
-        <div
-          className={cn(METRIC_STRIP_CLASS, 'border-l-[3px] border-l-destructive/50 text-sm text-destructive')}
-          role="alert"
-        >
-          {error}
-        </div>
+        <ErrorBanner>{error}</ErrorBanner>
       ) : null}
 
       {loading ? (
@@ -114,9 +111,7 @@ export const LiquiditySpendingCategories = ({
           ))}
         </div>
       ) : topCategories.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground">
-          Aún no hay categorías con gasto en este periodo.
-        </p>
+        <EmptyState message="Aún no hay categorías con gasto en este periodo." className="py-8" />
       ) : (
         <div className="space-y-4">
           <div

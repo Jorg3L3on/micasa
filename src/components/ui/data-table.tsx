@@ -19,6 +19,7 @@ import {
 import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Column } from '@tanstack/react-table';
 
+import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -87,6 +88,13 @@ export function DataTable<TData>({
   const [expanded, setExpanded] = React.useState<ExpandedState>({});
 
   const expansionEnabled = renderExpandedRow != null;
+  const resolvedEmpty =
+    typeof emptyMessage === 'string' ? (
+      <EmptyState message={emptyMessage} className="py-8" />
+    ) : (
+      emptyMessage
+    );
+
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns its internal mutable table API.
   const table = useReactTable({
@@ -180,16 +188,7 @@ export function DataTable<TData>({
               <li key={row.id}>{renderMobileRow(row.original)}</li>
             ))
           ) : (
-            <li
-              className={cn(
-                'text-center',
-                typeof emptyMessage === 'string'
-                  ? 'py-8 text-sm text-muted-foreground'
-                  : 'p-2',
-              )}
-            >
-              {emptyMessage}
-            </li>
+            <li className="p-2 text-center">{resolvedEmpty}</li>
           )}
         </ul>
       ) : null}
@@ -286,16 +285,8 @@ export function DataTable<TData>({
               })
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className={cn(
-                    'text-center',
-                    typeof emptyMessage === 'string'
-                      ? 'h-24 text-muted-foreground'
-                      : 'p-2 sm:p-4',
-                  )}
-                >
-                  {emptyMessage}
+                <TableCell colSpan={columns.length} className="p-2 text-center">
+                  {resolvedEmpty}
                 </TableCell>
               </TableRow>
             )}
