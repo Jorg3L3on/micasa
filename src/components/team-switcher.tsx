@@ -190,7 +190,7 @@ export function TeamSwitcher() {
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl border-border/60 dark:border-white/[0.08] dark:bg-[#0d1327]/95 dark:backdrop-blur-xl"
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl border-border/60 dark:border-white/[0.08] dark:bg-popover/95 dark:backdrop-blur-xl"
               align="start"
               side={isMobile ? 'bottom' : 'right'}
               sideOffset={4}

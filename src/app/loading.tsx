@@ -12,7 +12,7 @@ import { BrandLoader } from '@/components/brand/BrandLoader';
 export default function RootLoading() {
   return (
     <ViewTransition exit="fade-out">
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-[#060914] px-6 text-[#f7f8ff]">
+      <div className="dark fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-background px-6 text-foreground">
         <BrandLoader />
         <div className="flex flex-col items-center gap-1.5 text-center">
           <span className="font-[family-name:var(--font-display)] text-xl font-bold tracking-tight">

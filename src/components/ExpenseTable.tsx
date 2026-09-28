@@ -10,6 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Money } from '@/components/money';
+import { STATUS_BADGE_CLASS, STATUS_SOFT_CLASS } from '@/lib/status-tone';
 import { formatCurrency, toDisplayAmount, cn } from '@/lib/utils';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
@@ -78,10 +80,10 @@ const expenseStatusBoxClass = (isPaid: boolean, interactive: boolean) =>
   cn(
     'inline-flex h-8 w-8 items-center justify-center rounded-full border [&>svg]:block',
     isPaid
-      ? 'border-transparent bg-emerald-500/15 text-emerald-600 shadow-sm ring-1 ring-emerald-500/30 dark:text-emerald-400'
+      ? cn('border-transparent shadow-sm ring-1 ring-status-success-border', STATUS_SOFT_CLASS.success)
       : cn(
           'border-dashed border-border/60 bg-card text-muted-foreground/40',
-          interactive && 'hover:border-emerald-500/60 hover:text-emerald-600',
+          interactive && 'hover:border-status-success-border hover:text-status-success',
         ),
   );
 
@@ -652,7 +654,7 @@ export default function ExpenseTable({
         <div
           className={cn(
             METRIC_STRIP_CLASS,
-            'flex items-center justify-between gap-2 border-l-[3px] border-l-emerald-500/50',
+            'flex items-center justify-between gap-2 border-l-[3px] border-l-status-success/50',
           )}
         >
           <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
@@ -935,8 +937,8 @@ export default function ExpenseTable({
                       {(isCardPay || isLoanPay || isCardCharge) && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {isCardPay && (
-                            <span className="inline-flex h-4 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-caption font-medium text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
-                              <span className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
+                            <span className={cn('inline-flex h-4 items-center gap-1 rounded-full px-1.5 text-caption font-medium', STATUS_BADGE_CLASS.expense)}>
+                              <span className="h-1 w-1 rounded-full bg-status-expense" aria-hidden />
                               Pago TC
                             </span>
                           )}
@@ -944,17 +946,13 @@ export default function ExpenseTable({
                             <span
                               className={cn(
                                 'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-caption font-medium',
-                                e.loan_payment_source === 'PAYROLL_DEDUCTION'
-                                  ? 'border-slate-500/40 bg-slate-500/10 text-slate-700 dark:border-slate-400/40 dark:bg-slate-500/15 dark:text-slate-300'
-                                  : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300',
+                                STATUS_BADGE_CLASS.expense,
                               )}
                             >
                               <span
                                 className={cn(
                                   'h-1 w-1 rounded-full',
-                                  e.loan_payment_source === 'PAYROLL_DEDUCTION'
-                                    ? 'bg-slate-500 dark:bg-slate-400'
-                                    : 'bg-amber-500 dark:bg-amber-400',
+                                  'bg-status-expense',
                                 )}
                                 aria-hidden
                               />
@@ -962,8 +960,8 @@ export default function ExpenseTable({
                             </span>
                           )}
                           {isCardCharge && (
-                            <span className="inline-flex h-4 items-center gap-1 rounded-full border border-slate-500/40 bg-slate-500/10 px-1.5 text-caption font-medium text-slate-700 dark:border-slate-400/40 dark:bg-slate-500/15 dark:text-slate-300">
-                              <span className="h-1 w-1 rounded-full bg-slate-500 dark:bg-slate-400" aria-hidden />
+                            <span className={cn('inline-flex h-4 items-center gap-1 rounded-full px-1.5 text-caption font-medium', STATUS_BADGE_CLASS.expense)}>
+                              <span className="h-1 w-1 rounded-full bg-status-expense" aria-hidden />
                               Tarjeta
                             </span>
                           )}
@@ -972,19 +970,14 @@ export default function ExpenseTable({
                     </div>
 
                     {/* Amount — vertically centered with the card */}
-                    <span
-                      className={cn(
-                        'shrink-0 font-sans tabular-nums leading-tight',
-                        isCompact ? 'text-xs' : 'text-sm',
-                        e.is_paid
-                          ? 'text-muted-foreground/60'
-                          : isCardCharge
-                            ? 'font-bold text-slate-700 dark:text-slate-300'
-                            : 'font-bold text-foreground',
-                      )}
-                    >
-                      {formatCurrency(toDisplayAmount(e.amount))}
-                    </span>
+                    <Money
+                      value={e.amount}
+                      size={isCompact ? 'caption' : 'row'}
+                      tone={
+                        e.is_paid ? 'neutral' : isIncomeRow ? 'positive' : 'negative'
+                      }
+                      className={cn(e.is_paid && 'text-muted-foreground/60')}
+                    />
 
                     {/* Actions menu — desktop only; mobile uses swipe */}
                     <div
@@ -1065,7 +1058,7 @@ export default function ExpenseTable({
                   <li
                     className={cn(
                       METRIC_STRIP_CLASS,
-                      'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px] border-l-emerald-500/50',
+                      'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px] border-l-status-success/50',
                     )}
                   >
                     <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">

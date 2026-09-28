@@ -326,18 +326,17 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
 
 - Amounts: **`<Money>`** (`src/components/money.tsx`). Sans with `tabular-nums` — never `font-mono`. Format with `formatMoney` / `formatCurrency` (`es-MX`). Negatives use that formatter’s single hyphen (`-$12.50`); do not prefix another minus or a `+`.
 - Smallest UI text is **caption**: `text-caption` (`--text-caption-size: 0.6875rem`, 11px, line-height 1.35). Do not use `text-[9px]`, `text-[10px]`, or `text-[11px]`. JOR-311 adopts this token as the bottom of the type scale. Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.
-- Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS` (neutral foreground, positive emerald, negative `text-destructive`). JOR-310 swaps that one map for semantic status tokens.
+- Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS`: neutral `text-foreground`, positive `text-status-income`, negative `text-status-expense`.
 - Chart axes use `formatAxisMoney` (`$`, `k` from 1,000, `M` from 1,000,000). JOR-315 keeps this helper when it themes charts.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
 - Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
-- Semantic left-border / icon-pill colors:
-  - Income / bank — blue
-  - Paid / success — green / emerald
-  - Pending / warning — amber
-  - Balance / available — emerald
-  - Expenses — violet
-  - Overdue / negative — destructive
-- Icon pills: small tinted square (`bg-*-500/10 dark:bg-*-500/15`), not a full card wash.
+- Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.
+  - An expense row uses **expense** for the icon, the amount, and the type badge. A due or paid chip may use **overdue**, **pending**, or **success** — that is the time status, not a second type color.
+  - Income rows use **income** the same way.
+  - Overdue shares the destructive hue; it is its own token so loans and the rest of the app match. Préstamos adopts these tokens in JOR-320.
+- Icon pills: `STATUS_SOFT_CLASS`, not a full card wash.
+- `Button` `default` is `bg-primary` in both themes (no hex override). `destructive` stays full `--destructive` with `--destructive-foreground` in dark — do not fade it to `/60`.
+- Hex in `className` only when no token exists. `#3a37fc` is `--primary`, dark `#060914` is `--background`, the light-mode status-bar strip is `--chrome-ink`, `#0d1327` is `--card` / `--popover`, `#090e1d` is `--secondary` / `--sidebar`. Marketing and login keep their own surfaces.
 - Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in `<Money size="row">`.
 - Horizontal chips (wallets): `overflow-x-auto`, `shrink-0`, edge fades `from-background`.
 

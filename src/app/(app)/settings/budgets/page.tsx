@@ -33,6 +33,7 @@ import {
   type BudgetAllocationExpenseGroup,
 } from '@/lib/api/budgets';
 import { formatWallClockDateRange, todayCalendarDate } from '@/lib/calendar-dates';
+import { STATUS_BADGE_CLASS, STATUS_FILL_CLASS, STATUS_SOFT_CLASS, STATUS_TEXT_CLASS } from '@/lib/status-tone';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetListItem, BudgetPeriodItem } from '@/types/catalog';
 import type { Step1Values, Step2Values } from '@/schemas/budget.schema';
@@ -212,10 +213,10 @@ function ProgressBar({ spent, total }: { spent: number; total: number }) {
   const clamped = Math.min(Math.max(percent, 0), 100);
   const toneClass =
     percent >= 100
-      ? 'bg-destructive'
+      ? STATUS_FILL_CLASS.overdue
       : percent >= 80
-        ? 'bg-amber-500 dark:bg-amber-400'
-        : 'bg-violet-500 dark:bg-violet-400';
+        ? STATUS_FILL_CLASS.pending
+        : STATUS_FILL_CLASS.expense;
   return (
     <div className="space-y-1.5">
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted/60">
@@ -271,10 +272,10 @@ function BudgetRow({
   const remaining = period.allocated_amount - period.spent_amount;
   const remainingTone =
     remaining < 0
-      ? 'text-destructive'
+      ? STATUS_TEXT_CLASS.overdue
       : warning
-        ? 'text-amber-600 dark:text-amber-400'
-        : 'text-emerald-600 dark:text-emerald-400';
+        ? STATUS_TEXT_CLASS.pending
+        : STATUS_TEXT_CLASS.success;
 
   return (
     <article className="border-b border-border/60 last:border-b-0">
@@ -287,12 +288,12 @@ function BudgetRow({
             aria-expanded={expanded}
           >
             <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
+              <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full', STATUS_SOFT_CLASS.expense)}>
                 <PiggyBank className="h-3 w-3" aria-hidden />
               </span>
               <span className="truncate text-sm font-semibold">{period.name}</span>
               {period.recurrent ? (
-                <Repeat2 className="h-3.5 w-3.5 shrink-0 text-violet-500" aria-hidden />
+                <Repeat2 className={cn('h-3.5 w-3.5 shrink-0', STATUS_TEXT_CLASS.expense)} aria-hidden />
               ) : null}
             </div>
             <div className="flex items-center justify-between gap-3 text-xs">
@@ -361,7 +362,7 @@ function BudgetRow({
           </p>
         </div>
         {warning ? (
-          <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+          <div className={cn('mt-2 rounded-md px-3 py-2 text-xs', STATUS_BADGE_CLASS.pending)}>
             Has usado {Math.round(percent)}% de tu presupuesto.
           </div>
         ) : null}

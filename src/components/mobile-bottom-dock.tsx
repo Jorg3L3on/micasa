@@ -321,9 +321,8 @@ function MobileBottomDockInner() {
               onKeyDown={handlePlusKeyDown}
               whileTap={reduceMotion ? undefined : { scale: 0.9 }}
               className={cn(
-                'flex size-12 items-center justify-center rounded-full bg-primary text-white shadow-md',
+                'flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md',
                 'ring-2 ring-primary/30 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                'dark:bg-[#3a37fc]',
               )}
             >
               <motion.span

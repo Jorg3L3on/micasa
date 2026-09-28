@@ -326,7 +326,7 @@ export default function MetasPage() {
         </div>
       ) : displayGoals.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 bg-[oklch(96.8%_0.007_247.896)] px-6 py-14 text-center dark:bg-card/40">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-status-info-soft text-status-info">
             <Target className="h-5 w-5" aria-hidden />
           </span>
           <div className="space-y-1">

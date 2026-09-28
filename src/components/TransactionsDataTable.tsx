@@ -24,6 +24,7 @@ import {
   useToolbarFiltersSelectOpenChange,
 } from '@/context/toolbar-actions-context';
 import { Money } from '@/components/money';
+import { STATUS_BADGE_CLASS, STATUS_SOFT_CLASS } from '@/lib/status-tone';
 import { formatDate, cn } from '@/lib/utils';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { useFinanceContext } from '@/context/finance-context';
@@ -234,14 +235,14 @@ export default function TransactionsDataTable({
               className={cn(
                 'flex h-6 w-6 items-center justify-center rounded-md shrink-0',
                 row.original.type === 'expense'
-                  ? 'bg-violet-500/10 dark:bg-violet-500/15'
-                  : 'bg-blue-500/10 dark:bg-blue-500/15',
+                  ? STATUS_SOFT_CLASS.expense
+                  : STATUS_SOFT_CLASS.income,
               )}
             >
               {row.original.type === 'expense' ? (
-                <ArrowDownRight className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
+                <ArrowDownRight className="h-3.5 w-3.5" data-icon="inline-start" />
               ) : (
-                <ArrowUpRight className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
+                <ArrowUpRight className="h-3.5 w-3.5" data-icon="inline-start" />
               )}
             </span>
             <span
@@ -306,11 +307,10 @@ export default function TransactionsDataTable({
           const isExpense = row.original.type === 'expense';
           return (
             <Badge
-              variant={isExpense ? 'destructive' : 'default'}
+              variant="outline"
               className={cn(
                 'whitespace-nowrap',
-                !isExpense &&
-                  'bg-emerald-500/10 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20 hover:bg-emerald-500/20',
+                isExpense ? STATUS_BADGE_CLASS.expense : STATUS_BADGE_CLASS.income,
               )}
             >
               {isExpense ? 'Gasto' : 'Ingreso'}
