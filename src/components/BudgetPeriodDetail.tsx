@@ -455,7 +455,7 @@ function AllocationRow({
             aria-label={
               expanded
                 ? `Ocultar movimientos de ${allocation.category_name}`
-                : `Ver ${expenses.length} movimientos de ${allocation.category_name}`}
+                : `Ver ${expenses.length} movimientos de ${allocation.category_name}`
             }
           >
             <AllocationSummary
