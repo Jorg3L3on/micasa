@@ -15,7 +15,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { AlertsBell } from '@/components/AlertsBell';
+import { AlertsBell, AlertsChrome } from '@/components/AlertsBell';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 /** Cierra el drawer en móvil al cambiar ruta o query (p. ej. contexto de casa). */
@@ -60,7 +60,7 @@ export function AppSidebar({
   }));
 
   return (
-    <>
+    <AlertsChrome>
       <MobileSidebarCloseOnRoute />
       <Sidebar collapsible="icon" {...props}>
         <SidebarHeader>
@@ -79,6 +79,6 @@ export function AppSidebar({
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-    </>
+    </AlertsChrome>
   );
 }

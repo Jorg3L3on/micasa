@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
 import { Bell, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
@@ -212,10 +219,36 @@ const AlertsBody = ({
   );
 };
 
-export function AlertsBell() {
-  const mounted = useClientMounted();
-  const isMobile = useIsMobile();
-  const { setOpenMobile } = useSidebar();
+type AlertsChromeValue = {
+  open: boolean;
+  setOpen: (next: boolean) => void;
+  loading: boolean;
+  error: string | null;
+  data: AlertsResponse | null;
+  alerts: AlertItem[];
+  period: AlertsResponse['period'] | null;
+  seenIds: Set<string>;
+  unseenCount: number;
+  context: FinanceContextType;
+  onOpenAlert: (alert: AlertItem) => void;
+  onDismiss: (id: string) => void;
+};
+
+const AlertsChromeContext = createContext<AlertsChromeValue | null>(null);
+
+const useAlertsChrome = () => {
+  const value = useContext(AlertsChromeContext);
+  if (!value) {
+    throw new Error('AlertsBell must be used within AlertsChrome');
+  }
+  return value;
+};
+
+/**
+ * Owns alert data and the mobile sheet. The sheet stays mounted outside the
+ * sidebar drawer, which unmounts its footer when it closes.
+ */
+export function AlertsChrome({ children }: { children: ReactNode }) {
   const { context } = useFinanceContext();
   const [data, setData] = useState<AlertsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -307,11 +340,86 @@ export function AlertsBell() {
   const handleOpenChange = useCallback(
     (next: boolean) => {
       setOpen(next);
-      if (next && isMobile) setOpenMobile(false);
       if (next && (error || !data)) fetchAlerts();
     },
-    [error, data, fetchAlerts, isMobile, setOpenMobile],
+    [error, data, fetchAlerts],
   );
+
+  const value: AlertsChromeValue = {
+    open,
+    setOpen: handleOpenChange,
+    loading,
+    error,
+    data,
+    alerts,
+    period,
+    seenIds,
+    unseenCount,
+    context,
+    onOpenAlert: handleAlertClick,
+    onDismiss: dismissAlert,
+  };
+
+  return (
+    <AlertsChromeContext.Provider value={value}>
+      {children}
+      <AlertsMobileSheet />
+    </AlertsChromeContext.Provider>
+  );
+}
+
+const AlertsMobileSheet = () => {
+  const isMobile = useIsMobile();
+  const chrome = useAlertsChrome();
+
+  if (!isMobile) return null;
+
+  return (
+    <ResponsiveOverlay
+      open={chrome.open}
+      onOpenChange={chrome.setOpen}
+      title="Alertas"
+      description="Avisos del periodo actual."
+      dismissLabel="Cerrar"
+    >
+      <AlertsBody
+        loading={chrome.loading}
+        error={chrome.error}
+        data={chrome.data}
+        alerts={chrome.alerts}
+        period={chrome.period}
+        seenIds={chrome.seenIds}
+        context={chrome.context}
+        onOpenAlert={chrome.onOpenAlert}
+        onDismiss={chrome.onDismiss}
+      />
+    </ResponsiveOverlay>
+  );
+};
+
+export function AlertsBell() {
+  const mounted = useClientMounted();
+  const isMobile = useIsMobile();
+  const { setOpenMobile } = useSidebar();
+  const {
+    open,
+    setOpen,
+    unseenCount,
+    loading,
+    error,
+    data,
+    alerts,
+    period,
+    seenIds,
+    context,
+    onOpenAlert,
+    onDismiss,
+  } = useAlertsChrome();
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next && isMobile) setOpenMobile(false);
+  };
 
   if (!mounted) {
     return (
@@ -360,27 +468,12 @@ export function AlertsBell() {
       period={period}
       seenIds={seenIds}
       context={context}
-      onOpenAlert={handleAlertClick}
-      onDismiss={dismissAlert}
+      onOpenAlert={onOpenAlert}
+      onDismiss={onDismiss}
     />
   );
 
-  if (isMobile) {
-    return (
-      <>
-        {bellButton}
-        <ResponsiveOverlay
-          open={open}
-          onOpenChange={handleOpenChange}
-          title="Alertas"
-          description="Avisos del periodo actual."
-          dismissLabel="Cerrar"
-        >
-          {body}
-        </ResponsiveOverlay>
-      </>
-    );
-  }
+  if (isMobile) return bellButton;
 
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange}>
