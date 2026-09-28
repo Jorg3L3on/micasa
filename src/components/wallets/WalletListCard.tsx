@@ -22,6 +22,7 @@ import {
   getProviderCardStyle,
   getWalletBrandCssVars,
 } from '@/lib/provider-card-style';
+import { Money } from '@/components/money';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -202,6 +203,60 @@ export const WalletListCard = ({
       ? `${wallet.name}, inactiva`
       : wallet.name;
 
+  const actionMenuItems = (
+    <>
+      {canTransfer && onTransfer ? (
+        <DropdownMenuItem
+          onClick={() => onTransfer(wallet)}
+          className="cursor-pointer"
+        >
+          <ArrowLeftRight className="mr-2 h-4 w-4" />
+          Transferir saldo
+        </DropdownMenuItem>
+      ) : null}
+      <DropdownMenuItem
+        onClick={() => onOpenBalance(wallet)}
+        className="cursor-pointer"
+      >
+        <SlidersHorizontal className="mr-2 h-4 w-4" />
+        Ajustar saldo
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => onEdit(wallet)}
+        className="cursor-pointer"
+      >
+        <Pencil className="mr-2 h-4 w-4" />
+        Editar
+      </DropdownMenuItem>
+    </>
+  );
+
+  const rowMetrics = isCard
+    ? [
+        {
+          label: 'Deuda',
+          value: amountNumber,
+          tone: 'neutral' as const,
+        },
+        {
+          label: 'Disponible',
+          value: availableCredit,
+          tone: (availableCredit ?? 0) < 0 ? ('negative' as const) : ('neutral' as const),
+        },
+        {
+          label: 'Límite',
+          value: hasCreditLimit ? effectiveLimit : null,
+          tone: 'neutral' as const,
+        },
+      ]
+    : [
+        {
+          label: 'Saldo',
+          value: amountNumber,
+          tone: isNegativeBalance ? ('negative' as const) : ('neutral' as const),
+        },
+      ];
+
   return (
     <article
       className={cn(
@@ -210,8 +265,82 @@ export const WalletListCard = ({
       )}
       aria-label={articleLabel}
     >
+      <div className="md:hidden">
+        <SwipeDeleteRow
+          enabled={isMobile}
+          onRequestDelete={handleRequestDelete}
+          deleteAriaLabel={`Eliminar ${wallet.name}`}
+          className="rounded-xl"
+        >
+          <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card px-3 py-3 shadow-card">
+            <Link
+              href={detailHref}
+              onClick={handleOpenDetail}
+              onPointerEnter={handlePrefetchDetail}
+              onFocus={handlePrefetchDetail}
+              className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+              aria-label={`Abrir ${wallet.name}`}
+            />
+            <div className="relative z-10 flex min-w-0 items-start gap-3 pr-8">
+              <WalletProviderIcon
+                providerIconKey={wallet.provider_icon_key}
+                className="h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-muted"
+                iconClassName="h-4 w-4"
+                showTooltipLabel={false}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="min-w-0 truncate text-body font-medium text-foreground" title={wallet.name}>
+                    {wallet.name}
+                  </p>
+                  {!wallet.active ? (
+                    <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-caption">
+                      Inactivo
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="overline text-muted-foreground">{cycleLabel ?? typeLabel}</p>
+                <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                  {rowMetrics.map((metric) => (
+                    <div key={metric.label} className="min-w-0">
+                      <dt className="overline text-muted-foreground">{metric.label}</dt>
+                      <dd className="mt-0.5">
+                        {metric.value == null ? (
+                          <span className="text-caption text-muted-foreground">Sin línea</span>
+                        ) : (
+                          <Money value={metric.value} size="row" tone={metric.tone} />
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
+            <div className="absolute top-1.5 right-1.5 z-20">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-8 rounded-full"
+                    aria-label={`Más opciones para ${wallet.name}`}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  {actionMenuItems}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </SwipeDeleteRow>
+      </div>
+
+      <div className="hidden md:block">
       <SwipeDeleteRow
-        enabled={isMobile}
+        enabled={false}
         onRequestDelete={handleRequestDelete}
         deleteAriaLabel={`Eliminar ${wallet.name}`}
         className="rounded-face"
@@ -487,35 +616,14 @@ export const WalletListCard = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
-                  {canTransfer && onTransfer ? (
-                    <DropdownMenuItem
-                      onClick={() => onTransfer(wallet)}
-                      className="cursor-pointer"
-                    >
-                      <ArrowLeftRight className="mr-2 h-4 w-4" />
-                      Transferir saldo
-                    </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuItem
-                    onClick={() => onOpenBalance(wallet)}
-                    className="cursor-pointer"
-                  >
-                    <SlidersHorizontal className="mr-2 h-4 w-4" />
-                    Ajustar saldo
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onEdit(wallet)}
-                    className="cursor-pointer"
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar
-                  </DropdownMenuItem>
+                  {actionMenuItems}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
         </ViewTransition>
       </SwipeDeleteRow>
+      </div>
     </article>
   );
 };

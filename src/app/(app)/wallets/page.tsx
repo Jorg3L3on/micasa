@@ -1324,7 +1324,7 @@ export default function WalletsPage() {
                 <EmptyState message="No se encontraron billeteras" />
               ) : (
                 <div className="@container w-full min-w-0">
-                  <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
+                  <div className="mx-auto w-full max-w-full space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
                     {displayWallets.length === 0 ? (
                       <EmptyState message="Ninguna billetera coincide con los filtros." />
                     ) : (

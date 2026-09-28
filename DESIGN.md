@@ -378,7 +378,9 @@ Three surfaces. Radius does not change with the theme.
 | --- | --- | --- | --- |
 | Panel glass | `orion-panel-glass` / `MONTHLY_PANEL_SHELL_CLASS` | `rounded-2xl` | `--shadow-panel` (`shadow-panel`) |
 | Calm card | `.card-surface`, settings cards | `rounded-xl` | `--shadow-card` (`shadow-card`) |
-| Card face | Wallet and credit-card faces | `rounded-face` (1.375rem) | `--shadow-face` (`shadow-face`) |
+| Card face | Wallet and credit-card faces, desktop Billeteras only | `rounded-face` (1.375rem) | `--shadow-face` (`shadow-face`) |
+
+**Billeteras layout.** Below `md`, Billeteras is a list of calm rows (`bg-card`, one row per wallet). Disponible, Límite, and saldo sit in the row, and rows do not overlap. From `md` up, the same wallets are card faces in a grid. That face uses the `wow` tone: dark plastic in light and dark, like a physical card, not a theme surface (`isProviderCardDarkSurface`). Do not paint a light-theme version of the face. The Panel wallet strip may still use the theme-adaptive `aura` tone.
 
 Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
 
