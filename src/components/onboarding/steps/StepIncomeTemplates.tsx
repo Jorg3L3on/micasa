@@ -88,6 +88,7 @@ export default function StepIncomeTemplates() {
   const handleIncomeNameFocus = (id: string, currentName: string) => {
     if (
       currentName === 'Nombre del ingreso' ||
+      currentName === 'Ingreso' ||
       currentName === 'Nuevo ingreso'
     ) {
       handleNameChange(id, '');
@@ -99,7 +100,7 @@ export default function StepIncomeTemplates() {
       ...prev,
       {
         id: createClientId(),
-        name: 'Nuevo ingreso',
+        name: 'Ingreso',
         amount: 0,
         walletId: '',
         source: '',
