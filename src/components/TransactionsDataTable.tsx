@@ -58,7 +58,7 @@ const TransactionMobileRow = ({ transaction }: { transaction: TransactionRow }) 
   const amount = Math.abs(Number(transaction.amount));
 
   return (
-    <div className="grid w-full min-w-0 max-w-full grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5 px-3 py-3">
+    <div className="grid w-full min-w-0 max-w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-3">
       <span
         className={cn(
           'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
@@ -73,17 +73,9 @@ const TransactionMobileRow = ({ transaction }: { transaction: TransactionRow }) 
         )}
       </span>
       <div className="min-w-0">
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <p className="min-w-0 flex-1 break-words text-body font-medium text-foreground">
-            {transaction.description}
-          </p>
-          <Money
-            value={isExpense ? -amount : amount}
-            size="row"
-            tone={isExpense ? 'negative' : 'positive'}
-            className="shrink-0"
-          />
-        </div>
+        <p className="min-w-0 break-words text-body font-medium text-foreground">
+          {transaction.description}
+        </p>
         <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-caption text-muted-foreground">
           <span className="whitespace-nowrap">{formatDate(transaction.date)}</span>
           <span className="inline-flex min-w-0 items-center gap-1">
@@ -101,6 +93,12 @@ const TransactionMobileRow = ({ transaction }: { transaction: TransactionRow }) 
           </Badge>
         </div>
       </div>
+      <Money
+        value={isExpense ? -amount : amount}
+        size="row"
+        tone={isExpense ? 'negative' : 'positive'}
+        className="self-center"
+      />
     </div>
   );
 };

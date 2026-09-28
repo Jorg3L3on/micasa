@@ -60,7 +60,7 @@ const BudgetSidebarHeader = ({
       <div className="min-w-0">
         <Heading
           id={headingId}
-          className="text-sm font-semibold leading-none text-foreground"
+          className="text-sm font-semibold leading-normal text-foreground"
         >
           Presupuesto de la quincena
         </Heading>

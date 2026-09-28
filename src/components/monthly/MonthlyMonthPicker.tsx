@@ -109,7 +109,7 @@ export const MonthlyMonthPicker = ({
           </span>
           <span className="flex min-w-0 flex-col items-center gap-0.5 @min-[42rem]:items-start">
             <span className="flex min-w-0 items-center gap-1">
-              <span className="truncate text-base font-semibold leading-tight tracking-tight sm:text-lg">
+              <span className="truncate text-base font-semibold leading-normal tracking-tight sm:text-lg">
                 {monthName}
                 {year !== currentYear ? (
                   <span className="font-medium text-muted-foreground"> {year}</span>

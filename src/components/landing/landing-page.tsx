@@ -80,13 +80,13 @@ export const LandingPage = () => {
       <LandingHeader />
 
       <main id="contenido">
-        <section id="inicio" className="relative mx-auto w-full max-w-6xl px-4 pt-10 pb-16 sm:px-6 md:pt-16">
+        <section id="inicio" className="relative mx-auto w-full max-w-6xl scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] px-4 pt-10 pb-16 sm:px-6 md:pt-16">
           <div className="landing-hero-wash relative overflow-hidden px-5 py-8 sm:px-8 sm:py-10">
             <div className="relative z-10 grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
               <div className="motion-fade-in min-w-0">
                 <p className="eyebrow text-muted-foreground">Planeación por quincenas</p>
                 <h1 className="mt-3 text-balance text-display">
-                  Tu quincena, clara de punta a punta.
+                  Tu quincena, clara de punta a punta
                 </h1>
                 <p className="mt-4 max-w-xl text-body text-muted-foreground">
                   Organiza ingresos, gastos, billeteras y préstamos al ritmo de cobrar y pagar.
@@ -113,7 +113,7 @@ export const LandingPage = () => {
           </div>
         </section>
 
-        <div id="producto" className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-4 pb-8 sm:px-6 md:gap-20">
+        <div id="producto" className="mx-auto flex w-full max-w-6xl scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] flex-col gap-16 px-4 pb-8 sm:px-6 md:gap-20">
           {PRODUCTS.map((section) => (
             <section key={section.id} className="grid items-center gap-6 md:grid-cols-2 md:gap-10">
               <div className="min-w-0">
@@ -126,7 +126,7 @@ export const LandingPage = () => {
           ))}
         </div>
 
-        <section id="estado-de-cuenta" className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
+        <section id="estado-de-cuenta" className="mx-auto w-full max-w-6xl scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] px-4 py-16 sm:px-6">
           <div className="max-w-2xl">
             <p className="eyebrow text-muted-foreground">Estado de cuenta</p>
             <h2 className="mt-2 text-title">Importa el estado de cuenta</h2>
@@ -141,7 +141,7 @@ export const LandingPage = () => {
           </div>
         </section>
 
-        <section id="quincena" className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6" aria-labelledby="quincena-titulo">
+        <section id="quincena" className="mx-auto w-full max-w-6xl scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] px-4 pb-16 sm:px-6" aria-labelledby="quincena-titulo">
           <div className="max-w-2xl">
             <p className="eyebrow text-muted-foreground">Quincena</p>
             <h2 id="quincena-titulo" className="mt-2 text-title">

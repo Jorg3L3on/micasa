@@ -69,25 +69,24 @@ export const LiquidityDebtSummaryStrip = ({
         {formatCurrency(breakdown.debtTotal)}
       </p>
       {composition.length > 0 ? (
-        <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-caption text-muted-foreground">
+        <ul className="mt-3 flex flex-col gap-2 text-caption text-muted-foreground">
           {composition.map((item) => (
-            <span key={item.key}>
+            <li key={item.key}>
               {item.label}{' '}
               <Money value={item.amount} size="caption" tone="neutral" />
-            </span>
+            </li>
           ))}
-        </p>
+        </ul>
       ) : null}
       {breakdown.topConcepts.length > 0 ? (
-        <p className="mt-2 text-body leading-relaxed text-muted-foreground">
+        <ul className="mt-3 flex flex-col gap-2 text-body leading-normal text-muted-foreground">
           {breakdown.topConcepts.map((concept, index) => (
-            <span key={`${concept.title}-${index}`}>
-              {index > 0 ? ' · ' : null}
+            <li key={`${concept.title}-${index}`}>
               {concept.title}{' '}
               <Money value={concept.amount} size="caption" tone="neutral" />
-            </span>
+            </li>
           ))}
-        </p>
+        </ul>
       ) : null}
     </div>
   );

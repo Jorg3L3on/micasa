@@ -831,7 +831,7 @@ export default function ExpenseTable({
                       className={swipeEnabled ? 'bg-transparent' : undefined}
                       surfaceClassName={cn(
                         MONTHLY_PANEL_SHELL_CLASS,
-                        'group/row isolate flex items-center gap-2.5 overflow-hidden rounded-xl px-3',
+                        'group/row isolate flex flex-nowrap items-center gap-2.5 overflow-hidden rounded-xl px-3',
                         isCompact ? 'py-2.5' : 'py-3',
                       )}
                     >
