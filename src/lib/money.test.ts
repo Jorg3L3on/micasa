@@ -34,7 +34,7 @@ describe('MONEY_SIZE_CLASS', () => {
     for (const size of ['hero', 'row', 'caption'] as const) {
       expect(MONEY_SIZE_CLASS[size]).toContain('font-sans');
       expect(MONEY_SIZE_CLASS[size]).toContain('tabular-nums');
-      expect(MONEY_SIZE_CLASS[size]).not.toContain('font-sans');
+      expect(MONEY_SIZE_CLASS[size]).not.toContain('font-mono');
     }
     expect(MONEY_SIZE_CLASS.hero).toContain('font-bold');
     expect(MONEY_SIZE_CLASS.row).toContain('font-semibold');
