@@ -3,8 +3,10 @@
  * Mobile browsers abort a view transition when the address bar changes the
  * viewport. React leaves `finished.finally()` and `updateCallbackDone`
  * rejections unhandled, which opens the Next.js error overlay.
- * This wraps `document.startViewTransition` so those aborts stay silent,
- * and skips starting a transition while the viewport is resizing.
+ * This wraps `document.startViewTransition` so those aborts stay silent
+ * on the transition promises only. Fetch AbortError and other rejections
+ * are left alone. It also skips starting a transition while the viewport
+ * is resizing.
  * Reduced motion still uses the native transition so the CSS recipes apply.
  */
 export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
@@ -17,12 +19,12 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
   var width = window.innerWidth;
   var height = window.innerHeight;
 
-  function isIgnorable(error) {
+  function isViewTransitionError(error) {
     if (!error || typeof error !== 'object') return false;
     var name = error.name;
     if (name !== 'InvalidStateError' && name !== 'AbortError') return false;
     var message = String(error.message || '');
-    return /viewport|visibility|view transition|invalid state|skipped|aborted/i.test(message);
+    return /view transition|viewport|visibility state|invalid state/i.test(message);
   }
 
   function quietError() {
@@ -40,7 +42,7 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
     return promise.then(
       function (value) { return value; },
       function (error) {
-        if (!isIgnorable(error)) throw error;
+        if (!isViewTransitionError(error)) throw error;
         if (mode === 'ready') throw quietError();
         return undefined;
       }
@@ -70,12 +72,6 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
     }, { passive: true });
   }
 
-  window.addEventListener('unhandledrejection', function (event) {
-    if (!isIgnorable(event.reason)) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  }, true);
-
   function immediate(callback) {
     var update = typeof callback === 'function' ? callback : callback && callback.update;
     var result;
@@ -93,7 +89,7 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
     }
     var done = result && typeof result.then === 'function' ? result : Promise.resolve(result);
     var settled = done.then(function (value) { return value; }, function (error) {
-      if (isIgnorable(error)) return undefined;
+      if (isViewTransitionError(error)) return undefined;
       throw error;
     });
     settled.catch(function () {});

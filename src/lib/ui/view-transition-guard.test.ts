@@ -168,4 +168,58 @@ describe('view transition guard', () => {
     guard.stop();
     expect(native).toHaveBeenCalledOnce();
   });
+
+  it('does not swallow a fetch AbortError on the transition promises', async () => {
+    const updateCallbackDone = defer();
+    const native = vi.fn(() => ({
+      finished: Promise.resolve(),
+      ready: Promise.resolve(),
+      updateCallbackDone: updateCallbackDone.promise,
+      skipTransition: () => {},
+    }));
+    const window = {
+      innerWidth: 1280,
+      innerHeight: 800,
+      setTimeout,
+      clearTimeout,
+      addEventListener: () => {},
+    };
+    const document = { startViewTransition: native };
+    const guard = install(document, window);
+    const transition = (
+      document.startViewTransition as (callback: () => void) => {
+        updateCallbackDone: Promise<void>;
+      }
+    )(() => {});
+    const abort = Object.assign(new Error('The operation was aborted.'), {
+      name: 'AbortError',
+    });
+    updateCallbackDone.reject(abort);
+    await expect(transition.updateCallbackDone).rejects.toBe(abort);
+    guard.stop();
+  });
+
+  it('does not install a global unhandledrejection listener', () => {
+    const types: string[] = [];
+    const window = {
+      innerWidth: 1280,
+      innerHeight: 800,
+      setTimeout,
+      clearTimeout,
+      addEventListener: (type: string) => {
+        types.push(type);
+      },
+    };
+    const document = {
+      startViewTransition: () => ({
+        finished: Promise.resolve(),
+        ready: Promise.resolve(),
+        updateCallbackDone: Promise.resolve(),
+        skipTransition: () => {},
+      }),
+    };
+    const guard = install(document, window);
+    guard.stop();
+    expect(types).not.toContain('unhandledrejection');
+  });
 });
