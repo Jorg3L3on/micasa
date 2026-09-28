@@ -128,7 +128,7 @@ export const CreditCardCycleLedger = ({
       <CreditCardFeedEmpty
         message="Sin movimientos en este ciclo"
         description="Registra compras o pagos para ver la actividad del periodo."
-        action={{ label: 'Registrar compra', onClick: onRegisterPurchase }}
+        action={{ label: 'Agregar compra', onClick: onRegisterPurchase }}
       />
     );
   }

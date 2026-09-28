@@ -18,6 +18,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { LiquidityAccountDebtWhy } from '@/components/wallets/liquidity/LiquidityAccountDebtWhy';
+import { MoneyInText } from '@/components/wallets/liquidity/money-in-text';
 import { LiquidityDebtSummaryStrip } from '@/components/wallets/liquidity/LiquidityDebtSummaryStrip';
 import {
   LIQUIDITY_PANEL_CLASS,
@@ -202,7 +203,9 @@ const AccountCard = ({
             </div>
             <p className="text-caption text-muted-foreground">{view.typeLabel}</p>
             {preview ? (
-              <p className="mt-1 text-caption leading-snug text-muted-foreground">{preview}</p>
+              <p className="mt-1 text-caption leading-snug text-muted-foreground">
+                <MoneyInText text={preview} />
+              </p>
             ) : null}
           </div>
         </div>
@@ -500,7 +503,11 @@ export const LiquidityAccountsToday = ({
         {whyDetailAccount ? (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              {whyDetailAccount.preview || 'De qué está hecha esta deuda'}
+              {whyDetailAccount.preview ? (
+                <MoneyInText text={whyDetailAccount.preview} size="row" />
+              ) : (
+                'De qué está hecha esta deuda'
+              )}
             </p>
             <LiquidityAccountDebtWhy
               account={whyDetailAccount}

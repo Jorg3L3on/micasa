@@ -55,7 +55,10 @@ export const TemplateSwipeRow = ({
               ) : null}
             </span>
             {subtitle ? (
-              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+              <span
+                className="mt-0.5 block text-pretty text-xs text-muted-foreground"
+                title={typeof subtitle === 'string' ? subtitle : undefined}
+              >
                 {subtitle}
               </span>
             ) : null}

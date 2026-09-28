@@ -766,7 +766,7 @@ const CreditCardQuickPurchaseDialog = ({
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
-      title="Registrar compra"
+      title="Agregar compra"
       description={a11yDescription}
       busy={submitting}
     >

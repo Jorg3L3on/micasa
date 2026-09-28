@@ -1,5 +1,6 @@
 'use client';
 
+import { Money } from '@/components/money';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { Button } from '@/components/ui/button';
 import { debtCompositionParts } from '@/lib/finance/liquidity-debt-breakdown';
@@ -72,18 +73,20 @@ export const LiquidityDebtSummaryStrip = ({
           {composition.map((item) => (
             <span key={item.key}>
               {item.label}{' '}
-              <span className="font-sans tabular-nums text-foreground">
-                {formatCurrency(item.amount)}
-              </span>
+              <Money value={item.amount} size="caption" tone="neutral" />
             </span>
           ))}
         </p>
       ) : null}
       {breakdown.topConcepts.length > 0 ? (
         <p className="mt-2 text-body leading-relaxed text-muted-foreground">
-          {breakdown.topConcepts
-            .map((concept) => `${concept.title} ${formatCurrency(concept.amount)}`)
-            .join(' · ')}
+          {breakdown.topConcepts.map((concept, index) => (
+            <span key={`${concept.title}-${index}`}>
+              {index > 0 ? ' · ' : null}
+              {concept.title}{' '}
+              <Money value={concept.amount} size="caption" tone="neutral" />
+            </span>
+          ))}
         </p>
       ) : null}
     </div>
