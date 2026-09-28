@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -369,6 +370,8 @@ export default function LoansPage() {
   const { context } = useFinanceContext();
   const todayYmd = useHydrationSafeTodayYmd();
   const [loans, setLoans] = useState<LoanListItem[]>([]);
+  const loansRef = useRef(loans);
+  loansRef.current = loans;
   const [lenders, setLenders] = useState<LenderListItem[]>([]);
   const [wallets, setWallets] = useState<PaymentMethodOption[]>([]);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateListItem[]>(
@@ -470,7 +473,12 @@ export default function LoansPage() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudieron cargar préstamos';
-      if (!options?.silent) setLoadError(message);
+      const hasLoans = loansRef.current.length > 0;
+      if (hasLoans) {
+        setLoadError(null);
+      } else {
+        setLoadError(message);
+      }
     } finally {
       setLoading(false);
     }
