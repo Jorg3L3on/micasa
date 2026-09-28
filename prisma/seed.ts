@@ -405,8 +405,8 @@ async function main() {
       name: 'Despensa',
       total_amount: 2500,
       frequency: 'BIWEEKLY',
-      recurrent: true,
-      active: true,
+      recurrent: false,
+      active: false,
       start_date: fHouseJulFirst.start_date,
       end_date: fHouseJulSecond.end_date,
       house_id: casaDemo.id,
@@ -887,7 +887,7 @@ async function main() {
   const budgetMes = await prisma.budget.create({
     data: {
       name: 'Gasto del mes',
-      total_amount: 9000,
+      total_amount: 8500,
       frequency: 'BIWEEKLY',
       recurrent: true,
       active: true,
@@ -907,7 +907,7 @@ async function main() {
       budget_id: budgetMes.id,
       wallet_id: walletCasaDebito.id,
       category_id: catComidaHouse.id,
-      amount: 9000,
+      amount: 8500,
     },
   });
   await prisma.budgetPeriod.createMany({
