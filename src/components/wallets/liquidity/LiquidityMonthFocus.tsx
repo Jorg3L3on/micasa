@@ -13,7 +13,7 @@ import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items
 const countLabel = (count: number, singular: string, plural: string): string =>
   `${count} ${count === 1 ? singular : plural}`;
 
-/** Pagos del mes + Adeudo al cierre as Panel financiero aura tiles. */
+/** Pagos del mes + Adeudo al cierre as shared KPI tiles. */
 export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeriesItem }) => {
   const debtItems = month.debt_items ?? [];
   const paymentsDue = monthDebtPaymentsTotal(debtItems);
@@ -31,10 +31,10 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
             ? countLabel(paymentCount, 'pago programado', 'pagos programados')
             : 'Sin pagos de deudas'
         }
-        auraTone="violet"
-        pillClassName="bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400"
+        kpiTone="destructive"
+        pillClassName="bg-status-expense-soft text-status-expense"
         icon={CalendarClock}
-        amountClassName="text-foreground"
+        amountClassName="text-status-expense"
       />
       <AccountMetric
         label="Adeudo al cierre"
@@ -44,17 +44,15 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
             ? countLabel(outstandingCount, 'cuenta con saldo', 'cuentas con saldo')
             : 'Sin deudas al cierre'
         }
-        auraTone={outstandingTotal > 0 ? 'amber' : 'emerald'}
+        kpiTone={outstandingTotal > 0 ? 'destructive' : 'emerald'}
         pillClassName={
           outstandingTotal > 0
-            ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
-            : 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+            ? 'bg-status-expense-soft text-status-expense'
+            : 'bg-status-success-soft text-status-success'
         }
         icon={Landmark}
         amountClassName={
-          outstandingTotal > 0
-            ? 'text-amber-700 dark:text-amber-300'
-            : 'text-emerald-700 dark:text-emerald-300'
+          outstandingTotal > 0 ? 'text-status-expense' : 'text-status-success'
         }
       />
     </div>
@@ -67,7 +65,7 @@ export const LiquidityMonthEvents = ({ events }: { events: LiquidityProjectionEv
 
   return (
     <section className="space-y-2" aria-label="Buenas noticias del mes">
-      <p className="flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+      <p className="flex items-center gap-1.5 px-1 eyebrow text-status-success">
         <Sparkles className="size-3" aria-hidden />
         Buenas noticias
       </p>
@@ -78,8 +76,8 @@ export const LiquidityMonthEvents = ({ events }: { events: LiquidityProjectionEv
               color={AURA_TONE_HEX.emerald}
               className="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 px-3 py-2.5"
             >
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 dark:bg-emerald-400">
-                <Check className="h-3 w-3 text-white dark:text-[#060914]" aria-hidden />
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-status-success">
+                <Check className="h-3 w-3 text-primary-foreground" aria-hidden />
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-semibold text-foreground">{event.title}</span>

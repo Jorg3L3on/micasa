@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import {
   useCallback,
   useEffect,
@@ -31,7 +32,7 @@ import type {
 } from '@/schemas/transaction.schema';
 import type { WalletFormValues } from '@/schemas/wallet.schema';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/motion/tabs';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
@@ -61,7 +62,7 @@ import {
   buildWalletPeriodAnalytics,
   estimateWalletRunwayDays,
 } from '@/lib/finance/wallet-period-analytics';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { formatMonthHeading, todayCalendarDate } from '@/lib/calendar-dates';
 import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
 import type {
   WalletDetail,
@@ -71,7 +72,6 @@ import type { CreditCardPaymentPlanView, PaymentMethodOption } from '@/types/cat
 import type { PaymentMethodType } from '@/domain/payment-method';
 import {
   WalletDetailTabsList,
-  WalletDetailTabTrigger,
   WalletHeroZone,
   WalletPeriodWorkspaceShell,
   WalletPeriodSummary,
@@ -86,21 +86,6 @@ const firstDayOfMonth = (year: number, monthIdx: number): string =>
 const lastDayOfMonth = (year: number, monthIdx: number): string => {
   const last = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate();
   return `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
-};
-
-const MONTH_LABEL: Record<number, string> = {
-  0: 'Enero',
-  1: 'Febrero',
-  2: 'Marzo',
-  3: 'Abril',
-  4: 'Mayo',
-  5: 'Junio',
-  6: 'Julio',
-  7: 'Agosto',
-  8: 'Septiembre',
-  9: 'Octubre',
-  10: 'Noviembre',
-  11: 'Diciembre',
 };
 
 const parseYearMonth = (fromDate: string): { year: number; monthIdx: number } => {
@@ -563,7 +548,7 @@ export default function WalletDetailPage() {
 
   const rangeLabel = useMemo(() => {
     const { year, monthIdx } = parseYearMonth(range.from);
-    return `${MONTH_LABEL[monthIdx]} ${year}`;
+    return formatMonthHeading(monthIdx + 1, year);
   }, [range.from]);
 
   const analytics = useMemo(
@@ -642,7 +627,7 @@ export default function WalletDetailPage() {
     primaryAction:
       wallet && canImport
         ? {
-            label: 'Registrar',
+            label: 'Agregar movimiento',
             onClick: handleOpenExpense,
             icon: registrarIcon,
           }
@@ -658,9 +643,7 @@ export default function WalletDetailPage() {
 
   if ((error && !wallet && !stashReady) || (!wallet && !stashReady)) {
     return (
-      <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-        {error ?? 'No se pudo cargar la billetera'}
-      </div>
+      <ErrorBanner>{error ?? 'No se pudo cargar la billetera'}</ErrorBanner>
     );
   }
 
@@ -720,17 +703,13 @@ export default function WalletDetailPage() {
                 onResetToToday={handleResetToToday}
               />
               <div className="mt-4">
-                <WalletDetailTabsList>
-                  <WalletDetailTabTrigger value="resumen">
-                    Resumen
-                  </WalletDetailTabTrigger>
-                  <WalletDetailTabTrigger value="movimientos">
-                    Movimientos
-                  </WalletDetailTabTrigger>
-                  <WalletDetailTabTrigger value="compromisos">
-                    Compromisos
-                  </WalletDetailTabTrigger>
-                </WalletDetailTabsList>
+                <WalletDetailTabsList
+                  options={[
+                    { value: 'resumen', label: 'Resumen' },
+                    { value: 'movimientos', label: 'Movimientos' },
+                    { value: 'compromisos', label: 'Compromisos' },
+                  ]}
+                />
               </div>
             </>
           }

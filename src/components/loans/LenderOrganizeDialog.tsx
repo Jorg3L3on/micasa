@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ErrorBanner } from '@/components/error-banner';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   GroupedRow,
@@ -126,9 +127,7 @@ const LenderOrganizeForm = ({
           aria-busy={submitting}
         >
           {displayError ? (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive" role="alert">
-              {displayError}
-            </div>
+            <ErrorBanner>{displayError}</ErrorBanner>
           ) : null}
 
           {mode === 'split' ? (
@@ -184,7 +183,7 @@ const LenderOrganizeForm = ({
                         {item.name}
                       </SelectItem>
                     ))}
-                    <SelectItem value="__new__">Nuevo prestamista…</SelectItem>
+                    <SelectItem value="__new__">Agregar prestamista…</SelectItem>
                   </SelectContent>
                 </Select>
               </GroupedRow>

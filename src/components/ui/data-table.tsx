@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useSyncExternalStore } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -19,6 +20,7 @@ import {
 import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Column } from '@tanstack/react-table';
 
+import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -37,6 +39,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
+const MAX_MD_QUERY = '(max-width: 767px)';
+
+const subscribeMaxMd = (onStoreChange: () => void) => {
+  const media = window.matchMedia(MAX_MD_QUERY);
+  media.addEventListener('change', onStoreChange);
+  return () => media.removeEventListener('change', onStoreChange);
+};
+
+const getMaxMdSnapshot = () => window.matchMedia(MAX_MD_QUERY).matches;
+
+/** SSR and the first client render use the mobile list so a wide table is not in the document. */
+const getMaxMdServerSnapshot = () => true;
+
+const useIsMaxMd = () =>
+  useSyncExternalStore(subscribeMaxMd, getMaxMdSnapshot, getMaxMdServerSnapshot);
 
 export type DataTableProps<TData> = {
   data: TData[];
@@ -62,13 +80,15 @@ export type DataTableProps<TData> = {
   enableMultiRowExpansion?: boolean;
   /** Below `md`, replaces the table with a list of these rows (filters and pagination still apply). */
   renderMobileRow?: (row: TData) => React.ReactNode;
+  /** Inside a Card: the card owns the border, so the table does not draw a second one. */
+  embedded?: boolean;
 };
 
 export function DataTable<TData>({
   data,
   columns,
   filterColumn,
-  filterPlaceholder = 'Filtrar...',
+  filterPlaceholder = 'Filtrar…',
   pagination = true,
   columnVisibility = false,
   emptyMessage = 'Sin resultados.',
@@ -80,6 +100,7 @@ export function DataTable<TData>({
   getRowCanExpand,
   enableMultiRowExpansion = false,
   renderMobileRow,
+  embedded = false,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -87,6 +108,13 @@ export function DataTable<TData>({
   const [expanded, setExpanded] = React.useState<ExpandedState>({});
 
   const expansionEnabled = renderExpandedRow != null;
+  const resolvedEmpty =
+    typeof emptyMessage === 'string' ? (
+      <EmptyState message={emptyMessage} className="py-8" />
+    ) : (
+      emptyMessage
+    );
+
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns its internal mutable table API.
   const table = useReactTable({
@@ -119,10 +147,21 @@ export function DataTable<TData>({
   const filterValue =
     (filterColumn && (table.getColumn(filterColumn)?.getFilterValue() as string)) ?? '';
 
+  const isMaxMd = useIsMaxMd();
+  const showMobileList = Boolean(renderMobileRow) && isMaxMd;
+  const columnToggleIsDesktopOnly = Boolean(renderMobileRow && columnVisibility);
+  const toolbarOnlyColumnToggle =
+    columnToggleIsDesktopOnly && !filterColumn && !filterSlot && !toolbarExtra;
+
   return (
     <div className="w-full min-w-0 space-y-4">
       {(filterColumn || filterSlot || columnVisibility || toolbarExtra) && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div
+          className={cn(
+            'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4',
+            toolbarOnlyColumnToggle && 'hidden md:flex',
+          )}
+        >
           <div className="flex flex-1 flex-wrap items-center gap-3 sm:gap-4">
             {filterColumn && (
               <Input
@@ -139,7 +178,11 @@ export function DataTable<TData>({
             {columnVisibility && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(columnToggleIsDesktopOnly && 'hidden md:inline-flex')}
+                  >
                     Columnas <ChevronDown className="ml-2 h-4 w-4" data-icon="inline-end" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -170,33 +213,30 @@ export function DataTable<TData>({
           )}
         </div>
       )}
-      {renderMobileRow ? (
+      {showMobileList && renderMobileRow ? (
         <ul
-          className="divide-y divide-border/60 overflow-hidden rounded-lg border bg-card md:hidden"
+          className={cn(
+            'w-full min-w-0 max-w-full divide-y divide-border/60 overflow-hidden',
+            !embedded && 'rounded-lg border bg-card',
+          )}
           role="list"
         >
           {table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
-              <li key={row.id}>{renderMobileRow(row.original)}</li>
+              <li key={row.id} className="min-w-0 max-w-full">
+                {renderMobileRow(row.original)}
+              </li>
             ))
           ) : (
-            <li
-              className={cn(
-                'text-center',
-                typeof emptyMessage === 'string'
-                  ? 'py-8 text-sm text-muted-foreground'
-                  : 'p-2',
-              )}
-            >
-              {emptyMessage}
-            </li>
+            <li className="p-2 text-center">{resolvedEmpty}</li>
           )}
         </ul>
       ) : null}
+      {showMobileList ? null : (
       <div
         className={cn(
-          'overflow-x-auto rounded-lg border bg-card',
-          renderMobileRow && 'hidden md:block',
+          'overflow-x-auto',
+          !embedded && 'rounded-lg border bg-card',
         )}
       >
         <Table>
@@ -237,7 +277,7 @@ export function DataTable<TData>({
                   className={cn(
                     onRowClick && 'cursor-pointer hover:bg-muted/40',
                     isSelected &&
-                      'bg-muted/30 border-l-[3px] border-l-violet-500/50',
+                      'bg-muted/30 border-l-[3px] border-l-status-info/50',
                   )}
                   onClick={() => onRowClick?.(row.original)}
                   onKeyDown={(e) => {
@@ -286,22 +326,15 @@ export function DataTable<TData>({
               })
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className={cn(
-                    'text-center',
-                    typeof emptyMessage === 'string'
-                      ? 'h-24 text-muted-foreground'
-                      : 'p-2 sm:p-4',
-                  )}
-                >
-                  {emptyMessage}
+                <TableCell colSpan={columns.length} className="p-2 text-center">
+                  {resolvedEmpty}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+      )}
       {pagination && table.getPageCount() > 1 && (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">

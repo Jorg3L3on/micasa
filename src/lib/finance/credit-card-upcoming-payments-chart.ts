@@ -1,3 +1,5 @@
+import { formatChartAxisMonth } from '@/lib/calendar-dates';
+
 export type UpcomingPaymentsChartInput = {
   paymentHistory: Array<{ paid_at: string; amount: number }>;
   installmentActivePurchases: Array<{
@@ -64,17 +66,7 @@ export const addMonthsToMonthKey = (key: string, delta: number): string => {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 };
 
-export const labelFromMonthKey = (key: string): string => {
-  const [year, month] = key.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, 15));
-  return date
-    .toLocaleDateString('es-MX', {
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC',
-    })
-    .replace('.', '');
-};
+export const labelFromMonthKey = (key: string): string => formatChartAxisMonth(key);
 
 const monthKeysInclusive = (from: string, to: string): string[] => {
   if (to < from) return [from];

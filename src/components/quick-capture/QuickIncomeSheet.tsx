@@ -21,10 +21,10 @@ import {
   type QuickIncomeFormValues,
 } from '@/schemas/transaction.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { formatMonthInPhrase, todayCalendarDate } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { isGoalWalletType } from '@/domain/payment-method';
-import { formatCurrency, formatMonth } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
@@ -60,7 +60,7 @@ const fortnightPreviewLabel = (dateStr: string): string => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return 'Quincena según la fecha';
   const { year, month, period } = getCalendarFortnightRefForYmd(dateStr);
   const periodLabel = period === 'FIRST' ? '1ª quincena' : '2ª quincena';
-  return `Va a: ${periodLabel} · ${formatMonth(month)} ${year}`;
+  return `Va a: ${periodLabel} · ${formatMonthInPhrase(month, year)}`;
 };
 
 export const QuickIncomeSheet = ({
@@ -199,7 +199,7 @@ export const QuickIncomeSheet = ({
                                   providerIconKey={wallet.provider_icon_key}
                                   iconClassName="h-5 w-5 rounded-md"
                                 />
-                                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                <span className="font-sans text-xs tabular-nums text-muted-foreground">
                                   {formatCurrency(wallet.amount ?? 0)}
                                 </span>
                               </span>

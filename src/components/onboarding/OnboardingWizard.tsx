@@ -1,22 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AppAtmosphere } from '@/components/app-atmosphere';
 import { OnboardingProvider, useOnboarding } from '@/components/onboarding/OnboardingContext';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import StepWelcome from '@/components/onboarding/steps/StepWelcome';
 import StepWallets from '@/components/onboarding/steps/StepWallets';
 import StepIncomeTemplates from '@/components/onboarding/steps/StepIncomeTemplates';
 import StepExpenseTemplates from '@/components/onboarding/steps/StepExpenseTemplates';
 import StepFortnights from '@/components/onboarding/steps/StepFortnights';
-import { AnimatePresence, motion } from 'framer-motion';
 import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import type {
   ExpenseTemplateDraft,
@@ -49,12 +44,12 @@ const stepDescriptions: Record<number, string> = {
 };
 
 const stepContentVariants = {
-  enter: { opacity: 0, x: 20 },
+  enter: { opacity: 0, x: 16 },
   animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -20 },
+  exit: { opacity: 0, x: -16 },
 };
 
-const stepContentTransition = { duration: 0.25 };
+const SOFT_EASE = [0.22, 1, 0.36, 1] as const;
 
 function OnboardingWizardContent() {
   const onboarding = useOnboarding();
@@ -75,6 +70,10 @@ function OnboardingWizardContent() {
   const description = stepDescriptions[currentStep];
 
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
+  const stepContentTransition = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.2, ease: SOFT_EASE };
 
   const handleFinish = async () => {
     try {
@@ -132,80 +131,38 @@ function OnboardingWizardContent() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <motion.div
-        className="w-full max-w-[640px]"
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        <Card className="w-full border-0 shadow-lg">
-          <CardHeader className="space-y-8 pb-2">
-            {/* Stepper dots */}
-            <div
-              className="flex items-center justify-center gap-2"
-              role="list"
-              aria-label={`Paso ${currentStep + 1} de ${totalSteps}`}
-            >
-              {Array.from({ length: totalSteps }, (_, i) => {
-                const isCompleted = i < currentStep;
-                const isActive = i === currentStep;
-
-                return (
-                  <motion.span
-                    key={i}
-                    role="listitem"
-                    className={`rounded-full ${
-                      isCompleted
-                        ? 'bg-primary h-2 w-2'
-                        : isActive
-                          ? 'bg-primary h-3 w-3'
-                          : 'bg-muted-foreground/30 h-2 w-2'
-                    }`}
-                    aria-current={isActive ? 'step' : undefined}
-                    initial={{ scale: 0.9, opacity: 0.7 }}
-                    animate={{
-                      scale: isActive ? 1 : 0.9,
-                      opacity: isCompleted || isActive ? 1 : 0.6,
-                    }}
-                    transition={{ duration: 0.2 }}
-                  />
-                );
-              })}
-            </div>
-
-            {/* Progress bar + label */}
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-background px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <AppAtmosphere />
+      <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'relative z-10 w-full max-w-[640px] motion-slide-up')}>
+        <div className="space-y-5 px-5 pt-6 pb-2 sm:px-8">
             <div className="space-y-2">
-              <p className="text-muted-foreground text-sm">
+              <p className="text-caption text-muted-foreground">
                 Paso {currentStep + 1} de {totalSteps}
               </p>
               <div
-                className="bg-muted h-2 w-full overflow-hidden rounded-full"
+                className="h-2 w-full overflow-hidden rounded-full bg-muted"
                 role="progressbar"
                 aria-valuenow={Math.round(progress * 100)}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-label={`Paso ${currentStep + 1} de ${totalSteps}`}
               >
-                <motion.div
-                  className="bg-primary h-full rounded-full"
-                  initial={false}
-                  animate={{ width: `${progress * 100}%` }}
-                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-(--motion-base) ease-(--ease-out-soft) motion-reduce:transition-none"
+                  style={{ width: `${progress * 100}%` }}
                 />
               </div>
             </div>
 
-            {/* Step title & description */}
             <div className="space-y-1">
-              <CardTitle className="text-xl">{title}</CardTitle>
+              <h1 className="text-title text-foreground">{title}</h1>
               {description ? (
-                <CardDescription>{description}</CardDescription>
+                <p className="text-body text-muted-foreground">{description}</p>
               ) : null}
             </div>
-          </CardHeader>
+        </div>
 
-          <CardContent className="min-h-[120px] pt-6">
+        <div className="min-h-[120px] px-5 pt-4 sm:px-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentStep}
@@ -219,9 +176,9 @@ function OnboardingWizardContent() {
                 <StepComponent />
               </motion.div>
             </AnimatePresence>
-          </CardContent>
+        </div>
 
-          <CardFooter className="flex w-full gap-3 border-t pt-6">
+        <div className="flex w-full gap-3 border-t border-border/60 px-5 py-5 sm:px-8">
             {!isFirstStep && (
               <Button
                 type="button"
@@ -241,14 +198,13 @@ function OnboardingWizardContent() {
               aria-label="Continuar al siguiente paso"
             >
               {isStepLoading
-                ? 'Preparando tu espacio financiero...'
+                ? 'Preparando tu espacio financiero…'
                 : isLastStep
                   ? 'Finalizar'
                   : 'Continuar'}
             </Button>
-          </CardFooter>
-        </Card>
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

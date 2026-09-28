@@ -13,11 +13,11 @@ export const BUDGET_FREQUENCY_LABELS: Record<BudgetFrequency, string> = {
   CUSTOM: 'Personalizado',
 };
 
-/** Sentinel for the cartera select. Stored as `wallet_id` null. */
+/** Sentinel for the billetera select. Stored as `wallet_id` null. */
 export const ANY_WALLET_SELECT_VALUE = 'any';
 
 /** Shown when an allocation matches every wallet. */
-export const ANY_WALLET_LABEL = 'Cualquier cartera';
+export const ANY_WALLET_LABEL = 'Cualquier billetera';
 
 export const allocationWalletIdSchema = z.union([positiveIntSchema, z.null()]).optional();
 
@@ -33,7 +33,7 @@ export function selectValueToWalletId(value: string): number | null {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-/** Unset (0 / empty) still needs a choice. Null is Cualquier cartera. */
+/** Unset (0 / empty) still needs a choice. Null is Cualquier billetera. */
 export function isWalletSelectionMissing(walletId: number | null | undefined): boolean {
   return walletId !== null && !(typeof walletId === 'number' && walletId > 0);
 }

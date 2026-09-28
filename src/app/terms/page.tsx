@@ -42,7 +42,7 @@ export default function TermsPage() {
 
       <h2>1. El servicio</h2>
       <p>
-        MiCasa es una herramienta de planificación financiera personal y del
+        MiCasa es una herramienta de planeación financiera personal y del
         hogar (quincenas, gastos, ingresos, billeteras, tarjetas, préstamos y
         módulos relacionados). El producto puede estar en evolución;
         funciones pueden cambiar, pausarse o retirarse con aviso razonable

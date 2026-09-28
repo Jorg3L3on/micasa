@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react';
 import { CalendarClock, Landmark } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
+import { TabsContent } from '@/components/motion/tabs';
+import { SegmentedControl } from '@/components/segmented-control';
 import { Badge } from '@/components/ui/badge';
 import {
   AURA_TAB_INDICATOR_CLASS,
@@ -22,12 +23,10 @@ type LiquidityMonthDebtTabsProps = {
   outstandingTotal?: number;
 };
 
-const TAB_TRIGGER_CLASS =
-  'min-h-9 px-1.5 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2 sm:py-1.5 xl:px-2.5 xl:py-2 xl:text-sm';
 const TAB_LABEL_CLASS = 'inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5';
 const TAB_ICON_CLASS = 'h-3.5 w-3.5 shrink-0';
 const TAB_BADGE_CLASS =
-  'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5';
+  'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-sans font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5';
 
 const countPayments = (items: readonly MonthDebtItem[]): number =>
   items.filter((item) => (item.payment_amount ?? 0) > 0).length;
@@ -45,26 +44,23 @@ export const LiquidityMonthDebtTabs = ({
   const paymentsTotal = monthDebtPaymentsTotal(items);
 
   return (
-    <Tabs defaultValue="payments" variant="pill" className="w-full min-w-0">
-      <div
-        className={cn(
-          MONTHLY_LIQUID_PANEL_CLASS,
-          'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
-        )}
-      >
-        <TabsList
-          aria-label="Deudas del mes"
-          wrapperClassName="min-w-0 flex-1"
-          className="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
-        >
-          <TabsTrigger
-            value="payments"
-            stretch
-            className={TAB_TRIGGER_CLASS}
-            indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-            activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-            aria-label={`Pagos del mes, ${paymentCount} conceptos`}
-          >
+    <SegmentedControl
+      defaultValue="payments"
+      ariaLabel="Deudas del mes"
+      className="w-full min-w-0"
+      stretch
+      frameClassName={cn(
+        MONTHLY_LIQUID_PANEL_CLASS,
+        'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
+      )}
+      wrapperClassName="min-w-0 flex-1"
+      indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+      activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+      options={[
+        {
+          value: 'payments',
+          ariaLabel: `Pagos del mes, ${paymentCount} conceptos`,
+          label: (
             <span className={TAB_LABEL_CLASS}>
               <CalendarClock className={TAB_ICON_CLASS} aria-hidden />
               Pagos del mes
@@ -76,15 +72,12 @@ export const LiquidityMonthDebtTabs = ({
                 {paymentCount}
               </Badge>
             </span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="outstanding"
-            stretch
-            className={TAB_TRIGGER_CLASS}
-            indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-            activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-            aria-label={`Adeudo al cierre del mes, ${outstandingCount} conceptos`}
-          >
+          ),
+        },
+        {
+          value: 'outstanding',
+          ariaLabel: `Adeudo al cierre del mes, ${outstandingCount} conceptos`,
+          label: (
             <span className={TAB_LABEL_CLASS}>
               <Landmark className={TAB_ICON_CLASS} aria-hidden />
               Adeudo al cierre
@@ -96,9 +89,10 @@ export const LiquidityMonthDebtTabs = ({
                 {outstandingCount}
               </Badge>
             </span>
-          </TabsTrigger>
-        </TabsList>
-      </div>
+          ),
+        },
+      ]}
+    >
 
       <TabsContent value="payments" className="mt-0 outline-none">
         <LiquidityMonthDebtItemsList
@@ -118,6 +112,6 @@ export const LiquidityMonthDebtTabs = ({
           emptyMessage="Ese mes no hay adeudo de tarjetas, tiendas ni préstamos."
         />
       </TabsContent>
-    </Tabs>
+    </SegmentedControl>
   );
 };

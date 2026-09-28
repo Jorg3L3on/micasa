@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { TransactionRow } from '@/types/catalog';
 import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
+import { parseFortnightPeriod } from '@/lib/finance/report-helpers';
 import {
   buildFortnightWhereForReport,
   linkedCardPaymentExpenseIds,
@@ -11,7 +12,9 @@ import {
   mapCreditCardPaymentToTransactionRow,
   unionPaidAtRangeFromFortnights,
 } from '@/lib/finance/planning-credit-card-payments';
+import { getDuePaymentsForPlannerMonth } from '@/lib/finance/credit-card-statement.service';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
+import { mapPendingCardDuesToTransactionRows } from '@/lib/finance/planning-pending-card-payments';
 import {
   linkedLoanPaymentExpenseIds,
   mapScheduledLoanPaymentsToTransactionRows,
@@ -68,7 +71,8 @@ export const listPlanningTransactions = async (
     } = {};
     if (month) base.month = parseInt(month, 10);
     if (year) base.year = parseInt(year, 10);
-    if (period) base.period = period as 'FIRST' | 'SECOND';
+    const parsedPeriod = parseFortnightPeriod(period);
+    if (parsedPeriod) base.period = parsedPeriod;
 
     const fortnights = await prisma.fortnight.findMany({
       where: { ...ownerFilter, ...base },
@@ -84,9 +88,6 @@ export const listPlanningTransactions = async (
   }
   if (isPaid !== undefined) {
     expenseWhere.is_paid = isPaid;
-  }
-  if (excludeCreditInstallment && type === 'expense') {
-    expenseWhere.loan_payment_id = null;
   }
   if (excludeCreditInstallment) {
     expenseWhere = {
@@ -111,6 +112,7 @@ export const listPlanningTransactions = async (
     ReturnType<typeof listLoanPaymentsForPlannerMonth>
   >['first'] = [];
   let linkedLoanPaymentExpenses = new Set<number>();
+  let pendingCardDueRows: TransactionRow[] = [];
   if (excludeCreditInstallment && type !== 'income') {
     const fnWhere = buildFortnightWhereForReport(
       ownerFilter,
@@ -136,8 +138,7 @@ export const listPlanningTransactions = async (
     if (month && year) {
       const plannerYear = parseInt(year, 10);
       const plannerMonth = parseInt(month, 10);
-      const resolvedPeriod =
-        period === 'FIRST' || period === 'SECOND' ? period : null;
+      const resolvedPeriod = parseFortnightPeriod(period) ?? null;
       const { first, second } = await listLoanPaymentsForPlannerMonth(
         ownerFilter,
         plannerYear,
@@ -149,10 +150,27 @@ export const listPlanningTransactions = async (
           : resolvedPeriod === 'SECOND'
             ? second
             : [...first, ...second];
-      linkedLoanPaymentExpenses = linkedLoanPaymentExpenseIds(periodPayments);
       loanPaymentsForPlanning = periodPayments.filter(
         (payment) => payment.status === 'SCHEDULED',
       );
+      linkedLoanPaymentExpenses = linkedLoanPaymentExpenseIds(
+        loanPaymentsForPlanning,
+      );
+
+      if (isPaid !== true) {
+        const cardDues = await getDuePaymentsForPlannerMonth(
+          ownerFilter,
+          plannerYear,
+          plannerMonth,
+        );
+        const dueItems =
+          resolvedPeriod === 'FIRST'
+            ? cardDues.first
+            : resolvedPeriod === 'SECOND'
+              ? cardDues.second
+              : [...cardDues.first, ...cardDues.second];
+        pendingCardDueRows = mapPendingCardDuesToTransactionRows(dueItems);
+      }
     }
   }
 
@@ -201,7 +219,7 @@ export const listPlanningTransactions = async (
       : cardPaymentsForPlanning.map(mapCreditCardPaymentToTransactionRow);
 
   const loanPaymentTransactions =
-    isPaid === false || type === 'expense'
+    isPaid === false
       ? []
       : mapScheduledLoanPaymentsToTransactionRows(loanPaymentsForPlanning);
 
@@ -220,6 +238,12 @@ export const listPlanningTransactions = async (
   const incomes = await prisma.income.findMany({
     where: incomeWhere,
     orderBy: { received_at: 'desc' },
+    include: {
+      wallet: { select: { name: true } },
+      income_template: {
+        select: { wallet: { select: { name: true } } },
+      },
+    },
   });
 
   const incomeTransactions: TransactionRow[] = incomes.map((income) => {
@@ -235,7 +259,10 @@ export const listPlanningTransactions = async (
       amount: decimalToNumber(income.amount),
       category: '',
       categoryIcon: null,
-      paymentMethod: 'Ingreso',
+      paymentMethod:
+        income.wallet?.name ??
+        income.income_template?.wallet?.name ??
+        'Sin billetera',
       type: 'income' as const,
       is_paid: true,
       due_day: null,
@@ -245,6 +272,7 @@ export const listPlanningTransactions = async (
   let combined: TransactionRow[] = [
     ...expenseTransactions,
     ...cardPaymentTransactions,
+    ...pendingCardDueRows,
     ...loanPaymentTransactions,
     ...incomeTransactions,
   ];

@@ -13,6 +13,10 @@ import {
 } from '@/lib/finance/expense.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 import { listPlanningTransactions } from '@/lib/finance/planning-transactions.service';
+import {
+  fortnightPeriodParamError,
+  parseFortnightPeriod,
+} from '@/lib/finance/report-helpers';
 
 const decimalToNumber = (value: unknown): number => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -37,7 +41,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
-    const period = searchParams.get('period');
+    const periodRaw = searchParams.get('period');
+    const periodError = fortnightPeriodParamError(periodRaw);
+    if (periodError) {
+      return NextResponse.json({ error: periodError }, { status: 400 });
+    }
+    const period = parseFortnightPeriod(periodRaw);
     const type = searchParams.get('type');
     const isPaidParam = searchParams.get('is_paid');
     const excludeCreditInstallment =

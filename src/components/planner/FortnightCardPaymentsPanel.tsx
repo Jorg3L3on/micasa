@@ -1,9 +1,10 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
-import { Banknote, CreditCard, Loader2, Pencil, Store } from 'lucide-react';
+import { Banknote, CreditCard, Pencil, Store } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,13 +54,13 @@ const getDaysLeft = (statementDueDateYmd: string, todayYmd: string): number => {
 const daysLeftColor = (days: number, status: PlannerCardPaymentStatus) => {
   if (status === 'pagado' || status === 'sin_cargo' || status === 'falta_dato') {
     return status === 'falta_dato'
-      ? 'text-amber-700 dark:text-amber-300'
+      ? 'text-status-pending'
       : 'text-muted-foreground';
   }
   if (days < 0) return 'text-destructive';
   if (days <= 3) return 'text-destructive';
-  if (days <= 7) return 'text-amber-600 dark:text-amber-400';
-  return 'text-blue-600 dark:text-blue-400';
+  if (days <= 7) return 'text-status-pending';
+  return 'text-status-info';
 };
 
 const CARD_STATUS_TO_DUE_ROW: Record<PlannerCardPaymentStatus, DueRowStatus> = {
@@ -222,18 +223,10 @@ const FortnightCardPaymentsPanel = ({
 
   if (rows.length === 0) {
     return (
-      <div
-        className={cn(
-          'rounded-xl border border-border/40 bg-card px-4 py-8 text-center shadow-sm',
-          isCompact ? 'text-xs' : 'text-sm',
-        )}
-        role="region"
-        aria-label={`Pagos de tarjeta: ${fortnightLabel}`}
-      >
-        <p className="text-muted-foreground">
-          No hay tarjetas con fecha de pago en esta quincena.
-        </p>
-      </div>
+      <EmptyState
+        message="No hay tarjetas con fecha de pago en esta quincena."
+        className="py-8"
+      />
     );
   }
 
@@ -300,30 +293,30 @@ const FortnightCardPaymentsPanel = ({
                   className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1',
                     status === 'pagado'
-                      ? 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10'
+                      ? 'bg-gradient-to-br from-status-income/25 to-status-income/10 ring-status-income/30 dark:from-status-income/25 dark:to-status-income/10'
                       : status === 'vencido'
                         ? 'bg-gradient-to-br from-destructive/25 to-destructive/10 ring-destructive/30'
                         : status === 'sin_cargo'
                           ? 'bg-muted/40 ring-border/40'
                           : isMissingPayment
-                            ? 'bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-amber-500/30 dark:from-amber-400/25 dark:to-amber-500/10'
+                            ? 'bg-gradient-to-br from-status-pending/25 to-status-pending/10 ring-status-pending/30 dark:from-status-pending/25 dark:to-status-pending/10'
                           : isDueSoon
-                            ? 'bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-amber-500/30 dark:from-amber-400/25 dark:to-amber-500/10'
-                            : 'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
+                            ? 'bg-gradient-to-br from-status-pending/25 to-status-pending/10 ring-status-pending/30 dark:from-status-pending/25 dark:to-status-pending/10'
+                            : 'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                   )}
                 >
                   <Icon
                     className={cn(
                       'h-4 w-4',
                       status === 'pagado'
-                        ? 'text-emerald-600 dark:text-emerald-300'
+                        ? 'text-status-income'
                         : status === 'vencido'
                           ? 'text-destructive'
                           : status === 'sin_cargo'
                             ? 'text-muted-foreground'
                             : isMissingPayment || isDueSoon
-                              ? 'text-amber-600 dark:text-amber-300'
-                              : 'text-blue-600 dark:text-blue-300',
+                              ? 'text-status-pending'
+                              : 'text-status-info',
                     )}
                     aria-hidden
                   />
@@ -344,7 +337,7 @@ const FortnightCardPaymentsPanel = ({
                   >
                     {item.walletName}
                   </Link>
-                  <div className="flex flex-wrap items-baseline gap-1 text-[10px]">
+                  <div className="flex flex-wrap items-baseline gap-1 text-caption">
                     <span
                       className={cn('font-medium tabular-nums', dateColor)}
                     >
@@ -393,14 +386,14 @@ const FortnightCardPaymentsPanel = ({
                   >
                     <span
                       className={cn(
-                        'font-mono font-bold tabular-nums',
+                        'font-sans font-bold tabular-nums',
                         isCompact ? 'text-xs' : 'text-sm',
                         status === 'pagado'
-                          ? 'text-emerald-600 dark:text-emerald-400'
+                          ? 'text-status-income'
                           : status === 'sin_cargo'
                             ? 'text-muted-foreground'
                             : isMissingPayment
-                              ? 'text-amber-700 dark:text-amber-300'
+                              ? 'text-status-pending'
                               : 'text-foreground',
                       )}
                       aria-label={
@@ -423,7 +416,7 @@ const FortnightCardPaymentsPanel = ({
                     </span>
                     {status === 'pagado' && fortnightPaid > 0 ? (
                       <span
-                        className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/80"
+                        className="eyebrow text-muted-foreground/80"
                         aria-hidden
                       >
                         Pagado esta quincena
@@ -433,7 +426,7 @@ const FortnightCardPaymentsPanel = ({
                     fortnightPaid <= 0 &&
                     (item.paymentsAppliedToStatement ?? 0) > 0 ? (
                       <span
-                        className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/80"
+                        className="eyebrow text-muted-foreground/80"
                         aria-hidden
                       >
                         Cubierto al corte
@@ -445,7 +438,7 @@ const FortnightCardPaymentsPanel = ({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-8 shrink-0 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+                      className="h-8 shrink-0 px-2 text-xs font-medium text-status-pending hover:text-status-pending"
                       onClick={() => handleOpenPlanDialog(item)}
                       aria-label={`Capturar pago del corte: ${item.walletName}`}
                     >
@@ -484,26 +477,24 @@ const FortnightCardPaymentsPanel = ({
                             variant="outline"
                             size="icon"
                             className={cn(
-                              'h-8 w-8 rounded-full border-dashed border-emerald-500/40 bg-transparent shadow-none',
-                              'transition-colors hover:border-emerald-500/70 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15',
+                              'h-8 w-8 rounded-full border-dashed border-status-income/40 bg-transparent shadow-none',
+                              'transition-colors hover:border-status-income/70 hover:bg-status-income/10 dark:hover:bg-status-income/15',
                               'disabled:pointer-events-none disabled:opacity-40',
-                              '[&_svg]:text-emerald-600 dark:[&_svg]:text-emerald-400',
+                              '[&_svg]:text-status-income dark:[&_svg]:text-status-income',
                             )}
                             disabled={
                               item.outstandingBalance <= 0 ||
                               payingWalletId === item.walletId
                             }
                             onClick={() => onPayCard(item)}
-                            aria-label={`Registrar pago: ${item.walletName}`}
+                            aria-busy={payingWalletId === item.walletId}
+                            aria-label={
+                              payingWalletId === item.walletId
+                                ? `Guardando pago: ${item.walletName}`
+                                : `Registrar pago: ${item.walletName}`
+                            }
                           >
-                            {payingWalletId === item.walletId ? (
-                              <Loader2
-                                className="size-3.5 shrink-0 animate-spin"
-                                aria-hidden
-                              />
-                            ) : (
-                              <Banknote className="size-3.5" aria-hidden />
-                            )}
+                            <Banknote className="size-3.5" aria-hidden />
                           </Button>
                         </span>
                       </TooltipTrigger>
@@ -517,7 +508,7 @@ const FortnightCardPaymentsPanel = ({
                         ) : (
                           <>
                             <span className="font-medium">Pagar</span>
-                            <span className="mt-0.5 block text-[11px] font-normal opacity-90">
+                            <span className="mt-0.5 block text-caption font-normal opacity-90">
                               Desde efectivo o débito (igual que en Billeteras).
                             </span>
                           </>

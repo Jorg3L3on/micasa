@@ -42,15 +42,15 @@ export const FortnightBudgetProgress = ({
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>
-          <span className="font-mono font-semibold tabular-nums text-foreground">
+          <span className="font-sans font-semibold tabular-nums text-foreground">
             {formatCurrency(spent)}
           </span>{' '}
           usado de{' '}
-          <span className="font-mono font-semibold tabular-nums text-foreground">
+          <span className="font-sans font-semibold tabular-nums text-foreground">
             {formatCurrency(totalBudget)}
           </span>
         </span>
-        <span className="font-mono font-semibold tabular-nums text-foreground">
+        <span className="font-sans font-semibold tabular-nums text-foreground">
           {rawUsedPercent}% usado
         </span>
       </div>

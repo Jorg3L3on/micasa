@@ -27,13 +27,6 @@ const plateSvg = ({ size, inset, rounded }) => {
 </svg>`;
 };
 
-const lockupSvg = (wordColor) => `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" role="img" aria-labelledby="micasaLockupTitle">
-  <title id="micasaLockupTitle">MiCasa</title>
-  <image href="${markHref}" x="8" y="8" width="144" height="144" preserveAspectRatio="xMidYMid meet"/>
-  <text x="176" y="104" fill="${wordColor}" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="84" font-weight="600" letter-spacing="-1.5">MiCasa</text>
-</svg>`;
-
 const renderPng = (svg, width) =>
   new Resvg(svg, {
     fitTo: { mode: 'width', value: width },
@@ -70,9 +63,6 @@ await mkdir(iconsDir, { recursive: true });
 
 const plate = plateSvg({ size: 512, inset: 0.12, rounded: true });
 const maskable = plateSvg({ size: 512, inset: 0.22, rounded: false });
-
-await writeFile(path.join(root, 'public', 'logo-white.svg'), lockupSvg('#FFFFFF'));
-await writeFile(path.join(root, 'public', 'logo-black.svg'), lockupSvg('#0A0B10'));
 
 const png32 = renderPng(plate, 32);
 const png16 = renderPng(plate, 16);

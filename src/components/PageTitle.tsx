@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useFinanceContext } from '@/context/finance-context';
-import { getAppHomeHref, formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
+import { formatMonthHeading } from '@/lib/calendar-dates';
+import { getAppHomeHref, formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
 import {
   monthlyHeaderPeriodLabel,
@@ -73,6 +75,8 @@ export function getPageTitle(pathname: string): {
   isHome: boolean;
   /** Toolbar Back — false on home and module index hubs. */
   showBack: boolean;
+  /** The page body already renders the h1 (fortnight header). */
+  suppressHeading?: boolean;
 } {
   const segments = pathname.split('/').filter(Boolean);
   const showBack = shouldShowToolbarBack(pathname);
@@ -80,22 +84,11 @@ export function getPageTitle(pathname: string): {
   if (segments[0] === 'monthly' && segments[1] && segments[2]) {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
-    const months = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
-    ];
-    const monthName = months[month - 1] || '';
-    return { title: `${monthName} ${year}`, isHome: true, showBack: false };
+    return {
+      title: formatMonthHeading(month, year),
+      isHome: true,
+      showBack: false,
+    };
   }
 
   if (segments.length === 0 || segments[0] === 'dashboard') {
@@ -105,14 +98,14 @@ export function getPageTitle(pathname: string): {
   if (segments[0] === 'settings') {
     if (segments[1] === 'expense-templates') {
       if (segments[2] === 'new')
-        return { title: 'Nueva plantilla', isHome: false, showBack };
+        return { title: 'Agregar plantilla de gastos', isHome: false, showBack };
       if (segments[3] === 'edit')
         return { title: 'Editar plantilla', isHome: false, showBack };
       return { title: 'Gastos programados', isHome: false, showBack };
     }
     if (segments[1] === 'income-templates') {
       if (segments[2] === 'new')
-        return { title: 'Nueva plantilla', isHome: false, showBack };
+        return { title: 'Agregar plantilla de ingresos', isHome: false, showBack };
       if (segments[3] === 'edit')
         return { title: 'Editar plantilla', isHome: false, showBack };
       return { title: 'Ingresos programados', isHome: false, showBack };
@@ -137,7 +130,7 @@ export function getPageTitle(pathname: string): {
 
   if (segments[0] === 'expense-templates') {
     if (segments[1] === 'new')
-      return { title: 'Nueva plantilla', isHome: false, showBack };
+      return { title: 'Agregar plantilla de gastos', isHome: false, showBack };
     if (segments[2] === 'edit')
       return { title: 'Editar plantilla', isHome: false, showBack };
     return { title: 'Plantillas de gastos', isHome: false, showBack };
@@ -145,7 +138,7 @@ export function getPageTitle(pathname: string): {
 
   if (segments[0] === 'income-templates') {
     if (segments[1] === 'new')
-      return { title: 'Nueva plantilla', isHome: false, showBack };
+      return { title: 'Agregar plantilla de ingresos', isHome: false, showBack };
     if (segments[2] === 'edit')
       return { title: 'Editar plantilla', isHome: false, showBack };
     return { title: 'Plantillas de ingresos', isHome: false, showBack };
@@ -159,12 +152,21 @@ export function getPageTitle(pathname: string): {
   ) {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
-    const period = segments[3].toUpperCase() as 'FIRST' | 'SECOND';
-    const periodLabel = formatFortnightDateRangeLabel(year, month, period);
+    const periodRaw = segments[3].toUpperCase();
+    const period =
+      periodRaw === 'FIRST' || periodRaw === '1'
+        ? 'FIRST'
+        : periodRaw === 'SECOND' || periodRaw === '2'
+          ? 'SECOND'
+          : null;
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !period) {
+      return { title: 'Quincena', isHome: false, showBack, suppressHeading: true };
+    }
     return {
-      title: `${periodLabel} · ${year}`,
+      title: formatFortnightOrdinalTitle(period, month, year),
       isHome: false,
       showBack,
+      suppressHeading: true,
     };
   }
 
@@ -188,7 +190,7 @@ export function getPageTitle(pathname: string): {
   }
 
   if (segments[0] === 'loans') {
-    return { title: 'Prestamos', isHome: false, showBack };
+    return { title: 'Préstamos', isHome: false, showBack };
   }
 
   if (segments[0] === 'transactions') {
@@ -233,24 +235,58 @@ export function useAppHomeHref() {
   return getAppHomeHref(ownerQs);
 }
 
+/** Native tooltip only once the heading is actually clipped. */
+export const pageTitleTooltip = (
+  isTruncated: boolean,
+  fullText: string,
+): string | undefined => (isTruncated ? fullText : undefined);
+
 /** Centered toolbar title (Apple-style principal). */
 export default function PageTitle() {
   const pageTitle = useAppPageTitle();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const node = headingRef.current;
+    if (!node) return;
+
+    const measure = () => {
+      setIsTruncated(node.scrollWidth > node.clientWidth);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [pageTitle.title]);
+
+  const title = pageTitleTooltip(isTruncated, pageTitle.title);
+
   if (!pageTitle.periodPrefix) {
+    if (pageTitle.suppressHeading) {
+      return (
+        <p className="truncate text-title" title={title}>
+          {pageTitle.title}
+        </p>
+      );
+    }
     return (
-      <h2 className="truncate text-lg font-semibold leading-tight">
+      <h1 ref={headingRef} className="truncate text-title" title={title}>
         {pageTitle.title}
-      </h2>
+      </h1>
     );
   }
   return (
-    <h2
-      className="truncate text-lg font-semibold leading-tight"
+    <h1
+      ref={headingRef}
+      className="truncate text-title"
+      title={title}
       aria-label={pageTitle.title}
     >
       <span className="sm:hidden">{pageTitle.periodPrefix.short}</span>
       <span className="hidden sm:inline">{pageTitle.periodPrefix.full}</span>
       {` · ${pageTitle.baseTitle}`}
-    </h2>
+    </h1>
   );
 }

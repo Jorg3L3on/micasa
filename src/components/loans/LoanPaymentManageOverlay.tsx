@@ -5,11 +5,11 @@ import {
   CheckCircle2,
   CircleSlash,
   History,
-  Loader2,
   Undo2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -113,7 +113,7 @@ const PaymentWalletSelect = ({
                 providerIconKey={wallet.provider_icon_key}
                 iconClassName="h-5 w-5 rounded-md"
               />
-              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              <span className="font-sans text-xs tabular-nums text-muted-foreground">
                 {formatCurrency(wallet.amount ?? 0)}
               </span>
             </span>
@@ -395,7 +395,6 @@ export const LoanPaymentManageOverlay = ({
           ? error.message
           : 'No se pudo actualizar el pago del préstamo';
       setErrors(mapPaymentActionError(message));
-      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -429,7 +428,7 @@ export const LoanPaymentManageOverlay = ({
             <p className="px-1 text-xs text-muted-foreground">
               {isGroup ? 'Compromiso del periodo' : `Pago #${primary.sequence}`}
               {': '}
-              <span className="font-mono font-semibold tabular-nums text-foreground">
+              <span className="font-sans font-semibold tabular-nums text-foreground">
                 {formatCurrency(isGroup ? totalAmount : primary.amount)}
               </span>
               {' · '}
@@ -493,11 +492,11 @@ export const LoanPaymentManageOverlay = ({
                             <p className="truncate font-medium">
                               {item.loanName}
                             </p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-caption text-muted-foreground">
                               Cuota {item.sequence} · {formatDate(item.dueDate)}
                             </p>
                           </div>
-                          <span className="font-mono text-sm font-semibold tabular-nums">
+                          <span className="font-sans text-sm font-semibold tabular-nums">
                             {formatCurrency(item.amount)}
                           </span>
                         </div>
@@ -530,11 +529,9 @@ export const LoanPaymentManageOverlay = ({
             ) : null}
 
             {loadingWallets ? (
-              <div className="flex justify-center py-6">
-                <Loader2
-                  className="h-6 w-6 animate-spin text-muted-foreground"
-                  data-icon="inline-start"
-                />
+              <div className="space-y-2 py-2" aria-busy="true" aria-label="Cargando billeteras">
+                <Skeleton className="h-12 w-full rounded-xl" />
+                <Skeleton className="h-12 w-full rounded-xl" />
               </div>
             ) : action == null ? (
               allScheduled ? (

@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Banknote, Loader2 } from 'lucide-react';
+import { Banknote } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import EmptyState from '@/components/EmptyState';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -315,11 +317,9 @@ export function ReceivePayrollButton({
       {({ handleSelectOpenChange }) => (
         <div className="flex flex-col gap-3">
           {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2
-                className="h-6 w-6 animate-spin text-muted-foreground"
-                data-icon="inline-start"
-              />
+            <div className="space-y-3 py-2" aria-busy="true" aria-label="Cargando">
+              <Skeleton className="h-11 w-full rounded-xl" />
+              <Skeleton className="h-11 w-full rounded-xl" />
             </div>
           ) : wallets.length === 0 ? (
             <OverlayErrorBanner>
@@ -330,9 +330,10 @@ export function ReceivePayrollButton({
               No hay categorías de ingreso. Crea una en Configuración.
             </OverlayErrorBanner>
           ) : !hasEntries ? (
-            <p className="text-center text-sm text-muted-foreground">
-              No hay plantillas de ingresos configuradas para esta quincena.
-            </p>
+            <EmptyState
+              message="No hay plantillas de ingresos configuradas para esta quincena."
+              className="py-6"
+            />
           ) : (
             entries.map((entry) => {
               const selectedWallet = wallets.find(
@@ -384,7 +385,7 @@ export function ReceivePayrollButton({
                                   providerIconKey={w.provider_icon_key}
                                   iconClassName="h-5 w-5 rounded-md"
                                 />
-                                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                <span className="font-sans text-xs tabular-nums text-muted-foreground">
                                   {formatCurrency(w.amount ?? 0)}
                                 </span>
                               </span>

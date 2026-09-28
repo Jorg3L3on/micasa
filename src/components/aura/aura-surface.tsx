@@ -65,7 +65,7 @@ export const AuraSurface = ({
           maxOpacity={0.35}
           duration={3}
           repeatDelay={1.5}
-          className="-z-10 fill-transparent stroke-slate-900/[0.05] [mask-image:linear-gradient(115deg,white_5%,transparent_80%)] dark:stroke-white/[0.05]"
+          className="-z-10 fill-transparent stroke-foreground/[0.05] [mask-image:linear-gradient(115deg,white_5%,transparent_80%)] dark:stroke-white/[0.05]"
           style={{ color: hexWithAlpha(color, 0.5) }}
         />
       ) : null}

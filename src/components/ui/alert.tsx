@@ -9,7 +9,7 @@ const alertVariants = {
   success:
     'border-chart-4/50 bg-chart-4/10 text-chart-4 dark:bg-chart-4/20 [&>svg]:text-chart-4',
   warning:
-    'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 [&>svg]:text-amber-600',
+    'border-status-pending/50 bg-status-pending/10 text-status-pending dark:bg-status-pending/20 dark:text-status-pending [&>svg]:text-status-pending',
 };
 
 const Alert = React.forwardRef<

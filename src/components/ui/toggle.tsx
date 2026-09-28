@@ -251,7 +251,7 @@ export function ToggleField({
   );
 
   const helperEl = helper ? (
-    <p id={helperId} className="text-[10px] leading-snug text-muted-foreground">
+    <p id={helperId} className="text-caption leading-snug text-muted-foreground">
       {helper}
     </p>
   ) : null;

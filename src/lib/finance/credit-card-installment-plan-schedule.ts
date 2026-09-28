@@ -1,5 +1,6 @@
 import {
   formatCalendarDate,
+  formatChartAxisMonth,
   parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
@@ -75,12 +76,5 @@ export const generateInstallmentPlanPayments = (input: {
   });
 };
 
-export const formatPlanEndMonthLabel = (endDateYmd: string): string => {
-  const [year, month] = endDateYmd.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, 1));
-  return date.toLocaleDateString('es-MX', {
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-};
+export const formatPlanEndMonthLabel = (endDateYmd: string): string =>
+  formatChartAxisMonth(endDateYmd.slice(0, 7));

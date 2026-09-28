@@ -44,15 +44,15 @@ const STATUS_CLASS: Record<AnimatedBadgeStatus, string> = {
   neutral: 'border-border/50 bg-transparent text-muted-foreground',
   info: 'border-primary/40 bg-transparent text-primary',
   success:
-    'border-emerald-500/40 bg-transparent text-emerald-700 dark:text-emerald-300',
+    'border-status-income/40 bg-transparent text-status-income',
   warning:
-    'border-amber-500/40 bg-transparent text-amber-700 dark:text-amber-300',
+    'border-status-pending/40 bg-transparent text-status-pending',
   danger: 'border-destructive/40 bg-transparent text-destructive',
   loading: 'border-primary/40 bg-transparent text-primary',
 };
 
 const SIZE_CLASS: Record<AnimatedBadgeSize, string> = {
-  sm: 'h-6 gap-1 px-2 text-[11px]',
+  sm: 'h-6 gap-1 px-2 text-caption',
   md: 'h-8 gap-2 px-3 text-xs',
 };
 

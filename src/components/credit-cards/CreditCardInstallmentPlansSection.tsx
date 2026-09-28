@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarClock, CreditCard, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -194,37 +195,25 @@ export const CreditCardInstallmentPlansSection = ({
       aria-label="Planes de compra a meses"
     >
       {!embedded ? (
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-              <CreditCard
-                className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
-                aria-hidden
-              />
-            </span>
-            <div>
-              <h3 className="text-sm font-semibold leading-none">
-                Planes a meses
-              </h3>
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                Nombre, progreso y cuotas generadas automáticamente
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            className="h-8 shrink-0 rounded-xl"
-            onClick={handleOpenCreate}
-          >
-            <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
-            Nuevo plan
-          </Button>
-        </div>
+        <SectionHeader
+          level={3}
+          icon={CreditCard}
+          title="Planes a meses"
+          subtitle="Nombre, progreso y cuotas generadas automáticamente"
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 shrink-0 rounded-xl"
+              onClick={handleOpenCreate}
+            >
+              <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
+              Agregar plan
+            </Button>
+          }
+        />
       ) : (
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Planes a meses
-        </h4>
+        <SectionHeader level={3} title="Planes a meses" />
       )}
 
       {loading ? (
@@ -248,7 +237,7 @@ export const CreditCardInstallmentPlansSection = ({
               className="mt-4 rounded-xl"
               onClick={handleOpenCreate}
             >
-              Crear plan de cuotas
+              Agregar plan de cuotas
             </Button>
           </div>
         )
@@ -256,10 +245,10 @@ export const CreditCardInstallmentPlansSection = ({
         <>
           {!embedded ? (
             <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="eyebrow text-muted-foreground">
                 Saldo del plan
               </p>
-              <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
+              <p className="font-sans text-2xl font-bold tabular-nums tracking-tight">
                 {formatCurrency(totalExposure)}
               </p>
               <p className="text-xs text-muted-foreground">
@@ -317,7 +306,7 @@ export const CreditCardInstallmentPlansSection = ({
 
                 <div className="mb-2 flex items-end justify-between gap-2">
                   <div>
-                    <p className="font-mono text-lg font-bold tabular-nums">
+                    <p className="font-sans text-lg font-bold tabular-nums">
                       {formatCurrency(item.installmentAmount)}
                       <span className="text-xs font-normal text-muted-foreground">
                         {' '}
@@ -326,8 +315,8 @@ export const CreditCardInstallmentPlansSection = ({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-muted-foreground">Saldo del plan</p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                    <p className="text-caption text-muted-foreground">Saldo del plan</p>
+                    <p className="font-sans text-sm font-bold tabular-nums text-status-pending">
                       {formatCurrency(item.remainingBalance)}
                     </p>
                   </div>
@@ -335,14 +324,14 @@ export const CreditCardInstallmentPlansSection = ({
 
                 <div className="mb-2 flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
                   <div
-                    className="h-full rounded-full bg-violet-500 dark:bg-violet-400"
+                    className="h-full rounded-full bg-status-info"
                     style={{
                       width: `${Math.max(item.progressPct, 2)}%`,
                     }}
                   />
                 </div>
 
-                <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-caption text-muted-foreground">
                   <CalendarClock
                     className="h-3 w-3 shrink-0"
                     aria-hidden

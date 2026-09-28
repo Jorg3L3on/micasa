@@ -1,5 +1,6 @@
 import { ACTION_CATALOG, canDefer, canPayMinimum, canPayOff, isUntouchableObligation, plannedPeriodPaymentCents } from '@/lib/finance/cash-plan/catalog';
-import { BALANCED_EPS_CENTS, formatPlanMoney, fromCents, toCents } from '@/lib/finance/cash-plan/money';
+import { formatMoney } from '@/lib/money';
+import { BALANCED_EPS_CENTS, fromCents, toCents } from '@/lib/finance/cash-plan/money';
 import { compositeScore, riskScore, TIE_COMPOSITE_EPS } from '@/lib/finance/cash-plan/score';
 import { simulateBridge } from '@/lib/finance/cash-plan/simulate-bridge';
 import { simulateConsolidate } from '@/lib/finance/cash-plan/simulate-consolidate';
@@ -294,7 +295,7 @@ const buildShortfallDrafts = (
         obligationId: obligation.id,
         label: `Pagar solo el mínimo · ${obligation.labelSynthetic}`,
         amount: fromCents(minimum),
-        detail: `Liberas ${formatPlanMoney(planned - minimum)} frente al corte.`,
+        detail: `Liberas ${formatMoney(fromCents(planned - minimum))} frente al corte.`,
       });
     });
     actions.push(...msiActions(due));
@@ -378,7 +379,7 @@ const buildShortfallDrafts = (
         obligationId: payoffTarget.id,
         label: `Liquidar ${payoffTarget.labelSynthetic}`,
         amount: fromCents(balance),
-        detail: `Su cuota de ${formatPlanMoney(cuota)} deja de repetirse.`,
+        detail: `Su cuota de ${formatMoney(fromCents(cuota))} deja de repetirse.`,
       }),
       ...companions.map((obligation) =>
         action('pay_minimum', {
@@ -499,7 +500,7 @@ const buildShortfallDrafts = (
         id: 'bridge',
         strategyKey: 'bridge',
         title: 'Simular préstamo puente',
-        summary: `Entras ${formatPlanMoney(simulated.proceedsCents)} netos. Es una simulación: nadie te está aprobando el crédito.`,
+        summary: `Entras ${formatMoney(fromCents(simulated.proceedsCents))} netos. Es una simulación: nadie te está aprobando el crédito.`,
         actions: [
           action('bridge_loan', {
             amount: fromCents(simulated.amountCents),
@@ -557,7 +558,7 @@ const buildShortfallDrafts = (
         actions: [
           action('consolidate', {
             amount: fromCents(simulated.paymentCents),
-            detail: `Pago simulado ${formatPlanMoney(simulated.paymentCents)} durante ${input.consolidateSim?.termMonths} meses.`,
+            detail: `Pago simulado ${formatMoney(fromCents(simulated.paymentCents))} durante ${input.consolidateSim?.termMonths} meses.`,
             warnings: [warning],
           }),
           ...msiActions(due),
@@ -755,8 +756,8 @@ const explain = (
   }
   const closed = primary.scores.gapClosed;
   const scoreSummary = input.gapAmount > 0
-    ? `Esta ruta cubre cerca de ${Math.round(closed * 100)}% del hueco. Costo estimado ${formatPlanMoney(toCents(primary.estimatedCost))}.`
-    : `Costo estimado de intereses ${formatPlanMoney(toCents(primary.estimatedCost))}.`;
+    ? `Esta ruta cubre cerca de ${Math.round(closed * 100)}% del hueco. Costo estimado ${formatMoney(fromCents(toCents(primary.estimatedCost)))}.`
+    : `Costo estimado de intereses ${formatMoney(fromCents(toCents(primary.estimatedCost)))}.`;
   return {
     assumptions,
     untouchableLabels: [...untouchableLabels],

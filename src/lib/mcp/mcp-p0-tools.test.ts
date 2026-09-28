@@ -60,14 +60,14 @@ const ctxWithToken = (token?: string) => ({
   },
 });
 
-const houseArgs = { ownerType: 'house' as const, ownerId: 3 };
+const houseArgs = { ownerType: 'house' as const, ownerId: 42 };
 
 beforeEach(() => {
   vi.clearAllMocks();
   updateApiKey.mockResolvedValue({});
   findUniqueApiKey.mockResolvedValue(writeApiKey);
   findFirstMembership.mockResolvedValue({ role: 'OWNER' });
-  findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 3 }]);
+  findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 42 }]);
 });
 
 describe('MCP P0 write tools auth', () => {
@@ -97,7 +97,7 @@ describe('MCP P0 write tools auth', () => {
       ctxWithToken(VALID_TOKEN),
       houseArgs,
       'write',
-      async () => deleteIncomeForOwner(1, { user_id: null, house_id: 3 }),
+      async () => deleteIncomeForOwner(1, { user_id: null, house_id: 42 }),
     );
 
     expect(result.isError).toBe(true);

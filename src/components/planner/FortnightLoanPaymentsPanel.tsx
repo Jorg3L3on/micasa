@@ -1,8 +1,9 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { ArrowRight, HandCoins, Landmark, Loader2 } from 'lucide-react';
+import { ArrowRight, HandCoins, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { LoanDuePaymentItem } from '@/types/loans';
 import type { LenderListItem } from '@/types/lenders';
@@ -188,18 +189,7 @@ export default function FortnightLoanPaymentsPanel({
 
   if (groups.length === 0) {
     return (
-      <div
-        className={cn(
-          'rounded-xl border border-border/40 bg-card px-4 py-8 text-center shadow-sm',
-          isCompact ? 'text-xs' : 'text-sm',
-        )}
-        role="region"
-        aria-label={`Préstamos: ${fortnightLabel}`}
-      >
-        <p className="text-muted-foreground">
-          No hay pagos de préstamos en esta quincena.
-        </p>
-      </div>
+      <EmptyState message="No hay pagos de préstamos en esta quincena." className="py-8" />
     );
   }
 
@@ -252,28 +242,28 @@ export default function FortnightLoanPaymentsPanel({
                   className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1',
                     visual === 'paid'
-                      ? 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10'
+                      ? 'bg-gradient-to-br from-status-income/25 to-status-income/10 ring-status-income/30 dark:from-status-income/25 dark:to-status-income/10'
                       : visual === 'overdue'
                         ? 'bg-gradient-to-br from-destructive/25 to-destructive/10 ring-destructive/30'
                         : visual === 'muted'
                           ? 'bg-muted/40 ring-border/40'
                           : isDueSoon
-                            ? 'bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-amber-500/30 dark:from-amber-400/25 dark:to-amber-500/10'
-                            : 'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
+                            ? 'bg-gradient-to-br from-status-pending/25 to-status-pending/10 ring-status-pending/30 dark:from-status-pending/25 dark:to-status-pending/10'
+                            : 'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                   )}
                 >
                   <Icon
                     className={cn(
                       'h-4 w-4',
                       visual === 'paid'
-                        ? 'text-emerald-600 dark:text-emerald-300'
+                        ? 'text-status-income'
                         : visual === 'overdue'
                           ? 'text-destructive'
                           : visual === 'muted'
                             ? 'text-muted-foreground'
                             : isDueSoon
-                              ? 'text-amber-600 dark:text-amber-300'
-                              : 'text-blue-600 dark:text-blue-300',
+                              ? 'text-status-pending'
+                              : 'text-status-info',
                     )}
                     aria-hidden
                   />
@@ -295,7 +285,7 @@ export default function FortnightLoanPaymentsPanel({
                       ? `Nómina · ${group.lenderName}`
                       : `Pagar a ${group.lenderName}`}
                   </button>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-muted-foreground">
                     <span>
                       {group.items.length} contrato
                       {group.items.length === 1 ? '' : 's'}
@@ -310,7 +300,7 @@ export default function FortnightLoanPaymentsPanel({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="font-mono text-sm font-bold tabular-nums">
+                  <span className="font-sans text-sm font-bold tabular-nums">
                     {formatCurrency(group.amount)}
                   </span>
                   {canPay ? (
@@ -318,7 +308,7 @@ export default function FortnightLoanPaymentsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-7 gap-1 px-2 text-[10px]"
+                      className="h-7 gap-1 px-2 text-caption"
                       onClick={() =>
                         isPayroll
                           ? handleOpenManageGroup(group.items)
@@ -331,23 +321,17 @@ export default function FortnightLoanPaymentsPanel({
                           : `Pagar a ${group.lenderName}`
                       }
                     >
-                      {isPayLoading ? (
-                        <Loader2
-                          className="h-3 w-3 animate-spin"
-                          aria-hidden
-                          data-icon="inline-start"
-                        />
-                      ) : (
+                      {isPayLoading ? null : (
                         <ArrowRight className="h-3 w-3" aria-hidden />
                       )}
-                      Pagar
+                      {isPayLoading ? 'Guardando…' : 'Pagar'}
                     </Button>
                   ) : scheduledItems.length > 0 ? (
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-7 gap-1 px-2 text-[10px]"
+                      className="h-7 gap-1 px-2 text-caption"
                       onClick={() => handleOpenManage(scheduledItems)}
                       aria-label={
                         scheduledItems.length > 1
@@ -367,7 +351,7 @@ export default function FortnightLoanPaymentsPanel({
                   {group.items.map((item) => (
                     <li
                       key={item.id}
-                      className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
+                      className="flex items-center justify-between gap-2 text-caption text-muted-foreground"
                     >
                       <button
                         type="button"
@@ -377,7 +361,7 @@ export default function FortnightLoanPaymentsPanel({
                         {item.loanName}
                       </button>
                       <span className="flex shrink-0 items-center gap-2">
-                        <span className="font-mono tabular-nums">
+                        <span className="font-sans tabular-nums">
                           {formatCurrency(item.amount)}
                         </span>
                         {item.status === 'SCHEDULED' ? (
@@ -385,7 +369,7 @@ export default function FortnightLoanPaymentsPanel({
                             type="button"
                             size="sm"
                             variant="ghost"
-                            className="h-6 px-1.5 text-[10px]"
+                            className="h-6 px-1.5 text-caption"
                             onClick={() => handleOpenManage(item)}
                             aria-label={`Gestionar ${item.loanName}`}
                           >

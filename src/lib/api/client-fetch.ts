@@ -1,6 +1,10 @@
 'use client';
 
 import type { FinanceContextType } from '@/types/finance-context';
+import {
+  NETWORK_ERROR_MESSAGE,
+  isBrowserNetworkError,
+} from '@/lib/user-facing-error';
 
 type ApiErrorDetail = {
   message?: string;
@@ -96,14 +100,22 @@ export async function clientFetchFromApi<T>(
   }
 
   const baseUrl = getClientApiBaseUrl();
-  const res = await fetch(`${baseUrl}${url}`, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}${url}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    });
+  } catch (error) {
+    if (isBrowserNetworkError(error)) {
+      throw new Error(NETWORK_ERROR_MESSAGE);
+    }
+    throw error;
+  }
 
   if (!res.ok) {
     let failureReason = `No se pudo completar la solicitud (${endpoint})`;
@@ -115,7 +127,9 @@ export async function clientFetchFromApi<T>(
         apiCode = error.code;
       }
       if (error.error) {
-        failureReason = error.error;
+        failureReason = isBrowserNetworkError(new Error(error.error))
+          ? NETWORK_ERROR_MESSAGE
+          : error.error;
       }
       if (error.details && Array.isArray(error.details)) {
         errorDetails = error.details;
@@ -158,11 +172,19 @@ export async function clientFetchMultipartJson<T>(
   }
 
   const baseUrl = getClientApiBaseUrl();
-  const res = await fetch(`${baseUrl}${url}`, {
-    method: 'POST',
-    body: formData,
-    credentials: 'include',
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}${url}`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+  } catch (error) {
+    if (isBrowserNetworkError(error)) {
+      throw new Error(NETWORK_ERROR_MESSAGE);
+    }
+    throw error;
+  }
 
   if (!res.ok) {
     let failureReason = `No se pudo completar la solicitud (${endpoint})`;
@@ -176,7 +198,9 @@ export async function clientFetchMultipartJson<T>(
     try {
       const error = (await res.json()) as ApiErrorResponse;
       if (error.error) {
-        failureReason = error.error;
+        failureReason = isBrowserNetworkError(new Error(error.error))
+          ? NETWORK_ERROR_MESSAGE
+          : error.error;
       }
       if (typeof error.hint === 'string' && error.hint.trim()) {
         hint = error.hint.trim();

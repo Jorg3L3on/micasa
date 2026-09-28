@@ -8,8 +8,14 @@ import {
   HouseRole,
 } from '@/generated/prisma/client';
 import { hash } from 'bcryptjs';
-import { parseCalendarDate } from '@/lib/calendar-dates';
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  parseCalendarDate,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
+import { getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
 import { generateLoanPaymentSchedule } from '@/lib/finance/loan-schedule';
 import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 
@@ -33,7 +39,7 @@ async function requireCategory(
 async function main() {
   /**
    * CLEAN DATABASE (order respects FK constraints)
-   * Default password for all users: temp1234
+   * Seeded users share SEED_PASSWORD, or the placeholder demo-password.
    */
   await prisma.creditCardStatementImport.deleteMany();
   await prisma.creditCardPayment.deleteMany();
@@ -59,488 +65,366 @@ async function main() {
   // ─────────────────────────────────────────────
   // USERS
   // ─────────────────────────────────────────────
-  const password = await hash('temp1234', 10);
+  const seedPassword = process.env.SEED_PASSWORD?.trim() || 'demo-password';
+  const password = await hash(seedPassword, 10);
 
-  const carmen = await prisma.user.create({
-    data: { name: 'Carmen Solorzano', email: 'Consepcionsolorzano39@gmail.com', password, onboarding_completed: true },
+  const ana = await prisma.user.create({
+    data: { name: 'Ana Demo', email: 'ana@example.com', password, onboarding_completed: true },
   });
-  const jorge = await prisma.user.create({
-    data: { name: 'Jorge', email: 'jorgeleon983@gmail.com', password, onboarding_completed: true },
+  const luis = await prisma.user.create({
+    data: { name: 'Luis Demo', email: 'luis@example.com', password, onboarding_completed: true },
   });
 
   // ─────────────────────────────────────────────
   // HOUSES
   // ─────────────────────────────────────────────
-  const leonSolorzano = await prisma.house.create({
-    data: { name: 'Leon Solorzano', owner_id: carmen.id },
+  const casaDemo = await prisma.house.create({
+    data: { name: 'Hogar', owner_id: ana.id },
   });
-  const casaJorge = await prisma.house.create({
-    data: { name: 'Casa de Jorge', owner_id: jorge.id },
+  const casaNorte = await prisma.house.create({
+    data: { name: 'Casa Norte', owner_id: luis.id },
   });
 
   await prisma.houseMember.createMany({
     data: [
-      { house_id: leonSolorzano.id, user_id: carmen.id, role: HouseRole.OWNER },
-      { house_id: casaJorge.id,     user_id: jorge.id,  role: HouseRole.OWNER },
-      { house_id: leonSolorzano.id, user_id: jorge.id,  role: HouseRole.MEMBER },
+      { house_id: casaDemo.id, user_id: ana.id, role: HouseRole.OWNER },
+      { house_id: casaNorte.id,     user_id: luis.id,  role: HouseRole.OWNER },
+      { house_id: casaDemo.id, user_id: luis.id,  role: HouseRole.MEMBER },
     ],
   });
 
   // ─────────────────────────────────────────────
   // CATEGORIES (default catalog cloned per owner)
   // ─────────────────────────────────────────────
-  await seedDefaultCategoriesForOwner(prisma, { userId: carmen.id });
-  await seedDefaultCategoriesForOwner(prisma, { userId: jorge.id });
-  await seedDefaultCategoriesForOwner(prisma, { houseId: leonSolorzano.id });
-  await seedDefaultCategoriesForOwner(prisma, { houseId: casaJorge.id });
+  await seedDefaultCategoriesForOwner(prisma, { userId: ana.id });
+  await seedDefaultCategoriesForOwner(prisma, { userId: luis.id });
+  await seedDefaultCategoriesForOwner(prisma, { houseId: casaDemo.id });
+  await seedDefaultCategoriesForOwner(prisma, { houseId: casaNorte.id });
 
-  const catJorgeVivienda = await requireCategory({ user_id: jorge.id }, 'Vivienda');
-  const catCasa = await requireCategory({ house_id: leonSolorzano.id }, 'Vivienda');
-  const catTarjetaCredito = await requireCategory(
-    { house_id: leonSolorzano.id },
-    'Tarjeta de crédito',
+  const catAnaVivienda = await requireCategory({ user_id: ana.id }, 'Vivienda');
+  const catAnaSalario = await requireCategory({ user_id: ana.id }, 'Salario');
+  const catLuisTransporte = await requireCategory({ user_id: luis.id }, 'Transporte');
+  const catLuisIngreso = await requireCategory({ user_id: luis.id }, 'Otro ingreso');
+  const catCasa = await requireCategory({ house_id: casaDemo.id }, 'Vivienda');
+  const catComidaHouse = await requireCategory({ house_id: casaDemo.id }, 'Comida');
+  const catServiciosHouse = await requireCategory(
+    { house_id: casaDemo.id },
+    'Servicios y suscripciones',
   );
-  const catTarjetaDep = await requireCategory(
-    { house_id: leonSolorzano.id },
-    'Tarjeta departamental',
-  );
-  const catComidaHouse = await requireCategory({ house_id: leonSolorzano.id }, 'Comida');
-  const catEntretenimiento = await requireCategory(
-    { house_id: leonSolorzano.id },
-    'Entretenimiento',
-  );
-  const catMedicamentos = await requireCategory(
-    { house_id: leonSolorzano.id },
-    'Farmacia',
-  );
-  const catTransporteHouse = await requireCategory(
-    { house_id: leonSolorzano.id },
-    'Transporte',
-  );
-  const catPrestamos = await requireCategory(
-    { house_id: leonSolorzano.id },
-    'Préstamos',
-  );
-  const catSpotify = await requireCategory({ house_id: leonSolorzano.id }, 'Spotify');
-  const catSalarioJorge = await requireCategory({ user_id: jorge.id }, 'Salario');
-  const catSalarioCarmen = await requireCategory({ user_id: carmen.id }, 'Salario');
-  const catSalarioHouse = await requireCategory(
-    { house_id: leonSolorzano.id },
-    'Salario',
-  );
+  const catSalarioHouse = await requireCategory({ house_id: casaDemo.id }, 'Salario');
 
   // ─────────────────────────────────────────────
   // WALLETS
+  // Five cards with invented cut/pay days, split across people and both houses.
+  // Ana holds one card, Luis holds one, Hogar holds three. Casa Norte is cash-only.
   // ─────────────────────────────────────────────
+  const walletAnaEfectivo = await prisma.wallet.create({
+    data: { name: 'Efectivo', type: PaymentMethodType.CASH, amount: 800, user_id: ana.id },
+  });
+  const walletAnaDebito = await prisma.wallet.create({
+    data: { name: 'Débito nómina', type: PaymentMethodType.DEBIT_CARD, amount: 12000, user_id: ana.id },
+  });
+  const walletAnaCredito = await prisma.wallet.create({
+    data: {
+      name: 'Crédito A',
+      type: PaymentMethodType.CREDIT_CARD,
+      amount: 2200,
+      cutoff_day: 6,
+      due_day: 21,
+      credit_limit: 9000,
+      user_id: ana.id,
+    },
+  });
 
-  // Carmen personal
-  await prisma.wallet.create({ data: { name: 'Efectivo',         type: PaymentMethodType.CASH,       user_id: carmen.id } });
-  await prisma.wallet.create({ data: { name: 'Cuenta principal', type: PaymentMethodType.DEBIT_CARD, user_id: carmen.id } });
+  const walletLuisDebito = await prisma.wallet.create({
+    data: { name: 'Débito ahorro', type: PaymentMethodType.DEBIT_CARD, amount: 6500, user_id: luis.id },
+  });
+  const walletLuisTienda = await prisma.wallet.create({
+    data: {
+      name: 'Tienda departamental',
+      type: PaymentMethodType.DEPARTMENT_STORE_CARD,
+      amount: 800,
+      cutoff_day: 19,
+      due_day: 9,
+      credit_limit: 5000,
+      user_id: luis.id,
+    },
+  });
 
-  // Jorge personal
-  await prisma.wallet.create({ data: { name: 'Efectivo', type: PaymentMethodType.CASH,       user_id: jorge.id } });
-  const walletJorgeBanamex = await prisma.wallet.create({
-    data: { name: 'BANAMEX', type: PaymentMethodType.DEBIT_CARD, amount: -678, user_id: jorge.id },
+  const walletCasaDebito = await prisma.wallet.create({
+    data: { name: 'Débito casa', type: PaymentMethodType.DEBIT_CARD, amount: 22000, house_id: casaDemo.id },
+  });
+  const walletCasaEfectivo = await prisma.wallet.create({
+    data: { name: 'Efectivo', type: PaymentMethodType.CASH, amount: 1500, house_id: casaDemo.id },
+  });
+  const walletCasaCredito = await prisma.wallet.create({
+    data: {
+      name: 'Tarjeta del hogar',
+      type: PaymentMethodType.CREDIT_CARD,
+      amount: 4800,
+      cutoff_day: 12,
+      due_day: 27,
+      credit_limit: 20000,
+      minimum_payment: 850,
+      apr_annual: 0.36,
+      cat_annual: 0.48,
+      house_id: casaDemo.id,
+    },
+  });
+  const walletCasaDigital = await prisma.wallet.create({
+    data: {
+      name: 'Tarjeta digital',
+      type: PaymentMethodType.CREDIT_CARD,
+      amount: 600,
+      cutoff_day: 11,
+      due_day: 26,
+      credit_limit: 4000,
+      minimum_payment: 180,
+      apr_annual: 0.42,
+      cat_annual: 0.55,
+      house_id: casaDemo.id,
+    },
+  });
+  await prisma.wallet.create({
+    data: {
+      name: 'Tienda del hogar',
+      type: PaymentMethodType.DEPARTMENT_STORE_CARD,
+      amount: 1500,
+      cutoff_day: 27,
+      due_day: 14,
+      credit_limit: 7000,
+      minimum_payment: 300,
+      apr_annual: 0.48,
+      cat_annual: 0.62,
+      house_id: casaDemo.id,
+    },
   });
 
-  // Leon Solorzano house wallets
-  const walletSantander = await prisma.wallet.create({
-    data: { name: 'Santander', type: PaymentMethodType.DEBIT_CARD, amount: 5000, house_id: leonSolorzano.id },
-  });
-  const walletBanamex = await prisma.wallet.create({
-    data: { name: 'Banamex', type: PaymentMethodType.DEBIT_CARD, amount: 2920.42, house_id: leonSolorzano.id },
-  });
-  const walletDidiCard = await prisma.wallet.create({
-    data: {
-      name: 'DIDI Card', type: PaymentMethodType.CREDIT_CARD,
-      amount: 1179.43, cutoff_day: 3, due_day: 18, credit_limit: 1500,
-      house_id: leonSolorzano.id,
-    },
-  });
   await prisma.wallet.create({
-    data: {
-      name: 'C&A Departamental', type: PaymentMethodType.DEPARTMENT_STORE_CARD,
-      amount: 437.25, cutoff_day: 10, due_day: 3, credit_limit: 5640,
-      house_id: leonSolorzano.id,
-    },
-  });
-  const walletCnAEfectivo = await prisma.wallet.create({
-    data: {
-      name: 'C&A EFECTIVO', type: PaymentMethodType.CREDIT_CARD,
-      amount: 2532.57, cutoff_day: 15, due_day: 8, credit_limit: 5100,
-      house_id: leonSolorzano.id,
-    },
-  });
-  await prisma.wallet.create({
-    data: {
-      name: 'Mercado Pago', type: PaymentMethodType.CREDIT_CARD,
-      cutoff_day: 7, due_day: 17, credit_limit: 9400,
-      house_id: leonSolorzano.id,
-    },
-  });
-  await prisma.wallet.create({
-    data: {
-      name: 'Liverpool Jorge', type: PaymentMethodType.DEPARTMENT_STORE_CARD,
-      cutoff_day: 12, due_day: 13, credit_limit: 10000,
-      house_id: leonSolorzano.id,
-    },
-  });
-  await prisma.wallet.create({
-    data: {
-      name: 'Liverpool Carmen', type: PaymentMethodType.DEPARTMENT_STORE_CARD,
-      cutoff_day: 4, due_day: 5, credit_limit: 7000,
-      house_id: leonSolorzano.id,
-    },
-  });
-  await prisma.wallet.create({
-    data: { name: 'BBVA Jorge', type: PaymentMethodType.CASH, amount: 306.20, house_id: leonSolorzano.id },
-  });
-  await prisma.wallet.create({
-    data: {
-      name: 'Mercado libre', type: PaymentMethodType.CREDIT_CARD,
-      cutoff_day: 22, due_day: 4, credit_limit: 31000,
-      house_id: leonSolorzano.id,
-    },
-  });
-  await prisma.wallet.create({
-    data: {
-      name: 'Sears', type: PaymentMethodType.DEPARTMENT_STORE_CARD,
-      cutoff_day: 10, due_day: 15, credit_limit: 10000,
-      house_id: leonSolorzano.id,
-    },
+    data: { name: 'Débito reserva', type: PaymentMethodType.DEBIT_CARD, amount: 3000, house_id: casaNorte.id },
   });
 
   // ─────────────────────────────────────────────
   // INCOME TEMPLATES
+  // One personal salary, one personal side income, one house contribution.
   // ─────────────────────────────────────────────
-  const itSueldoCarmen = await prisma.incomeTemplate.create({
+  const itNominaAna = await prisma.incomeTemplate.create({
     data: {
-      name: 'Sueldo', suggested_amount: 6000,
-      applies_first_fortnight: true, applies_second_fortnight: true, active: true,
-      user_id: carmen.id,
-      category_id: catSalarioCarmen.id,
+      name: 'Nómina',
+      suggested_amount: 8500,
+      source: 'Salario',
+      applies_first_fortnight: true,
+      applies_second_fortnight: true,
+      active: true,
+      user_id: ana.id,
+      category_id: catAnaSalario.id,
+      wallet_id: walletAnaDebito.id,
     },
   });
-  const itSueldoJorge = await prisma.incomeTemplate.create({
+  const itHonorariosLuis = await prisma.incomeTemplate.create({
     data: {
-      name: 'Sueldo', suggested_amount: 15000, source: 'SALARIO',
-      applies_first_fortnight: true, applies_second_fortnight: true, active: true,
-      user_id: jorge.id,
-      category_id: catSalarioJorge.id,
+      name: 'Honorarios',
+      suggested_amount: 4000,
+      source: 'Otro ingreso',
+      applies_first_fortnight: true,
+      applies_second_fortnight: false,
+      active: true,
+      user_id: luis.id,
+      category_id: catLuisIngreso.id,
+      wallet_id: walletLuisDebito.id,
     },
   });
-  const itSalarioCarmen = await prisma.incomeTemplate.create({
+  const itAportacion = await prisma.incomeTemplate.create({
     data: {
-      name: 'Salario Carmen', suggested_amount: 5500, source: 'Salario',
-      applies_first_fortnight: true, applies_second_fortnight: true, active: true,
-      house_id: leonSolorzano.id,
+      name: 'Aportación',
+      suggested_amount: 18500,
+      source: 'Salario',
+      applies_first_fortnight: true,
+      applies_second_fortnight: true,
+      active: true,
+      house_id: casaDemo.id,
       category_id: catSalarioHouse.id,
-    },
-  });
-  const itSalarioJorge = await prisma.incomeTemplate.create({
-    data: {
-      name: 'Salario Jorge', suggested_amount: 15000, source: 'Salario',
-      applies_first_fortnight: true, applies_second_fortnight: true, active: true,
-      house_id: leonSolorzano.id,
-      category_id: catSalarioHouse.id,
+      wallet_id: walletCasaDebito.id,
     },
   });
 
   // ─────────────────────────────────────────────
   // EXPENSE TEMPLATES
+  // Short recurring set. Loan payments live on Loan rows, not as a template pair.
   // ─────────────────────────────────────────────
-
-  // Carmen personal
-  const etCarmenRenta    = await prisma.expenseTemplate.create({
-    data: { name: 'Renta',    is_recurring: true, applies_first_fortnight: true, applies_second_fortnight: true, user_id: carmen.id },
-  });
-  const etCarmenInternet = await prisma.expenseTemplate.create({
-    data: { name: 'Internet', is_recurring: true, applies_first_fortnight: true, applies_second_fortnight: true, user_id: carmen.id },
-  });
-
-  // Jorge personal
-  const etJorgeRenta    = await prisma.expenseTemplate.create({
-    data: { name: 'Renta',    is_recurring: true, applies_first_fortnight: true, applies_second_fortnight: true, user_id: jorge.id },
-  });
-  const etJorgeInternet = await prisma.expenseTemplate.create({
-    data: { name: 'Internet', is_recurring: true, applies_first_fortnight: true, applies_second_fortnight: true, user_id: jorge.id },
-  });
-
-  // Leon Solorzano house expense templates
-  const etRenta = await prisma.expenseTemplate.create({
+  const etAnaRenta = await prisma.expenseTemplate.create({
     data: {
-      name: 'Renta', suggested_amount: 8500, is_recurring: true,
-      applies_first_fortnight: false, applies_second_fortnight: true,
-      due_day: 15, cutoff_day: 1, due_day_second_fortnight: 15,
-      category_id: catCasa.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
+      name: 'Renta',
+      suggested_amount: 7200,
+      is_recurring: true,
+      applies_first_fortnight: true,
+      applies_second_fortnight: false,
+      due_day: 6,
+      due_day_first_fortnight: 6,
+      category_id: catAnaVivienda.id,
+      wallet_id: walletAnaDebito.id,
+      user_id: ana.id,
     },
   });
-  const etTelmex = await prisma.expenseTemplate.create({
+  const etAnaInternet = await prisma.expenseTemplate.create({
     data: {
-      name: 'TELMEX', suggested_amount: 658, is_recurring: true,
-      applies_first_fortnight: false, applies_second_fortnight: true,
-      due_day: 23, cutoff_day: 1, due_day_second_fortnight: 23,
-      category_id: catCasa.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
+      name: 'Internet',
+      suggested_amount: 480,
+      is_recurring: true,
+      applies_first_fortnight: true,
+      applies_second_fortnight: true,
+      due_day: 8,
+      due_day_first_fortnight: 8,
+      due_day_second_fortnight: 22,
+      category_id: catAnaVivienda.id,
+      wallet_id: walletAnaDebito.id,
+      user_id: ana.id,
     },
   });
-  const etAttCarmen = await prisma.expenseTemplate.create({
+  const etLuisTransporte = await prisma.expenseTemplate.create({
     data: {
-      name: 'AT&T Carmen', suggested_amount: 400.99, is_recurring: true,
-      applies_first_fortnight: false, applies_second_fortnight: true,
-      due_day: 23, cutoff_day: 1, due_day_second_fortnight: 23,
-      category_id: catCasa.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etAttJorgeSecond = await prisma.expenseTemplate.create({
-    data: {
-      name: 'AT&T Jorge', suggested_amount: 453.06, is_recurring: true,
-      applies_first_fortnight: false, applies_second_fortnight: true,
-      due_day: 19, cutoff_day: 1, due_day_second_fortnight: 19,
-      category_id: catCasa.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etMercadoPago = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Mercado pago', suggested_amount: 823.16,
-      applies_first_fortnight: false, applies_second_fortnight: true,
-      due_day: 17, cutoff_day: 1, due_day_second_fortnight: 17,
-      category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etCfe = await prisma.expenseTemplate.create({
-    data: {
-      name: 'CFE', suggested_amount: 450, is_recurring: true,
-      applies_first_fortnight: false, applies_second_fortnight: true,
-      due_day: 17, cutoff_day: 1, due_day_second_fortnight: 17,
-      category_id: catCasa.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
+      name: 'Transporte',
+      suggested_amount: 350,
+      is_recurring: true,
+      applies_first_fortnight: true,
+      applies_second_fortnight: true,
+      due_day: 4,
+      due_day_first_fortnight: 4,
+      due_day_second_fortnight: 18,
+      category_id: catLuisTransporte.id,
+      wallet_id: walletLuisDebito.id,
+      user_id: luis.id,
     },
   });
   const etSuper = await prisma.expenseTemplate.create({
     data: {
-      name: 'Super', suggested_amount: 2000, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: true,
-      due_day: 15, cutoff_day: 1, due_day_first_fortnight: 15, due_day_second_fortnight: 15,
-      category_id: catComidaHouse.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
+      name: 'Supermercado',
+      suggested_amount: 1600,
+      is_recurring: true,
+      applies_first_fortnight: true,
+      applies_second_fortnight: true,
+      due_day: 12,
+      due_day_first_fortnight: 12,
+      due_day_second_fortnight: 26,
+      category_id: catComidaHouse.id,
+      wallet_id: walletCasaDebito.id,
+      house_id: casaDemo.id,
     },
   });
-  const etFonacotCarmen = await prisma.expenseTemplate.create({
+  const etLuz = await prisma.expenseTemplate.create({
     data: {
-      name: 'Fonacot Carmen', suggested_amount: 1243.68, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: true,
-      due_day: 15, cutoff_day: 1, due_day_first_fortnight: 15, due_day_second_fortnight: 15,
-      category_id: catPrestamos.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
-      active: false,
+      name: 'Luz',
+      suggested_amount: 380,
+      is_recurring: true,
+      applies_first_fortnight: false,
+      applies_second_fortnight: true,
+      due_day: 20,
+      due_day_second_fortnight: 20,
+      category_id: catCasa.id,
+      wallet_id: walletCasaDebito.id,
+      house_id: casaDemo.id,
     },
   });
-  const etFonacotJorge = await prisma.expenseTemplate.create({
+  const etTelefono = await prisma.expenseTemplate.create({
     data: {
-      name: 'Fonacot Jorge', suggested_amount: 2792.73, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: true,
-      due_day: 15, cutoff_day: 1, due_day_first_fortnight: 15, due_day_second_fortnight: 15,
-      category_id: catPrestamos.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-      active: false,
+      name: 'Teléfono',
+      suggested_amount: 290,
+      is_recurring: true,
+      applies_first_fortnight: true,
+      applies_second_fortnight: false,
+      due_day: 9,
+      due_day_first_fortnight: 9,
+      category_id: catServiciosHouse.id,
+      wallet_id: walletCasaEfectivo.id,
+      house_id: casaDemo.id,
     },
   });
-  const etCarne = await prisma.expenseTemplate.create({
+  const etRentaCasa = await prisma.expenseTemplate.create({
     data: {
-      name: 'Carne', suggested_amount: 800, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: true,
-      due_day: 15, cutoff_day: 1, due_day_first_fortnight: 15, due_day_second_fortnight: 15,
-      category_id: catComidaHouse.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etAgua = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Agua', suggested_amount: 200, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: true,
-      due_day: 13, cutoff_day: 1, due_day_first_fortnight: 13, due_day_second_fortnight: 13,
-      category_id: catComidaHouse.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etTransporteCarmen = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Transporte Carmen', suggested_amount: 400, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: true,
-      due_day: 1, cutoff_day: 1, due_day_first_fortnight: 1, due_day_second_fortnight: 1,
-      category_id: catTransporteHouse.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etCreditoBanamex = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Credito Banamex', suggested_amount: 2500, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: true,
-      due_day: 15, cutoff_day: 1, due_day_first_fortnight: 15, due_day_second_fortnight: 15,
-      category_id: catPrestamos.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etLiverpoolCarmen = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Liverpool Carmen', suggested_amount: 531.67, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 5, cutoff_day: 4, due_day_first_fortnight: 5,
-      category_id: catTarjetaDep.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etLiverpoolJorge = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Liverpool Jorge', suggested_amount: 1, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 12, cutoff_day: 1, due_day_first_fortnight: 12,
-      category_id: catTarjetaDep.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etAttJorgeFirst = await prisma.expenseTemplate.create({
-    data: {
-      name: 'AT&T Jorge', suggested_amount: 1160, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 7, cutoff_day: 1, due_day_first_fortnight: 7,
-      category_id: catCasa.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etSpotify = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Spotify', suggested_amount: 189, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 30, cutoff_day: 1, due_day_first_fortnight: 30,
-      category_id: catSpotify.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etSky = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Sky', suggested_amount: 269, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 30, cutoff_day: 1, due_day_first_fortnight: 30,
-      category_id: catEntretenimiento.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etCnAEfectivo = await prisma.expenseTemplate.create({
-    data: {
-      name: 'C&A efectivo', suggested_amount: 928, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 10, cutoff_day: 15, due_day_first_fortnight: 10,
-      category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etCnADepartamental = await prisma.expenseTemplate.create({
-    data: {
-      name: 'C&A departamental', suggested_amount: 250, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 3, cutoff_day: 10, due_day_first_fortnight: 3,
-      category_id: catTarjetaDep.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etPaula = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Paula', suggested_amount: 300, is_recurring: true,
-      applies_first_fortnight: false, applies_second_fortnight: true,
-      due_day: 1, cutoff_day: 1, due_day_second_fortnight: 1,
-      category_id: catMedicamentos.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etConcerta = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Concerta', suggested_amount: 2400, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 1, cutoff_day: 1, due_day_first_fortnight: 1,
-      category_id: catMedicamentos.id, wallet_id: walletSantander.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etQuetiapina = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Quetiapina', suggested_amount: 250, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 11, cutoff_day: 1, due_day_first_fortnight: 11,
-      category_id: catMedicamentos.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etLamotriglina = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Lamotriglina', suggested_amount: 160, is_recurring: true,
-      applies_first_fortnight: true, applies_second_fortnight: false,
-      due_day: 1, cutoff_day: 1, due_day_first_fortnight: 1,
-      category_id: catMedicamentos.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
-    },
-  });
-  const etDidiCard = await prisma.expenseTemplate.create({
-    data: {
-      name: 'Didi card', suggested_amount: 1500, is_recurring: true,
-      applies_first_fortnight: false, applies_second_fortnight: true,
-      due_day: 18, cutoff_day: 3, due_day_second_fortnight: 18,
-      category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id, house_id: leonSolorzano.id,
+      name: 'Renta',
+      suggested_amount: 6800,
+      is_recurring: true,
+      applies_first_fortnight: false,
+      applies_second_fortnight: true,
+      due_day: 16,
+      due_day_second_fortnight: 16,
+      category_id: catCasa.id,
+      wallet_id: walletCasaDebito.id,
+      house_id: casaDemo.id,
     },
   });
 
   // ─────────────────────────────────────────────
   // FORTNIGHTS
+  // Ana: Jul–Aug. Luis: June only. House: May–Jul. No copied statement month.
   // ─────────────────────────────────────────────
-
   const bounds = (year: number, month: number, period: FortnightPeriod) =>
     getCanonicalFortnightBounds(year, month, period);
 
-  // Carmen personal
-  const carmenMarFirst = bounds(2026, 3, FortnightPeriod.FIRST);
-  const carmenMarSecond = bounds(2026, 3, FortnightPeriod.SECOND);
-  const carmenAprFirst = bounds(2026, 4, FortnightPeriod.FIRST);
-  const carmenAprSecond = bounds(2026, 4, FortnightPeriod.SECOND);
-  const f_carmen_mar26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.FIRST,  start_date: carmenMarFirst.start_date, end_date: carmenMarFirst.end_date, label: 'Primera quincena - 3/2026',     user_id: carmen.id } });
-  const f_carmen_mar26_second = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.SECOND, start_date: carmenMarSecond.start_date, end_date: carmenMarSecond.end_date, label: 'Segunda quincena - 3/2026',     user_id: carmen.id } });
-  const f_carmen_apr26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.FIRST,  start_date: carmenAprFirst.start_date, end_date: carmenAprFirst.end_date, label: 'Primera quincena - 4/2026',     user_id: carmen.id } });
-  const f_carmen_apr26_second = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.SECOND, start_date: carmenAprSecond.start_date, end_date: carmenAprSecond.end_date, label: 'Segunda quincena - 4/2026',     user_id: carmen.id } });
+  const createFortnight = async (
+    year: number,
+    month: number,
+    period: FortnightPeriod,
+    label: string,
+    owner: { user_id: number } | { house_id: number },
+  ) => {
+    const window = bounds(year, month, period);
+    return prisma.fortnight.create({
+      data: {
+        year,
+        month,
+        period,
+        start_date: window.start_date,
+        end_date: window.end_date,
+        label,
+        ...owner,
+      },
+    });
+  };
 
-  // Jorge personal
-  const f_jorge_mar26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.FIRST,  start_date: carmenMarFirst.start_date, end_date: carmenMarFirst.end_date, label: 'Primera quincena - 3/2026',     user_id: jorge.id } });
-  const f_jorge_mar26_second = await prisma.fortnight.create({ data: { year: 2026, month: 3, period: FortnightPeriod.SECOND, start_date: carmenMarSecond.start_date, end_date: carmenMarSecond.end_date, label: 'Segunda quincena - 3/2026',     user_id: jorge.id } });
-  const f_jorge_apr26_first  = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.FIRST,  start_date: carmenAprFirst.start_date, end_date: carmenAprFirst.end_date, label: 'Primera quincena - 4/2026',     user_id: jorge.id } });
-  const f_jorge_apr26_second = await prisma.fortnight.create({ data: { year: 2026, month: 4, period: FortnightPeriod.SECOND, start_date: carmenAprSecond.start_date, end_date: carmenAprSecond.end_date, label: 'Segunda quincena - 4/2026',     user_id: jorge.id } });
+  const fAnaJulFirst = await createFortnight(2026, 7, FortnightPeriod.FIRST, 'Primera quincena - Julio 2026', { user_id: ana.id });
+  const fAnaJulSecond = await createFortnight(2026, 7, FortnightPeriod.SECOND, 'Segunda quincena - Julio 2026', { user_id: ana.id });
+  const fAnaAugFirst = await createFortnight(2026, 8, FortnightPeriod.FIRST, 'Primera quincena - Agosto 2026', { user_id: ana.id });
+  const fAnaAugSecond = await createFortnight(2026, 8, FortnightPeriod.SECOND, 'Segunda quincena - Agosto 2026', { user_id: ana.id });
 
-  // Leon Solorzano house
-  const oct25Second = bounds(2025, 10, FortnightPeriod.SECOND);
-  const houseMarFirst = bounds(2026, 3, FortnightPeriod.FIRST);
-  const houseMarSecond = bounds(2026, 3, FortnightPeriod.SECOND);
-  const houseAprFirst = bounds(2026, 4, FortnightPeriod.FIRST);
-  const houseAprSecond = bounds(2026, 4, FortnightPeriod.SECOND);
-  const houseMayFirst = bounds(2026, 5, FortnightPeriod.FIRST);
-  const houseMaySecond = bounds(2026, 5, FortnightPeriod.SECOND);
-  const houseJunFirst = bounds(2026, 6, FortnightPeriod.FIRST);
-  const houseJunSecond = bounds(2026, 6, FortnightPeriod.SECOND);
-  const f_house_oct25_second  = await prisma.fortnight.create({ data: { year: 2025, month: 10, period: FortnightPeriod.SECOND, start_date: oct25Second.start_date, end_date: oct25Second.end_date, label: 'Segunda quincena - 10/2025',    house_id: leonSolorzano.id } });
-  const f_house_mar26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 3,  period: FortnightPeriod.FIRST,  start_date: houseMarFirst.start_date, end_date: houseMarFirst.end_date, label: 'Primera quincena - Marzo 2026', house_id: leonSolorzano.id } });
-  const f_house_mar26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 3,  period: FortnightPeriod.SECOND, start_date: houseMarSecond.start_date, end_date: houseMarSecond.end_date, label: 'Segunda quincena - Marzo 2026', house_id: leonSolorzano.id } });
-  const f_house_apr26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 4,  period: FortnightPeriod.FIRST,  start_date: houseAprFirst.start_date, end_date: houseAprFirst.end_date, label: 'Primera quincena - Abril 2026', house_id: leonSolorzano.id } });
-  const f_house_apr26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 4,  period: FortnightPeriod.SECOND, start_date: houseAprSecond.start_date, end_date: houseAprSecond.end_date, label: 'Segunda quincena - Abril 2026', house_id: leonSolorzano.id } });
-  const f_house_may26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 5,  period: FortnightPeriod.FIRST,  start_date: houseMayFirst.start_date, end_date: houseMayFirst.end_date, label: 'Primera quincena - Mayo 2026',  house_id: leonSolorzano.id } });
-  const f_house_may26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 5,  period: FortnightPeriod.SECOND, start_date: houseMaySecond.start_date, end_date: houseMaySecond.end_date, label: 'Segunda quincena - Mayo 2026',  house_id: leonSolorzano.id } });
-  const f_house_jun26_first   = await prisma.fortnight.create({ data: { year: 2026, month: 6,  period: FortnightPeriod.FIRST,  start_date: houseJunFirst.start_date, end_date: houseJunFirst.end_date, label: 'Primera quincena - Junio 2026', house_id: leonSolorzano.id } });
-  const f_house_jun26_second  = await prisma.fortnight.create({ data: { year: 2026, month: 6,  period: FortnightPeriod.SECOND, start_date: houseJunSecond.start_date, end_date: houseJunSecond.end_date, label: 'Segunda quincena - Junio 2026', house_id: leonSolorzano.id } });
+  const fLuisJunFirst = await createFortnight(2026, 6, FortnightPeriod.FIRST, 'Primera quincena - Junio 2026', { user_id: luis.id });
+  const fLuisJunSecond = await createFortnight(2026, 6, FortnightPeriod.SECOND, 'Segunda quincena - Junio 2026', { user_id: luis.id });
+
+  const fHouseMayFirst = await createFortnight(2026, 5, FortnightPeriod.FIRST, 'Primera quincena - Mayo 2026', { house_id: casaDemo.id });
+  const fHouseMaySecond = await createFortnight(2026, 5, FortnightPeriod.SECOND, 'Segunda quincena - Mayo 2026', { house_id: casaDemo.id });
+  const fHouseJunFirst = await createFortnight(2026, 6, FortnightPeriod.FIRST, 'Primera quincena - Junio 2026', { house_id: casaDemo.id });
+  const fHouseJunSecond = await createFortnight(2026, 6, FortnightPeriod.SECOND, 'Segunda quincena - Junio 2026', { house_id: casaDemo.id });
+  const fHouseJulFirst = await createFortnight(2026, 7, FortnightPeriod.FIRST, 'Primera quincena - Julio 2026', { house_id: casaDemo.id });
+  const fHouseJulSecond = await createFortnight(2026, 7, FortnightPeriod.SECOND, 'Segunda quincena - Julio 2026', { house_id: casaDemo.id });
 
   // ─────────────────────────────────────────────
-  // BUDGETS (house demo)
+  // BUDGET (house, July). Allocations sum to the total.
   // ─────────────────────────────────────────────
   const budgetDespensa = await prisma.budget.create({
     data: {
       name: 'Despensa',
-      total_amount: 3500,
+      total_amount: 2500,
       frequency: 'BIWEEKLY',
-      recurrent: true,
-      active: true,
-      start_date: f_house_jun26_first.start_date,
-      end_date: f_house_jun26_second.end_date,
-      house_id: leonSolorzano.id,
+      recurrent: false,
+      active: false,
+      start_date: fHouseJulFirst.start_date,
+      end_date: fHouseJulSecond.end_date,
+      house_id: casaDemo.id,
     },
   });
   await prisma.budgetAllocation.createMany({
     data: [
       {
         budget_id: budgetDespensa.id,
-        wallet_id: walletBanamex.id,
+        wallet_id: walletCasaDebito.id,
         category_id: catComidaHouse.id,
-        amount: 2000,
+        amount: 1500,
       },
       {
         budget_id: budgetDespensa.id,
-        wallet_id: walletSantander.id,
+        wallet_id: walletCasaEfectivo.id,
         category_id: catComidaHouse.id,
-        amount: 1500,
+        amount: 1000,
       },
     ],
   });
@@ -548,13 +432,13 @@ async function main() {
     data: [
       {
         budget_id: budgetDespensa.id,
-        start_date: f_house_jun26_first.start_date,
-        end_date: f_house_jun26_first.end_date,
+        start_date: fHouseJulFirst.start_date,
+        end_date: fHouseJulFirst.end_date,
       },
       {
         budget_id: budgetDespensa.id,
-        start_date: f_house_jun26_second.start_date,
-        end_date: f_house_jun26_second.end_date,
+        start_date: fHouseJulSecond.start_date,
+        end_date: fHouseJulSecond.end_date,
       },
     ],
   });
@@ -562,394 +446,521 @@ async function main() {
   // ─────────────────────────────────────────────
   // INCOMES
   // ─────────────────────────────────────────────
-
   await prisma.income.createMany({
     data: [
-      // Carmen personal
-      { fortnight_id: f_carmen_mar26_first.id,  user_id: carmen.id, amount: 4800,  received_at: new Date('2026-03-01T06:00:00'), income_template_id: itSueldoCarmen.id },
-      { fortnight_id: f_carmen_mar26_second.id, user_id: carmen.id, amount: 4800,  received_at: new Date('2026-03-15T06:00:00'), income_template_id: itSueldoCarmen.id },
-      { fortnight_id: f_carmen_apr26_first.id,  user_id: carmen.id, amount: 4800,  received_at: new Date('2026-04-01T06:00:00'), income_template_id: itSueldoCarmen.id },
-      { fortnight_id: f_carmen_apr26_second.id, user_id: carmen.id, amount: 4800,  received_at: new Date('2026-04-15T06:00:00'), income_template_id: itSueldoCarmen.id },
-
-      // Jorge personal
-      { fortnight_id: f_jorge_mar26_first.id,  user_id: jorge.id, amount: 15000, source: 'SALARIO', received_at: new Date('2026-03-01T06:00:00'), income_template_id: itSueldoJorge.id },
-      { fortnight_id: f_jorge_mar26_second.id, user_id: jorge.id, amount: 15000, source: 'SALARIO', received_at: new Date('2026-03-15T06:00:00'), income_template_id: itSueldoJorge.id },
-      { fortnight_id: f_jorge_apr26_first.id,  user_id: jorge.id, amount: 15000, source: 'SALARIO', received_at: new Date('2026-04-01T06:00:00'), income_template_id: itSueldoJorge.id },
-      { fortnight_id: f_jorge_apr26_second.id, user_id: jorge.id, amount: 15000, source: 'SALARIO', received_at: new Date('2026-04-15T06:00:00'), income_template_id: itSueldoJorge.id },
-
-      // Leon Solorzano house
-      { fortnight_id: f_house_mar26_first.id,  house_id: leonSolorzano.id, amount: 6000,  source: 'Salario', received_at: new Date('2026-03-01T06:00:00'), income_template_id: itSalarioCarmen.id },
-      { fortnight_id: f_house_mar26_first.id,  house_id: leonSolorzano.id, amount: 15000, source: 'Salario', received_at: new Date('2026-03-01T06:00:00'), income_template_id: itSalarioJorge.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, amount: 5500,  source: 'Salario', received_at: new Date('2026-03-16T06:00:00'), income_template_id: itSalarioCarmen.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, amount: 15000, source: 'Salario', received_at: new Date('2026-03-16T06:00:00'), income_template_id: itSalarioJorge.id },
-      { fortnight_id: f_house_apr26_first.id,  house_id: leonSolorzano.id, amount: 5900,  source: 'Salario', received_at: new Date('2026-04-01T06:00:00'), income_template_id: itSalarioCarmen.id },
-      { fortnight_id: f_house_apr26_first.id,  house_id: leonSolorzano.id, amount: 15000, source: 'Salario', received_at: new Date('2026-04-01T06:00:00'), income_template_id: itSalarioJorge.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, amount: 6000,  source: 'Salario', received_at: new Date('2026-04-16T06:00:00'), income_template_id: itSalarioCarmen.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, amount: 15000, source: 'Salario', received_at: new Date('2026-04-16T06:00:00'), income_template_id: itSalarioJorge.id },
-      { fortnight_id: f_house_may26_first.id,  house_id: leonSolorzano.id, amount: 6000,  source: 'Salario', received_at: new Date('2026-05-01T06:00:00'), income_template_id: itSalarioCarmen.id },
-      { fortnight_id: f_house_may26_first.id,  house_id: leonSolorzano.id, amount: 15000, source: 'Salario', received_at: new Date('2026-05-01T06:00:00'), income_template_id: itSalarioJorge.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, amount: 6000,  source: 'Salario', received_at: new Date('2026-05-16T06:00:00'), income_template_id: itSalarioCarmen.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, amount: 15000, source: 'Salario', received_at: new Date('2026-05-16T06:00:00'), income_template_id: itSalarioJorge.id },
-      { fortnight_id: f_house_jun26_first.id,  house_id: leonSolorzano.id, amount: 5500,  source: 'Salario', received_at: new Date('2026-06-01T06:00:00'), income_template_id: itSalarioCarmen.id },
-      { fortnight_id: f_house_jun26_first.id,  house_id: leonSolorzano.id, amount: 15000, source: 'Salario', received_at: new Date('2026-06-01T06:00:00'), income_template_id: itSalarioJorge.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, amount: 5500,  source: 'Salario', received_at: new Date('2026-06-16T06:00:00'), income_template_id: itSalarioCarmen.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, amount: 15000, source: 'Salario', received_at: new Date('2026-06-16T06:00:00'), income_template_id: itSalarioJorge.id },
+      { fortnight_id: fAnaJulFirst.id, user_id: ana.id, amount: 8500, source: 'Salario', received_at: parseCalendarDate('2026-07-01'), income_template_id: itNominaAna.id, wallet_id: walletAnaDebito.id, category_id: catAnaSalario.id },
+      { fortnight_id: fAnaJulSecond.id, user_id: ana.id, amount: 8500, source: 'Salario', received_at: parseCalendarDate('2026-07-16'), income_template_id: itNominaAna.id, wallet_id: walletAnaDebito.id, category_id: catAnaSalario.id },
+      { fortnight_id: fAnaAugFirst.id, user_id: ana.id, amount: 8500, source: 'Salario', received_at: parseCalendarDate('2026-08-01'), income_template_id: itNominaAna.id, wallet_id: walletAnaDebito.id, category_id: catAnaSalario.id },
+      { fortnight_id: fAnaAugSecond.id, user_id: ana.id, amount: 8500, source: 'Salario', received_at: parseCalendarDate('2026-08-16'), income_template_id: itNominaAna.id, wallet_id: walletAnaDebito.id, category_id: catAnaSalario.id },
+      { fortnight_id: fLuisJunFirst.id, user_id: luis.id, amount: 4000, source: 'Otro ingreso', received_at: parseCalendarDate('2026-06-01'), income_template_id: itHonorariosLuis.id, wallet_id: walletLuisDebito.id, category_id: catLuisIngreso.id },
+      { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-05-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-05-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJunFirst.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-06-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJunSecond.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-06-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJulFirst.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-07-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-07-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
     ],
   });
 
   // ─────────────────────────────────────────────
   // EXPENSES
   // ─────────────────────────────────────────────
-
   await prisma.expense.createMany({
     data: [
-      // ── Carmen personal ──────────────────────
-      { fortnight_id: f_carmen_mar26_first.id,  user_id: carmen.id, description: 'Renta',    amount: 0, is_paid: false, due_day: 14, expense_template_id: etCarmenRenta.id },
-      { fortnight_id: f_carmen_mar26_first.id,  user_id: carmen.id, description: 'Internet', amount: 0, is_paid: false, due_day: 14, expense_template_id: etCarmenInternet.id },
-      { fortnight_id: f_carmen_mar26_second.id, user_id: carmen.id, description: 'Renta',    amount: 0, is_paid: false, due_day: 31, expense_template_id: etCarmenRenta.id },
-      { fortnight_id: f_carmen_mar26_second.id, user_id: carmen.id, description: 'Internet', amount: 0, is_paid: false, due_day: 31, expense_template_id: etCarmenInternet.id },
-      { fortnight_id: f_carmen_apr26_first.id,  user_id: carmen.id, description: 'Renta',    amount: 0, is_paid: false, due_day: 14, expense_template_id: etCarmenRenta.id },
-      { fortnight_id: f_carmen_apr26_first.id,  user_id: carmen.id, description: 'Internet', amount: 0, is_paid: false, due_day: 14, expense_template_id: etCarmenInternet.id },
-      { fortnight_id: f_carmen_apr26_second.id, user_id: carmen.id, description: 'Renta',    amount: 0, is_paid: false, due_day: 30, expense_template_id: etCarmenRenta.id },
-      { fortnight_id: f_carmen_apr26_second.id, user_id: carmen.id, description: 'Internet', amount: 0, is_paid: false, due_day: 30, expense_template_id: etCarmenInternet.id },
-
-      // ── Jorge personal ───────────────────────
-      { fortnight_id: f_jorge_mar26_first.id,  user_id: jorge.id, description: 'Internet', amount: 678, is_paid: true,  category_id: catJorgeVivienda.id, wallet_id: walletJorgeBanamex.id, expense_template_id: etJorgeInternet.id },
-      { fortnight_id: f_jorge_apr26_first.id,  user_id: jorge.id, description: 'Renta',    amount: 0,   is_paid: false, due_day: 14, expense_template_id: etJorgeRenta.id },
-      { fortnight_id: f_jorge_apr26_first.id,  user_id: jorge.id, description: 'Internet', amount: 0,   is_paid: false, due_day: 14, expense_template_id: etJorgeInternet.id },
-      { fortnight_id: f_jorge_apr26_second.id, user_id: jorge.id, description: 'Renta',    amount: 0,   is_paid: false, due_day: 30, expense_template_id: etJorgeRenta.id },
-      { fortnight_id: f_jorge_apr26_second.id, user_id: jorge.id, description: 'Internet', amount: 0,   is_paid: false, due_day: 30, expense_template_id: etJorgeInternet.id },
-
-      // ── House: Oct 2025 second ───────────────
-      { fortnight_id: f_house_oct25_second.id, house_id: leonSolorzano.id, description: 'DISPOSICION EFTVO PARCIALID ADES C&', amount: 931.55, is_paid: true, category_id: catCasa.id, wallet_id: walletCnAEfectivo.id },
-      { fortnight_id: f_house_oct25_second.id, house_id: leonSolorzano.id, description: 'COMPRA PROMOCION SIN INTERE S C&A',   amount: 217.00, is_paid: true, category_id: catCasa.id, wallet_id: walletDidiCard.id },
-
-      // ── House: Mar 2026 first ────────────────
-      { fortnight_id: f_house_mar26_first.id, house_id: leonSolorzano.id, description: 'Super',           amount: 2000,    is_paid: false, due_day: 15, category_id: catComidaHouse.id,   wallet_id: walletSantander.id, expense_template_id: etSuper.id },
-      { fortnight_id: f_house_mar26_first.id, house_id: leonSolorzano.id, description: 'Fonacot Carmen',  amount: 1243.68, is_paid: false, due_day: 15, category_id: catPrestamos.id,     wallet_id: walletSantander.id, expense_template_id: etFonacotCarmen.id },
-      { fortnight_id: f_house_mar26_first.id, house_id: leonSolorzano.id, description: 'Fonacot Jorge',   amount: 2792.73, is_paid: false, due_day: 15, category_id: catPrestamos.id,     wallet_id: walletBanamex.id,   expense_template_id: etFonacotJorge.id },
-      { fortnight_id: f_house_mar26_first.id, house_id: leonSolorzano.id, description: 'Agua',            amount: 200,     is_paid: false, due_day: 13, category_id: catComidaHouse.id,   wallet_id: walletSantander.id, expense_template_id: etAgua.id },
-      { fortnight_id: f_house_mar26_first.id, house_id: leonSolorzano.id, description: 'Transporte Carmen', amount: 400,   is_paid: false, due_day: 1,  category_id: catTransporteHouse.id, wallet_id: walletSantander.id, expense_template_id: etTransporteCarmen.id },
-      { fortnight_id: f_house_mar26_first.id, house_id: leonSolorzano.id, description: 'Carne',           amount: 800,     is_paid: false, due_day: 15, category_id: catComidaHouse.id,   wallet_id: walletSantander.id, expense_template_id: etCarne.id },
-      { fortnight_id: f_house_mar26_first.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,    is_paid: false, due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,  expense_template_id: etCreditoBanamex.id },
-
-      // ── House: Mar 2026 second ───────────────
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'Renta',          amount: 8500,    is_paid: true,  due_day: 15, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etRenta.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'TELMEX',         amount: 658,     is_paid: true,  due_day: 23, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etTelmex.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'AT&T Carmen',    amount: 400.99,  is_paid: true,  due_day: 23, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttCarmen.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',     amount: 453.06,  is_paid: true,  due_day: 19, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttJorgeSecond.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'Mercado pago',   amount: 823.16,  is_paid: true,  due_day: 17, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etMercadoPago.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'CFE',            amount: 450,     is_paid: true,  due_day: 17, category_id: catCasa.id,           wallet_id: walletSantander.id, expense_template_id: etCfe.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'Super',          amount: 1000,    is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etSuper.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'Fonacot Carmen', amount: 1243.68, is_paid: true,  due_day: 15, category_id: catPrestamos.id,      wallet_id: walletSantander.id, expense_template_id: etFonacotCarmen.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'Fonacot Jorge',  amount: 2792.73, is_paid: true,  due_day: 15, category_id: catPrestamos.id,      wallet_id: walletBanamex.id,   expense_template_id: etFonacotJorge.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'Agua',           amount: 200,     is_paid: false, due_day: 13, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etAgua.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'Carne',          amount: 800,     is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etCarne.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,   is_paid: true,  due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCreditoBanamex.id },
-      { fortnight_id: f_house_mar26_second.id, house_id: leonSolorzano.id, description: 'Didi Card',      amount: 580.04,  is_paid: true,  category_id: catTarjetaCredito.id, wallet_id: walletSantander.id },
-
-      // ── House: Apr 2026 first ────────────────
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Super',           amount: 2000,    is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etSuper.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Fonacot Carmen',  amount: 1243.68, is_paid: true,  due_day: 15, category_id: catPrestamos.id,      wallet_id: walletSantander.id, expense_template_id: etFonacotCarmen.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Fonacot Jorge',   amount: 2792.73, is_paid: true,  due_day: 15, category_id: catPrestamos.id,      wallet_id: walletBanamex.id,   expense_template_id: etFonacotJorge.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Agua',            amount: 200,     is_paid: false, due_day: 13, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etAgua.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Transporte Carmen', amount: 400,   is_paid: false, due_day: 1,  category_id: catTransporteHouse.id, wallet_id: walletSantander.id, expense_template_id: etTransporteCarmen.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Carne',           amount: 800,     is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etCarne.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',      amount: 1179.43, is_paid: true,  due_day: 7,  category_id: catCasa.id,           wallet_id: walletDidiCard.id,  expense_template_id: etAttJorgeFirst.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Sky',             amount: 269,     is_paid: true,  due_day: 30, category_id: catEntretenimiento.id, wallet_id: walletSantander.id, expense_template_id: etSky.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Spotify',         amount: 189,     is_paid: true,  due_day: 30, category_id: catSpotify.id, wallet_id: walletSantander.id, expense_template_id: etSpotify.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Concerta',        amount: 2400,    is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etConcerta.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Lamotriglina',    amount: 160,     is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletBanamex.id,   expense_template_id: etLamotriglina.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,    is_paid: true,  due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCreditoBanamex.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Renta',           amount: 1000,    is_paid: false, category_id: catCasa.id,           wallet_id: walletBanamex.id },
-      { fortnight_id: f_house_apr26_first.id, house_id: leonSolorzano.id, description: 'Didi card',       amount: 520,     is_paid: true,  category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id },
-
-      // ── House: Apr 2026 second ───────────────
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Renta',          amount: 7500,    is_paid: false, due_day: 15, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etRenta.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'TELMEX',         amount: 658,     is_paid: false, due_day: 23, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etTelmex.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'AT&T Carmen',    amount: 400.99,  is_paid: false, due_day: 23, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttCarmen.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',     amount: 453.06,  is_paid: false, due_day: 19, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttJorgeSecond.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Mercado pago',   amount: 4800,    is_paid: false, due_day: 17, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etMercadoPago.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Super',          amount: 2000,    is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etSuper.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Fonacot Carmen', amount: 1243.68, is_paid: true,  due_day: 15, category_id: catPrestamos.id,      wallet_id: walletSantander.id, expense_template_id: etFonacotCarmen.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Fonacot Jorge',  amount: 2792.73, is_paid: true,  due_day: 15, category_id: catPrestamos.id,      wallet_id: walletBanamex.id,   expense_template_id: etFonacotJorge.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Agua',           amount: 200,     is_paid: false, due_day: 13, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etAgua.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Transporte Carmen', amount: 400, is_paid: false, due_day: 1,  category_id: catTransporteHouse.id, wallet_id: walletSantander.id, expense_template_id: etTransporteCarmen.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Carne',          amount: 800,     is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etCarne.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Paula',          amount: 300,     is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etPaula.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,   is_paid: true,  due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCreditoBanamex.id },
-      { fortnight_id: f_house_apr26_second.id, house_id: leonSolorzano.id, description: 'Didi card',      amount: 1500,    is_paid: false, due_day: 18, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etDidiCard.id },
-
-      // ── House: May 2026 first ────────────────
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Super',           amount: 2000,    is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etSuper.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Fonacot Carmen',  amount: 1243.68, is_paid: false, due_day: 15, category_id: catPrestamos.id,      wallet_id: walletSantander.id, expense_template_id: etFonacotCarmen.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Fonacot Jorge',   amount: 2792.73, is_paid: false, due_day: 15, category_id: catPrestamos.id,      wallet_id: walletBanamex.id,   expense_template_id: etFonacotJorge.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Agua',            amount: 200,     is_paid: false, due_day: 13, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etAgua.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Transporte Carmen', amount: 400,   is_paid: false, due_day: 1,  category_id: catTransporteHouse.id, wallet_id: walletSantander.id, expense_template_id: etTransporteCarmen.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Carne',           amount: 800,     is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etCarne.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Liverpool Carmen', amount: 531.67, is_paid: false, due_day: 5,  category_id: catTarjetaDep.id,     wallet_id: walletSantander.id, expense_template_id: etLiverpoolCarmen.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Liverpool Jorge',  amount: 1,      is_paid: false, due_day: 12, category_id: catTarjetaDep.id,     wallet_id: walletBanamex.id,   expense_template_id: etLiverpoolJorge.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',      amount: 1160,    is_paid: false, due_day: 7,  category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttJorgeFirst.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Sky',             amount: 269,     is_paid: false, due_day: 30, category_id: catEntretenimiento.id, wallet_id: walletSantander.id, expense_template_id: etSky.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Spotify',         amount: 189,     is_paid: false, due_day: 30, category_id: catSpotify.id, wallet_id: walletSantander.id, expense_template_id: etSpotify.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'C&A efectivo',    amount: 928,     is_paid: false, due_day: 10, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCnAEfectivo.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'C&A departamental', amount: 250,   is_paid: false, due_day: 3,  category_id: catTarjetaDep.id,     wallet_id: walletBanamex.id,   expense_template_id: etCnADepartamental.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Concerta',        amount: 2400,    is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etConcerta.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Quetiapina',      amount: 250,     is_paid: false, due_day: 11, category_id: catMedicamentos.id,   wallet_id: walletBanamex.id,   expense_template_id: etQuetiapina.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Lamotriglina',    amount: 160,     is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletBanamex.id,   expense_template_id: etLamotriglina.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,    is_paid: false, due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCreditoBanamex.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Mercado Pago',    amount: 1500,    is_paid: false, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id },
-      { fortnight_id: f_house_may26_first.id, house_id: leonSolorzano.id, description: 'Renta',           amount: 1500,    is_paid: false, category_id: catCasa.id,           wallet_id: walletBanamex.id },
-
-      // ── House: May 2026 second ───────────────
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Renta',          amount: 7000,    is_paid: false, due_day: 15, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etRenta.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'TELMEX',         amount: 658,     is_paid: false, due_day: 23, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etTelmex.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'AT&T Carmen',    amount: 400.99,  is_paid: false, due_day: 23, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttCarmen.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',     amount: 453.06,  is_paid: false, due_day: 19, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttJorgeSecond.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Mercado pago',   amount: 1036.94, is_paid: false, due_day: 17, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etMercadoPago.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'CFE',            amount: 450,     is_paid: false, due_day: 17, category_id: catCasa.id,           wallet_id: walletSantander.id, expense_template_id: etCfe.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Super',          amount: 2000,    is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etSuper.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Fonacot Carmen', amount: 1243.68, is_paid: false, due_day: 15, category_id: catPrestamos.id,      wallet_id: walletSantander.id, expense_template_id: etFonacotCarmen.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Fonacot Jorge',  amount: 2792.73, is_paid: false, due_day: 15, category_id: catPrestamos.id,      wallet_id: walletBanamex.id,   expense_template_id: etFonacotJorge.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Agua',           amount: 200,     is_paid: false, due_day: 13, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etAgua.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Transporte Carmen', amount: 400, is_paid: false, due_day: 1,  category_id: catTransporteHouse.id, wallet_id: walletSantander.id, expense_template_id: etTransporteCarmen.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Carne',          amount: 800,     is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etCarne.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Paula',          amount: 300,     is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etPaula.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,   is_paid: false, due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCreditoBanamex.id },
-      { fortnight_id: f_house_may26_second.id, house_id: leonSolorzano.id, description: 'Didi card',      amount: 700,     is_paid: false, due_day: 18, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etDidiCard.id },
-
-      // ── House: Jun 2026 first ────────────────
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Super',           amount: 2000,    is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etSuper.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Fonacot Carmen',  amount: 1243.68, is_paid: false, due_day: 15, category_id: catPrestamos.id,      wallet_id: walletSantander.id, expense_template_id: etFonacotCarmen.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Fonacot Jorge',   amount: 2792.73, is_paid: false, due_day: 15, category_id: catPrestamos.id,      wallet_id: walletBanamex.id,   expense_template_id: etFonacotJorge.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Agua',            amount: 200,     is_paid: false, due_day: 13, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etAgua.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Transporte Carmen', amount: 400,   is_paid: false, due_day: 1,  category_id: catTransporteHouse.id, wallet_id: walletSantander.id, expense_template_id: etTransporteCarmen.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Carne',           amount: 800,     is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etCarne.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Liverpool Carmen', amount: 531.67, is_paid: false, due_day: 5,  category_id: catTarjetaDep.id,     wallet_id: walletSantander.id, expense_template_id: etLiverpoolCarmen.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Liverpool Jorge',  amount: 1,      is_paid: false, due_day: 12, category_id: catTarjetaDep.id,     wallet_id: walletBanamex.id,   expense_template_id: etLiverpoolJorge.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',      amount: 1160,    is_paid: false, due_day: 7,  category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttJorgeFirst.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Sky',             amount: 269,     is_paid: false, due_day: 30, category_id: catEntretenimiento.id, wallet_id: walletSantander.id, expense_template_id: etSky.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Spotify',         amount: 189,     is_paid: false, due_day: 30, category_id: catSpotify.id, wallet_id: walletSantander.id, expense_template_id: etSpotify.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'C&A efectivo',    amount: 928,     is_paid: false, due_day: 10, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCnAEfectivo.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'C&A departamental', amount: 250,   is_paid: false, due_day: 3,  category_id: catTarjetaDep.id,     wallet_id: walletBanamex.id,   expense_template_id: etCnADepartamental.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Concerta',        amount: 2400,    is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etConcerta.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Quetiapina',      amount: 250,     is_paid: false, due_day: 11, category_id: catMedicamentos.id,   wallet_id: walletBanamex.id,   expense_template_id: etQuetiapina.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Lamotriglina',    amount: 160,     is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletBanamex.id,   expense_template_id: etLamotriglina.id },
-      { fortnight_id: f_house_jun26_first.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,    is_paid: false, due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCreditoBanamex.id },
-
-      // ── House: Jun 2026 second ───────────────
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Renta',          amount: 8500,    is_paid: false, due_day: 15, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etRenta.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'TELMEX',         amount: 658,     is_paid: false, due_day: 23, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etTelmex.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'AT&T Carmen',    amount: 400.99,  is_paid: false, due_day: 23, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttCarmen.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'AT&T Jorge',     amount: 453.06,  is_paid: false, due_day: 19, category_id: catCasa.id,           wallet_id: walletBanamex.id,   expense_template_id: etAttJorgeSecond.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Mercado pago',   amount: 823.16,  is_paid: false, due_day: 17, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etMercadoPago.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'CFE',            amount: 450,     is_paid: false, due_day: 17, category_id: catCasa.id,           wallet_id: walletSantander.id, expense_template_id: etCfe.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Super',          amount: 2000,    is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etSuper.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Fonacot Carmen', amount: 1243.68, is_paid: false, due_day: 15, category_id: catPrestamos.id,      wallet_id: walletSantander.id, expense_template_id: etFonacotCarmen.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Fonacot Jorge',  amount: 2792.73, is_paid: false, due_day: 15, category_id: catPrestamos.id,      wallet_id: walletBanamex.id,   expense_template_id: etFonacotJorge.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Agua',           amount: 200,     is_paid: false, due_day: 13, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etAgua.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Transporte Carmen', amount: 400, is_paid: false, due_day: 1,  category_id: catTransporteHouse.id, wallet_id: walletSantander.id, expense_template_id: etTransporteCarmen.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Carne',          amount: 800,     is_paid: false, due_day: 15, category_id: catComidaHouse.id,    wallet_id: walletSantander.id, expense_template_id: etCarne.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Paula',          amount: 300,     is_paid: false, due_day: 1,  category_id: catMedicamentos.id,   wallet_id: walletSantander.id, expense_template_id: etPaula.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Credito Banamex', amount: 2500,   is_paid: false, due_day: 15, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etCreditoBanamex.id },
-      { fortnight_id: f_house_jun26_second.id, house_id: leonSolorzano.id, description: 'Didi card',      amount: 1500,    is_paid: false, due_day: 18, category_id: catTarjetaCredito.id, wallet_id: walletBanamex.id,   expense_template_id: etDidiCard.id },
+      { fortnight_id: fAnaJulFirst.id, user_id: ana.id, description: 'Renta', amount: 7200, is_paid: false, due_day: 6, category_id: catAnaVivienda.id, wallet_id: walletAnaDebito.id, expense_template_id: etAnaRenta.id },
+      { fortnight_id: fAnaJulFirst.id, user_id: ana.id, description: 'Internet', amount: 480, is_paid: true, payment_date: parseCalendarDate('2026-07-08'), category_id: catAnaVivienda.id, wallet_id: walletAnaDebito.id, expense_template_id: etAnaInternet.id },
+      { fortnight_id: fAnaJulSecond.id, user_id: ana.id, description: 'Internet', amount: 480, is_paid: false, due_day: 22, category_id: catAnaVivienda.id, wallet_id: walletAnaDebito.id, expense_template_id: etAnaInternet.id },
+      { fortnight_id: fAnaJulSecond.id, user_id: ana.id, description: 'Mercado', amount: 120, is_paid: true, payment_date: parseCalendarDate('2026-07-18'), category_id: catAnaVivienda.id, wallet_id: walletAnaEfectivo.id },
+      { fortnight_id: fAnaAugFirst.id, user_id: ana.id, description: 'Renta', amount: 7200, is_paid: false, due_day: 6, category_id: catAnaVivienda.id, wallet_id: walletAnaDebito.id, expense_template_id: etAnaRenta.id },
+      { fortnight_id: fLuisJunFirst.id, user_id: luis.id, description: 'Transporte', amount: 350, is_paid: true, payment_date: parseCalendarDate('2026-06-04'), category_id: catLuisTransporte.id, wallet_id: walletLuisDebito.id, expense_template_id: etLuisTransporte.id },
+      { fortnight_id: fLuisJunSecond.id, user_id: luis.id, description: 'Transporte', amount: 350, is_paid: false, due_day: 18, category_id: catLuisTransporte.id, wallet_id: walletLuisDebito.id, expense_template_id: etLuisTransporte.id },
+      { fortnight_id: fLuisJunSecond.id, user_id: luis.id, description: 'Compra en tienda', amount: 250, is_paid: true, payment_date: parseCalendarDate('2026-06-20'), category_id: catLuisTransporte.id, wallet_id: walletLuisTienda.id },
+      { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, description: 'Supermercado', amount: 1600, is_paid: true, payment_date: parseCalendarDate('2026-05-12'), category_id: catComidaHouse.id, wallet_id: walletCasaDebito.id, expense_template_id: etSuper.id },
+      { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, description: 'Teléfono', amount: 290, is_paid: true, payment_date: parseCalendarDate('2026-05-09'), category_id: catServiciosHouse.id, wallet_id: walletCasaEfectivo.id, expense_template_id: etTelefono.id },
+      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, description: 'Supermercado', amount: 1600, is_paid: true, payment_date: parseCalendarDate('2026-05-26'), category_id: catComidaHouse.id, wallet_id: walletCasaDebito.id, expense_template_id: etSuper.id },
+      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, description: 'Luz', amount: 380, is_paid: true, payment_date: parseCalendarDate('2026-05-20'), category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etLuz.id },
+      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, description: 'Renta', amount: 6800, is_paid: true, payment_date: parseCalendarDate('2026-05-16'), category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etRentaCasa.id },
+      { fortnight_id: fHouseJunFirst.id, house_id: casaDemo.id, description: 'Supermercado', amount: 1600, is_paid: true, payment_date: parseCalendarDate('2026-06-12'), category_id: catComidaHouse.id, wallet_id: walletCasaDebito.id, expense_template_id: etSuper.id },
+      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, description: 'Renta', amount: 6800, is_paid: true, payment_date: parseCalendarDate('2026-07-16'), category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etRentaCasa.id },
+      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, description: 'Luz', amount: 380, is_paid: true, payment_date: parseCalendarDate('2026-07-20'), category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etLuz.id },
     ],
   });
 
   // ─────────────────────────────────────────────
-  // LOANS (house demo for liquidity projection)
+  // LOANS
+  // One wallet loan on Ana, one payroll loan on Luis, one wallet loan on the house.
   // ─────────────────────────────────────────────
-  const personalLoanSchedule = generateLoanPaymentSchedule({
-    startDate: parseCalendarDate('2026-03-01'),
-    paymentAmount: 3500,
-    paymentCount: 10,
-    frequency: 'MONTHLY',
+  const lenderAna = await prisma.lender.create({
+    data: { name: 'Cooperativa', user_id: ana.id },
+  });
+  const lenderLuis = await prisma.lender.create({
+    data: { name: 'Patronal', user_id: luis.id },
+  });
+  const lenderCasa = await prisma.lender.create({
+    data: { name: 'Caja del barrio', house_id: casaDemo.id },
   });
 
-  const lenderBanamex = await prisma.lender.create({
-    data: {
-      name: 'Banamex',
-      house_id: leonSolorzano.id,
-    },
-  });
-  const lenderFonacot = await prisma.lender.create({
-    data: {
-      name: 'FONACOT',
-      house_id: leonSolorzano.id,
-    },
-  });
-
-  await prisma.loan.create({
-    data: {
-      name: 'Crédito personal Banamex',
-      lender: 'Banamex',
-      lender_id: lenderBanamex.id,
-      type: 'PERSONAL',
-      status: 'ACTIVE',
-      principal_amount: 35000,
-      payment_amount: 3500,
-      payment_count: 10,
-      frequency: 'MONTHLY',
-      start_date: parseCalendarDate('2026-03-01'),
-      payment_source: 'WALLET',
-      house_id: leonSolorzano.id,
-      source_wallet_id: walletBanamex.id,
-      notes: 'Préstamo demo para proyección mes a mes',
-      payments: {
-        create: personalLoanSchedule.map((payment) => ({
-          sequence: payment.sequence,
-          due_date: payment.dueDate,
-          amount: payment.amount.toString(),
-          source_wallet_id: walletBanamex.id,
-        })),
+  const createScheduledLoan = async (input: {
+    name: string;
+    lenderName: string;
+    lenderId: number;
+    type: 'PERSONAL' | 'PAYROLL';
+    paymentAmount: number;
+    paymentCount: number;
+    frequency: 'MONTHLY' | 'FORTNIGHTLY';
+    startDate: string;
+    paymentSource: 'WALLET' | 'PAYROLL_DEDUCTION';
+    owner: { user_id: number } | { house_id: number };
+    sourceWalletId?: number;
+    incomeTemplateId?: number;
+    notes: string;
+  }) => {
+    const schedule = generateLoanPaymentSchedule({
+      startDate: parseCalendarDate(input.startDate),
+      paymentAmount: input.paymentAmount,
+      paymentCount: input.paymentCount,
+      frequency: input.frequency,
+    });
+    await prisma.loan.create({
+      data: {
+        name: input.name,
+        lender: input.lenderName,
+        lender_id: input.lenderId,
+        type: input.type,
+        status: 'ACTIVE',
+        principal_amount: input.paymentAmount * input.paymentCount,
+        payment_amount: input.paymentAmount,
+        payment_count: input.paymentCount,
+        frequency: input.frequency,
+        start_date: parseCalendarDate(input.startDate),
+        payment_source: input.paymentSource,
+        ...input.owner,
+        source_wallet_id: input.sourceWalletId,
+        income_template_id: input.incomeTemplateId,
+        notes: input.notes,
+        payments: {
+          create: schedule.map((payment) => ({
+            sequence: payment.sequence,
+            due_date: payment.dueDate,
+            amount: payment.amount.toString(),
+            source_wallet_id: input.sourceWalletId,
+          })),
+        },
       },
-    },
-  });
+    });
+  };
 
-  const personalLoanScheduleB = generateLoanPaymentSchedule({
-    startDate: parseCalendarDate('2026-03-18'),
+  await createScheduledLoan({
+    name: 'Préstamo personal',
+    lenderName: 'Cooperativa',
+    lenderId: lenderAna.id,
+    type: 'PERSONAL',
+    paymentAmount: 1500,
+    paymentCount: 6,
+    frequency: 'MONTHLY',
+    startDate: '2026-07-01',
+    paymentSource: 'WALLET',
+    owner: { user_id: ana.id },
+    sourceWalletId: walletAnaDebito.id,
+    notes: 'Seis mensualidades demo pagadas desde el débito personal',
+  });
+  await createScheduledLoan({
+    name: 'Descuento de nómina',
+    lenderName: 'Patronal',
+    lenderId: lenderLuis.id,
+    type: 'PAYROLL',
+    paymentAmount: 900,
+    paymentCount: 10,
+    frequency: 'FORTNIGHTLY',
+    startDate: '2026-06-01',
+    paymentSource: 'PAYROLL_DEDUCTION',
+    owner: { user_id: luis.id },
+    incomeTemplateId: itHonorariosLuis.id,
+    notes: 'Diez descuentos quincenales demo sobre honorarios',
+  });
+  const lenderFondo = await prisma.lender.create({
+    data: { name: 'Fondo vecinal', house_id: casaDemo.id },
+  });
+  const lenderTaller = await prisma.lender.create({
+    data: { name: 'Taller Norte', house_id: casaDemo.id },
+  });
+  await createScheduledLoan({
+    name: 'Préstamo del hogar',
+    lenderName: 'Caja del barrio',
+    lenderId: lenderCasa.id,
+    type: 'PERSONAL',
     paymentAmount: 1800,
+    paymentCount: 12,
+    frequency: 'MONTHLY',
+    startDate: '2026-05-02',
+    paymentSource: 'WALLET',
+    owner: { house_id: casaDemo.id },
+    sourceWalletId: walletCasaDebito.id,
+    notes: 'Doce mensualidades demo de la casa',
+  });
+  await createScheduledLoan({
+    name: 'Refrigerador',
+    lenderName: 'Fondo vecinal',
+    lenderId: lenderFondo.id,
+    type: 'PERSONAL',
+    paymentAmount: 950,
     paymentCount: 8,
     frequency: 'MONTHLY',
+    startDate: '2026-06-10',
+    paymentSource: 'WALLET',
+    owner: { house_id: casaDemo.id },
+    sourceWalletId: walletCasaDebito.id,
+    notes: 'Ocho mensualidades demo del refrigerador',
   });
-
-  await prisma.loan.create({
-    data: {
-      name: 'Crédito auto Banamex',
-      lender: 'Banamex',
-      lender_id: lenderBanamex.id,
-      type: 'PERSONAL',
-      status: 'ACTIVE',
-      principal_amount: 14400,
-      payment_amount: 1800,
-      payment_count: 8,
-      frequency: 'MONTHLY',
-      start_date: parseCalendarDate('2026-03-18'),
-      payment_source: 'WALLET',
-      house_id: leonSolorzano.id,
-      source_wallet_id: walletBanamex.id,
-      notes: 'Segundo contrato del mismo prestamista para pago consolidado',
-      payments: {
-        create: personalLoanScheduleB.map((payment) => ({
-          sequence: payment.sequence,
-          due_date: payment.dueDate,
-          amount: payment.amount.toString(),
-          source_wallet_id: walletBanamex.id,
-        })),
-      },
-    },
-  });
-
-  const fonacotCarmenSchedule = generateLoanPaymentSchedule({
-    startDate: parseCalendarDate('2026-03-01'),
-    paymentAmount: 1243.68,
-    paymentCount: 16,
-    frequency: 'FORTNIGHTLY',
-  });
-  const fonacotJorgeSchedule = generateLoanPaymentSchedule({
-    startDate: parseCalendarDate('2026-03-01'),
-    paymentAmount: 2792.73,
-    paymentCount: 18,
-    frequency: 'FORTNIGHTLY',
-  });
-
-  await prisma.loan.create({
-    data: {
-      name: 'Fonacot Carmen',
-      lender: 'FONACOT',
-      lender_id: lenderFonacot.id,
-      type: 'PAYROLL',
-      status: 'ACTIVE',
-      principal_amount: 1243.68 * 16,
-      payment_amount: 1243.68,
-      payment_count: 16,
-      frequency: 'FORTNIGHTLY',
-      start_date: parseCalendarDate('2026-03-01'),
-      payment_source: 'PAYROLL_DEDUCTION',
-      house_id: leonSolorzano.id,
-      notes: 'Descuento de nómina; el punto verde es el mes en que termina',
-      payments: {
-        create: fonacotCarmenSchedule.map((payment) => ({
-          sequence: payment.sequence,
-          due_date: payment.dueDate,
-          amount: payment.amount.toString(),
-        })),
-      },
-    },
-  });
-
-  await prisma.loan.create({
-    data: {
-      name: 'Fonacot Jorge',
-      lender: 'FONACOT',
-      lender_id: lenderFonacot.id,
-      type: 'PAYROLL',
-      status: 'ACTIVE',
-      principal_amount: 2792.73 * 18,
-      payment_amount: 2792.73,
-      payment_count: 18,
-      frequency: 'FORTNIGHTLY',
-      start_date: parseCalendarDate('2026-03-01'),
-      payment_source: 'PAYROLL_DEDUCTION',
-      house_id: leonSolorzano.id,
-      notes: 'Descuento de nómina; el punto verde es el mes en que termina',
-      payments: {
-        create: fonacotJorgeSchedule.map((payment) => ({
-          sequence: payment.sequence,
-          due_date: payment.dueDate,
-          amount: payment.amount.toString(),
-        })),
-      },
-    },
+  await createScheduledLoan({
+    name: 'Bicicleta',
+    lenderName: 'Taller Norte',
+    lenderId: lenderTaller.id,
+    type: 'PERSONAL',
+    paymentAmount: 640,
+    paymentCount: 6,
+    frequency: 'MONTHLY',
+    startDate: '2026-07-12',
+    paymentSource: 'WALLET',
+    owner: { house_id: casaDemo.id },
+    sourceWalletId: walletCasaDebito.id,
+    notes: 'Seis mensualidades demo de la bicicleta',
   });
 
   // ─────────────────────────────────────────────
-  // MSI PURCHASES (active installments on credit cards)
+  // INSTALLMENTS (two purchases, different cards and terms)
   // ─────────────────────────────────────────────
   await prisma.expense.createMany({
     data: [
       {
-        fortnight_id: f_house_mar26_first.id,
-        house_id: leonSolorzano.id,
-        description: 'Laptop a 12 meses',
-        amount: 850,
+        fortnight_id: fAnaJulFirst.id,
+        user_id: ana.id,
+        description: 'Audífonos a meses',
+        amount: 450,
         is_paid: true,
-        payment_date: parseCalendarDate('2026-02-10'),
-        category_id: catCasa.id,
-        wallet_id: walletDidiCard.id,
+        payment_date: parseCalendarDate('2026-06-20'),
+        category_id: catAnaVivienda.id,
+        wallet_id: walletAnaCredito.id,
         credit_installment_current: 2,
-        credit_installment_total: 12,
+        credit_installment_total: 9,
       },
       {
-        fortnight_id: f_house_mar26_first.id,
-        house_id: leonSolorzano.id,
-        description: 'Televisor Liverpool 6 meses',
-        amount: 1200,
+        fortnight_id: fHouseJunFirst.id,
+        house_id: casaDemo.id,
+        description: 'Licuadora a meses',
+        amount: 600,
         is_paid: true,
-        payment_date: parseCalendarDate('2026-01-20'),
-        category_id: catCasa.id,
-        wallet_id: walletDidiCard.id,
-        credit_installment_current: 3,
-        credit_installment_total: 6,
-      },
-      {
-        fortnight_id: f_house_mar26_second.id,
-        house_id: leonSolorzano.id,
-        description: 'Refrigerador C&A 18 meses',
-        amount: 650,
-        is_paid: true,
-        payment_date: parseCalendarDate('2026-02-28'),
-        category_id: catCasa.id,
-        wallet_id: walletCnAEfectivo.id,
+        payment_date: parseCalendarDate('2026-06-05'),
+        category_id: catComidaHouse.id,
+        wallet_id: walletCasaDigital.id,
         credit_installment_current: 1,
-        credit_installment_total: 18,
+        credit_installment_total: 4,
       },
     ],
   });
 
-  console.log('✅ Database seeded with real data');
+  const today = todayCalendarDate();
+  const [todayYear, todayMonth, todayDay] = today.split('-').map(Number);
+  const monthEnd = (year: number, month: number) => {
+    const nextYear = month === 12 ? year + 1 : year;
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const firstNext = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+    return addCalendarDays(firstNext, -1);
+  };
+  const endDay = Number(monthEnd(todayYear, todayMonth).slice(8, 10));
+  const dueDay = todayDay < endDay ? todayDay + 1 : todayDay;
+  await prisma.wallet.update({
+    where: { id: walletCasaCredito.id },
+    data: { due_day: dueDay, cutoff_day: Math.max(1, dueDay - 15) },
+  });
+
+  const houseLoanIds = (
+    await prisma.loan.findMany({
+      where: { house_id: casaDemo.id },
+      select: { id: true },
+    })
+  ).map((loan) => loan.id);
+  const pastHousePayments = await prisma.loanPayment.findMany({
+    where: {
+      status: 'SCHEDULED',
+      due_date: { lt: parseCalendarDate(today) },
+      loan_id: { in: houseLoanIds },
+    },
+    select: { id: true, due_date: true },
+  });
+  for (const payment of pastHousePayments) {
+    await prisma.loanPayment.update({
+      where: { id: payment.id },
+      data: { status: 'PAID', paid_at: payment.due_date },
+    });
+  }
+
+  const shiftMonth = (year: number, month: number, delta: number) => {
+    const index = year * 12 + (month - 1) + delta;
+    return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+  };
+
+  const ensureHouseFortnight = async (year: number, month: number, period: FortnightPeriod) => {
+    const found = await prisma.fortnight.findFirst({
+      where: { year, month, period, house_id: casaDemo.id },
+    });
+    if (found) return found;
+    const label = period === FortnightPeriod.FIRST ? 'Primera quincena' : 'Segunda quincena';
+    return createFortnight(year, month, period, `${label} ${month}/${year}`, { house_id: casaDemo.id });
+  };
+
+  for (const delta of [-1, 0, 1]) {
+    const { year, month } = shiftMonth(todayYear, todayMonth, delta);
+    await ensureHouseFortnight(year, month, FortnightPeriod.FIRST);
+    await ensureHouseFortnight(year, month, FortnightPeriod.SECOND);
+  }
+
+  const current = getCurrentCalendarFortnightRef();
+  const otherPeriod =
+    current.period === 'FIRST' ? FortnightPeriod.SECOND : FortnightPeriod.FIRST;
+  const currentFortnight = await ensureHouseFortnight(
+    current.year,
+    current.month,
+    current.period === 'FIRST' ? FortnightPeriod.FIRST : FortnightPeriod.SECOND,
+  );
+  const otherFortnight = await ensureHouseFortnight(current.year, current.month, otherPeriod);
+
+  const ymdIn = (fortnight: { start_date: Date }, offset: number) =>
+    parseCalendarDate(addCalendarDays(formatCalendarDate(fortnight.start_date), offset));
+
+  const previousMonth = shiftMonth(todayYear, todayMonth, -1);
+  const previousFirst = await ensureHouseFortnight(
+    previousMonth.year,
+    previousMonth.month,
+    FortnightPeriod.FIRST,
+  );
+  const previousSecond = await ensureHouseFortnight(
+    previousMonth.year,
+    previousMonth.month,
+    FortnightPeriod.SECOND,
+  );
+  const houseSalary = {
+    house_id: casaDemo.id,
+    amount: 18500,
+    source: 'Salario',
+    income_template_id: itAportacion.id,
+    wallet_id: walletCasaDebito.id,
+    category_id: catSalarioHouse.id,
+  };
+  await prisma.income.createMany({
+    data: [
+      {
+        ...houseSalary,
+        fortnight_id: previousFirst.id,
+        received_at: ymdIn(previousFirst, 0),
+      },
+      {
+        ...houseSalary,
+        fortnight_id: previousSecond.id,
+        received_at: ymdIn(previousSecond, 0),
+      },
+      {
+        ...houseSalary,
+        fortnight_id: currentFortnight.id,
+        received_at: ymdIn(currentFortnight, 0),
+      },
+      {
+        ...houseSalary,
+        fortnight_id: otherFortnight.id,
+        received_at: ymdIn(otherFortnight, 0),
+      },
+    ],
+  });
+  await prisma.expense.createMany({
+    data: [
+      {
+        fortnight_id: previousFirst.id,
+        house_id: casaDemo.id,
+        description: 'Despensa',
+        amount: 1180,
+        is_paid: true,
+        payment_date: ymdIn(previousFirst, 2),
+        category_id: catComidaHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: previousSecond.id,
+        house_id: casaDemo.id,
+        description: 'Luz',
+        amount: 410,
+        is_paid: true,
+        payment_date: ymdIn(previousSecond, 3),
+        category_id: catCasa.id,
+        wallet_id: walletCasaDebito.id,
+        expense_template_id: etLuz.id,
+      },
+    ],
+  });
+
+  await prisma.expense.createMany({
+    data: [
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Despensa',
+        amount: 1240,
+        is_paid: true,
+        payment_date: ymdIn(currentFortnight, 1),
+        category_id: catComidaHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Luz',
+        amount: 430,
+        is_paid: true,
+        payment_date: ymdIn(currentFortnight, 2),
+        category_id: catCasa.id,
+        wallet_id: walletCasaDebito.id,
+        expense_template_id: etLuz.id,
+      },
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Transporte',
+        amount: 210,
+        is_paid: true,
+        payment_date: ymdIn(currentFortnight, 3),
+        category_id: catServiciosHouse.id,
+        wallet_id: walletCasaEfectivo.id,
+      },
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Farmacia',
+        amount: 320,
+        is_paid: false,
+        due_day: dueDay,
+        category_id: catServiciosHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Agua',
+        amount: 190,
+        is_paid: false,
+        due_day: dueDay,
+        category_id: catCasa.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: otherFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Renta',
+        amount: 6800,
+        is_paid: false,
+        due_day: 6,
+        category_id: catCasa.id,
+        wallet_id: walletCasaDebito.id,
+        expense_template_id: etRentaCasa.id,
+      },
+      {
+        fortnight_id: otherFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Seguro',
+        amount: 2100,
+        is_paid: false,
+        due_day: 10,
+        category_id: catServiciosHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: otherFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Internet',
+        amount: 549,
+        is_paid: false,
+        due_day: 8,
+        category_id: catServiciosHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+    ],
+  });
+
+  const budgetMes = await prisma.budget.create({
+    data: {
+      name: 'Gasto del mes',
+      total_amount: 8500,
+      frequency: 'BIWEEKLY',
+      recurrent: true,
+      active: true,
+      start_date:
+        currentFortnight.start_date < otherFortnight.start_date
+          ? currentFortnight.start_date
+          : otherFortnight.start_date,
+      end_date:
+        currentFortnight.end_date > otherFortnight.end_date
+          ? currentFortnight.end_date
+          : otherFortnight.end_date,
+      house_id: casaDemo.id,
+    },
+  });
+  await prisma.budgetAllocation.create({
+    data: {
+      budget_id: budgetMes.id,
+      wallet_id: walletCasaDebito.id,
+      category_id: catComidaHouse.id,
+      amount: 8500,
+    },
+  });
+  await prisma.budgetPeriod.createMany({
+    data: [
+      {
+        budget_id: budgetMes.id,
+        start_date: currentFortnight.start_date,
+        end_date: currentFortnight.end_date,
+      },
+      {
+        budget_id: budgetMes.id,
+        start_date: otherFortnight.start_date,
+        end_date: otherFortnight.end_date,
+      },
+    ],
+  });
+
+  await prisma.wallet.createMany({
+    data: [
+      {
+        name: 'Reserva',
+        type: PaymentMethodType.GOAL,
+        amount: 6400,
+        goal_amount: 20000,
+        goal_due_date: parseCalendarDate(addCalendarDays(today, 270)),
+        include_in_liquidity: false,
+        house_id: casaDemo.id,
+      },
+      {
+        name: 'Viaje',
+        type: PaymentMethodType.GOAL,
+        amount: 2800,
+        goal_amount: 12000,
+        goal_due_date: parseCalendarDate(addCalendarDays(today, 180)),
+        include_in_liquidity: false,
+        house_id: casaDemo.id,
+      },
+      {
+        name: 'Colchón',
+        type: PaymentMethodType.GOAL,
+        amount: 4100,
+        goal_amount: 15000,
+        goal_due_date: parseCalendarDate(addCalendarDays(today, 400)),
+        include_in_liquidity: false,
+        house_id: casaDemo.id,
+      },
+    ],
+  });
+
+  console.log('✅ Database seeded with demo data');
 }
 
 main().finally(async () => {
   await prisma.$disconnect();
 });
+

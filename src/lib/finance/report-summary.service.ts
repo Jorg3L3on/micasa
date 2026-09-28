@@ -218,6 +218,7 @@ export const getReportSummary = async (
 
   let planningCardStatementDueTotal = 0;
   let planningCardStatementDueCardCount = 0;
+  let planningCardStatementDueKnownCount = 0;
   let planningCardStatementDueGapCount = 0;
   let planningWalletLoanDueTotal = 0;
   let planningWalletLoanDueCount = 0;
@@ -227,27 +228,28 @@ export const getReportSummary = async (
     excludeCreditInstallment &&
     year &&
     month &&
-    period &&
-    (period === 'FIRST' || period === 'SECOND')
+    parseFortnightPeriod(period)
   ) {
     const parsedYear = parseInt(year, 10);
     const parsedMonth = parseInt(month, 10);
+    const parsedPeriod = parseFortnightPeriod(period)!;
     const [cardDue, loanDue] = await Promise.all([
       sumPlannerCardDueForFortnight(
         ownerFilter,
         parsedYear,
         parsedMonth,
-        period,
+        parsedPeriod,
       ),
       sumPlannerLoanDueForFortnight(
         ownerFilter,
         parsedYear,
         parsedMonth,
-        period,
+        parsedPeriod,
       ),
     ]);
     planningCardStatementDueTotal = cardDue.total;
     planningCardStatementDueCardCount = cardDue.cardCount;
+    planningCardStatementDueKnownCount = cardDue.knownPendingCount;
     planningCardStatementDueGapCount = cardDue.obligationGapCount;
     planningWalletLoanDueTotal = loanDue.wallet.total;
     planningWalletLoanDueCount = loanDue.wallet.count;
@@ -337,6 +339,12 @@ export const getReportSummary = async (
     planningExpenseCount = (planningExpenseCount ?? 0) + orphanCardPaymentCount;
     planningPaidExpenseCount =
       (planningPaidExpenseCount ?? 0) + orphanCardPaymentCount;
+  }
+  if (excludeCreditInstallment && planningCardStatementDueKnownCount > 0) {
+    planningExpenseCount =
+      (planningExpenseCount ?? 0) + planningCardStatementDueKnownCount;
+    planningUnpaidExpenseCount =
+      (planningUnpaidExpenseCount ?? 0) + planningCardStatementDueKnownCount;
   }
   if (excludeCreditInstallment && planningWalletLoanDueCount > 0) {
     planningExpenseCount =

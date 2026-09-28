@@ -73,7 +73,7 @@ Render filter fields with `<ToolbarFiltersPortal>`. Rare actions go in `overflow
 
 - Repeat the header title with an in-page `h1`/`h2` heading or subtitle.
 - Add an in-page `sticky top-16` action bar.
-- Use `<PageHeader/>` (`src/components/PageHeader.tsx`) — it is unused legacy.
+- Add an in-page page header. The app header owns the title.
 
 The planner's month name inside its glass band is the period control, not a second title — keep it.
 
@@ -83,26 +83,11 @@ The planner's month name inside its glass band is the period control, not a seco
 
 Two flavors. Pick by purpose, not page.
 
-### `<StatCard/>` — hero KPI
+### Hero money
 
-Use for **money** values that anchor the page (balance, totals, period income/expense). One large currency, optional subtitle. Reference: `src/components/StatCard.tsx`.
+Use `<Money size="hero">` (`src/components/money.tsx`) for the amount that anchors a page (balance, totals, period income/expense). Tone is `neutral`, `positive`, or `negative` via status tokens. Do not wrap it in a gradient icon.
 
-```tsx
-import StatCard from '@/components/StatCard';
-
-<div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-  <StatCard
-    title="Balance total"
-    amount={summary.balance}
-    iconKey="wallet"
-    iconGradient="linear-gradient(135deg, #f97316 0%, #fb923c 100%)"
-    subtitle="Saldo en billeteras"
-  />
-  …
-</div>
-```
-
-`StatCard` already wraps `formatCurrency`. Available `iconKey` values: `wallet`, `trending-up`, `trending-down`, `circle-dollar`. Add new keys to `ICON_MAP` rather than passing arbitrary icons.
+KPI tiles are calm cards: `kpiMetricCardShellClass` (`src/components/finance/kpi-metric-card-styles.ts`) or `METRIC_STRIP_CLASS` plus a status left border. No gradient fill.
 
 ### Metric strip (compact non-currency)
 
@@ -113,7 +98,7 @@ import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { cn } from '@/lib/utils';
 
 <div className={cn(METRIC_STRIP_CLASS, 'border-l-sky-500/50')}>
-  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+  <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
     Préstamos activos
   </span>
   <span className="text-sm font-bold font-mono tabular-nums">3</span>
@@ -127,7 +112,7 @@ Stable semantic mapping — re-use these gradients across pages so users learn t
 | Color | Gradient | Used for |
 |---|---|---|
 | Electric blue CTA | `#3a37fc` + violet ring | Primary buttons in-app (use `<Button>`, do not duplicate) |
-| Orange CTA | `135deg, #FF5733 → #FF2E00` | Landing `.landing-cta` only |
+| Primary CTA | `Button` `variant="default"` | App and landing. Electric blue in dark. |
 | Electric blue | `135deg, #3a37fc → #911efe` | Brand, debit, selected, icon pills |
 | Pink / magenta | `135deg, #ee477a → #cf1ae6` | Accent, mark gradient end |
 | Emerald | `135deg, #10b981 → #34d399` | Income, success |
@@ -200,7 +185,7 @@ rounded-xl border border-border/60 bg-card shadow-sm
 rounded-2xl border border-border/60 orion-panel-glass dark:border-white/[0.12] dark:backdrop-blur-2xl
   /* planner glass — prefer MONTHLY_PANEL_SHELL_CLASS */
 rounded-xl border border-border/60 bg-card p-4 shadow-sm    /* tile */
-rounded-xl border border-border/60 bg-card p-4 flex flex-col gap-3 shadow-sm  /* StatCard */
+rounded-xl border border-border/60 bg-card p-4 flex flex-col gap-3 shadow-card  /* calm KPI tile */
 ```
 
 ### Borders / dividers
@@ -216,11 +201,11 @@ rounded-xl border border-border/60 bg-card p-4 flex flex-col gap-3 shadow-sm  /*
 - `text-card-foreground` — body inside a card on tinted backgrounds
 - Section title: `text-lg font-semibold leading-tight`
 - Subtitle: `text-xs text-muted-foreground`
-- Micro-label: `text-[10px] font-semibold uppercase tracking-wider text-muted-foreground`
+- Micro-label: `text-caption font-semibold uppercase tracking-wider text-muted-foreground` (11px minimum; `text-caption`)
 
 ### Money
 
-Always `font-mono tabular-nums`. Format via `formatCurrency` from `@/lib/utils` — never `Intl.NumberFormat` inline.
+Always `<Money>` (`src/components/money.tsx`): sans + `tabular-nums`, never `font-mono`. Format via `formatMoney` / `formatCurrency`.
 
 ```
 text-2xl font-bold tracking-tight text-foreground   /* hero KPI */
@@ -231,11 +216,7 @@ font-mono tabular-nums text-sm                       /* table cell */
 
 Inline semantic classes — keep these consistent so users recognize them:
 
-- Success / paid: `text-emerald-600 dark:text-emerald-400` / `bg-emerald-500/10`
-- In-progress / pending: `text-amber-600 dark:text-amber-400` / `bg-amber-500/10`
-- Canceled / destructive: `text-destructive` / `bg-destructive/15`
-- Info / debit: `text-primary-text` / `bg-blue-500/10`
-- Credit / receipts: `text-violet-600 dark:text-violet-300` / `bg-violet-500/10`
+Use `STATUS_*_CLASS` from `src/lib/status-tone.ts` (`success`, `pending`, `overdue`, `income`, `expense`, `info`). Do not use raw palette classes (emerald, amber, rose, violet) for these states.
 
 ### Buttons
 
@@ -243,7 +224,7 @@ Inline semantic classes — keep these consistent so users recognize them:
 - Tall primary on a form: add `h-11`
 - Icon-only: `<Button variant="ghost" size="icon">` with `aria-label`
 - Page primary action: register it in the app header (`primaryAction`), not as an in-page button or FAB
-- Landing-only pills: `.landing-cta` + `rounded-full` — do not use on app routes
+- Landing CTAs use the same `<Button>` as the app (`rounded-xl`). Do not add a second primary fill.
 
 ### Layouts
 
@@ -278,7 +259,7 @@ Inline semantic classes — keep these consistent so users recognize them:
 
 ## Loading and error states
 
-- **Loading (whole page)**: centered `Loader2` with `h-8 w-8 animate-spin` inside `flex justify-center py-12 text-muted-foreground`.
+- **Loading (whole page)**: the archetype skeleton in `src/components/loading/page-skeletons.tsx` (collection table, collection cards, planner, detail, settings). Do not center a `Loader2`.
 - **Loading (in-card)**: `<Skeleton/>` rows matching the eventual content.
 - **Error**: `<Alert variant="destructive">` with `<AlertTitle>` + `<AlertDescription>`. For a top-of-page banner: `mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive`.
 - **Toasts** (`sonner`): for transient success/failure of mutations. Don't use toasts to communicate persistent state.
@@ -302,7 +283,7 @@ Read these files — they are the source of truth this skill summarizes:
 - Tokens: `src/app/globals.css` (`.dark`, `.landing-root`)
 - Layout shell: `src/app/(app)/layout.tsx`
 - Glass panel: `src/components/monthly/monthly-panel-shell.ts`
-- Hero KPI: `src/components/StatCard.tsx`
+- Hero money: `src/components/money.tsx`
 - Metric strip constant: `src/components/ui/metric-strip.ts`
 - Empty state: `src/components/EmptyState.tsx`
 - Toolbar registration: `src/context/toolbar-actions-context.tsx` (reference page: `src/app/(app)/wallets/page.tsx`)

@@ -1,5 +1,6 @@
 'use client';
 
+import { Money } from '@/components/money';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { Button } from '@/components/ui/button';
 import { debtCompositionParts } from '@/lib/finance/liquidity-debt-breakdown';
@@ -24,7 +25,7 @@ export const LiquidityDebtSummaryStrip = ({
       <div
         className={cn(
           METRIC_STRIP_CLASS,
-          'border-l-[3px] border-l-amber-500/50',
+          'border-l-[3px] border-l-status-expense',
           className,
         )}
         role="alert"
@@ -55,36 +56,37 @@ export const LiquidityDebtSummaryStrip = ({
     <div
       className={cn(
         METRIC_STRIP_CLASS,
-        'border-l-[3px] border-l-amber-500/50',
+        'border-l-[3px] border-l-status-expense',
         className,
       )}
       role="region"
       aria-label="Resumen de deudas"
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="eyebrow text-muted-foreground">
         Debes
       </p>
-      <p className="mt-1 font-mono text-xl font-bold tabular-nums text-amber-700 dark:text-amber-300">
+      <p className="mt-1 font-sans text-xl font-bold tabular-nums text-status-expense">
         {formatCurrency(breakdown.debtTotal)}
       </p>
       {composition.length > 0 ? (
-        <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <ul className="mt-3 flex flex-col gap-2 text-caption text-muted-foreground">
           {composition.map((item) => (
-            <span key={item.key}>
+            <li key={item.key}>
               {item.label}{' '}
-              <span className="font-mono tabular-nums text-foreground">
-                {formatCurrency(item.amount)}
-              </span>
-            </span>
+              <Money value={item.amount} size="caption" tone="neutral" />
+            </li>
           ))}
-        </p>
+        </ul>
       ) : null}
       {breakdown.topConcepts.length > 0 ? (
-        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-          {breakdown.topConcepts
-            .map((concept) => `${concept.title} ${formatCurrency(concept.amount)}`)
-            .join(' · ')}
-        </p>
+        <ul className="mt-3 flex flex-col gap-2 text-body leading-normal text-muted-foreground">
+          {breakdown.topConcepts.map((concept, index) => (
+            <li key={`${concept.title}-${index}`}>
+              {concept.title}{' '}
+              <Money value={concept.amount} size="caption" tone="neutral" />
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );

@@ -482,7 +482,7 @@ export async function deleteWalletIfUnusedForOwner(
 
   if (relatedExpense || relatedExpenseTemplate) {
     const error = new Error(
-      'La cartera tiene gastos o plantillas asociadas y no puede eliminarse',
+      'La billetera tiene gastos o plantillas asociadas y no puede eliminarse',
     ) as WalletServiceError;
     error.code = 'WALLET_IN_USE';
     throw error;

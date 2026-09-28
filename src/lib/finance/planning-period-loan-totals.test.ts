@@ -28,7 +28,7 @@ const payrollScheduled: LoanPlanningPayment = {
   loanName: 'FONACOT',
   lender: 'Banco',
   lenderId: null,
-  amount: 2792.73,
+  amount: 2800,
   dueDate: '2026-06-15',
   paidAt: null,
   status: 'SCHEDULED',
@@ -47,7 +47,7 @@ describe('planning-period-loan-totals', () => {
     ]);
 
     expect(result.walletDue).toEqual({ total: 200, count: 1 });
-    expect(result.payrollDeduction).toEqual({ total: 2792.73, count: 1 });
+    expect(result.payrollDeduction).toEqual({ total: 2800, count: 1 });
   });
 
   it('does not count paid wallet payments that already have a linked expense', () => {

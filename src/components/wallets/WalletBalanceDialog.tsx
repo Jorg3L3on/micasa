@@ -127,7 +127,7 @@ export default function WalletBalanceDialog({
         <OverlayHint role="status">
           {walletName} —{' '}
           {isCredit ? 'deuda actual en libros' : 'saldo actual en libros'}:{' '}
-          <span className="font-mono font-semibold tabular-nums text-foreground">
+          <span className="font-sans font-semibold tabular-nums text-foreground">
             {formatCurrency(currentAmount)}
           </span>
         </OverlayHint>

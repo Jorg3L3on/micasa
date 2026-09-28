@@ -14,22 +14,6 @@ export type CategoryPieSlice = {
   pct: number;
 };
 
-/** Whisper Money–inspired chart accents: coral (gastos) + emerald, then vivid companions. */
-export const CATEGORY_PIE_SLICE_COLORS = [
-  '#ff4d6d',
-  '#34d399',
-  '#60a5fa',
-  '#fbbf24',
-  '#a78bfa',
-  '#2dd4bf',
-  '#fb923c',
-  '#f472b6',
-  '#38bdf8',
-  '#4ade80',
-  '#e879f9',
-  '#f87171',
-] as const;
-
 const MAX_SLICES = 8;
 
 export const bucketCategoryPieRows = (

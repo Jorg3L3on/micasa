@@ -53,7 +53,7 @@ export default async function AdminHomePage({
 
       <div className="overflow-hidden rounded-lg border border-border/60">
         <table className="w-full text-sm">
-          <thead className="bg-muted/30 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <thead className="bg-muted/30 text-left eyebrow text-muted-foreground">
             <tr>
               <th className="px-3 py-2.5">Usuario</th>
               <th className="px-3 py-2.5 hidden sm:table-cell">Estado</th>
@@ -83,7 +83,7 @@ export default async function AdminHomePage({
                     >
                       {user.name}
                     </Link>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-caption text-muted-foreground">
                       {user.email}
                     </p>
                   </td>
@@ -100,7 +100,7 @@ export default async function AdminHomePage({
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 hidden md:table-cell text-[11px] text-muted-foreground">
+                  <td className="px-3 py-2.5 hidden md:table-cell text-caption text-muted-foreground">
                     {formatDisplayDate(user.created_at)}
                   </td>
                 </tr>

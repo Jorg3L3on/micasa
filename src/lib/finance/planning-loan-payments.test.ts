@@ -108,13 +108,13 @@ describe('mapLoanDuePaymentToTransactionRow', () => {
         paymentSource: 'PAYROLL_DEDUCTION',
         sourceWalletId: null,
         sourceWalletName: null,
-        incomeTemplateName: 'Nómina Carmen',
+        incomeTemplateName: 'Nómina Ana',
       }),
     );
 
     expect(row).toMatchObject({
       description: 'Deducción nómina: FONACOT (FONACOT)',
-      paymentMethod: 'Nómina: Nómina Carmen',
+      paymentMethod: 'Nómina: Nómina Ana',
       wallet_id: null,
       planning_row_kind: 'loan_payment',
       loan_payment_source: 'PAYROLL_DEDUCTION',

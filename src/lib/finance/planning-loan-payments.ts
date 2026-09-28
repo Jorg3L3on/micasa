@@ -1,5 +1,5 @@
 /**
- * Cuotas de préstamo programadas: deben aparecer en planificación (tabla y gráfica)
+ * Cuotas de préstamo programadas: deben aparecer en planeación (tabla y gráfica)
  * sin duplicar gastos ya vinculados al marcar un pago como pagado.
  */
 

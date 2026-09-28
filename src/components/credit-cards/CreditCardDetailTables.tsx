@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowDown, ArrowUp } from 'lucide-react';
@@ -106,7 +107,7 @@ const PurchaseSortButton = ({
     type="button"
     variant="ghost"
     size="sm"
-    className="h-7 px-1.5 text-[10px] font-semibold uppercase tracking-wider"
+    className="h-7 px-1.5 eyebrow"
     onClick={() => onSort(sortKey)}
     aria-label={`Ordenar por ${label}${
       activeKey === sortKey ? (dir === 'desc' ? ', descendente' : ', ascendente') : ''
@@ -139,7 +140,7 @@ const PaymentSortButton = ({
     type="button"
     variant="ghost"
     size="sm"
-    className="h-7 px-1.5 text-[10px] font-semibold uppercase tracking-wider"
+    className="h-7 px-1.5 eyebrow"
     onClick={() => onSort(sortKey)}
     aria-label={`Ordenar pagos por ${label}`}
   >
@@ -243,7 +244,7 @@ export const PurchaseTableBlock = ({
                       {purchase.credit_installment_current != null &&
                       purchase.credit_installment_total != null ? (
                         <span
-                          className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground"
+                          className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 eyebrow text-muted-foreground"
                           title="Compra en cuotas"
                         >
                           {purchase.credit_installment_current}/
@@ -251,7 +252,7 @@ export const PurchaseTableBlock = ({
                         </span>
                       ) : null}
                     </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] text-muted-foreground">
+                    <p className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-caption text-muted-foreground">
                       <CategoryLabel
                         name={purchase.category}
                         icon={purchase.categoryIcon}
@@ -261,12 +262,12 @@ export const PurchaseTableBlock = ({
                     </p>
                     <Link
                       href={getFortnightHref(purchase, ownerQueryString)}
-                      className="mt-1 inline-block text-[10px] font-medium text-primary-text underline-offset-2 hover:underline"
+                      className="mt-1 inline-block text-caption font-medium text-primary-text underline-offset-2 hover:underline"
                     >
                       Ver quincena
                     </Link>
                   </div>
-                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                  <span className="shrink-0 font-sans text-sm font-bold tabular-nums">
                     {formatCurrency(purchase.amount)}
                   </span>
                 </div>
@@ -345,11 +346,9 @@ export const PaymentTableBlock = ({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Todavía no hay pagos registrados.</p>
+        <EmptyState message="Todavía no hay pagos registrados." className="py-6" />
       ) : sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay pagos que coincidan con el filtro.
-        </p>
+        <EmptyState message="No hay pagos que coincidan con el filtro." className="py-6" />
       ) : (
         <div className={listScrollClassName}>
           <ul className="space-y-2">
@@ -363,12 +362,12 @@ export const PaymentTableBlock = ({
                       className="truncate text-sm font-medium"
                       iconClassName="h-5 w-5 rounded-md"
                     />
-                    <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                    <p className="mt-1 truncate text-caption text-muted-foreground">
                       {formatDate(payment.paid_at)}
                       {payment.note ? ` · ${payment.note}` : ''}
                     </p>
                   </div>
-                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <span className="shrink-0 font-sans text-sm font-bold tabular-nums text-status-income">
                     {formatCurrency(payment.amount)}
                   </span>
                 </div>

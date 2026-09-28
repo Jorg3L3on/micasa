@@ -374,7 +374,7 @@ const CreditCardStatementImportDialog = ({
                     className={cn(
                       'flex w-full items-center gap-3 rounded-xl border border-dashed px-3 py-3 text-left transition-colors',
                       importFile
-                        ? 'border-sky-500/40 bg-sky-500/5'
+                        ? 'border-status-info/40 bg-status-info/5'
                         : 'border-border/60 bg-muted/20 hover:bg-muted/40',
                     )}
                     aria-label={
@@ -387,7 +387,7 @@ const CreditCardStatementImportDialog = ({
                       className={cn(
                         'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
                         importFile
-                          ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                          ? 'bg-status-info/15 text-status-info'
                           : 'bg-muted text-muted-foreground',
                       )}
                     >
@@ -397,7 +397,7 @@ const CreditCardStatementImportDialog = ({
                       <span className="block truncate text-sm font-medium text-foreground">
                         {importFile ? importFile.name : 'Elegir PDF'}
                       </span>
-                      <span className="block text-[10px] text-muted-foreground">
+                      <span className="block text-caption text-muted-foreground">
                         {importFile
                           ? `${(importFile.size / 1024).toFixed(0)} KB · Toca para cambiar`
                           : 'Estado de cuenta en PDF'}
@@ -418,7 +418,7 @@ const CreditCardStatementImportDialog = ({
                     <span className="flex items-center gap-2">
                       Opciones
                       {advancedOptionsActive ? (
-                        <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-600 dark:text-sky-400">
+                        <span className="rounded-full bg-status-info/15 px-1.5 py-0.5 text-caption font-semibold text-status-info">
                           Activas
                         </span>
                       ) : null}
@@ -475,7 +475,7 @@ const CreditCardStatementImportDialog = ({
                     {preview.total_due != null ? (
                       <span>
                         Total:{' '}
-                        <span className="font-mono font-medium text-foreground">
+                        <span className="font-sans font-medium text-foreground">
                           {formatCurrency(preview.total_due)}
                         </span>
                       </span>
@@ -483,13 +483,13 @@ const CreditCardStatementImportDialog = ({
                     {preview.minimum_payment != null ? (
                       <span>
                         Mínimo:{' '}
-                        <span className="font-mono font-medium text-foreground">
+                        <span className="font-sans font-medium text-foreground">
                           {formatCurrency(preview.minimum_payment)}
                         </span>
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-caption text-muted-foreground">
                     {chargeCount} cargo(s) · {paymentCount} pago(s) · {msiCount} cuota(s) MSI
                   </p>
                 </div>
@@ -512,7 +512,7 @@ const CreditCardStatementImportDialog = ({
                     <span className="block text-sm font-medium leading-none">
                       Cargos ({chargeCount})
                     </span>
-                    <span className="block text-[10px] text-muted-foreground">
+                    <span className="block text-caption text-muted-foreground">
                       Compras y gastos del periodo
                     </span>
                   </span>
@@ -532,7 +532,7 @@ const CreditCardStatementImportDialog = ({
                     <span className="block text-sm font-medium leading-none">
                       Pagos ({paymentCount})
                     </span>
-                    <span className="block text-[10px] text-muted-foreground">
+                    <span className="block text-caption text-muted-foreground">
                       Abonos registrados como ya pagados
                     </span>
                   </span>
@@ -552,7 +552,7 @@ const CreditCardStatementImportDialog = ({
                     <span className="block text-sm font-medium leading-none">
                       Cuotas MSI ({msiCount})
                     </span>
-                    <span className="block text-[10px] text-muted-foreground">
+                    <span className="block text-caption text-muted-foreground">
                       Calendario futuro sin crear compras
                     </span>
                   </span>
@@ -576,7 +576,7 @@ const CreditCardStatementImportDialog = ({
                   role="region"
                   aria-label="Movimientos detectados"
                 >
-                  <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="px-3 py-2 eyebrow text-muted-foreground">
                     Movimientos
                   </p>
                   <ul className="max-h-[min(12rem,32vh)] divide-y divide-border/60 overflow-y-auto scrollbar-hide">
@@ -585,19 +585,19 @@ const CreditCardStatementImportDialog = ({
                         key={`${row.kind}-${row.payment_date}-${row.amount}-${index}`}
                         className="flex items-start gap-2 px-3 py-2"
                       >
-                        <span className="mt-0.5 shrink-0 rounded-full border border-border/60 bg-background px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span className="mt-0.5 shrink-0 rounded-full border border-border/60 bg-background px-1.5 py-0.5 eyebrow text-muted-foreground">
                           {MOVEMENT_KIND_LABEL[row.kind]}
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{row.description}</p>
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-caption text-muted-foreground">
                             {formatDate(row.payment_date)}
                             {row.installment_current != null && row.installment_total != null
                               ? ` · ${row.installment_current}/${row.installment_total}`
                               : ''}
                           </p>
                         </div>
-                        <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                        <span className="shrink-0 font-sans text-sm font-semibold tabular-nums">
                           {formatCurrency(row.amount)}
                         </span>
                       </li>
@@ -619,7 +619,7 @@ const CreditCardStatementImportDialog = ({
               role="region"
               aria-label="Importaciones recientes"
             >
-              <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="px-3 py-2 eyebrow text-muted-foreground">
                 Recientes
               </p>
               <ul className="max-h-[min(10rem,28vh)] divide-y divide-border/60 overflow-y-auto scrollbar-hide">
@@ -636,7 +636,7 @@ const CreditCardStatementImportDialog = ({
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{periodLabel}</p>
-                        <p className="truncate text-[10px] text-muted-foreground">
+                        <p className="truncate text-caption text-muted-foreground">
                           {PROVIDER_LABEL[row.provider] ?? row.provider}
                           {' · '}
                           {row.expense_count} gasto{row.expense_count === 1 ? '' : 's'}

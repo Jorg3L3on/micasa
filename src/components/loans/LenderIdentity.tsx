@@ -27,7 +27,7 @@ export const LenderIcon = ({
     return (
       <span
         className={cn(
-          'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 text-[11px] font-bold tracking-wide text-teal-800 ring-1 ring-teal-500/30 dark:text-teal-200',
+          'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-status-info/15 text-caption font-bold tracking-wide text-status-info ring-1 ring-status-info/30 dark:text-status-info',
           className,
         )}
         aria-label="Fonacot"

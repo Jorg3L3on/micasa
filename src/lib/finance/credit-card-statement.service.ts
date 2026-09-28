@@ -1689,7 +1689,7 @@ const getDuePaymentsForPlannerMonthCached = cache(
     ),
 );
 
-/** Due card payments for Planificación: primera vs segunda quincena del mes mostrado. */
+/** Due card payments for Planeación: primera vs segunda quincena del mes mostrado. */
 export function getDuePaymentsForPlannerMonth(
   ownerFilter: OwnerFilter,
   year: number,
@@ -1705,7 +1705,12 @@ export function getDuePaymentsForPlannerMonth(
 
 const sumCardDueItems = (
   items: DuePaymentItem[],
-): { total: number; cardCount: number; obligationGapCount: number } => {
+): {
+  total: number;
+  cardCount: number;
+  knownPendingCount: number;
+  obligationGapCount: number;
+} => {
   const snapshots = items.map((item) => panelSnapshotFromDueItem(item));
   const total = snapshots.reduce(
     (sum, snapshot) =>
@@ -1714,7 +1719,10 @@ const sumCardDueItems = (
   );
   const obligationGapCount = snapshots.filter((snapshot) => snapshot.countsAsGap).length;
   const cardCount = snapshots.filter((snapshot) => snapshot.countsAsPending).length;
-  return { total, cardCount, obligationGapCount };
+  const knownPendingCount = snapshots.filter(
+    (snapshot) => snapshot.countsInKnownTotal && (snapshot.knownCashAmount ?? 0) > 0,
+  ).length;
+  return { total, cardCount, knownPendingCount, obligationGapCount };
 };
 
 /** Suma el pago conocido de tarjetas con corte en la quincena. Los huecos no entran como $0. */
@@ -1723,7 +1731,12 @@ export async function sumPlannerCardDueForFortnight(
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{ total: number; cardCount: number; obligationGapCount: number }> {
+): Promise<{
+  total: number;
+  cardCount: number;
+  knownPendingCount: number;
+  obligationGapCount: number;
+}> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
@@ -1738,7 +1751,12 @@ export async function sumPlannerCardDueForMonth(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
-): Promise<{ total: number; cardCount: number; obligationGapCount: number }> {
+): Promise<{
+  total: number;
+  cardCount: number;
+  knownPendingCount: number;
+  obligationGapCount: number;
+}> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
@@ -1753,7 +1771,12 @@ export async function sumPlannerCardDueForPeriodScope(
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{ total: number; cardCount: number; obligationGapCount: number }> {
+): Promise<{
+  total: number;
+  cardCount: number;
+  knownPendingCount: number;
+  obligationGapCount: number;
+}> {
   if (view === 'month') {
     return sumPlannerCardDueForMonth(ownerFilter, year, month);
   }

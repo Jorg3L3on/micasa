@@ -1,5 +1,7 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -26,7 +28,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, type ClientApiError } from '@/lib/api/client-fetch';
 import { deleteExpenseTemplate } from '@/lib/api/expense-templates';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { Money } from '@/components/money';
 import type { ExpenseTemplateListItem } from '@/types/catalog';
 import {
   CategoryLabel,
@@ -191,9 +193,12 @@ export default function ExpenseTemplatesPage() {
           />
         ),
         cell: ({ row }) => (
-          <span className="text-right font-medium">
-            {formatCurrency(row.original.totalEstimatedAmount ?? 0)}
-          </span>
+          <Money
+            value={row.original.totalEstimatedAmount ?? 0}
+            size="row"
+            tone="negative"
+            className="block text-right"
+          />
         ),
       },
       {
@@ -229,8 +234,8 @@ export default function ExpenseTemplatesPage() {
           <span
             className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
               row.original.active
-                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                ? 'bg-status-success-soft text-status-success'
+                : 'bg-muted text-muted-foreground'
             }`}
           >
             {row.original.active ? 'Sí' : 'No'}
@@ -290,7 +295,7 @@ export default function ExpenseTemplatesPage() {
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Nueva plantilla de gasto',
+      label: 'Agregar plantilla de gasto',
       onClick: handleCreateTemplate,
       icon: primaryActionIcon,
     },
@@ -334,25 +339,26 @@ export default function ExpenseTemplatesPage() {
     <>
       <div className="space-y-5">
       {error && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       <Card className="overflow-hidden">
         <CardContent className="p-6">
           {loading ? (
-            <div className="py-12 text-center text-muted-foreground">
-              Cargando...
+            <div className="space-y-2" aria-busy="true" aria-label="Cargando">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-12 w-full rounded-xl" />
+              ))}
             </div>
           ) : templates.length === 0 ? (
             <EmptyState message="No se encontraron plantillas de gastos" />
           ) : (
             <DataTable
+              embedded
               data={filteredTemplates}
               columns={columns}
               filterColumn="name"
-              filterPlaceholder="Filtrar por nombre..."
+              filterPlaceholder="Filtrar por nombre…"
               filterSlot={filterSlot}
               columnVisibility
               emptyMessage="No se encontraron plantillas de gastos."
@@ -361,6 +367,7 @@ export default function ExpenseTemplatesPage() {
                   name={template.name}
                   subtitle={`${formatCategoryLabel(template.category, template.categoryIcon)} · ${template.paymentMethod ?? 'Sin método'}`}
                   amount={template.totalEstimatedAmount ?? 0}
+                  tone="negative"
                   active={template.active}
                   onEdit={() => openEditDialog(template)}
                   onRequestDelete={() => openDeleteDialog(template)}

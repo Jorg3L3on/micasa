@@ -21,12 +21,8 @@ import {
   kpiMetricValueClass,
   type KpiMetricTone,
 } from '@/components/finance/kpi-metric-card-styles';
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  creditCardDetailTabTriggerClass,
-  creditCardSegmentedTabChromeClass,
-  creditCardSegmentedTabListClass,
-} from '@/components/credit-cards/credit-card-segmented-tabs';
+import { SegmentedControl, type SegmentedOption } from '@/components/segmented-control';
+import { creditCardSegmentedTabChromeClass } from '@/components/credit-cards/credit-card-segmented-tabs';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import type { PaymentMethodType } from '@/domain/payment-method';
@@ -74,27 +70,22 @@ export const WalletPeriodWorkspaceShell = ({
   </div>
 );
 
-export const WalletDetailTabsList = ({ children }: { children: ReactNode }) => (
-  <div className={creditCardSegmentedTabChromeClass}>
-    <TabsList
-      variant="line"
-      className={cn(creditCardSegmentedTabListClass, '!grid-cols-3')}
-    >
-      {children}
-    </TabsList>
-  </div>
-);
-
-export const WalletDetailTabTrigger = ({
-  value,
-  children,
+export const WalletDetailTabsList = ({
+  options,
 }: {
-  value: string;
-  children: ReactNode;
+  options: readonly SegmentedOption[];
 }) => (
-  <TabsTrigger value={value} className={creditCardDetailTabTriggerClass}>
-    {children}
-  </TabsTrigger>
+  <SegmentedControl
+    embedded
+    ariaLabel="Secciones de la billetera"
+    stretch
+    frameClassName={cn(
+      creditCardSegmentedTabChromeClass,
+      'flex w-full min-w-0 items-center',
+    )}
+    wrapperClassName="min-w-0 flex-1"
+    options={options}
+  />
 );
 
 type VisualHeroProps = {
@@ -123,12 +114,12 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
     >
       <div
         className={cn(
-          'relative w-full overflow-hidden rounded-[1.375rem] border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
+          'relative w-full overflow-hidden rounded-face border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
           !cardStyle &&
             (isCash
-              ? 'border-emerald-500/40 bg-linear-to-br from-emerald-700 via-emerald-900 to-slate-950'
-              : 'border-blue-500/40 bg-linear-to-br from-blue-700 via-slate-900 to-slate-950'),
-          isNegative && 'ring-rose-400/55',
+              ? 'border-status-income-border bg-linear-to-br from-status-income to-background'
+              : 'border-status-info-border bg-linear-to-br from-status-info to-background'),
+          isNegative && 'ring-status-expense/55',
         )}
         style={cardStyle}
       >
@@ -145,7 +136,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
           aria-hidden
         />
         {isNegative ? (
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-rose-400/80 to-transparent" />
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-status-expense/80 to-transparent" />
         ) : null}
 
         <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
@@ -167,33 +158,33 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
                 <p className="truncate text-sm font-semibold leading-tight opacity-95">
                   {wallet.name}
                 </p>
-                <p className="text-[10px] uppercase tracking-widest opacity-60">
+                <p className="eyebrow opacity-60">
                   {typeLabel}
                 </p>
               </div>
             </div>
             {!wallet.active ? (
-              <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider opacity-80">
+              <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 eyebrow opacity-80">
                 Inactiva
               </span>
             ) : null}
           </div>
 
           <div className="min-w-0 space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+            <p className="eyebrow opacity-70">
               Saldo disponible
             </p>
             <p
               className={cn(
                 // leading-snug: WebKit clips glyph ink at line-height:1 inside overflow-hidden
-                'break-words text-2xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-3xl',
-                isNegative && 'text-rose-200',
+                'break-words text-2xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-3xl',
+                isNegative && 'text-status-expense',
               )}
             >
               {formatCurrency(wallet.amount)}
             </p>
             {isNegative ? (
-              <p className="text-xs font-medium text-rose-200/90">
+              <p className="text-xs font-medium text-status-expense/90">
                 Saldo en rojo — revisa movimientos del periodo
               </p>
             ) : null}
@@ -222,7 +213,7 @@ const WalletPeriodMetrics = ({ metrics }: { metrics: PeriodMetric[] }) => (
         <p className={kpiMetricLabelClass(tone)}>{label}</p>
         <p
           className={cn(
-            'mt-1 truncate font-mono text-base font-bold tabular-nums leading-none sm:text-lg',
+            'mt-1 truncate font-sans text-base font-bold tabular-nums leading-none sm:text-lg',
             kpiMetricValueClass(tone),
           )}
         >
@@ -273,7 +264,7 @@ export const WalletPeriodSummary = ({
       key: 'inflow',
       label: 'Ingresos',
       value: formatCurrency(inflow),
-      tone: 'emerald',
+      tone: 'income',
     },
     {
       key: 'outflow',
@@ -307,7 +298,7 @@ export const WalletPeriodSummary = ({
           <TooltipContent side="bottom">Mes anterior</TooltipContent>
         </Tooltip>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="eyebrow text-muted-foreground">
             {isCurrentMonth ? 'Mes actual' : 'Periodo'}
           </p>
           <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">
@@ -333,7 +324,7 @@ export const WalletPeriodSummary = ({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 shrink-0 rounded-full px-2.5 text-[10px]"
+            className="h-9 shrink-0 rounded-full px-2.5 text-caption"
             onClick={onResetToToday}
             aria-label="Volver al mes actual"
           >
@@ -347,8 +338,8 @@ export const WalletPeriodSummary = ({
         ) : null}
       </div>
       <WalletPeriodMetrics metrics={metrics} />
-      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-        <Badge variant="secondary" className="h-6 rounded-full px-2 font-mono tabular-nums">
+      <div className="flex flex-wrap gap-2 text-caption text-muted-foreground">
+        <Badge variant="secondary" className="h-6 rounded-full px-2 font-sans tabular-nums">
           {movementCount} mov.
         </Badge>
         <Badge variant="outline" className="h-6 rounded-full px-2">

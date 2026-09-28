@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import {
-  Loader2,
   Banknote,
   Landmark,
   CreditCard,
@@ -66,32 +65,32 @@ const TYPE_META: Record<WalletFormValues['type'], TypeMeta> = {
   CASH: {
     label: 'Efectivo',
     icon: Banknote,
-    accent: 'text-emerald-600 dark:text-emerald-400',
-    iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
+    accent: 'text-status-income',
+    iconBg: 'bg-status-income/10 dark:bg-status-income/15',
   },
   DEBIT_CARD: {
     label: 'Tarjeta de débito',
     icon: Landmark,
-    accent: 'text-blue-600 dark:text-blue-400',
-    iconBg: 'bg-blue-500/10 dark:bg-blue-500/15',
+    accent: 'text-status-info',
+    iconBg: 'bg-status-info/10 dark:bg-status-info/15',
   },
   CREDIT_CARD: {
     label: 'Tarjeta de crédito',
     icon: CreditCard,
-    accent: 'text-slate-700 dark:text-slate-300',
-    iconBg: 'bg-slate-500/10 dark:bg-slate-500/15',
+    accent: 'text-status-info',
+    iconBg: 'bg-status-info-soft',
   },
   DEPARTMENT_STORE_CARD: {
     label: 'Tienda departamental',
     icon: Store,
-    accent: 'text-amber-600 dark:text-amber-400',
-    iconBg: 'bg-amber-500/10 dark:bg-amber-500/15',
+    accent: 'text-status-pending',
+    iconBg: 'bg-status-pending/10 dark:bg-status-pending/15',
   },
   GOAL: {
     label: 'Meta',
     icon: Target,
-    accent: 'text-blue-600 dark:text-blue-400',
-    iconBg: 'bg-blue-600/10 dark:bg-blue-500/15',
+    accent: 'text-status-info',
+    iconBg: 'bg-status-info/10 dark:bg-status-info/15',
   },
 };
 
@@ -209,10 +208,10 @@ export default function WalletForm({
 
   const dialogTitle = isGoalType
     ? mode === 'create'
-      ? 'Nueva meta'
+      ? 'Agregar meta'
       : 'Editar meta'
     : mode === 'create'
-      ? 'Nueva billetera'
+      ? 'Agregar billetera'
       : 'Editar billetera';
   const dialogDescription = isGoalType
     ? mode === 'create'
@@ -222,20 +221,15 @@ export default function WalletForm({
       ? 'Define nombre, tipo y saldo inicial.'
       : 'Actualiza los datos de esta billetera.';
 
-  const submitLabel = isSubmitting ? (
-    <>
-      <Loader2
-        className="h-4 w-4 animate-spin motion-reduce:animate-none"
-        aria-hidden
-        data-icon="inline-start"
-      />
-      {mode === 'create' ? 'Creando…' : 'Guardando…'}
-    </>
-  ) : mode === 'create' ? (
+  const submitLabel = isSubmitting
+    ? mode === 'create'
+      ? 'Creando…'
+      : 'Guardando…'
+    : mode === 'create' ? (
     isGoalType ? (
-      'Crear meta'
+      'Agregar meta'
     ) : (
-      'Crear billetera'
+      'Agregar billetera'
     )
   ) : (
     'Guardar cambios'

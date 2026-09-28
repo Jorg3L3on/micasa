@@ -22,6 +22,7 @@ import {
   getProviderCardStyle,
   getWalletBrandCssVars,
 } from '@/lib/provider-card-style';
+import { Money } from '@/components/money';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -202,6 +203,60 @@ export const WalletListCard = ({
       ? `${wallet.name}, inactiva`
       : wallet.name;
 
+  const actionMenuItems = (
+    <>
+      {canTransfer && onTransfer ? (
+        <DropdownMenuItem
+          onClick={() => onTransfer(wallet)}
+          className="cursor-pointer"
+        >
+          <ArrowLeftRight className="mr-2 h-4 w-4" />
+          Transferir saldo
+        </DropdownMenuItem>
+      ) : null}
+      <DropdownMenuItem
+        onClick={() => onOpenBalance(wallet)}
+        className="cursor-pointer"
+      >
+        <SlidersHorizontal className="mr-2 h-4 w-4" />
+        Ajustar saldo
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => onEdit(wallet)}
+        className="cursor-pointer"
+      >
+        <Pencil className="mr-2 h-4 w-4" />
+        Editar
+      </DropdownMenuItem>
+    </>
+  );
+
+  const rowMetrics = isCard
+    ? [
+        {
+          label: 'Deuda',
+          value: amountNumber,
+          tone: 'neutral' as const,
+        },
+        {
+          label: 'Disponible',
+          value: availableCredit,
+          tone: (availableCredit ?? 0) < 0 ? ('negative' as const) : ('neutral' as const),
+        },
+        {
+          label: 'Límite',
+          value: hasCreditLimit ? effectiveLimit : null,
+          tone: 'neutral' as const,
+        },
+      ]
+    : [
+        {
+          label: 'Saldo',
+          value: amountNumber,
+          tone: isNegativeBalance ? ('negative' as const) : ('neutral' as const),
+        },
+      ];
+
   return (
     <article
       className={cn(
@@ -210,11 +265,85 @@ export const WalletListCard = ({
       )}
       aria-label={articleLabel}
     >
+      <div className="md:hidden">
+        <SwipeDeleteRow
+          enabled={isMobile}
+          onRequestDelete={handleRequestDelete}
+          deleteAriaLabel={`Eliminar ${wallet.name}`}
+          className="rounded-xl"
+        >
+          <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card px-3 py-3 shadow-card">
+            <Link
+              href={detailHref}
+              onClick={handleOpenDetail}
+              onPointerEnter={handlePrefetchDetail}
+              onFocus={handlePrefetchDetail}
+              className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+              aria-label={`Abrir ${wallet.name}`}
+            />
+            <div className="relative z-10 flex min-w-0 items-start gap-3 pr-8">
+              <WalletProviderIcon
+                providerIconKey={wallet.provider_icon_key}
+                className="h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-muted"
+                iconClassName="h-4 w-4"
+                showTooltipLabel={false}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="min-w-0 truncate text-body font-medium text-foreground" title={wallet.name}>
+                    {wallet.name}
+                  </p>
+                  {!wallet.active ? (
+                    <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-caption">
+                      Inactivo
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="eyebrow text-muted-foreground">{cycleLabel ?? typeLabel}</p>
+                <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                  {rowMetrics.map((metric) => (
+                    <div key={metric.label} className="min-w-0">
+                      <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
+                      <dd className="mt-0.5">
+                        {metric.value == null ? (
+                          <span className="text-caption text-muted-foreground">Sin línea</span>
+                        ) : (
+                          <Money value={metric.value} size="row" tone={metric.tone} />
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
+            <div className="absolute top-1.5 right-1.5 z-20">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-8 rounded-full"
+                    aria-label={`Más opciones para ${wallet.name}`}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  {actionMenuItems}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </SwipeDeleteRow>
+      </div>
+
+      <div className="hidden md:block">
       <SwipeDeleteRow
-        enabled={isMobile}
+        enabled={false}
         onRequestDelete={handleRequestDelete}
         deleteAriaLabel={`Eliminar ${wallet.name}`}
-        className="rounded-[1.375rem]"
+        className="rounded-face"
         railClassName="items-start"
         actionClassName="h-28"
       >
@@ -225,12 +354,12 @@ export const WalletListCard = ({
         >
           <div
             className={cn(
-              'relative w-full min-w-0 overflow-hidden rounded-[1.375rem] border border-white/15 text-white',
-              'shadow-[0_12px_32px_-14px_rgba(0,0,0,0.62),0_4px_12px_-6px_rgba(0,0,0,0.4)]',
+              'relative w-full min-w-0 overflow-hidden rounded-face border border-white/15 text-white',
+              'shadow-face',
               'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
               'active:scale-[0.985]',
               WALLET_LIST_CARD_SHELL_CLASS,
-              hasAlert && 'ring-2 ring-inset ring-rose-400/70',
+              hasAlert && 'ring-2 ring-inset ring-status-expense/70',
             )}
             style={cardStyle}
             data-wallet-vt={viewTransitionName}
@@ -240,7 +369,7 @@ export const WalletListCard = ({
               onClick={handleOpenDetail}
               onPointerEnter={handlePrefetchDetail}
               onFocus={handlePrefetchDetail}
-              className="absolute inset-0 z-0 rounded-[1.375rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+              className="absolute inset-0 z-0 rounded-face focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
               aria-label={`Abrir ${wallet.name}`}
             />
 
@@ -255,10 +384,13 @@ export const WalletListCard = ({
                       showTooltipLabel={false}
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold leading-tight opacity-95">
+                      <p
+                        className="truncate text-sm font-semibold leading-tight opacity-95"
+                        title={wallet.name}
+                      >
                         {wallet.name}
                       </p>
-                      <p className="text-[10px] uppercase tracking-widest opacity-60">
+                      <p className="eyebrow opacity-60">
                         {cycleLabel ?? typeLabel}
                       </p>
                     </div>
@@ -266,13 +398,13 @@ export const WalletListCard = ({
                   {!wallet.active ? (
                     <Badge
                       variant="outline"
-                      className="pointer-events-none h-6 shrink-0 gap-0.5 border-white/30 bg-black/20 px-1.5 text-[10px] text-white"
+                      className="pointer-events-none h-6 shrink-0 gap-0.5 border-white/30 bg-black/20 px-1.5 text-caption text-white"
                     >
                       <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
                       Inactivo
                     </Badge>
                   ) : (
-                    <span className="font-mono text-[11px] tracking-[0.2em] opacity-50">
+                    <span className="font-mono text-caption tracking-[0.2em] opacity-50">
                       •••• ••••
                     </span>
                   )}
@@ -280,13 +412,13 @@ export const WalletListCard = ({
 
                 <div className="space-y-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+                    <p className="eyebrow opacity-70">
                       Deuda total
                     </p>
                     <p
                       className={cn(
-                        'font-mono text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-rose-200',
+                        'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
+                        hasAlert && 'text-status-expense',
                       )}
                     >
                       {formatCurrency(amountNumber)}
@@ -295,13 +427,13 @@ export const WalletListCard = ({
 
                   <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
                     <div>
-                      <p className="text-[9px] uppercase tracking-wider opacity-70">
+                      <p className="eyebrow opacity-70">
                         Disponible
                       </p>
                       <p
                         className={cn(
-                          'font-mono text-sm font-semibold tabular-nums leading-snug',
-                          (availableCredit ?? 0) < 0 && 'text-red-200',
+                          'font-sans text-sm font-semibold tabular-nums leading-snug',
+                          (availableCredit ?? 0) < 0 && 'text-status-expense',
                         )}
                       >
                         {availableCredit == null
@@ -311,10 +443,10 @@ export const WalletListCard = ({
                     </div>
                     {hasCreditLimit && effectiveLimit != null ? (
                       <div className="text-right">
-                        <p className="text-[9px] uppercase tracking-wider opacity-70">
+                        <p className="eyebrow opacity-70">
                           Límite
                         </p>
-                        <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                        <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                           {formatCurrency(effectiveLimit)}
                         </p>
                       </div>
@@ -323,12 +455,12 @@ export const WalletListCard = ({
 
                   {usagePercent != null && hasCreditLimit ? (
                     <div className="space-y-1">
-                      <div className="flex justify-between text-[9px] opacity-70">
-                        <span>Utilización</span>
+                      <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
+                        <span className="shrink-0 whitespace-normal">Utilización</span>
                         <span
                           className={cn(
-                            'font-mono tabular-nums',
-                            isOverLimit && 'text-rose-200',
+                            'font-sans tabular-nums',
+                            isOverLimit && 'text-status-expense',
                           )}
                         >
                           {isOverLimit ? 'Excedido' : `${usagePercent}%`}
@@ -345,7 +477,7 @@ export const WalletListCard = ({
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
-                            isOverLimit ? 'bg-rose-300' : 'bg-white/85',
+                            isOverLimit ? 'bg-status-expense' : 'bg-white/85',
                           )}
                           style={{ width: `${Math.min(usagePercent, 100)}%` }}
                         />
@@ -354,7 +486,7 @@ export const WalletListCard = ({
                   ) : null}
 
                   {showTemporaryTope ? (
-                    <span className="inline-flex rounded-full border border-white/25 bg-black/25 px-2 py-0.5 text-[10px] font-medium tracking-wide text-white/90">
+                    <span className="inline-flex rounded-full border border-white/25 bg-black/25 px-2 py-0.5 text-caption font-medium tracking-wide text-white/90">
                       Tope temporal
                     </span>
                   ) : null}
@@ -372,10 +504,13 @@ export const WalletListCard = ({
                         showTooltipLabel={false}
                       />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold leading-tight opacity-95">
+                        <p
+                          className="truncate text-sm font-semibold leading-tight opacity-95"
+                          title={wallet.name}
+                        >
                           {wallet.name}
                         </p>
-                        <p className="text-[10px] uppercase tracking-widest opacity-60">
+                        <p className="eyebrow opacity-60">
                           {typeLabel}
                         </p>
                       </div>
@@ -383,7 +518,7 @@ export const WalletListCard = ({
                     {!wallet.active ? (
                       <Badge
                         variant="outline"
-                        className="pointer-events-none h-6 shrink-0 gap-0.5 border-white/30 bg-black/20 px-1.5 text-[10px] text-white"
+                        className="pointer-events-none h-6 shrink-0 gap-0.5 border-white/30 bg-black/20 px-1.5 text-caption text-white"
                       >
                         <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
                         Inactivo
@@ -391,12 +526,12 @@ export const WalletListCard = ({
                     ) : null}
                   </div>
                   {assigneeMetric ? (
-                    <p className="truncate text-[13px] font-medium leading-tight text-white/80">
+                    <p className="truncate text-body font-medium leading-tight text-white/80">
                       {assigneeMetric}
                     </p>
                   ) : null}
                   {!wallet.include_in_liquidity ? (
-                    <p className="truncate text-[11px] text-white/55">
+                    <p className="truncate text-caption text-white/55">
                       Fuera de la liquidez
                     </p>
                   ) : null}
@@ -408,13 +543,13 @@ export const WalletListCard = ({
                 */}
                 <div className="space-y-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+                    <p className="eyebrow opacity-70">
                       Saldo disponible
                     </p>
                     <p
                       className={cn(
-                        'font-mono text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-rose-200',
+                        'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
+                        hasAlert && 'text-status-expense',
                       )}
                     >
                       {formatCurrency(amountNumber)}
@@ -426,25 +561,25 @@ export const WalletListCard = ({
                     aria-hidden
                   >
                     <div>
-                      <p className="text-[9px] uppercase tracking-wider">
+                      <p className="eyebrow">
                         Disponible
                       </p>
-                      <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                      <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         $0.00
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] uppercase tracking-wider">Límite</p>
-                      <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                      <p className="eyebrow">Límite</p>
+                      <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         $0.00
                       </p>
                     </div>
                   </div>
 
                   <div className="invisible space-y-1" aria-hidden>
-                    <div className="flex justify-between text-[9px]">
-                      <span>Utilización</span>
-                      <span className="font-mono tabular-nums">0%</span>
+                    <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug">
+                      <span className="shrink-0 whitespace-normal">Utilización</span>
+                      <span className="font-sans tabular-nums">0%</span>
                     </div>
                     <div className="h-1.5 w-full rounded-full" />
                   </div>
@@ -481,35 +616,14 @@ export const WalletListCard = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
-                  {canTransfer && onTransfer ? (
-                    <DropdownMenuItem
-                      onClick={() => onTransfer(wallet)}
-                      className="cursor-pointer"
-                    >
-                      <ArrowLeftRight className="mr-2 h-4 w-4" />
-                      Transferir saldo
-                    </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuItem
-                    onClick={() => onOpenBalance(wallet)}
-                    className="cursor-pointer"
-                  >
-                    <SlidersHorizontal className="mr-2 h-4 w-4" />
-                    Ajustar saldo
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onEdit(wallet)}
-                    className="cursor-pointer"
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar
-                  </DropdownMenuItem>
+                  {actionMenuItems}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
         </ViewTransition>
       </SwipeDeleteRow>
+      </div>
     </article>
   );
 };

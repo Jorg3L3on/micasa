@@ -1,7 +1,11 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
+import EmptyState from '@/components/EmptyState';
+import { PlannerPageSkeleton } from '@/components/loading/page-skeletons';
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import { SegmentedControl } from '@/components/segmented-control';
 import { Button } from '@/components/ui/button';
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import { cn } from '@/lib/utils';
@@ -111,20 +115,14 @@ export const CashPlanTab = ({
   };
 
   if (loading && !data) {
-    return (
-      <div className="space-y-3 animate-pulse" aria-busy="true" aria-label={PLAN_COPY.loading}>
-        <div className="h-11 w-56 rounded-full bg-muted/40" />
-        <div className="h-28 rounded-2xl border border-border/30 bg-muted/30" />
-        <div className="h-40 rounded-2xl border border-border/30 bg-muted/30" />
-      </div>
-    );
+    return <PlannerPageSkeleton />;
   }
 
   if (error && !data) {
     return (
-      <div className="rounded-xl border border-l-[3px] border-l-destructive/50 px-4 py-3" role="alert">
-        <p className="text-sm text-destructive">No se pudo armar el plan.</p>
-        <Button type="button" variant="outline" className="mt-3 rounded-xl" onClick={onReload}>
+      <div className="space-y-3">
+        <ErrorBanner>No se pudo armar el plan.</ErrorBanner>
+        <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={onReload}>
           {PLAN_COPY.retry}
         </Button>
       </div>
@@ -138,13 +136,11 @@ export const CashPlanTab = ({
   const hasCash = data.summary.funding_total > 0 || data.funding_wallets.length > 0;
   if (!hasMovement && !hasCash) {
     return (
-      <div className="rounded-2xl border border-border/60 bg-card px-4 py-6">
-        <h2 className="text-base font-semibold">{PLAN_COPY.emptyTitle}</h2>
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground">{PLAN_COPY.emptyBody}</p>
-        <Button asChild className="mt-4">
-          <Link href="/wallets">{PLAN_COPY.emptyCta}</Link>
-        </Button>
-      </div>
+      <EmptyState
+        message={PLAN_COPY.emptyTitle}
+        description={PLAN_COPY.emptyBody}
+        action={{ label: PLAN_COPY.emptyCta, href: '/wallets' }}
+      />
     );
   }
 
@@ -165,9 +161,9 @@ export const CashPlanTab = ({
   return (
     <div className="space-y-6">
       {error ? (
-        <div className="rounded-xl border border-l-[3px] border-l-destructive/50 px-4 py-3" role="alert">
-          <p className="text-sm text-destructive">No se pudo actualizar el panorama.</p>
-          <Button type="button" variant="ghost" className="mt-2 h-9" onClick={onReload}>
+        <div className="space-y-2">
+          <ErrorBanner>No se pudo actualizar el panorama.</ErrorBanner>
+          <Button type="button" variant="ghost" className="h-9" onClick={onReload}>
             {PLAN_COPY.retry}
           </Button>
         </div>
@@ -176,29 +172,16 @@ export const CashPlanTab = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <HorizonToggle value={horizon} onChange={handleHorizonChange} />
         {plan.mode === 'surplus' ? (
-          <div role="radiogroup" aria-label={PLAN_COPY.strategyLabel} className="inline-flex rounded-full border border-border/60 bg-muted/40 p-0.5">
-            {([
-              ['avalanche', PLAN_COPY.avalanche],
-              ['snowball', PLAN_COPY.snowball],
-            ] as const).map(([id, label]) => {
-              const selected = strategy === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  className={cn(
-                    'min-h-11 rounded-full px-4 text-sm font-medium',
-                    selected ? 'bg-background text-foreground shadow-sm dark:bg-input/40' : 'text-muted-foreground',
-                  )}
-                  onClick={() => handleStrategyChange(id)}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl
+            value={strategy}
+            onValueChange={(next) => handleStrategyChange(next as 'avalanche' | 'snowball')}
+            ariaLabel={PLAN_COPY.strategyLabel}
+            frameClassName={cn(MONTHLY_LIQUID_PANEL_CLASS, 'inline-flex w-fit max-w-full p-1 sm:p-1.5')}
+            options={[
+              { value: 'avalanche', label: PLAN_COPY.avalanche },
+              { value: 'snowball', label: PLAN_COPY.snowball },
+            ]}
+          />
         ) : null}
       </div>
 

@@ -188,7 +188,7 @@ Cursor workflow (PRD → GitHub issues → feat branch → PRs): [docs/agents/wo
 
 ### Design system
 
-[`DESIGN.md`](DESIGN.md) is the visual source of truth (navy canvas, glass, orange CTAs). Do not commit third-party mockup images — tokens live in `src/app/globals.css`; live screenshots of **this** app live in `docs/images/`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`. Toolbar migrations: `.claude/skills/toolbar-page/SKILL.md` (`/toolbar-page`) + `tasks/prd-app-header-toolbar.md`. Overlay Dialog/Sheet standard: `DESIGN.md` → Overlays (reference: Agregar gasto, `src/components/quick-capture/QuickExpenseSheet.tsx`; kit: `src/components/overlay/overlay-form.tsx`) + recipe `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`). Rule: `.cursor/rules/responsive-overlays.mdc` (always on).
+[`DESIGN.md`](DESIGN.md) is the visual source of truth: navy canvas, glass cards, and electric-blue primary buttons (`#3a37fc`) with a violet ring. Do not commit third-party mockup images — tokens live in `src/app/globals.css`; README product captures live in `public/landing/` and the palette swatch lives in `docs/images/orion-tokens.svg`. Page conventions: `.claude/skills/dashboard-ui/SKILL.md`. Toolbar migrations: `.claude/skills/toolbar-page/SKILL.md` (`/toolbar-page`) + `tasks/prd-app-header-toolbar.md`. Overlay Dialog/Sheet standard: `DESIGN.md` → Overlays (reference: Agregar gasto, `src/components/quick-capture/QuickExpenseSheet.tsx`; kit: `src/components/overlay/overlay-form.tsx`) + recipe `.claude/skills/responsive-overlay/SKILL.md` (`/responsive-overlay`). Rule: `.cursor/rules/responsive-overlays.mdc` (always on).
 
 ## Cursor Cloud specific instructions
 
@@ -215,14 +215,9 @@ PostgreSQL must be running before the dev server or any Prisma command.
 
 See `CLAUDE.md` and `README.md` for standard commands (`npm run dev`, `npm run lint`, `npm test`, `npm run build`, `npm run ci`).
 
-### Test accounts (from seed data)
+### Local database seed
 
-| Name   | Email                            | Password  |
-|--------|----------------------------------|-----------|
-| Jorge  | jorgeleon983@gmail.com           | temp1234  |
-| Carmen | Consepcionsolorzano39@gmail.com  | temp1234  |
-
-To re-seed: `npx prisma db seed` (destructive — clears all data first).
+Seed a local database with `npx prisma db seed`. The command replaces existing data. Seeded credentials are defined in the seed script (`prisma/seed.ts`) or in environment variables, and are not listed here.
 
 ### Walkthrough artifacts (agent default)
 

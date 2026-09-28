@@ -1,7 +1,9 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import Link from 'next/link';
 import { PiggyBank, SlidersHorizontal } from 'lucide-react';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import { FortnightBudgetProgress } from '@/components/monthly/FortnightBudgetProgress';
@@ -37,7 +39,7 @@ type MonthlyBudgetSidebarProps = {
 const budgetPanelShellClass = cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-4');
 const budgetEmbeddedShellClass = cn(
   METRIC_STRIP_CLASS,
-  'border-l-[3px] border-l-violet-500/50 px-3 py-3',
+  'border-l-[3px] border-l-status-info/50 px-3 py-3',
 );
 
 const BudgetSidebarHeader = ({
@@ -58,11 +60,11 @@ const BudgetSidebarHeader = ({
       <div className="min-w-0">
         <Heading
           id={headingId}
-          className="text-sm font-semibold leading-none text-foreground"
+          className="text-sm font-semibold leading-normal text-foreground"
         >
           Presupuesto de la quincena
         </Heading>
-        <p className="mt-1 text-[10px] text-muted-foreground">{subtitle}</p>
+        <p className="mt-1 text-caption text-muted-foreground">{subtitle}</p>
       </div>
     </div>
   );
@@ -100,10 +102,11 @@ export const MonthlyBudgetSidebar = ({
           headingAs={headingAs}
           subtitle={`Sin presupuesto activo en la ${periodLabel}`}
         />
-        <p className="mt-3 text-sm text-muted-foreground">
-          No hay presupuestos activos para la {periodLabel}. Crea uno en
-          Presupuestos para ver el resumen aquí.
-        </p>
+        <EmptyState
+          message={`No hay presupuestos activos para la ${periodLabel}.`}
+          description="Crea uno en Presupuestos para ver el resumen aquí."
+          className="py-4"
+        />
         <Button variant="outline" size="sm" className="mt-4 w-full" asChild>
           <Link href={`/settings/budgets${ownerQuery}`}>Ir a presupuestos</Link>
         </Button>
@@ -129,9 +132,12 @@ export const MonthlyBudgetSidebar = ({
 
       {allocations.length > 0 ? (
         <section aria-labelledby={allocationsHeadingId}>
-          <h3 id={allocationsHeadingId} className="sr-only">
-            Asignaciones por categoría y billetera
-          </h3>
+          <SectionHeader
+            level={3}
+            id={allocationsHeadingId}
+            className="sr-only"
+            title="Asignaciones por categoría y billetera"
+          />
           <ul className="space-y-2.5" role="list">
             {allocations.map((row) => (
               <BudgetAllocationRow
@@ -142,9 +148,10 @@ export const MonthlyBudgetSidebar = ({
           </ul>
         </section>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          No hay asignaciones de presupuesto en la {periodLabel}.
-        </p>
+        <EmptyState
+          message={`No hay asignaciones de presupuesto en la ${periodLabel}.`}
+          className="py-4"
+        />
       )}
 
       <Button variant="outline" className="w-full gap-2" asChild>
@@ -181,7 +188,7 @@ function BudgetAllocationRow({
     <AuraSurface
       role="listitem"
       color={brandColor}
-      className="space-y-1.5 rounded-xl border border-border/40 bg-card/40 px-3 py-2.5"
+      className="space-y-1.5 rounded-xl bg-card/40 px-3 py-2.5"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -200,14 +207,17 @@ function BudgetAllocationRow({
                 showTooltipLabel={false}
               />
             ) : null}
-            <p className="truncate text-[10px] text-muted-foreground">
+            <p
+              className="truncate text-caption text-muted-foreground"
+              title={allocation.walletName}
+            >
               {allocation.walletName}
             </p>
             {allocation.walletAssignee ? (
               <AssigneeAvatar
                 name={allocation.walletAssignee.name}
                 size="sm"
-                className="size-4 text-[8px]"
+                className="size-5 text-caption"
               />
             ) : null}
           </div>
@@ -230,7 +240,7 @@ function BudgetAllocationRow({
           style={{ width: `${barPercent}%`, ...getAuraBarStyle(barColor) }}
         />
       </div>
-      <div className="flex justify-between gap-2 text-[10px] text-muted-foreground">
+      <div className="flex justify-between gap-2 text-caption text-muted-foreground">
         <span>
           {allocation.budgeted > 0
             ? `${allocation.percentUsed}% de su presupuesto`
@@ -238,10 +248,10 @@ function BudgetAllocationRow({
         </span>
         <span
           className={cn(
-            'font-mono font-semibold tabular-nums',
+            'font-sans font-semibold tabular-nums',
             overspent
               ? 'text-destructive'
-              : 'text-emerald-600 dark:text-emerald-300',
+              : 'text-status-income',
           )}
         >
           {remainingLabel}

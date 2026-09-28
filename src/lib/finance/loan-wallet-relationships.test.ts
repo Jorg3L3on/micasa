@@ -35,7 +35,7 @@ describe('loan wallet relationship copy', () => {
         sourceWalletName: null,
         linkedWalletId: 20,
         linkedWalletName: 'Tarjeta referencia',
-        incomeTemplateName: 'Nómina Jorge',
+        incomeTemplateName: 'Nómina Luis',
       },
       20,
     );
@@ -43,7 +43,7 @@ describe('loan wallet relationship copy', () => {
     expect(relationships).toEqual([
       {
         role: 'reference_account',
-        label: 'Cuenta relacionada',
+        label: 'Billetera relacionada',
         description:
           'Solo referencia para seguimiento; no ajusta el saldo automáticamente.',
       },
@@ -55,8 +55,8 @@ describe('loan wallet relationship copy', () => {
       getLoanPaymentSourceLabel({
         paymentSource: 'PAYROLL_DEDUCTION',
         sourceWalletName: null,
-        incomeTemplateName: 'Nómina Jorge',
+        incomeTemplateName: 'Nómina Luis',
       }),
-    ).toBe('Deducción de nómina: Nómina Jorge');
+    ).toBe('Deducción de nómina: Nómina Luis');
   });
 });

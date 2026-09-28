@@ -1,8 +1,8 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
-import { Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
@@ -107,7 +107,7 @@ export default function CategoryForm({
     <ResponsiveOverlay
       open={open}
       onOpenChange={handleOpenChange}
-      title={mode === 'create' ? 'Nueva categoría' : 'Editar categoría'}
+      title={mode === 'create' ? 'Agregar categoría' : 'Editar categoría'}
       description={
         mode === 'create'
           ? 'Puedes crear una categoría raíz o una subcategoría bajo un padre existente.'
@@ -122,9 +122,7 @@ export default function CategoryForm({
             className="space-y-4"
           >
             {error && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {error}
-              </div>
+              <ErrorBanner>{error}</ErrorBanner>
             )}
             {mode === 'create' && parentOptions.length > 0 ? (
               <FormField
@@ -197,7 +195,7 @@ export default function CategoryForm({
             />
             {watchedName?.trim() ? (
               <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="mb-1 eyebrow text-muted-foreground">
                   Vista previa
                 </p>
                 <CategoryLabel name={watchedName} icon={watchedIcon || null} />
@@ -226,10 +224,7 @@ export default function CategoryForm({
               className={OVERLAY_PRIMARY_BUTTON_CLASS}
             >
               {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" data-icon="inline-start" aria-hidden />
-                  {mode === 'create' ? 'Creando…' : 'Guardando…'}
-                </>
+                mode === 'create' ? 'Creando…' : 'Guardando…'
               ) : mode === 'create' ? (
                 'Crear'
               ) : (

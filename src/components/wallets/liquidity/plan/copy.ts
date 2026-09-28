@@ -1,7 +1,7 @@
 export const PLAN_COPY = {
   tabLiquidity: 'Liquidez',
   tabPlan: 'Plan',
-  tabListLabel: 'Liquidez y plan',
+  tabListLabel: 'Análisis',
   shortfallTitle: 'Plan para cubrir el hueco',
   surplusTitle: 'Dónde conviene el extra',
   balancedTitle: 'Este periodo cuadra',

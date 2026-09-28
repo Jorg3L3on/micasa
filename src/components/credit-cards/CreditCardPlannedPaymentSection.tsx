@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Banknote, CalendarRange, Loader2, Pencil } from 'lucide-react';
+import { Banknote, CalendarRange, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +16,7 @@ import {
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
+import { formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
 import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
 import { formatCardObligationAmountSourceHint } from '@/lib/finance/card-statement-obligation';
 import { todayCalendarDate } from '@/lib/calendar-dates';
@@ -39,7 +40,7 @@ const statusAmountClass = (
   hasCustomPlan: boolean,
 ) => {
   if (status === 'pagado') {
-    return 'text-emerald-600 dark:text-emerald-400';
+    return 'text-status-income';
   }
   if (status === 'vencido') {
     return 'text-destructive';
@@ -48,10 +49,10 @@ const statusAmountClass = (
     return 'text-muted-foreground';
   }
   if (status === 'falta_dato') {
-    return 'text-amber-700 dark:text-amber-300';
+    return 'text-status-pending';
   }
   return hasCustomPlan
-    ? 'text-blue-600 dark:text-blue-400'
+    ? 'text-status-info'
     : 'text-foreground';
 };
 
@@ -167,19 +168,19 @@ export const CreditCardPlannedPaymentSection = ({
   return (
     <>
       <div
-        className="rounded-xl border border-border/60 bg-card p-4"
+        className="rounded-xl bg-card p-4"
         role="region"
         aria-label="Pagos planeados por quincena"
       >
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-            <CalendarRange className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" data-icon="inline-start" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-status-info/10 dark:bg-status-info/15">
+            <CalendarRange className="h-3.5 w-3.5 text-status-info" data-icon="inline-start" />
           </span>
           <div>
             <p className="text-sm font-semibold leading-none">
-              Pago en planificación
+              Pago en planeación
             </p>
-            <p className="mt-1 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-caption text-muted-foreground">
               Cuánto pagarás en la quincena; no cambia la deuda total.
             </p>
           </div>
@@ -234,17 +235,17 @@ export const CreditCardPlannedPaymentSection = ({
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-foreground">
-                    {item.fortnightLabel}
-                    <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
+                    {formatFortnightOrdinalTitle(item.period, item.month, item.year)}
+                    <span className="ml-1.5 text-caption font-normal text-muted-foreground">
                       · {timingLabel}
                     </span>
                     {isStalePlan ? (
-                      <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                      <span className="ml-1.5 inline-flex items-center rounded-full border border-status-pending/40 bg-status-pending/10 px-1.5 py-0.5 eyebrow text-status-pending">
                         Plan cubierto
                       </span>
                     ) : null}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 text-caption text-muted-foreground">
                     {item.plannerStatus === 'pagado' ? (
                       <>Pagado esta quincena</>
                     ) : isMissingPayment ? (
@@ -270,7 +271,7 @@ export const CreditCardPlannedPaymentSection = ({
                     {isStalePlan ? (
                       <>
                         <span className="text-muted-foreground/30"> · </span>
-                        <span className="text-amber-700 dark:text-amber-300">
+                        <span className="text-status-pending">
                           Limpia el plan; ya no afecta pendientes
                         </span>
                       </>
@@ -288,7 +289,7 @@ export const CreditCardPlannedPaymentSection = ({
                         <span className="text-muted-foreground/30"> · </span>
                         <span
                           className={cn(
-                            item.isEstimate && 'text-amber-700 dark:text-amber-300',
+                            item.isEstimate && 'text-status-pending',
                           )}
                         >
                           {sourceHint}
@@ -300,7 +301,7 @@ export const CreditCardPlannedPaymentSection = ({
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span
                     className={cn(
-                      'font-mono text-sm font-bold tabular-nums',
+                      'font-sans text-sm font-bold tabular-nums',
                       statusAmountClass(item.plannerStatus, hasCustomPlan),
                     )}
                     aria-label={
@@ -319,7 +320,7 @@ export const CreditCardPlannedPaymentSection = ({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-8 shrink-0 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+                      className="h-8 shrink-0 px-2 text-xs font-medium text-status-pending hover:text-status-pending"
                       onClick={() => handleOpenDialog(item)}
                       aria-label={`Capturar pago del corte: ${item.fortnightLabel}`}
                     >
@@ -353,25 +354,24 @@ export const CreditCardPlannedPaymentSection = ({
                             variant="outline"
                             size="icon"
                             className={cn(
-                              'h-8 w-8 rounded-full border-dashed border-emerald-500/40 bg-transparent shadow-none',
-                              'transition-colors hover:border-emerald-500/70 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15',
+                              'h-8 w-8 rounded-full border-dashed border-status-income/40 bg-transparent shadow-none',
+                              'transition-colors hover:border-status-income/70 hover:bg-status-income/10 dark:hover:bg-status-income/15',
                               'disabled:pointer-events-none disabled:opacity-40',
-                              '[&_svg]:text-emerald-600 dark:[&_svg]:text-emerald-400',
+                              '[&_svg]:text-status-income dark:[&_svg]:text-status-income',
                             )}
                             disabled={
                               item.outstandingBalance <= 0 ||
                               payingFortnightId === item.fortnightId
                             }
                             onClick={() => onPayCard(item)}
-                            aria-label={`Registrar pago: ${item.fortnightLabel}`}
+                            aria-busy={payingFortnightId === item.fortnightId}
+                            aria-label={
+                              payingFortnightId === item.fortnightId
+                                ? `Guardando pago: ${item.fortnightLabel}`
+                                : `Registrar pago: ${item.fortnightLabel}`
+                            }
                           >
-                            {payingFortnightId === item.fortnightId ? (
-                              <Loader2
-                                className="size-3.5 shrink-0 animate-spin"
-                                aria-hidden data-icon="inline-start" />
-                            ) : (
-                              <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
-                            )}
+                            <Banknote className="size-3.5" aria-hidden data-icon="inline-start" />
                           </Button>
                         </span>
                       </TooltipTrigger>

@@ -13,7 +13,8 @@ import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
+import { TabsContent } from '@/components/motion/tabs';
+import { SegmentedControl } from '@/components/segmented-control';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
@@ -352,7 +353,7 @@ export default function FortnightColumn({
     try {
       setIsRegenerating(true);
       setAddExpenseError(null);
-      toast.loading('Regenerando quincena desde plantillas...', {
+      toast.loading('Regenerando quincena desde plantillas…', {
         id: loadingToastId,
       });
 
@@ -532,7 +533,6 @@ export default function FortnightColumn({
       const message =
         err instanceof Error ? err.message : 'Error al guardar el monto';
       setOverrideError(message);
-      toast.error(message);
       throw err;
     }
   };
@@ -854,17 +854,13 @@ export default function FortnightColumn({
   );
 
   const compactTabs = dualColumnLayout;
-  const plannerTabTriggerClass = cn(
-    '@container min-h-9 px-1.5 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2 sm:py-1.5 xl:px-2.5 xl:py-2 xl:text-sm',
-    compactTabs && 'min-h-8 px-1 py-1 text-xs xl:px-1.5 xl:py-1 xl:text-xs',
-  );
   const plannerTabLabelClass = cn(
     'inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5',
     compactTabs && 'gap-1',
   );
   const plannerTabIconClass = 'h-3.5 w-3.5 shrink-0';
   const plannerTabBadgeClass = cn(
-    'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5',
+    'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-sans font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5',
     compactTabs && 'h-4 min-w-4 px-1 xl:h-4 xl:min-w-4 xl:px-1',
   );
 
@@ -922,91 +918,62 @@ export default function FortnightColumn({
           budgetOwnerQuery={budgetOwnerQuery || ownerQueryString}
         />
 
-        <Tabs
+        <SegmentedControl
           value={columnTab}
           onValueChange={handleColumnTabChange}
-          variant="pill"
+          ariaLabel="Secciones de la quincena"
           className="w-full min-w-0"
-        >
-          <div
-            className={cn(
-              MONTHLY_LIQUID_PANEL_CLASS,
-              'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
-            )}
-          >
-            <TabsList
-              aria-label="Secciones de la quincena"
-              wrapperClassName="min-w-0 flex-1"
-              className="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
-            >
-              <TabsTrigger
-                value="expenses"
-                stretch
-                className={plannerTabTriggerClass}
-                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-                activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-                aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
-              >
+          stretch
+          frameClassName={cn(
+            MONTHLY_LIQUID_PANEL_CLASS,
+            'mb-1.5 flex min-w-0 flex-wrap items-center gap-1 p-1 sm:mb-3.5 sm:flex-nowrap sm:gap-1.5 sm:p-1.5',
+          )}
+          wrapperClassName="min-w-0 w-full flex-1 sm:w-auto"
+          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+          options={[
+            {
+              value: 'expenses',
+              ariaLabel: `Gastos, ${unpaidExpenseCount} sin pagar`,
+              label: (
                 <span className={plannerTabLabelClass}>
                   <Receipt className={plannerTabIconClass} aria-hidden />
                   Gastos
-                  <Badge
-                    variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
-                    className={plannerTabBadgeClass}
-                    aria-hidden
-                  >
+                  <Badge variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
                     {unpaidExpenseCount}
                   </Badge>
                 </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="cards"
-                stretch
-                className={plannerTabTriggerClass}
-                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-                activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-                aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
-              >
+              ),
+            },
+            {
+              value: 'cards',
+              ariaLabel: `Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`,
+              label: (
                 <span className={plannerTabLabelClass}>
                   <CreditCard className={plannerTabIconClass} aria-hidden />
                   Tarjetas
-                  <Badge
-                    variant={
-                      pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
-                    }
-                    className={plannerTabBadgeClass}
-                    aria-hidden
-                  >
+                  <Badge variant={pendingCardPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
                     {pendingCardPaymentsCount}
                   </Badge>
                 </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="loans"
-                stretch
-                className={plannerTabTriggerClass}
-                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-                activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-                aria-label={`Préstamos, ${pendingLoanPaymentsCount} pendientes`}
-              >
+              ),
+            },
+            {
+              value: 'loans',
+              ariaLabel: `Préstamos, ${pendingLoanPaymentsCount} pendientes`,
+              label: (
                 <span className={plannerTabLabelClass}>
                   <HandCoins className={plannerTabIconClass} aria-hidden />
                   <span className="@min-[6.25rem]:hidden">Prest.</span>
-                  <span className="hidden @min-[6.25rem]:inline">
-                    Préstamos
-                  </span>
-                  <Badge
-                    variant={
-                      pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
-                    }
-                    className={plannerTabBadgeClass}
-                    aria-hidden
-                  >
+                  <span className="hidden @min-[6.25rem]:inline">Préstamos</span>
+                  <Badge variant={pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
                     {pendingLoanPaymentsCount}
                   </Badge>
                 </span>
-              </TabsTrigger>
-            </TabsList>
+              ),
+            },
+          ]}
+          accessory={(
             <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 sm:pl-0.5">
               <DropdownMenu>
                 <Tooltip>
@@ -1071,7 +1038,8 @@ export default function FortnightColumn({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          </div>
+          )}
+        >
 
           <TabsContent value="expenses" className="mt-0 outline-none">
             {sortedTransactions.length === 0 ? (
@@ -1079,7 +1047,7 @@ export default function FortnightColumn({
                 message="Sin gastos en esta quincena"
                 description="Empieza con un gasto para ver totales y el estado del mes."
                 action={{
-                  label: 'Agregar transacción',
+                  label: 'Agregar movimiento',
                   onClick: () => setAddExpenseDialogOpen(true),
                   variant: 'default',
                 }}
@@ -1131,7 +1099,7 @@ export default function FortnightColumn({
               onUpdated={refreshData}
             />
           </TabsContent>
-        </Tabs>
+        </SegmentedControl>
       </div>
 
       {/* Receive Payroll Dialog */}

@@ -7,7 +7,6 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   Plus,
   Trash2,
 } from 'lucide-react';
@@ -95,13 +94,13 @@ function AllocationSummary({
     >
       <div className="flex flex-col gap-0.5">
         <span className="text-xs text-muted-foreground">Total presupuesto</span>
-        <span className="font-mono font-semibold tabular-nums">
+        <span className="font-sans font-semibold tabular-nums">
           {formatCurrency(totalAmount)}
         </span>
       </div>
       <div className="flex flex-col gap-0.5 text-center">
         <span className="text-xs text-muted-foreground">Asignado</span>
-        <span className="font-mono font-semibold tabular-nums">
+        <span className="font-sans font-semibold tabular-nums">
           {formatCurrency(allocated)}
         </span>
       </div>
@@ -109,10 +108,10 @@ function AllocationSummary({
         <span className="text-xs text-muted-foreground">Restante</span>
         <span
           className={cn(
-            'font-mono font-semibold tabular-nums',
+            'font-sans font-semibold tabular-nums',
             isOver && 'text-destructive',
-            !isOver && !isExact && 'text-amber-600 dark:text-amber-400',
-            isExact && 'text-emerald-600 dark:text-emerald-400',
+            !isOver && !isExact && 'text-status-pending',
+            isExact && 'text-status-income',
           )}
         >
           {formatCurrency(remaining)}
@@ -286,11 +285,11 @@ export default function BudgetFormDialog({
   };
 
   const dialogTitle =
-    step === 1 ? 'Nuevo presupuesto' : 'Asignar presupuesto';
+    step === 1 ? 'Agregar presupuesto' : 'Asignar presupuesto';
   const dialogDescription =
     step === 1
       ? 'Paso 1 de 2: define el nombre, monto y frecuencia.'
-      : 'Paso 2 de 2: distribuye el presupuesto en carteras y categorías.';
+      : 'Paso 2 de 2: distribuye el presupuesto en billeteras y categorías.';
 
   const stepIndicator = (
     <div
@@ -299,7 +298,7 @@ export default function BudgetFormDialog({
     >
       <span
         className={cn(
-          'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium',
+          'flex h-5 w-5 items-center justify-center rounded-full text-caption font-medium',
           step === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted',
         )}
       >
@@ -308,7 +307,7 @@ export default function BudgetFormDialog({
       <div className="h-px flex-1 bg-border" />
       <span
         className={cn(
-          'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium',
+          'flex h-5 w-5 items-center justify-center rounded-full text-caption font-medium',
           step === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted',
         )}
       >
@@ -363,7 +362,7 @@ export default function BudgetFormDialog({
                   value={field.value}
                   onChange={field.onChange}
                   placeholder="0"
-                  className={cn(FIELD_HEIGHT_CLASS, 'font-mono tabular-nums')}
+                  className={cn(FIELD_HEIGHT_CLASS, 'font-sans tabular-nums')}
                   enterKeyHint="next"
                 />
               </FormControl>
@@ -492,15 +491,9 @@ export default function BudgetFormDialog({
 
   const createLabel =
     form2.formState.isSubmitting || isPending || disabled ? (
-      <>
-        <Loader2
-          className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none"
-          data-icon="inline-start"
-        />
-        Creando…
-      </>
+      'Creando…'
     ) : (
-      'Crear presupuesto'
+      'Agregar presupuesto'
     );
 
   const renderStep2Form = (handleSelectOpenChange: (nextOpen: boolean) => void) =>
@@ -513,8 +506,8 @@ export default function BudgetFormDialog({
           />
 
           {hasEmptyAllocation ? (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-              Elige {ANY_WALLET_LABEL} o una cartera, una categoría y un monto
+            <div className="rounded-lg border border-status-pending/30 bg-status-pending/10 px-3 py-2 text-xs text-status-pending">
+              Elige {ANY_WALLET_LABEL} o una billetera, una categoría y un monto
               mayor a $0.00.
             </div>
           ) : null}
@@ -588,7 +581,7 @@ export default function BudgetFormDialog({
                       <FormItem
                         className="col-span-2 min-w-0 md:col-span-1"
                       >
-                        <FormLabel className="text-xs">Cartera</FormLabel>
+                        <FormLabel className="text-xs">Billetera</FormLabel>
                         <Select
                           onValueChange={(v) => f.onChange(selectValueToWalletId(v))}
                           onOpenChange={handleSelectOpenChange}
@@ -597,9 +590,9 @@ export default function BudgetFormDialog({
                           <FormControl>
                             <SelectTrigger
                               className={ALLOCATION_TRIGGER_CLASS}
-                              aria-label={`Cartera de la asignación ${index + 1}`}
+                              aria-label={`Billetera de la asignación ${index + 1}`}
                             >
-                              <SelectValue placeholder="Cartera" />
+                              <SelectValue placeholder="Billetera" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -618,7 +611,7 @@ export default function BudgetFormDialog({
                             ))}
                           </SelectContent>
                         </Select>
-                        <FormMessage className="text-[10px]" />
+                        <FormMessage className="text-caption" />
                       </FormItem>
                     )}
                   />
@@ -643,7 +636,7 @@ export default function BudgetFormDialog({
                           placeholder="Categoría"
                           ariaLabel={`Categoría de la asignación ${index + 1}`}
                         />
-                        <FormMessage className="text-[10px]" />
+                        <FormMessage className="text-caption" />
                       </FormItem>
                     )}
                   />
@@ -665,7 +658,7 @@ export default function BudgetFormDialog({
                             data-icon="inline-start"
                           />
                         </FormControl>
-                        <FormMessage className="text-[10px]" />
+                        <FormMessage className="text-caption" />
                       </FormItem>
                     )}
                   />

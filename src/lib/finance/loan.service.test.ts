@@ -373,7 +373,7 @@ describe('sumPlannerLoanDueForFortnight', () => {
         loan_id: 6,
         sequence: 1,
         due_date: parseCalendarDate('2026-06-14'),
-        amount: '2792.73',
+        amount: '2800',
         status: 'SCHEDULED',
         paid_at: null,
         source_wallet_id: null,
@@ -388,7 +388,7 @@ describe('sumPlannerLoanDueForFortnight', () => {
           payment_source: 'PAYROLL_DEDUCTION',
           linked_wallet_id: null,
           linked_wallet: null,
-          income_template: { name: 'Salario Jorge' },
+          income_template: { name: 'Nómina B' },
         },
       },
     ]);
@@ -397,8 +397,55 @@ describe('sumPlannerLoanDueForFortnight', () => {
 
     expect(result).toEqual({
       wallet: { total: 200, count: 1 },
-      payroll: { total: 2792.73, count: 1 },
+      payroll: { total: 2800, count: 1 },
     });
+  });
+
+  it('counts one visible payroll row when the same lender has two dues', async () => {
+    const payrollLoan = {
+      name: 'Descuento de nómina',
+      lender: 'Patronal',
+      type: 'PAYROLL',
+      payment_source: 'PAYROLL_DEDUCTION',
+      linked_wallet_id: null,
+      linked_wallet: null,
+      income_template: { name: 'Nómina' },
+    };
+    findManyLoanPayment.mockResolvedValueOnce([
+      {
+        id: 11,
+        loan_id: 8,
+        sequence: 1,
+        due_date: parseCalendarDate('2026-06-10'),
+        amount: '1500',
+        status: 'SCHEDULED',
+        paid_at: null,
+        source_wallet_id: null,
+        source_wallet: null,
+        linked_expense: null,
+        note: null,
+        loan: { id: 8, ...payrollLoan },
+      },
+      {
+        id: 12,
+        loan_id: 9,
+        sequence: 1,
+        due_date: parseCalendarDate('2026-06-12'),
+        amount: '900',
+        status: 'SCHEDULED',
+        paid_at: null,
+        source_wallet_id: null,
+        source_wallet: null,
+        linked_expense: null,
+        note: null,
+        loan: { id: 9, ...payrollLoan },
+      },
+    ]);
+
+    const result = await sumPlannerLoanDueForFortnight(ownerFilter, 2026, 6, 'FIRST');
+
+    expect(result.payroll).toEqual({ total: 2400, count: 1 });
+    expect(result.wallet).toEqual({ total: 0, count: 0 });
   });
 });
 

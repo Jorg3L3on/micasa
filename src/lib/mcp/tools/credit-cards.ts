@@ -467,7 +467,7 @@ export function registerCreditCardTools(server: McpServer) {
   server.registerTool(
     'add_card_purchase',
     {
-      title: 'Registrar compra con tarjeta',
+      title: 'Agregar compra',
       description:
         'Registra una compra en la tarjeta. Sube la deuda salvo already_in_balance: true (la compra ya está reflejada en el saldo del banco). La quincena se resuelve desde la fecha.',
       inputSchema: z.object({

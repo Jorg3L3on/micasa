@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { Check, LineChart, Loader2 } from 'lucide-react';
+import { Check, LineChart } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   LIQUIDITY_PANEL_CLASS,
   LiquidityPanelHeader,
@@ -19,6 +20,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ChartTooltip } from '@/components/charts/chart-tooltip';
+import { CHART_AXIS_TICK, CHART_COLOR } from '@/components/charts/chart-theme';
+import { formatAxisMoney } from '@/lib/money';
 import { cn, formatCurrency } from '@/lib/utils';
 import type {
   LiquidityMonthlySeriesItem,
@@ -54,13 +58,8 @@ type ChartPoint = {
   eventTitle: string;
 };
 
-const formatAxisMoney = (value: number): string => {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
-  return String(value);
-};
 
-const ChartTooltip = ({
+const DebtMonthTooltip = ({
   active,
   payload,
 }: {
@@ -70,24 +69,24 @@ const ChartTooltip = ({
   if (!active || !payload?.[0]) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#0d1327]/95 px-3 py-2.5 shadow-xl backdrop-blur-xl">
+    <ChartTooltip active>
       <p className="text-xs font-semibold text-foreground">
         {formatMonthYearLabel(point.monthKey)}
       </p>
-      <p className="mt-2 font-mono text-sm font-bold tabular-nums text-foreground">
+      <p className="mt-2 font-sans text-sm font-bold tabular-nums text-foreground">
         {formatCurrency(point.monthDebt)}
       </p>
-      <p className="text-[11px] text-muted-foreground">pagos del mes</p>
-      <p className="mt-2 font-mono text-sm font-bold tabular-nums text-amber-300">
+      <p className="text-caption text-muted-foreground">pagos del mes</p>
+      <p className="mt-2 font-sans text-sm font-bold tabular-nums text-status-pending">
         {formatCurrency(point.outstandingDebt)}
       </p>
-      <p className="text-[11px] text-muted-foreground">adeudo total al cierre</p>
+      <p className="text-caption text-muted-foreground">adeudo total al cierre</p>
       {point.eventCount > 0 ? (
-        <p className="mt-2 max-w-[220px] text-[11px] font-medium text-emerald-300">
+        <p className="mt-2 max-w-[220px] text-caption font-medium text-status-success">
           {point.eventTitle}
         </p>
       ) : null}
-    </div>
+    </ChartTooltip>
   );
 };
 
@@ -111,8 +110,8 @@ const PayoffDot = ({ cx, cy, payload, selectedMonthKey, onSelect }: DotProps) =>
         cx={cx}
         cy={cy}
         r={isSelected ? 4.5 : 3}
-        fill={isSelected ? '#3a37fc' : '#911efe'}
-        stroke="#0d1327"
+        fill={isSelected ? CHART_COLOR.primary : CHART_COLOR.slices[3]}
+        stroke={CHART_COLOR.background}
         strokeWidth={2}
         className="cursor-pointer"
         onClick={() => onSelect(payload.monthKey)}
@@ -126,19 +125,19 @@ const PayoffDot = ({ cx, cy, payload, selectedMonthKey, onSelect }: DotProps) =>
       className="cursor-pointer"
       onClick={() => onSelect(payload.monthKey)}
     >
-      <circle cx={cx} cy={cy} r={14} fill="#34d399" fillOpacity={0.18} />
+      <circle cx={cx} cy={cy} r={14} fill={CHART_COLOR.success} fillOpacity={0.18} />
       <circle
         cx={cx}
         cy={cy}
         r={isSelected ? 8 : 7}
-        fill="#34d399"
-        stroke="#0d1327"
+        fill={CHART_COLOR.success}
+        stroke={CHART_COLOR.background}
         strokeWidth={2.5}
       />
       <path
         d={`M${cx - 3.2} ${cy} l2.2 2.3 4.6-4.8`}
         fill="none"
-        stroke="#060914"
+        stroke={CHART_COLOR.background}
         strokeWidth={1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -165,7 +164,7 @@ const PayoffLabel = ({ x, y, payload }: LabelProps) => {
       x={x}
       y={y - 16}
       textAnchor="middle"
-      className="fill-emerald-300"
+      className="fill-status-success"
       style={{ fontSize: 10, fontWeight: 600 }}
     >
       {clipped}
@@ -185,13 +184,13 @@ const BrushHandle = ({ x = 0, y = 0, width = 0, height = 0 }: BrushHandleProps) 
   const centerY = y + height / 2;
   return (
     <g>
-      <rect x={x} y={y} width={width} height={height} rx={4} fill="#3a37fc" />
+      <rect x={x} y={y} width={width} height={height} rx={4} fill={CHART_COLOR.primary} />
       <line
         x1={centerX - 1.5}
         x2={centerX - 1.5}
         y1={centerY - 5}
         y2={centerY + 5}
-        stroke="rgba(255,255,255,0.8)"
+        stroke="var(--primary-foreground)"
         strokeWidth={1}
       />
       <line
@@ -199,7 +198,7 @@ const BrushHandle = ({ x = 0, y = 0, width = 0, height = 0 }: BrushHandleProps) 
         x2={centerX + 1.5}
         y1={centerY - 5}
         y2={centerY + 5}
-        stroke="rgba(255,255,255,0.8)"
+        stroke="var(--primary-foreground)"
         strokeWidth={1}
       />
     </g>
@@ -315,7 +314,7 @@ export const LiquidityFutureTimeline = ({
           role="status"
           aria-live="polite"
         >
-          <Loader2 className="size-5 animate-spin text-primary-text" aria-hidden />
+          <Skeleton className="h-8 w-40 rounded-full" />
           <p className="text-xs font-medium text-muted-foreground">Actualizando rango…</p>
         </div>
       ) : null}
@@ -330,22 +329,22 @@ export const LiquidityFutureTimeline = ({
       <div className={cn('space-y-3', isRefreshing && 'opacity-40 transition-opacity')}>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-4 rounded-full bg-linear-to-r from-[#3a37fc] to-[#ee477a]" aria-hidden />
-            <span className="text-[10px] text-muted-foreground">Pagos del mes (izq.)</span>
+            <span className="h-1.5 w-4 rounded-full bg-linear-to-r from-chart-1 to-chart-2" aria-hidden />
+            <span className="text-caption text-muted-foreground">Pagos del mes (izq.)</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-4 rounded-full bg-amber-400" aria-hidden />
-            <span className="text-[10px] text-muted-foreground">Adeudo al cierre (der.)</span>
+            <span className="h-1.5 w-4 rounded-full bg-status-pending" aria-hidden />
+            <span className="text-caption text-muted-foreground">Adeudo al cierre (der.)</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-400" aria-hidden>
-              <Check className="h-2 w-2 text-[#060914]" />
+            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-status-success" aria-hidden>
+              <Check className="h-2 w-2 text-background" />
             </span>
-            <span className="text-[10px] text-muted-foreground">Aquí terminas de pagar</span>
+            <span className="text-caption text-muted-foreground">Aquí terminas de pagar</span>
           </span>
         </div>
 
-        <div className="-mx-1 h-72 sm:h-80 xl:h-[22rem] [&_.recharts-brush>rect:first-child]:stroke-white/10 [&_.recharts-brush>rect:first-child]:[rx:8px]">
+        <div className="-mx-1 h-72 sm:h-80 xl:h-[22rem] [&_.recharts-brush>rect:first-child]:stroke-border [&_.recharts-brush>rect:first-child]:[rx:8px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={chartRows}
@@ -358,29 +357,29 @@ export const LiquidityFutureTimeline = ({
             >
               <defs>
                 <linearGradient id="liqRemainingFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#911efe" stopOpacity={0.38} />
-                  <stop offset="100%" stopColor="#3a37fc" stopOpacity={0} />
+                  <stop offset="0%" stopColor={CHART_COLOR.slices[3]} stopOpacity={0.38} />
+                  <stop offset="100%" stopColor={CHART_COLOR.slices[0]} stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="liqRemainingStroke" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#3a37fc" />
-                  <stop offset="100%" stopColor="#ee477a" />
+                  <stop offset="0%" stopColor={CHART_COLOR.slices[0]} />
+                  <stop offset="100%" stopColor={CHART_COLOR.slices[1]} />
                 </linearGradient>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke="rgba(255,255,255,0.06)"
+                stroke={CHART_COLOR.grid}
               />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 11, fill: '#9ca3af' }}
+                tick={CHART_AXIS_TICK}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
                 yAxisId="payments"
                 tickFormatter={formatAxisMoney}
-                tick={{ fontSize: 11, fill: '#a78bfa' }}
+                tick={CHART_AXIS_TICK}
                 tickLine={false}
                 axisLine={false}
                 width={42}
@@ -389,17 +388,20 @@ export const LiquidityFutureTimeline = ({
                 yAxisId="outstanding"
                 orientation="right"
                 tickFormatter={formatAxisMoney}
-                tick={{ fontSize: 11, fill: '#fbbf24' }}
+                tick={CHART_AXIS_TICK}
                 tickLine={false}
                 axisLine={false}
                 width={42}
               />
-              <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.12)' }} />
+              <Tooltip
+                content={<DebtMonthTooltip />}
+                cursor={{ stroke: 'color-mix(in srgb, var(--foreground) 18%, transparent)' }}
+              />
               {selectedMonthKey ? (
                 <ReferenceLine
                   yAxisId="payments"
                   x={visibleRows.find((row) => row.monthKey === selectedMonthKey)?.label}
-                  stroke="rgba(255,255,255,0.22)"
+                  stroke="color-mix(in srgb, var(--foreground) 28%, transparent)"
                   strokeDasharray="3 4"
                 />
               ) : null}
@@ -451,11 +453,16 @@ export const LiquidityFutureTimeline = ({
                 type="monotone"
                 dataKey="outstandingDebt"
                 yAxisId="outstanding"
-                stroke="#fbbf24"
+                stroke={CHART_COLOR.pending}
                 strokeWidth={2}
                 strokeDasharray="6 4"
                 dot={false}
-                activeDot={{ r: 4, fill: '#fbbf24', stroke: '#0d1327', strokeWidth: 2 }}
+                activeDot={{
+                  r: 4,
+                  fill: CHART_COLOR.pending,
+                  stroke: CHART_COLOR.background,
+                  strokeWidth: 2,
+                }}
                 isAnimationActive
               />
               <Brush
@@ -465,8 +472,8 @@ export const LiquidityFutureTimeline = ({
                 onChange={handleBrushChange}
                 height={32}
                 travellerWidth={12}
-                stroke="#8b89ff"
-                fill="rgba(255,255,255,0.02)"
+                stroke={CHART_COLOR.slices[0]}
+                fill="color-mix(in srgb, var(--foreground) 4%, transparent)"
                 traveller={<BrushHandle />}
                 ariaLabel="Arrastra los extremos para elegir qué meses ver"
               >
@@ -474,9 +481,9 @@ export const LiquidityFutureTimeline = ({
                   <Area
                     type="monotone"
                     dataKey="outstandingDebt"
-                    stroke="#fbbf24"
+                    stroke={CHART_COLOR.pending}
                     strokeOpacity={0.5}
-                    fill="#fbbf24"
+                    fill={CHART_COLOR.pending}
                     fillOpacity={0.08}
                     isAnimationActive={false}
                   />

@@ -62,7 +62,12 @@ export function AssigneeWithName({
   return (
     <div className={cn('flex min-w-0 max-w-full items-center gap-1.5', className)}>
       <AssigneeAvatar name={name} size={size} hideFromAccessibility />
-      <span className={cn('min-w-0 truncate font-normal', nameClassName)}>{name}</span>
+      <span
+        className={cn('min-w-0 truncate font-normal', nameClassName)}
+        title={name}
+      >
+        {name}
+      </span>
     </div>
   );
 }

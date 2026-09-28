@@ -22,7 +22,7 @@ import {
   type QuickExpenseFormValues,
 } from '@/schemas/transaction.schema';
 import type { CategoryOption, PaymentMethodOption } from '@/types/catalog';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { formatMonthInPhrase, todayCalendarDate } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { isGoalWalletType } from '@/domain/payment-method';
 import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-balance';
@@ -30,7 +30,7 @@ import {
   InsufficientWalletExpenseDialog,
   InsufficientWalletExpenseNotice,
 } from '@/components/expenses/insufficient-wallet-expense';
-import { formatCurrency, formatMonth } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
@@ -69,8 +69,7 @@ function fortnightPreviewLabel(dateStr: string): string {
   const { year, month, period } = getCalendarFortnightRefForYmd(dateStr);
   const periodLabel =
     period === 'FIRST' ? '1ª quincena' : '2ª quincena';
-  const monthLabel = formatMonth(month);
-  return `Va a: ${periodLabel} · ${monthLabel} ${year}`;
+  return `Va a: ${periodLabel} · ${formatMonthInPhrase(month, year)}`;
 }
 
 export function QuickExpenseSheet({
@@ -308,7 +307,7 @@ export function QuickExpenseSheet({
                                   providerIconKey={pm.provider_icon_key}
                                   iconClassName="h-5 w-5 rounded-md"
                                 />
-                                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                <span className="font-sans text-xs tabular-nums text-muted-foreground">
                                   {formatCurrency(pm.amount ?? 0)}
                                 </span>
                               </span>
@@ -373,7 +372,7 @@ export function QuickExpenseSheet({
               <ToggleField
                 layout="row"
                 className="px-3"
-                label="Descontar de la cartera"
+                label="Descontar de la billetera"
                 helper={
                   applyWalletDelta
                     ? 'Se restará del saldo. Apaga esto si el saldo ya incluye el pago.'
@@ -384,7 +383,7 @@ export function QuickExpenseSheet({
                   form.setValue('applyWalletDelta', checked)
                 }
                 disabled={loading || submitting}
-                aria-label="Descontar de la cartera"
+                aria-label="Descontar de la billetera"
               />
             ) : null}
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { OVERLAY_PRIMARY_BUTTON_CLASS } from '@/components/overlay/overlay-form';
@@ -77,13 +77,13 @@ function AllocationSummary({
     >
       <div className="flex flex-col gap-0.5">
         <span className="text-xs text-muted-foreground">Total presupuesto</span>
-        <span className="font-mono font-semibold tabular-nums">
+        <span className="font-sans font-semibold tabular-nums">
           {formatCurrency(totalAmount)}
         </span>
       </div>
       <div className="flex flex-col gap-0.5 text-center">
         <span className="text-xs text-muted-foreground">Asignado</span>
-        <span className="font-mono font-semibold tabular-nums">
+        <span className="font-sans font-semibold tabular-nums">
           {formatCurrency(allocated)}
         </span>
       </div>
@@ -91,10 +91,10 @@ function AllocationSummary({
         <span className="text-xs text-muted-foreground">Restante</span>
         <span
           className={cn(
-            'font-mono font-semibold tabular-nums',
+            'font-sans font-semibold tabular-nums',
             isOver && 'text-destructive',
-            !isOver && !isExact && 'text-amber-600 dark:text-amber-400',
-            isExact && 'text-emerald-600 dark:text-emerald-400',
+            !isOver && !isExact && 'text-status-pending',
+            isExact && 'text-status-income',
           )}
         >
           {formatCurrency(remaining)}
@@ -231,7 +231,7 @@ export default function BudgetAllocationsDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={`Editar asignaciones: ${budget.name}`}
-      description="Modifica la distribución del presupuesto entre carteras y categorías."
+      description="Modifica la distribución del presupuesto entre billeteras y categorías."
       busy={isBusy}
       contentClassName="md:max-w-2xl"
     >
@@ -252,8 +252,8 @@ export default function BudgetAllocationsDialog({
             />
 
             {hasEmptyAllocation ? (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                Elige {ANY_WALLET_LABEL} o una cartera, una categoría y un monto mayor a $0.00.
+              <div className="rounded-lg border border-status-pending/30 bg-status-pending/10 px-3 py-2 text-xs text-status-pending">
+                Elige {ANY_WALLET_LABEL} o una billetera, una categoría y un monto mayor a $0.00.
               </div>
             ) : null}
 
@@ -306,7 +306,7 @@ export default function BudgetAllocationsDialog({
                       name={`allocations.${index}.wallet_id`}
                       render={({ field: f }) => (
                         <FormItem className="col-span-2 min-w-0 md:col-span-1">
-                          <FormLabel className="text-xs">Cartera</FormLabel>
+                          <FormLabel className="text-xs">Billetera</FormLabel>
                           <Select
                             onValueChange={(v) => f.onChange(selectValueToWalletId(v))}
                             onOpenChange={handleSelectOpenChange}
@@ -315,9 +315,9 @@ export default function BudgetAllocationsDialog({
                             <FormControl>
                               <SelectTrigger
                                 className="h-11 w-full text-sm md:h-8 md:text-xs"
-                                aria-label={`Cartera de la asignación ${index + 1}`}
+                                aria-label={`Billetera de la asignación ${index + 1}`}
                               >
-                                <SelectValue placeholder="Cartera" />
+                                <SelectValue placeholder="Billetera" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -336,7 +336,7 @@ export default function BudgetAllocationsDialog({
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormMessage className="text-[10px]" />
+                          <FormMessage className="text-caption" />
                         </FormItem>
                       )}
                     />
@@ -359,7 +359,7 @@ export default function BudgetAllocationsDialog({
                             placeholder="Categoría"
                             ariaLabel={`Categoría de la asignación ${index + 1}`}
                           />
-                          <FormMessage className="text-[10px]" />
+                          <FormMessage className="text-caption" />
                         </FormItem>
                       )}
                     />
@@ -378,7 +378,7 @@ export default function BudgetAllocationsDialog({
                               placeholder="0"
                               aria-label={`Monto de la asignación ${index + 1}`} data-icon="inline-start" />
                           </FormControl>
-                          <FormMessage className="text-[10px]" />
+                          <FormMessage className="text-caption" />
                         </FormItem>
                       )}
                     />
@@ -425,7 +425,6 @@ export default function BudgetAllocationsDialog({
             >
               {isBusy ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" data-icon="inline-start" />
                   Guardando…
                 </>
               ) : (

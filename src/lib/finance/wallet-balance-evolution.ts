@@ -1,4 +1,4 @@
-import { addCalendarDays } from '@/lib/calendar-dates';
+import { addCalendarDays, formatChartAxisMonth } from '@/lib/calendar-dates';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 import type { WalletMovement } from '@/types/wallet-movements';
 
@@ -74,13 +74,8 @@ export const buildRecentMonthAsOfDates = (
   return result;
 };
 
-const formatMonthChartLabel = (ymd: string): string => {
-  const [year, month, day] = ymd.split('-').map(Number);
-  return new Intl.DateTimeFormat('es-MX', {
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(Date.UTC(year, month - 1, day)));
-};
+const formatMonthChartLabel = (ymd: string): string =>
+  formatChartAxisMonth(ymd.slice(0, 7));
 
 export const buildWalletBalanceMetrics = (
   currentBalance: number,

@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import {
   useCallback,
   useEffect,
@@ -199,7 +200,7 @@ function FortnightMonthStepper({
         </Button>
       </div>
       {!first && !second ? (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           No hay quincenas creadas para este mes.
         </p>
       ) : null}
@@ -510,9 +511,7 @@ const CreditCardQuickPurchaseDialog = ({
       className={cn('flex flex-col gap-4', isMobile && 'pb-1')}
     >
       {error ? (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <ErrorBanner>{error}</ErrorBanner>
       ) : null}
 
       {!alreadyInCardBalance &&
@@ -534,7 +533,7 @@ const CreditCardQuickPurchaseDialog = ({
               <div className="flex min-w-0 items-center gap-2.5">
                 <span
                   className={cn(
-                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]',
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
                     exceedsCreditLimit
                       ? 'bg-destructive/10 dark:bg-destructive/15'
                       : 'bg-black/[0.05] dark:bg-white/[0.08]',
@@ -553,7 +552,7 @@ const CreditCardQuickPurchaseDialog = ({
                 </span>
                 <p
                   className={cn(
-                    'text-[11px] font-medium tracking-[-0.01em]',
+                    'text-caption font-medium tracking-[-0.01em]',
                     exceedsCreditLimit
                       ? 'text-destructive'
                       : 'text-muted-foreground',
@@ -564,7 +563,7 @@ const CreditCardQuickPurchaseDialog = ({
               </div>
               <p
                 className={cn(
-                  'shrink-0 font-mono text-[15px] font-semibold tabular-nums tracking-tight',
+                  'shrink-0 font-sans text-body font-semibold tabular-nums tracking-tight',
                   exceedsCreditLimit
                     ? 'text-destructive'
                     : 'text-foreground',
@@ -575,7 +574,7 @@ const CreditCardQuickPurchaseDialog = ({
             </div>
             {exceedsCreditLimit ? (
               <p
-                className="mt-1.5 text-[11px] leading-snug text-destructive/90"
+                className="mt-1.5 text-caption leading-snug text-destructive/90"
                 role="alert"
               >
                 Este monto supera el límite disponible; reduce el monto o
@@ -627,7 +626,7 @@ const CreditCardQuickPurchaseDialog = ({
                     onPickPeriod={handlePickPeriod}
                   />
                   {fortnightMismatchesDate ? (
-                    <p className="text-[10px] leading-snug text-amber-700 dark:text-amber-400">
+                    <p className="text-caption leading-snug text-status-pending">
                       No coincide con la fecha
                       {dateMatchedFortnight
                         ? ` (${dateMatchedFortnight.name})`
@@ -693,7 +692,7 @@ const CreditCardQuickPurchaseDialog = ({
           </div>
 
           <div>
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 eyebrow text-muted-foreground">
               Cuotas (opcional)
             </p>
             <div className={OVERLAY_GROUPED_CARD_CLASS}>
@@ -726,9 +725,9 @@ const CreditCardQuickPurchaseDialog = ({
                 />
               </GroupedRow>
             </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">
+            <p className="mt-1.5 text-caption text-muted-foreground">
               Si rellenas ambos, la compra se trata como pago en cuotas y no
-              aparece en la planificación por quincena (sí en el estado de cuenta
+              aparece en la planeación por quincena (sí en el estado de cuenta
               de la tarjeta).
             </p>
           </div>
@@ -745,7 +744,7 @@ const CreditCardQuickPurchaseDialog = ({
                 />
               </div>
             </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">
+            <p className="mt-1.5 text-caption text-muted-foreground">
               Actívalo si ya ajustaste la deuda al corte. El movimiento queda en
               bitácora sin volver a subir la deuda.
             </p>
@@ -767,7 +766,7 @@ const CreditCardQuickPurchaseDialog = ({
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
-      title="Registrar compra"
+      title="Agregar compra"
       description={a11yDescription}
       busy={submitting}
     >

@@ -125,7 +125,7 @@ describe('buildLiquidityFinancialBrief', () => {
   it('suggests action for the tightest payment month', () => {
     const brief = buildLiquidityFinancialBrief(baseData());
     expect(brief.actionNow).toContain('Anticipa');
-    expect(brief.actionNow).toContain('Agosto');
+    expect(brief.actionNow).toContain('agosto');
   });
 
   it('prioritizes dangerous card guidance over generic advice', () => {
@@ -143,7 +143,7 @@ describe('buildLiquidityFinancialBrief', () => {
           cards: [
             {
               card_id: 1,
-              card_name: 'Liverpool',
+              card_name: 'Tienda departamental',
               card_type: 'DEPARTMENT_STORE_CARD',
               used_amount: 9000,
               credit_limit: 10000,
@@ -158,7 +158,7 @@ describe('buildLiquidityFinancialBrief', () => {
       }),
     );
 
-    expect(brief.actionNow).toContain('Liverpool');
+    expect(brief.actionNow).toContain('Tienda departamental');
   });
 
   it('passes through YTD context', () => {

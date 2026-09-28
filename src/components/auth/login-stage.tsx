@@ -55,12 +55,12 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
               className="inline-flex items-center gap-2.5 font-semibold tracking-tight text-[#f4f3f8]"
               aria-label="MiCasa inicio"
             >
-              <MicasaMark className="h-8 w-auto" />
+              <MicasaMark className="size-8" />
               <span className="text-base">MiCasa</span>
             </Link>
 
             <div className="min-[781px]:mt-10">
-              <p className="mb-3.5 text-[11px] font-semibold tracking-[0.14em] text-[#55535f] uppercase">
+              <p className="mb-3.5 text-caption font-semibold tracking-[0.14em] text-[#55535f] uppercase">
                 Bienvenido de vuelta
               </p>
               <p className="max-w-[260px] text-[26px] leading-[1.25] font-semibold tracking-tight text-[#f4f3f8]">

@@ -18,19 +18,19 @@ type LiquidityVisualMetricProps = {
 };
 
 const statusToneClass = {
-  emerald: 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300',
-  amber: 'bg-amber-500/10 text-amber-800 ring-amber-500/20 dark:text-amber-300',
+  emerald: 'bg-status-income/10 text-status-income ring-status-income/20 dark:text-status-income',
+  amber: 'bg-status-pending/10 text-status-pending ring-status-pending/20 dark:text-status-pending',
   destructive: 'bg-destructive/10 text-destructive ring-destructive/20',
-  sky: 'bg-sky-500/10 text-sky-700 ring-sky-500/20 dark:text-sky-300',
-  violet: 'bg-violet-500/10 text-violet-700 ring-violet-500/20 dark:text-violet-300',
+  sky: 'bg-status-info/10 text-status-info ring-status-info/20 dark:text-status-info',
+  violet: 'bg-status-info/10 text-status-info ring-status-info/20 dark:text-status-info',
 } as const;
 
 const barToneClass = {
-  emerald: 'bg-emerald-500',
-  amber: 'bg-amber-500',
+  emerald: 'bg-status-income',
+  amber: 'bg-status-pending',
   destructive: 'bg-destructive',
-  violet: 'bg-violet-500',
-  sky: 'bg-sky-500',
+  violet: 'bg-status-info',
+  sky: 'bg-status-info',
 } as const;
 
 export const LiquidityVisualMetric = ({
@@ -56,13 +56,13 @@ export const LiquidityVisualMetric = ({
           {icon}
           <div>
             <p className="text-sm font-medium text-foreground">{label}</p>
-            <p className="text-[11px] text-muted-foreground">{hint}</p>
+            <p className="text-caption text-muted-foreground">{hint}</p>
           </div>
         </div>
         {statusLabel ? (
           <span
             className={cn(
-              'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
+              'shrink-0 rounded-full px-2 py-0.5 text-caption font-semibold ring-1',
               statusToneClass[statusTone],
             )}
           >
@@ -73,7 +73,7 @@ export const LiquidityVisualMetric = ({
 
       <p
         className={cn(
-          'mt-3 font-mono text-2xl font-bold tabular-nums tracking-tight',
+          'mt-3 font-sans text-2xl font-bold tabular-nums tracking-tight',
           amountClassName,
         )}
       >

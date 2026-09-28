@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ErrorBanner } from '@/components/error-banner';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   AmountRow,
@@ -146,16 +147,14 @@ const LenderPayForm = ({
       aria-busy={submitting}
     >
       {displayError ? (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {displayError}
-        </div>
+        <ErrorBanner>{displayError}</ErrorBanner>
       ) : null}
 
       <div className="rounded-xl border border-border/60 bg-card px-3 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="eyebrow text-muted-foreground">
           Compromiso del periodo
         </p>
-        <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+        <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
           {formatCurrency(amount)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -190,11 +189,11 @@ const LenderPayForm = ({
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{item.loanName}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-caption text-muted-foreground">
                   Cuota {item.sequence} · {formatDate(item.dueDate)}
                 </p>
               </div>
-              <span className="font-mono text-sm font-semibold tabular-nums">
+              <span className="font-sans text-sm font-semibold tabular-nums">
                 {formatCurrency(item.amount)}
               </span>
             </li>
@@ -210,7 +209,7 @@ const LenderPayForm = ({
           ariaLabel="Monto del pago al prestamista"
         />
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-caption text-muted-foreground">
         Un monto menor deja el resto de la cuota pendiente. Un monto mayor
         abona al final del calendario.
       </p>

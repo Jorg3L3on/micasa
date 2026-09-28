@@ -15,6 +15,7 @@ import { ContentEnter } from '@/components/view-transition/SuspenseReveal';
 import { QuickCaptureHost } from '@/components/quick-capture/QuickCaptureHost';
 import { PwaLifecycle } from '@/components/pwa/PwaLifecycle';
 import AppLoading from './loading';
+import { DOCK_CLEARANCE_PADDING_MOBILE_CLASS } from '@/lib/ui/dock-clearance';
 
 export default async function AppLayout({
   children,
@@ -47,17 +48,19 @@ export default async function AppLayout({
               <AppAtmosphere />
               <header
                 data-app-chrome
-                className="sticky top-0 z-50 h-[calc(4rem+env(safe-area-inset-top))] min-w-0 shrink-0 border-b border-border/80 bg-background/85 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur-xl transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(3rem+env(safe-area-inset-top))] dark:border-white/[0.1] dark:bg-[#060914]/55 dark:shadow-[0_16px_48px_-24px_rgba(0,0,0,0.55)] dark:backdrop-saturate-120"
+                className="sticky top-0 z-50 h-[calc(4rem+env(safe-area-inset-top))] min-w-0 shrink-0 border-b border-border/80 bg-background/85 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur-xl transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(3rem+env(safe-area-inset-top))] dark:border-white/[0.1] dark:bg-background/55 dark:shadow-panel dark:backdrop-saturate-120"
                 style={{ viewTransitionName: 'app-header' }}
               >
                 {/* Translucent iOS status bar text is white: keep it legible in light mode. */}
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-0 h-[env(safe-area-inset-top)] bg-[#060914] dark:hidden"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-[env(safe-area-inset-top)] bg-chrome-ink dark:hidden"
                 />
                 <AppHeaderToolbarDynamic />
               </header>
-              <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 pb-[calc(5rem+env(safe-area-inset-bottom))] dark:bg-transparent md:pb-6">
+              <div
+                className={`relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 dark:bg-transparent ${DOCK_CLEARANCE_PADDING_MOBILE_CLASS}`}
+              >
                 <div className="container mx-auto min-w-0 overflow-x-clip">
                   <Suspense fallback={<AppLoading />}>
                     <ContentEnter>{children}</ContentEnter>

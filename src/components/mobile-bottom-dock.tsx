@@ -28,6 +28,7 @@ import {
 import { getDockDestinations } from '@/components/nav-destinations';
 import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
 import { useSidebar } from '@/components/ui/sidebar';
+import { DOCK_FLOAT_PADDING_CLASS } from '@/lib/ui/dock-clearance';
 import { cn } from '@/lib/utils';
 
 const PILL_SPRING: Transition = {
@@ -45,10 +46,10 @@ const MENU_TRANSITION: Transition = {
 };
 
 export const MOBILE_DOCK_SHELL_CLASS = cn(
-  'relative grid h-16 grid-cols-5 items-center overflow-hidden rounded-full',
-  'border border-black/10 bg-background/70 shadow-[0_12px_40px_-16px_rgba(15,23,42,0.35),inset_0_1px_0_rgba(255,255,255,0.5)]',
+  'relative grid h-(--dock-bar-height) grid-cols-5 items-center overflow-hidden rounded-full',
+  'border border-black/10 bg-background/70 shadow-panel',
   'supports-[backdrop-filter]:bg-background/45 backdrop-blur-2xl backdrop-saturate-180',
-  'dark:border-white/[0.12] dark:bg-[rgb(9_14_29/0.6)] dark:supports-[backdrop-filter]:bg-[rgb(9_14_29/0.4)] dark:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.72),0_32px_80px_-36px_rgba(58,55,252,0.16),inset_0_1px_0_rgba(255,255,255,0.06)]',
+  'dark:border-white/[0.12] dark:bg-[rgb(9_14_29/0.6)] dark:supports-[backdrop-filter]:bg-[rgb(9_14_29/0.4)] dark:shadow-panel',
   'before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-black/20 before:to-transparent',
   'dark:before:via-white/40',
 );
@@ -101,7 +102,7 @@ const DockTabLink = ({
         aria-current={active ? 'page' : undefined}
         aria-label={title}
         className={cn(
-          'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors',
+          'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-caption font-medium transition-colors',
           active ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
         )}
       >
@@ -116,7 +117,7 @@ const DockTabLink = ({
         <Icon className="h-5 w-5 shrink-0" aria-hidden />
         <span
           className={cn(
-            'max-w-full truncate transition-opacity',
+            'max-w-full text-center leading-none tracking-tight transition-opacity',
             active ? 'opacity-100' : 'opacity-60',
           )}
         >
@@ -215,7 +216,10 @@ function MobileBottomDockInner() {
     <nav
       aria-label="Navegación principal"
       data-testid="mobile-bottom-dock"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] md:hidden"
+      className={cn(
+        'pointer-events-none fixed inset-x-0 bottom-0 z-50 px-3 md:hidden',
+        DOCK_FLOAT_PADDING_CLASS,
+      )}
     >
       <div className="pointer-events-auto relative mx-auto max-w-lg">
         <AnimatePresence>
@@ -238,9 +242,9 @@ function MobileBottomDockInner() {
               transition={reduceMotion ? { duration: 0 } : MENU_TRANSITION}
               className={cn(
                 'absolute bottom-[calc(100%+0.75rem)] left-1/2 z-10 w-[min(17.5rem,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden rounded-2xl',
-                'border border-black/10 bg-background/90 p-1.5 shadow-[0_16px_40px_-18px_rgba(15,23,42,0.4)]',
+                'border border-black/10 bg-background/90 p-1.5 shadow-panel',
                 'supports-[backdrop-filter]:bg-background/80 backdrop-blur-2xl backdrop-saturate-150',
-                'dark:border-white/10 dark:bg-[rgb(9_14_29/0.88)] dark:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.72)]',
+                'dark:border-white/10 dark:bg-[rgb(9_14_29/0.88)] dark:shadow-panel',
               )}
             >
               <button
@@ -250,16 +254,16 @@ function MobileBottomDockInner() {
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 onClick={handleChooseExpense}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 ring-1 ring-violet-500/25">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 ring-1 ring-status-info/25">
                   <ArrowDownCircle
-                    className="h-4 w-4 text-violet-600 dark:text-violet-400"
+                    className="h-4 w-4 text-status-info"
                     aria-hidden
                   />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">Gasto</span>
                   <span className="block text-xs text-muted-foreground">
-                    Planificar o marcar como pagado
+                    Planear o marcar como pagado
                   </span>
                 </span>
               </button>
@@ -270,9 +274,9 @@ function MobileBottomDockInner() {
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 onClick={handleChooseIncome}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/25">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 ring-1 ring-status-info/25">
                   <ArrowUpCircle
-                    className="h-4 w-4 text-blue-600 dark:text-blue-400"
+                    className="h-4 w-4 text-status-info"
                     aria-hidden
                   />
                 </span>
@@ -317,9 +321,8 @@ function MobileBottomDockInner() {
               onKeyDown={handlePlusKeyDown}
               whileTap={reduceMotion ? undefined : { scale: 0.9 }}
               className={cn(
-                'flex size-12 items-center justify-center rounded-full bg-primary text-white shadow-md',
+                'flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md',
                 'ring-2 ring-primary/30 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                'dark:bg-[#3a37fc]',
               )}
             >
               <motion.span
@@ -352,7 +355,7 @@ function MobileBottomDockInner() {
               onClick={handleOpenMore}
               onKeyDown={handleMoreKeyDown}
               className={cn(
-                'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors',
+                'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-caption font-medium transition-colors',
                 moreActive ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
               )}
             >
@@ -367,7 +370,7 @@ function MobileBottomDockInner() {
               <MoreHorizontal className="h-5 w-5 shrink-0" aria-hidden />
               <span
                 className={cn(
-                  'max-w-full truncate transition-opacity',
+                  'max-w-full text-center leading-none tracking-tight transition-opacity',
                   moreActive ? 'opacity-100' : 'opacity-60',
                 )}
               >

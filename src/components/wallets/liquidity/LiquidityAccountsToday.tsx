@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, CreditCard, ExternalLink, Pencil } from 'lucide-react';
@@ -17,6 +18,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { LiquidityAccountDebtWhy } from '@/components/wallets/liquidity/LiquidityAccountDebtWhy';
+import { MoneyInText } from '@/components/wallets/liquidity/money-in-text';
 import { LiquidityDebtSummaryStrip } from '@/components/wallets/liquidity/LiquidityDebtSummaryStrip';
 import {
   LIQUIDITY_PANEL_CLASS,
@@ -50,12 +52,12 @@ const ACCOUNTS_PREVIEW_COUNT = 6;
 
 const badgeToneClass = (tone: AccountTodayBadge['tone']): string =>
   cn(
-    'rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
+    'rounded-full px-2 py-0.5 text-caption font-semibold ring-1',
     tone === 'destructive' && 'bg-destructive/10 text-destructive ring-destructive/20',
     tone === 'amber' &&
-      'bg-amber-500/10 text-amber-800 ring-amber-500/20 dark:text-amber-300',
+      'bg-status-pending/10 text-status-pending ring-status-pending/20 dark:text-status-pending',
     tone === 'emerald' &&
-      'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300',
+      'bg-status-income/10 text-status-income ring-status-income/20 dark:text-status-income',
     tone === 'muted' && 'bg-muted text-muted-foreground ring-border/40',
   );
 
@@ -65,15 +67,15 @@ const utilizationBarClass = (utilizationPct: number): string =>
     utilizationPct > 80
       ? 'bg-destructive/80'
       : utilizationPct > 50
-        ? 'bg-amber-500/80'
-        : 'bg-emerald-500/80',
+        ? 'bg-status-pending/80'
+        : 'bg-status-income/80',
   );
 
 const AccountIcon = ({ view }: { view: AccountTodayView }) => {
   if (view.isFonacot && !view.providerIconKey) {
     return (
       <span
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500/15 text-[10px] font-bold tracking-wide text-teal-800 ring-1 ring-teal-500/30 dark:text-teal-200"
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 text-caption font-bold tracking-wide text-status-info ring-1 ring-status-info/30 dark:text-status-info"
         aria-label="Fonacot"
         title="Fonacot"
       >
@@ -107,11 +109,9 @@ const UtilizationBar = ({
 );
 
 const debtToneClass = (view: AccountTodayView): string =>
-  view.kind === 'loan'
-    ? 'text-amber-700 dark:text-amber-300'
-    : view.figures.isCredit
-      ? 'text-violet-700 dark:text-violet-300'
-      : 'text-muted-foreground';
+  view.kind === 'loan' || view.figures.isCredit
+    ? 'text-status-expense'
+    : 'text-muted-foreground';
 
 const breakdownKeyForRow = (row: AccountTodayRow): string =>
   row.kind === 'wallet' ? `wallet-${row.wallet.id}` : `loan-${row.loan.id}`;
@@ -176,7 +176,7 @@ const AccountCard = ({
     <div
       className={cn(
         MONTHLY_PANEL_SHELL_CLASS,
-        'isolate flex w-full flex-col gap-3 overflow-hidden rounded-xl p-3 text-left',
+        'isolate flex w-full flex-col gap-3 overflow-hidden rounded-xl border-0 p-3 text-left dark:border-0',
       )}
     >
       <AuraRowBloom color={accountAuraColor(view)} />
@@ -199,30 +199,32 @@ const AccountCard = ({
               <p className="truncate text-sm font-semibold">{view.name}</p>
               {badge ? <span className={badgeToneClass(badge.tone)}>{badge.label}</span> : null}
             </div>
-            <p className="text-[10px] text-muted-foreground">{view.typeLabel}</p>
+            <p className="text-caption text-muted-foreground">{view.typeLabel}</p>
             {preview ? (
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{preview}</p>
+              <p className="mt-1 text-caption leading-snug text-muted-foreground">
+                <MoneyInText text={preview} />
+              </p>
             ) : null}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               Deuda
             </p>
-            <p className={cn('font-mono text-sm font-bold tabular-nums', debtToneClass(view))}>
+            <p className={cn('font-sans text-sm font-bold tabular-nums', debtToneClass(view))}>
               {debt == null ? '—' : formatCurrency(debt)}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               Libre
             </p>
             <p
               className={cn(
-                'font-mono text-sm font-bold tabular-nums',
-                free == null ? 'text-muted-foreground' : 'text-emerald-700 dark:text-emerald-300',
+                'font-sans text-sm font-bold tabular-nums',
+                free == null ? 'text-muted-foreground' : 'text-status-income',
               )}
             >
               {free == null ? '—' : formatCurrency(free)}
@@ -405,7 +407,7 @@ export const LiquidityAccountsToday = ({
   const subtitle =
     fundingTotal != null ? (
       <>
-        <span className="font-mono font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+        <span className="font-sans font-semibold tabular-nums text-status-income">
           {formatCurrency(fundingTotal)}
         </span>{' '}
         en efectivo y débito · {countLabel}
@@ -435,9 +437,10 @@ export const LiquidityAccountsToday = ({
             <Skeleton className="h-28 w-full rounded-xl border border-border/60" />
           </div>
         ) : views.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground">
-            No hay cuentas activas de efectivo, tarjeta o préstamo.
-          </p>
+          <EmptyState
+            message="No hay cuentas activas de efectivo, tarjeta o préstamo."
+            className="py-8"
+          />
         ) : (
           <>
             <LiquidityDebtSummaryStrip
@@ -447,7 +450,7 @@ export const LiquidityAccountsToday = ({
                 void load();
               }}
             />
-            <p className="px-1 text-[10px] text-muted-foreground">
+            <p className="px-1 text-caption text-muted-foreground">
               Toca una deuda para ver de qué está hecha.
             </p>
             <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1" role="list">
@@ -498,7 +501,11 @@ export const LiquidityAccountsToday = ({
         {whyDetailAccount ? (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              {whyDetailAccount.preview || 'De qué está hecha esta deuda'}
+              {whyDetailAccount.preview ? (
+                <MoneyInText text={whyDetailAccount.preview} size="row" />
+              ) : (
+                'De qué está hecha esta deuda'
+              )}
             </p>
             <LiquidityAccountDebtWhy
               account={whyDetailAccount}

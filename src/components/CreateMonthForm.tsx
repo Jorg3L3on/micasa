@@ -4,12 +4,12 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useFinanceContext } from '@/context/finance-context';
 import { createMonthFortnights, getCreatedMonths } from '@/lib/api/fortnights';
-import { formatMonth } from '@/lib/utils';
+import { formatMonthHeading, formatMonthInPhrase } from '@/lib/calendar-dates';
 import {
   PLANNING_MONTH_MAX_YEAR,
   planningMonthCreateError,
@@ -65,7 +65,7 @@ export default function CreateMonthForm({
         if (createdSet.has(key)) continue;
         options.push({
           value: key,
-          label: `${formatMonth(month)} ${year}`,
+          label: formatMonthHeading(month, year),
           year,
           month,
         });
@@ -97,13 +97,11 @@ export default function CreateMonthForm({
       const message =
         parsed.error.issues[0]?.message ?? 'Selecciona un mes y año';
       setValidationError(message);
-      toast.error(message);
       return;
     }
     const [y, m] = parsed.data.month.split('-').map(Number);
     if (Number.isNaN(y) || Number.isNaN(m) || m < 1 || m > 12) {
       setValidationError('Selecciona un mes válido');
-      toast.error('Selecciona un mes válido');
       return;
     }
     setValidationError(null);
@@ -140,7 +138,6 @@ export default function CreateMonthForm({
           ? err.message
           : 'Error al crear las quincenas del mes';
       setValidationError(message);
-      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -153,7 +150,7 @@ export default function CreateMonthForm({
   const selectId = `${idPrefix}-select`;
 
   const getSelectPlaceholder = (): string => {
-    if (loadingMonths) return 'Cargando...';
+    if (loadingMonths) return 'Cargando…';
     if (availableOptions.length === 0) {
       return 'No hay meses por crear';
     }
@@ -221,12 +218,7 @@ export default function CreateMonthForm({
         >
           {isSubmitting ? (
             <>
-              <Loader2
-                className="mr-2 h-4 w-4 animate-spin"
-                aria-hidden
-                data-icon="inline-start"
-              />
-              Creando...
+              Creando…
             </>
           ) : (
             'Crear mes (dos quincenas)'
@@ -236,9 +228,7 @@ export default function CreateMonthForm({
           <Button variant="outline" size="sm" asChild>
             <Link
               href={`/monthly/${lastCreated.year}/${monthPadded}${queryString ? `?${queryString}` : ''}`}
-              aria-label={`Ver mes ${formatMonth(lastCreated.month)} ${
-                lastCreated.year
-              }`}
+              aria-label={`Ver mes ${formatMonthInPhrase(lastCreated.month, lastCreated.year)}`}
             >
               <ExternalLink className="mr-2 h-4 w-4" aria-hidden data-icon="inline-start" />
               Ver mes

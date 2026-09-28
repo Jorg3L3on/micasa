@@ -20,6 +20,7 @@ import {
 } from '@/lib/finance/loan-schedule';
 import { partitionScheduledInstallments } from '@/lib/finance/loan-installment-cues';
 import { todayCalendarDate, parseDateOnly } from '@/lib/calendar-dates';
+import { groupDuePaymentsByLender } from '@/lib/finance/lender-payment-window';
 import {
   applyWalletAmountDelta,
   getPaidExpenseWalletDelta,
@@ -964,11 +965,11 @@ export async function sumPlannerLoanDueForFortnight(
   return {
     wallet: {
       total: wallet.reduce((sum, payment) => sum + payment.amount, 0),
-      count: wallet.length,
+      count: groupDuePaymentsByLender(wallet).length,
     },
     payroll: {
       total: payroll.reduce((sum, payment) => sum + payment.amount, 0),
-      count: payroll.length,
+      count: groupDuePaymentsByLender(payroll).length,
     },
   };
 }

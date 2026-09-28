@@ -5,12 +5,12 @@ import Link from 'next/link';
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  Inbox,
   Receipt,
   Search,
   SlidersHorizontal,
   Wallet,
 } from 'lucide-react';
+import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -60,20 +60,11 @@ export const CreditCardFeedEmpty = ({
   description,
   action,
 }: FeedEmptyProps) => (
-  <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/60 bg-muted/15 px-4 py-8 text-center">
-    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50">
-      <Inbox className="h-4 w-4 text-muted-foreground" aria-hidden data-icon="inline-start" />
-    </span>
-    <p className="text-sm font-medium text-foreground">{message}</p>
-    {description ? (
-      <p className="max-w-xs text-xs text-muted-foreground">{description}</p>
-    ) : null}
-    {action ? (
-      <Button type="button" size="sm" variant="outline" className="mt-1 h-8 rounded-lg" onClick={action.onClick}>
-        {action.label}
-      </Button>
-    ) : null}
-  </div>
+  <EmptyState
+    message={message}
+    description={description}
+    action={action ? { label: action.label, onClick: action.onClick } : undefined}
+  />
 );
 
 type MovementFilter = 'all' | 'purchases' | 'payments';
@@ -219,7 +210,7 @@ export const CreditCardRecentMovements = ({
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar movimientos..."
+                  placeholder="Buscar movimientos…"
                   className="h-9 w-full rounded-xl border-border/60 bg-background/70 pl-8 text-sm shadow-sm"
                   aria-label="Buscar movimientos"
                 />
@@ -248,7 +239,7 @@ export const CreditCardRecentMovements = ({
                   <span>{label}</span>
                   <span
                     className={cn(
-                      'font-mono text-[10px] tabular-nums',
+                      'font-sans text-caption tabular-nums',
                       filter === value
                         ? 'text-primary-foreground/75'
                         : 'text-muted-foreground/75',
@@ -267,7 +258,7 @@ export const CreditCardRecentMovements = ({
             icon={<Receipt className="h-3.5 w-3.5" aria-hidden data-icon="inline-start" />}
             label="Compras"
             value={formatCurrency(purchaseTotal)}
-            tone="violet"
+            tone="rose"
           />
           <ActivityMetric
             icon={<Wallet className="h-3.5 w-3.5" aria-hidden data-icon="inline-start" />}
@@ -291,7 +282,7 @@ export const CreditCardRecentMovements = ({
             description="Registra una compra o un pago para verlos aquí."
             action={
               onRegisterPurchase
-                ? { label: 'Registrar compra', onClick: onRegisterPurchase }
+                ? { label: 'Agregar compra', onClick: onRegisterPurchase }
                 : undefined
             }
           />
@@ -301,7 +292,7 @@ export const CreditCardRecentMovements = ({
             description="Registra un gasto con esta tarjeta."
             action={
               onRegisterPurchase
-                ? { label: 'Registrar compra', onClick: onRegisterPurchase }
+                ? { label: 'Agregar compra', onClick: onRegisterPurchase }
                 : undefined
             }
           />
@@ -332,15 +323,15 @@ export const CreditCardRecentMovements = ({
               return (
                 <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
                   <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
-                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="eyebrow text-muted-foreground">
                       {getDateGroupLabel(dateKey)}
-                    </h4>
+                    </p>
                     <span
                       className={cn(
-                        'font-mono text-[11px] font-semibold tabular-nums',
+                        'font-sans text-caption font-semibold tabular-nums',
                         dayNet >= 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400',
+                          ? 'text-status-income'
+                          : 'text-status-expense',
                       )}
                     >
                       {formatSignedCurrency(dayNet)}
@@ -354,9 +345,9 @@ export const CreditCardRecentMovements = ({
                           className="border-b border-border/40 last:border-b-0"
                         >
                           <div className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/25">
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/10 ring-1 ring-violet-500/20">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-info/10 ring-1 ring-status-info/20">
                               <ArrowUpRight
-                                className="h-4 w-4 text-violet-600 dark:text-violet-400"
+                                className="h-4 w-4 text-status-info"
                                 aria-hidden data-icon="inline-start" />
                             </span>
                             <div className="min-w-0 flex-1">
@@ -364,11 +355,11 @@ export const CreditCardRecentMovements = ({
                                 <p className="truncate text-sm font-semibold leading-tight">
                                   {row.purchase.description}
                                 </p>
-                                <span className="hidden shrink-0 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400 sm:inline-flex">
+                                <span className="hidden shrink-0 rounded-full bg-status-info/10 px-2 py-0.5 text-caption font-semibold text-status-info sm:inline-flex">
                                   Compra
                                 </span>
                               </div>
-                              <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[10px] text-muted-foreground">
+                              <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-caption text-muted-foreground">
                                 <CategoryLabel
                                   name={row.purchase.category}
                                   icon={row.purchase.categoryIcon}
@@ -388,12 +379,12 @@ export const CreditCardRecentMovements = ({
                               </p>
                               <Link
                                 href={getFortnightHref(row.purchase, ownerQueryString)}
-                                className="mt-0.5 inline-block text-[10px] font-medium text-primary-text underline-offset-2 hover:underline"
+                                className="mt-0.5 inline-block text-caption font-medium text-primary-text underline-offset-2 hover:underline"
                               >
                                 Ver quincena
                               </Link>
                             </div>
-                            <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                            <span className="shrink-0 font-sans text-sm font-bold tabular-nums">
                               {formatCurrency(row.purchase.amount)}
                             </span>
                           </div>
@@ -404,9 +395,9 @@ export const CreditCardRecentMovements = ({
                           className="border-b border-border/40 last:border-b-0"
                         >
                           <div className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/25">
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-income/10 ring-1 ring-status-income/20">
                               <ArrowDownLeft
-                                className="h-4 w-4 text-emerald-600 dark:text-emerald-400"
+                                className="h-4 w-4 text-status-income"
                                 aria-hidden data-icon="inline-start" />
                             </span>
                             <div className="min-w-0 flex-1">
@@ -417,16 +408,16 @@ export const CreditCardRecentMovements = ({
                                   className="truncate text-sm font-semibold"
                                   iconClassName="hidden"
                                 />
-                                <span className="hidden shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 sm:inline-flex">
+                                <span className="hidden shrink-0 rounded-full bg-status-income/10 px-2 py-0.5 text-caption font-semibold text-status-income sm:inline-flex">
                                   Pago
                                 </span>
                               </div>
-                              <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                              <p className="mt-0.5 truncate text-caption text-muted-foreground">
                                 Pago a tarjeta · {formatDate(row.payment.paid_at)}
                                 {row.payment.note ? ` · ${row.payment.note}` : ''}
                               </p>
                             </div>
-                            <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                            <span className="shrink-0 font-sans text-sm font-bold tabular-nums text-status-income">
                               {formatCurrency(row.payment.amount)}
                             </span>
                           </div>
@@ -489,11 +480,11 @@ type ActivityMetricProps = {
 
 const activityMetricToneClass: Record<ActivityMetricProps['tone'], string> = {
   violet:
-    'border-violet-500/20 bg-violet-500/5 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400',
+    'border-status-info/20 bg-status-info/5 text-status-info dark:bg-status-info/10 dark:text-status-info',
   emerald:
-    'border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+    'border-status-income/20 bg-status-income/5 text-status-income dark:bg-status-income/10 dark:text-status-income',
   rose:
-    'border-rose-500/20 bg-rose-500/5 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400',
+    'border-status-expense/20 bg-status-expense/5 text-status-expense dark:bg-status-expense/10 dark:text-status-expense',
 };
 
 const ActivityMetric = ({ icon, label, value, tone }: ActivityMetricProps) => (
@@ -507,10 +498,10 @@ const ActivityMetric = ({ icon, label, value, tone }: ActivityMetricProps) => (
       {icon}
     </span>
     <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="eyebrow text-muted-foreground">
         {label}
       </p>
-      <p className="truncate font-mono text-sm font-bold tabular-nums text-foreground">
+      <p className="truncate font-sans text-sm font-bold tabular-nums text-foreground">
         {value}
       </p>
     </div>
@@ -571,16 +562,14 @@ export const GroupedPurchaseFeed = ({
       ) : null}
 
       {grouped.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay compras que coincidan con el filtro.
-        </p>
+        <EmptyState message="No hay compras que coincidan con el filtro." className="py-6" />
       ) : (
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 eyebrow text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
-              </h4>
+              </p>
               <ul className="space-y-1">
                 {dayItems.map((purchase) => (
                   <li key={purchase.id}>
@@ -595,7 +584,7 @@ export const GroupedPurchaseFeed = ({
                         <p className="truncate text-sm font-semibold leading-tight">
                           {purchase.description}
                         </p>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[10px] text-muted-foreground">
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-caption text-muted-foreground">
                           <CategoryLabel
                             name={purchase.category}
                             icon={purchase.categoryIcon}
@@ -613,12 +602,12 @@ export const GroupedPurchaseFeed = ({
                         </p>
                         <Link
                           href={getFortnightHref(purchase, ownerQueryString)}
-                          className="mt-0.5 inline-block text-[10px] font-medium text-primary-text underline-offset-2 hover:underline"
+                          className="mt-0.5 inline-block text-caption font-medium text-primary-text underline-offset-2 hover:underline"
                         >
                           Ver quincena
                         </Link>
                       </div>
-                      <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                      <span className="shrink-0 font-sans text-sm font-bold tabular-nums">
                         {formatCurrency(purchase.amount)}
                       </span>
                     </div>
@@ -685,16 +674,14 @@ export const GroupedPaymentFeed = ({
       ) : null}
 
       {grouped.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No hay pagos que coincidan con el filtro.
-        </p>
+        <EmptyState message="No hay pagos que coincidan con el filtro." className="py-6" />
       ) : (
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 eyebrow text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
-              </h4>
+              </p>
               <ul className="space-y-1">
                 {dayItems.map((payment) => (
                   <li key={payment.id}>
@@ -709,15 +696,15 @@ export const GroupedPaymentFeed = ({
                         <p className="truncate text-sm font-semibold leading-tight">
                           {payment.source_wallet_name}
                         </p>
-                        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                        <p className="mt-0.5 truncate text-caption text-muted-foreground">
                           Pago a tarjeta
                           {payment.note ? ` · ${payment.note}` : ''}
                         </p>
                       </div>
                       <span
                         className={cn(
-                          'shrink-0 font-mono text-sm font-bold tabular-nums',
-                          'text-emerald-600 dark:text-emerald-400',
+                          'shrink-0 font-sans text-sm font-bold tabular-nums',
+                          'text-status-income',
                         )}
                       >
                         {formatCurrency(payment.amount)}

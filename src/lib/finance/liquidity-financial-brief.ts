@@ -1,3 +1,4 @@
+import { formatMonthYearPhrase } from '@/lib/calendar-dates';
 import { compareMonthKeys, monthKeyFromParts, shiftMonthKey } from '@/lib/finance/liquidity-chart-range';
 import {
   monthDebtPaymentsTotal,
@@ -5,17 +6,6 @@ import {
 } from '@/lib/finance/liquidity-month-debt-items';
 import type { LiquidityMonthlySeriesItem, LiquidityProjectionEvent, LiquidityProjectionResponse } from '@/types/catalog';
 import type { LiquidityYtdContext } from '@/lib/finance/liquidity-ytd-context';
-
-const formatMonthYearLabel = (monthKey: string): string => {
-  const [year, month] = monthKey.split('-').map(Number);
-  const d = new Date(Date.UTC(year, month - 1, 1));
-  const raw = d.toLocaleDateString('es-MX', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-  return raw.charAt(0).toUpperCase() + raw.slice(1);
-};
 
 export type LiquidityBriefTone = 'positive' | 'neutral' | 'caution' | 'critical';
 
@@ -246,7 +236,7 @@ const buildHeadline = (input: {
   const { tone, tightestRest, outstandingNow, fundingTotal, payoffsAhead, debtFalling } = input;
 
   if (tone === 'critical' && tightestRest && tightestRest.remaining < 0) {
-    return `Presión en ${formatMonthYearLabel(tightestRest.monthKey)}: tus pagos superan lo disponible ese mes.`;
+    return `Presión en ${formatMonthYearPhrase(tightestRest.monthKey)}: tus pagos superan lo disponible ese mes.`;
   }
 
   if (tone === 'positive' && payoffsAhead > 0) {
@@ -303,11 +293,11 @@ const buildInsights = (input: {
   if (input.tightestRest) {
     if (input.tightestRest.remaining < 0) {
       insights.push(
-        `Mes más apretado: ${formatMonthYearLabel(input.tightestRest.monthKey)} (${formatSignedMoney(input.tightestRest.remaining)} vs ingresos).`,
+        `Mes más apretado: ${formatMonthYearPhrase(input.tightestRest.monthKey)} (${formatSignedMoney(input.tightestRest.remaining)} vs ingresos).`,
       );
     } else {
       insights.push(
-        `Mes más exigente: ${formatMonthYearLabel(input.tightestRest.monthKey)}; aún te alcanza con margen.`,
+        `Mes más exigente: ${formatMonthYearPhrase(input.tightestRest.monthKey)}; aún te alcanza con margen.`,
       );
     }
   }
@@ -382,7 +372,7 @@ const buildActionNow = (input: {
       (row) => row.month_key === input.tightestRest!.monthKey,
     );
     const amount = month ? monthDebtPaymentsTotal(month.debt_items ?? []) : 0;
-    return `Anticipa ${formatMoney(amount)} para ${formatMonthYearLabel(input.tightestRest.monthKey)}; es tu mes más exigente.`;
+    return `Anticipa ${formatMoney(amount)} para ${formatMonthYearPhrase(input.tightestRest.monthKey)}; es tu mes más exigente.`;
   }
 
   const dangerousCards = input.cardUtilization.cards.filter((card) => card.is_danger);
@@ -408,12 +398,12 @@ const buildActionNow = (input: {
     .sort((a, b) => compareMonthKeys(a.month_key, b.month_key))[0];
   if (upcomingPayoff) {
     const shortTitle = upcomingPayoff.title.replace(/^Terminas de pagar\s+/i, '');
-    return `Mantén el pago de ${shortTitle}; termina en ${formatMonthYearLabel(upcomingPayoff.month_key)}.`;
+    return `Mantén el pago de ${shortTitle}; termina en ${formatMonthYearPhrase(upcomingPayoff.month_key)}.`;
   }
 
   const heaviest = heaviestPaymentMonth(input.restOfThisYear);
   if (heaviest) {
-    return `Aparta ${formatMoney(heaviest.amount)} para ${formatMonthYearLabel(heaviest.monthKey)}; es el mes con más pagos.`;
+    return `Aparta ${formatMoney(heaviest.amount)} para ${formatMonthYearPhrase(heaviest.monthKey)}; es el mes con más pagos.`;
   }
 
   return 'Revisa la gráfica y aparta con anticipación lo que toca pagar cada mes.';

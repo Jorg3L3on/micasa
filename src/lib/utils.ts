@@ -1,6 +1,23 @@
-import { formatDisplayDate } from '@/lib/calendar-dates';
+import { formatDisplayDate, formatMonthPhrase } from '@/lib/calendar-dates';
 import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { extendTailwindMerge } from 'tailwind-merge';
+
+/**
+ * Custom type-scale sizes from `@theme` (`text-display`, `text-title`, …).
+ * Without this group, tailwind-merge treats them as text colors and drops
+ * them next to `text-foreground`.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [
+        {
+          text: ['display', 'title', 'section', 'body', 'caption', 'eyebrow'],
+        },
+      ],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,18 +51,9 @@ export function formatCurrency(amount: number | string): string {
   }).format(Number.isFinite(numAmount) ? numAmount : 0);
 }
 
-export function formatCurrencySigned(
-  amount: number | string,
-  type: 'income' | 'expense',
-): string {
-  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  const signedAmount =
-    type === 'expense' ? -Math.abs(numAmount) : Math.abs(numAmount);
-  return formatCurrency(signedAmount);
-}
-
+/** Lowercase month name for phrases. Titles use `formatMonthTitle`. */
 export function formatMonth(month: number): string {
-  return new Date(0, month - 1).toLocaleString('es-MX', { month: 'long' });
+  return formatMonthPhrase(month);
 }
 
 export function formatYear(year: number): string {

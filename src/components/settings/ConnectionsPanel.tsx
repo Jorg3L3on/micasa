@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useCallback, useMemo, useState } from 'react';
 import {
   Check,
@@ -309,7 +310,7 @@ export default function ConnectionsPanel({
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Nueva conexión',
+      label: 'Agregar conexión',
       onClick: handleOpenCreate,
       icon: primaryActionIcon,
     },
@@ -510,8 +511,8 @@ export default function ConnectionsPanel({
 
   const createBody = createdToken ? (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
-        <KeyRound className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
+      <div className="flex items-start gap-3 rounded-xl border border-status-pending/40 bg-status-pending/10 p-3">
+        <KeyRound className="mt-0.5 size-4 shrink-0 text-status-pending" aria-hidden />
         <p className="text-xs leading-relaxed text-foreground">
           Copia el token ahora. Por seguridad{' '}
           <span className="font-semibold">no se volverá a mostrar</span>: si lo
@@ -586,7 +587,7 @@ export default function ConnectionsPanel({
           onValueChange={setExpiryOption}
           disabled={creating}
         />
-        <p className="text-[10px] leading-snug text-muted-foreground">
+        <p className="text-caption leading-snug text-muted-foreground">
           Al expirar, el token deja de funcionar automáticamente.
         </p>
       </div>
@@ -596,7 +597,7 @@ export default function ConnectionsPanel({
         disabled={creating || createContexts.length === 0}
         className="h-11 w-full rounded-xl"
       >
-        {creating ? 'Creando…' : 'Crear conexión'}
+        {creating ? 'Creando…' : 'Agregar conexión'}
       </Button>
     </div>
   );
@@ -690,7 +691,7 @@ export default function ConnectionsPanel({
                         'flex size-9 shrink-0 items-center justify-center rounded-xl',
                         inactive
                           ? 'bg-muted text-muted-foreground'
-                          : 'bg-sky-500/15 text-sky-500',
+                          : 'bg-status-info/15 text-status-info',
                       )}
                     >
                       <KeyRound className="size-4" aria-hidden />
@@ -700,27 +701,27 @@ export default function ConnectionsPanel({
                         <span className="truncate text-sm font-medium text-foreground">
                           {key.name}
                         </span>
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-caption">
                           {scopesLabel(key.scopes)}
                         </Badge>
                         {revoked ? (
                           <Badge
                             variant="outline"
-                            className="border-red-500/40 text-[10px] text-red-500"
+                            className="border-status-expense/40 text-caption text-status-expense"
                           >
                             Revocada
                           </Badge>
                         ) : expired ? (
                           <Badge
                             variant="outline"
-                            className="border-amber-500/40 text-[10px] text-amber-500"
+                            className="border-status-pending/40 text-caption text-status-pending"
                           >
                             Expirada
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-emerald-500/40 text-[10px] text-emerald-500"
+                            className="border-status-income/40 text-caption text-status-income"
                           >
                             Activa
                           </Badge>
@@ -786,7 +787,7 @@ export default function ConnectionsPanel({
 
       <Card>
         <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-500">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-status-info/15 text-status-info">
             <Sparkles className="size-4" aria-hidden />
           </span>
           <div className="space-y-1">
@@ -799,10 +800,11 @@ export default function ConnectionsPanel({
         </CardHeader>
         <CardContent>
           {oauthGrants.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-              Aún no hay conexiones OAuth. Al autorizar ChatGPT u otro cliente
-              MCP con OAuth, aparecerán aquí.
-            </p>
+            <EmptyState
+              message="Aún no hay conexiones OAuth."
+              description="Al autorizar ChatGPT u otro cliente MCP con OAuth, aparecerán aquí."
+              className="py-6"
+            />
           ) : (
             <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60">
               {oauthGrants.map((grant) => {
@@ -825,7 +827,7 @@ export default function ConnectionsPanel({
                         'flex size-9 shrink-0 items-center justify-center rounded-xl',
                         inactive
                           ? 'bg-muted text-muted-foreground'
-                          : 'bg-violet-500/15 text-violet-500',
+                          : 'bg-status-info/15 text-status-info',
                       )}
                     >
                       <Sparkles className="size-4" aria-hidden />
@@ -835,30 +837,30 @@ export default function ConnectionsPanel({
                         <span className="truncate text-sm font-medium text-foreground">
                           {grant.client_name}
                         </span>
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-caption">
                           OAuth
                         </Badge>
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-caption">
                           {scopesLabel(grant.scopes)}
                         </Badge>
                         {revoked ? (
                           <Badge
                             variant="outline"
-                            className="border-red-500/40 text-[10px] text-red-500"
+                            className="border-status-expense/40 text-caption text-status-expense"
                           >
                             Revocada
                           </Badge>
                         ) : expired ? (
                           <Badge
                             variant="outline"
-                            className="border-amber-500/40 text-[10px] text-amber-500"
+                            className="border-status-pending/40 text-caption text-status-pending"
                           >
                             Expirada
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-emerald-500/40 text-[10px] text-emerald-500"
+                            className="border-status-income/40 text-caption text-status-income"
                           >
                             Activa
                           </Badge>
@@ -975,7 +977,7 @@ export default function ConnectionsPanel({
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   {client.description}
                 </p>
-                <pre className="overflow-x-auto rounded-lg bg-muted/50 p-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                <pre className="overflow-x-auto rounded-lg bg-muted/50 p-2 font-mono text-caption leading-relaxed text-muted-foreground">
                   {client.snippet(mcpUrl)}
                 </pre>
               </div>
@@ -992,7 +994,7 @@ export default function ConnectionsPanel({
       <ResponsiveOverlay
         open={createOpen}
         onOpenChange={handleCreateOpenChange}
-        title={createdToken ? 'Token de conexión' : 'Nueva conexión'}
+        title={createdToken ? 'Token de conexión' : 'Agregar conexión'}
         description={
           createdToken
             ? 'Copia el token; solo se muestra una vez.'

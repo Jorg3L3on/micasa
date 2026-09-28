@@ -312,7 +312,7 @@ export default function AddTransactionDialog({
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
-      title="Agregar transacción"
+      title="Agregar movimiento"
       description="Elige gasto o ingreso. Solo se guarda la pestaña activa."
       busy={isSubmitting}
     >
@@ -424,7 +424,7 @@ export default function AddTransactionDialog({
                                     providerIconKey={pm.provider_icon_key}
                                     iconClassName="h-5 w-5 rounded-md"
                                   />
-                                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                  <span className="font-sans text-xs tabular-nums text-muted-foreground">
                                     {formatCurrency(pm.amount ?? 0)}
                                   </span>
                                 </span>
@@ -566,7 +566,7 @@ export default function AddTransactionDialog({
                                     providerIconKey={pm.provider_icon_key}
                                     iconClassName="h-5 w-5 rounded-md"
                                   />
-                                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                  <span className="font-sans text-xs tabular-nums text-muted-foreground">
                                     {formatCurrency(pm.amount ?? 0)}
                                   </span>
                                 </span>
@@ -813,7 +813,7 @@ function TransactionTypeSwitch({
     <div
       ref={trackRef}
       role="tablist"
-      aria-label="Tipo de transacción"
+      aria-label="Tipo de movimiento"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finishPointer}
@@ -828,9 +828,9 @@ function TransactionTypeSwitch({
       className={cn(
         'relative grid h-12 w-full touch-manipulation select-none grid-cols-2 rounded-full p-0.5',
         'border border-border/60 bg-background/80 backdrop-blur-xl',
-        'shadow-[0_8px_28px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.65)]',
+        'shadow-panel',
         'outline-none dark:border-white/10 dark:bg-black/45',
-        'dark:shadow-[0_8px_28px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]',
+        'dark:shadow-panel',
       )}
       style={{ touchAction: 'none' }}
     >

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { fetchFromApi } from '@/lib/api-server';
-import { Skeleton } from '@/components/ui/skeleton';
+import { CollectionTableSkeleton } from '@/components/loading/page-skeletons';
 import TransactionsDataTable from '@/components/TransactionsDataTable';
 import {
   ContentEnter,
@@ -48,13 +48,7 @@ async function getTransactions(
 function TransactionsLoadingSkeleton() {
   return (
     <SkeletonExit>
-      <div className="space-y-6">
-        <div className="space-y-1">
-          <Skeleton className="h-5 w-36" />
-          <Skeleton className="h-4 w-72 max-w-full" />
-        </div>
-        <Skeleton className="h-[500px] rounded-xl" />
-      </div>
+      <CollectionTableSkeleton />
     </SkeletonExit>
   );
 }

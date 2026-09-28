@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, BarChart3, ChevronDown, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -57,20 +58,20 @@ type Props = {
 function remainingToneClass(remaining: number, total: number) {
   if (remaining < 0) return 'text-destructive';
   if (total > 0 && remaining < total * 0.2) {
-    return 'text-amber-600 dark:text-amber-400';
+    return 'text-status-pending';
   }
-  return 'text-emerald-600 dark:text-emerald-400';
+  return 'text-status-income';
 }
 
 function usageProgressClass(pct: number, overspent: boolean) {
   if (overspent || pct >= 100) return 'bg-destructive';
-  if (pct >= 75) return 'bg-orange-500 dark:bg-orange-400';
-  if (pct >= 50) return 'bg-amber-400 dark:bg-amber-500';
-  return 'bg-emerald-500 dark:bg-emerald-400';
+  if (pct >= 75) return 'bg-status-pending';
+  if (pct >= 50) return 'bg-status-pending';
+  return 'bg-status-income';
 }
 
-const PERIOD_PROGRESS_CLASS = 'bg-sky-500 dark:bg-sky-400';
-const WALLET_PROGRESS_CLASS = 'bg-blue-500 dark:bg-blue-400';
+const PERIOD_PROGRESS_CLASS = 'bg-status-info';
+const WALLET_PROGRESS_CLASS = 'bg-status-info';
 
 function PeriodMetric({
   label,
@@ -87,17 +88,17 @@ function PeriodMetric({
     <div
       className={cn(
         'rounded-lg border border-border/60 bg-card px-3 py-2.5',
-        accent === 'spent' && 'bg-violet-500/[0.04]',
-        accent === 'available' && 'bg-emerald-500/[0.04]',
+        accent === 'spent' && 'bg-status-info/[0.04]',
+        accent === 'available' && 'bg-status-income/[0.04]',
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="eyebrow text-muted-foreground">
         {label}
       </p>
       <p
         className={cn(
-          'mt-1 font-mono text-sm font-bold tabular-nums',
-          accent === 'spent' && !toneClass && 'text-violet-600 dark:text-violet-400',
+          'mt-1 font-sans text-sm font-bold tabular-nums',
+          accent === 'spent' && !toneClass && 'text-status-info',
           accent === 'neutral' && 'text-foreground',
           !accent && 'text-foreground',
           toneClass,
@@ -154,7 +155,7 @@ function SpendProgressBar({
         >
           {displayPct}% usado
         </span>
-        <span className="shrink-0 font-mono tabular-nums">
+        <span className="shrink-0 font-sans tabular-nums">
           {formatCurrency(spent)} / {formatCurrency(total)}
         </span>
       </div>
@@ -172,9 +173,9 @@ function WalletPoolHeader({ pool }: { pool: WalletPool }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-status-info/10 dark:bg-status-info/15">
             <BarChart3
-              className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
+              className="h-3.5 w-3.5 text-status-info"
               aria-hidden data-icon="inline-start" />
           </span>
           <div className="min-w-0">
@@ -189,7 +190,7 @@ function WalletPoolHeader({ pool }: { pool: WalletPool }) {
         <div className="shrink-0 text-right">
           <p
             className={cn(
-              'font-mono text-sm font-bold tabular-nums',
+              'font-sans text-sm font-bold tabular-nums',
               remainingToneClass(pool.remaining, pool.allocated),
             )}
           >
@@ -197,7 +198,7 @@ function WalletPoolHeader({ pool }: { pool: WalletPool }) {
           </p>
           <p
             className={cn(
-              'text-[10px] text-muted-foreground',
+              'text-caption text-muted-foreground',
               overspent && 'text-destructive',
             )}
           >
@@ -248,12 +249,12 @@ function SharedWalletCategoryContext({
   return (
     <div className="space-y-1.5 rounded-md border border-border/60 bg-card px-2.5 py-2">
       <p className="text-xs">
-        <span className="font-mono tabular-nums text-foreground">
+        <span className="font-sans tabular-nums text-foreground">
           {formatCurrency(display.categoryHeadroom)}
         </span>{' '}
         <span className="text-muted-foreground">del límite de categoría</span>
       </p>
-      <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+      <p className="text-xs font-medium text-status-pending">
         {adjustmentNote}
       </p>
     </div>
@@ -305,17 +306,17 @@ function AllocationSummary({
             <div className="text-right">
               <p
                 className={cn(
-                  'font-mono text-sm font-bold tabular-nums',
+                  'font-sans text-sm font-bold tabular-nums',
                   remainingToneClass(remaining, allocation.amount),
                 )}
               >
                 {formatCurrency(remaining)}
               </p>
-              <p className="text-[10px] text-muted-foreground">{disponibleLabel}</p>
+              <p className="text-caption text-muted-foreground">{disponibleLabel}</p>
             </div>
           </div>
         ) : allocationOverspent ? (
-          <Badge variant="destructive" className="shrink-0 text-[10px]">
+          <Badge variant="destructive" className="shrink-0 text-caption">
             Excedido
           </Badge>
         ) : null}
@@ -341,8 +342,8 @@ function AllocationSummary({
         >
           <span>
             {expanded
-              ? 'Ocultar transacciones'
-              : `Ver ${expenseCount} ${expenseCount === 1 ? 'transacción' : 'transacciones'}`}
+              ? 'Ocultar movimientos'
+              : `Ver ${expenseCount} ${expenseCount === 1 ? 'movimiento' : 'movimientos'}`}
           </span>
           <ChevronDown
             className={cn(
@@ -366,7 +367,7 @@ function AllocationExpenseList({
   return (
     <ul
       className="max-h-48 divide-y divide-border/60 overflow-y-auto border-t border-border/60"
-      aria-label={`Transacciones de ${categoryName}`}
+      aria-label={`Movimientos de ${categoryName}`}
     >
       {expenses.map((expense) => (
         <li
@@ -379,7 +380,7 @@ function AllocationExpenseList({
               {formatDisplayDate(expense.date)}
             </p>
           </div>
-          <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+          <span className="shrink-0 font-sans text-xs font-semibold tabular-nums text-status-info">
             {formatCurrency(expense.amount)}
           </span>
         </li>
@@ -435,7 +436,7 @@ function AllocationRow({
           {...summaryProps}
         />
         <p className="mt-3 border-t border-border/60 pt-2.5 text-xs text-muted-foreground">
-          Sin transacciones en este periodo
+          Sin movimientos en este periodo
         </p>
       </article>
     );
@@ -454,8 +455,8 @@ function AllocationRow({
             aria-expanded={expanded}
             aria-label={
               expanded
-                ? `Ocultar transacciones de ${allocation.category_name}`
-                : `Ver ${expenses.length} transacciones de ${allocation.category_name}`
+                ? `Ocultar movimientos de ${allocation.category_name}`
+                : `Ver ${expenses.length} movimientos de ${allocation.category_name}`
             }
           >
             <AllocationSummary
@@ -587,7 +588,7 @@ export default function BudgetPeriodDetail({
         if (!cancelled) {
           setExpenseGroups([]);
           setExpensesError(
-            err instanceof Error ? err.message : 'Error al cargar transacciones',
+            err instanceof Error ? err.message : 'Error al cargar movimientos',
           );
         }
       })
@@ -665,12 +666,11 @@ export default function BudgetPeriodDetail({
         aria-labelledby={`budget-period-allocations-heading-${period.period_id}`}
       >
         <div className="flex items-baseline justify-between gap-2">
-          <h3
+          <SectionHeader
+            level={3}
             id={`budget-period-allocations-heading-${period.period_id}`}
-            className="text-sm font-semibold text-foreground"
-          >
-            Asignaciones
-          </h3>
+            title="Asignaciones"
+          />
           {!loadingExpenses && period.allocations.length > 0 ? (
             <span className="text-xs text-muted-foreground">
               {period.allocations.length}{' '}

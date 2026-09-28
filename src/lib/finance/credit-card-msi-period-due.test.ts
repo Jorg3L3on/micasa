@@ -48,15 +48,15 @@ describe('resolveCardPeriodDue', () => {
 
   it('does not bill remaining plan balance or total debt when the due is outside the period', () => {
     const result = resolveCardPeriodDue({
-      totalDebt: 4200.55,
+      totalDebt: 4200,
       statementPayoff: null,
       regularCharges: 0,
-      msi: [msi(0, 4200.55)],
+      msi: [msi(0, 4200)],
       dueInPeriod: false,
     });
 
     expect(result.periodDue).toBe(0);
-    expect(result.planRemainingBalance).toBe(4200.55);
+    expect(result.planRemainingBalance).toBe(4200);
     expect(result.source).toBe('none');
   });
 

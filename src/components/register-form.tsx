@@ -106,7 +106,7 @@ export function RegisterForm({
                 className="inline-flex flex-col items-center gap-2 font-medium text-foreground"
                 aria-label="MiCasa inicio"
               >
-                <MicasaMark className="h-12 w-auto text-muted-foreground" data-icon="inline-start" />
+                <MicasaMark className="size-12" />
                 <span className="text-lg font-semibold tracking-tight">MiCasa</span>
               </Link>
               <h1 className="text-xl font-bold">Crear cuenta</h1>
@@ -180,7 +180,7 @@ export function RegisterForm({
                 )}
               />
               {apiError && (
-                <div className="text-sm text-red-500" role="alert">
+                <div className="text-sm text-status-expense" role="alert">
                   {apiError}
                   {autoSignInFailed && (
                     <p className="mt-2">
@@ -212,7 +212,7 @@ export function RegisterForm({
                 disabled={form.formState.isSubmitting}
               >
                 {form.formState.isSubmitting
-                  ? 'Creando cuenta...'
+                  ? 'Creando cuenta…'
                   : 'Crear cuenta'}
               </Button>
               <p className="text-center text-sm text-muted-foreground">

@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { LenderIcon } from '@/components/loans/LenderIdentity';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
@@ -20,18 +21,18 @@ const KIND_LABEL: Record<MonthDebtItem['kind'], string> = {
 };
 
 const KIND_PILL: Record<MonthDebtItem['kind'], string> = {
-  card: 'border-violet-500/40 bg-violet-500/10 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  msi: 'border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300',
-  loan: 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  card: 'border-status-info/40 bg-status-info/10 text-status-info dark:bg-status-info/15 dark:text-status-info',
+  msi: 'border-status-info/40 bg-status-info/10 text-status-info dark:bg-status-info/15 dark:text-status-info',
+  loan: 'border-status-pending/40 bg-status-pending/10 text-status-pending dark:bg-status-pending/15 dark:text-status-pending',
 };
 
 const KIND_DOT: Record<MonthDebtItem['kind'], string> = {
-  card: 'bg-violet-500 dark:bg-violet-400',
-  msi: 'bg-fuchsia-500 dark:bg-fuchsia-400',
-  loan: 'bg-amber-500 dark:bg-amber-400',
+  card: 'bg-status-info',
+  msi: 'bg-status-info',
+  loan: 'bg-status-pending',
 };
 
-const ROW_ICON_CLASS = 'h-9 w-9 rounded-lg text-[10px]';
+const ROW_ICON_CLASS = 'h-9 w-9 rounded-lg text-caption';
 const ROW_ICON_INNER_CLASS = 'h-4 w-4';
 
 export type MonthDebtListMode = 'remaining' | 'payment';
@@ -54,8 +55,8 @@ const rowAuraColor = (item: MonthDebtItem): string =>
 
 const amountClass = (mode: MonthDebtListMode): string =>
   cn(
-    'shrink-0 font-mono text-sm font-bold tabular-nums',
-    mode === 'payment' ? 'text-foreground' : 'text-amber-700 dark:text-amber-300',
+    'shrink-0 font-sans text-sm font-bold tabular-nums',
+    mode === 'payment' ? 'text-status-expense' : 'text-status-expense',
   );
 
 type LiquidityMonthDebtItemsListProps = {
@@ -85,14 +86,7 @@ export const LiquidityMonthDebtItemsList = ({
 
   if (rows.length === 0) {
     return (
-      <p
-        className={cn(
-          'rounded-xl border border-dashed border-border/40 px-3 py-8 text-center text-xs text-muted-foreground',
-          className,
-        )}
-      >
-        {emptyMessage}
-      </p>
+      <EmptyState message={emptyMessage} className={cn('py-8', className)} />
     );
   }
 
@@ -128,7 +122,7 @@ export const LiquidityMonthDebtItemsList = ({
             <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <span
                 className={cn(
-                  'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium',
+                  'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-caption font-medium',
                   KIND_PILL[item.kind],
                 )}
               >
@@ -145,10 +139,10 @@ export const LiquidityMonthDebtItemsList = ({
         className={cn(
           METRIC_STRIP_CLASS,
           'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px]',
-          mode === 'payment' ? 'border-l-violet-500/50' : 'border-l-amber-500/50',
+          'border-l-status-expense',
         )}
       >
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="eyebrow text-muted-foreground">
           {resolvedTotalLabel}
         </span>
         <span className={cn(amountClass(mode), 'text-base')}>{formatCurrency(total)}</span>

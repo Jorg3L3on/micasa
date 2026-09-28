@@ -1,5 +1,7 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -14,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import EmptyState from '@/components/EmptyState';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
-import { Trash2, UserPlus, Loader2 } from 'lucide-react';
+import { Trash2, UserPlus } from 'lucide-react';
 import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 
 type HouseUserItem = {
@@ -131,7 +133,6 @@ export default function HouseUsersPage() {
       const message =
         err instanceof Error ? err.message : 'Error al eliminar el usuario';
       setError(message);
-      toast.error(message);
     } finally {
       setRemovingId(null);
     }
@@ -206,25 +207,26 @@ export default function HouseUsersPage() {
     <>
       <div className="space-y-5">
       {error && (
-        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
+        <ErrorBanner>{error}</ErrorBanner>
       )}
 
       <Card>
         <CardContent className="py-4">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Cargando...
+            <div className="space-y-2" aria-busy="true" aria-label="Cargando">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-12 w-full rounded-xl" />
+              ))}
             </div>
           ) : users.length === 0 ? (
             <EmptyState message="No hay usuarios en este hogar" />
           ) : (
             <DataTable
+              embedded
               data={users}
               columns={columns}
               filterColumn="name"
-              filterPlaceholder="Filtrar por nombre..."
+              filterPlaceholder="Filtrar por nombre…"
               emptyMessage="No hay usuarios en este hogar."
             />
           )}
@@ -284,11 +286,6 @@ export default function HouseUsersPage() {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2
-                    className="h-4 w-4 animate-spin"
-                    aria-hidden
-                    data-icon="inline-start"
-                  />
                   Invitando…
                 </>
               ) : (

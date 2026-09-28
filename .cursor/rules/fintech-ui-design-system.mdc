@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Fintech UI Design System
 
-Canonical tokens, glass recipes, and landing-vs-app rules: **`DESIGN.md`**. Dark default is Orion navy (`#060914`), electric blue primary (`#3a37fc`) for in-app CTAs and selection, orange gradient only on landing `.landing-cta`. Do not commit third-party mockup images.
+Canonical tokens, glass recipes, and landing-vs-app rules: **`DESIGN.md`**. Dark default is Orion navy (`#060914`), electric blue primary (`#3a37fc`) for CTAs and selection, including the landing. Do not commit third-party mockup images.
 
 When building or updating UI components, follow this premium fintech design language consistently.
 
@@ -22,7 +22,7 @@ Every card gets an **icon badge** in a tinted pill + title + optional subtitle:
 
 - Each card/section has its own accent color identity (emerald for balance, blue for income, violet for expenses, amber for pending)
 - Title: `text-sm font-semibold leading-none`
-- Subtitle: `text-[10px] text-muted-foreground`
+- Subtitle: `text-caption text-muted-foreground`
 
 ## Color-Accented Metric Cards
 
@@ -44,11 +44,11 @@ Color mapping (left border + text/icon colors):
 
 ## Typography for Financial Data
 
-- Amounts: `font-mono tabular-nums` always
-- Large hero amounts: `text-2xl font-bold font-mono tabular-nums`
-- Card metric amounts: `text-sm font-bold font-mono tabular-nums`
-- Labels: `text-[10px] font-semibold uppercase tracking-wider text-muted-foreground`
-- Sub-info: `text-[9px] text-muted-foreground`
+- Amounts: `<Money>` — `font-sans tabular-nums`, never `font-mono`
+- Large hero amounts: `Money` `size="hero"` (`text-2xl font-bold`)
+- Card metric amounts: `Money` `size="row"` (`text-sm font-semibold`)
+- Labels: `text-caption font-semibold uppercase tracking-wider text-muted-foreground`
+- Sub-info: `text-caption text-muted-foreground`
 
 ## Progress Bars (Segmented)
 
@@ -66,7 +66,7 @@ Below the bar, add dot legends:
 ```tsx
 <span className="flex items-center gap-1">
   <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
-  <span className="text-[9px] text-muted-foreground">Label</span>
+  <span className="text-caption text-muted-foreground">Label</span>
 </span>
 ```
 
@@ -93,10 +93,10 @@ For horizontally scrollable content (e.g. wallet cards), use:
 ```tsx
 <TableRow className="border-t-2 border-border/60 bg-muted/30">
   <TableCell className="text-right py-2.5">
-    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</span>
+    <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">Total</span>
   </TableCell>
   <TableCell className="text-right py-2.5">
-    <span className="text-sm font-bold font-mono tabular-nums">{formatCurrency(total)}</span>
+    <span className="text-sm font-bold font-sans tabular-nums">{formatCurrency(total)}</span>
   </TableCell>
 </TableRow>
 ```
@@ -110,9 +110,7 @@ For horizontally scrollable content (e.g. wallet cards), use:
 
 ## CTAs
 
-- **Dark in-app primary:** default `<Button>` (electric blue `#3a37fc` + violet ring). `--primary` is that fill, plus selection, icon pills, toggles, and focus rings. Brand copy on navy uses `text-primary-text`.
-- **Landing primary:** pill `rounded-full` + `.landing-cta` (orange). One orange control per block.
-- Featured / Pro marketing border: `.landing-pro-border` (`#FF4D00` → `#8A2BE2`).
+- **Primary (app and landing):** default `<Button>` (electric blue `#3a37fc` in dark + violet ring). `--primary` is that fill, plus selection, icon pills, toggles, and focus rings. Brand copy on navy uses `text-primary-text`. One primary control per block.
 
 ## General Principles
 

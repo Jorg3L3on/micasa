@@ -28,7 +28,7 @@ export default function CreditCardDetailLoading() {
               <WalletCardVtPlaceholder walletId={cardId} variant="credit" />
             </ViewTransition>
           ) : (
-            <Skeleton className="mx-auto h-[12rem] w-full max-w-md rounded-[1.375rem] sm:h-[13.5rem]" />
+            <Skeleton className="mx-auto h-[12rem] w-full max-w-md rounded-face sm:h-[13.5rem]" />
           )}
           <Skeleton className="h-14 w-full rounded-2xl" />
           <Skeleton className="h-20 w-full rounded-2xl" />

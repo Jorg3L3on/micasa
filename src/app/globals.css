@@ -8,14 +8,16 @@
 /* ==========================================================================
    Design system — see DESIGN.md
    Light: cool grey canvas, indigo accent (hotkey fallback)
-   Dark (default): Orion navy canvas, electric blue primary, orange CTAs
-   Marketing landing tokens are scoped under .landing-root (below)
+   Dark (default): Orion navy canvas, electric blue primary
+   Marketing landing reuses these tokens (light and dark). .landing-root is atmosphere only.
    ========================================================================== */
 
 :root {
   --radius: 0.75rem;
   /* Light mode – cooler grey canvas so white cards lift clearly */
   --background: oklch(0.94 0.007 265);
+  /* Orion navy used under the iOS status bar in light mode (white system text). */
+  --chrome-ink: #060914;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -53,6 +55,11 @@
   --shadow-card:
     0 1px 2px rgb(15 23 42 / 0.06),
     0 10px 28px -12px rgb(15 23 42 / 0.18);
+  --shadow-panel: var(--shadow-card);
+  --shadow-face:
+    0 12px 32px -14px rgb(15 23 42 / 0.28),
+    0 4px 12px -6px rgb(15 23 42 / 0.16);
+  --shadow-glow: 0 0 12px -1px color-mix(in oklch, var(--primary) 55%, transparent);
   /* View Transition timing — see DESIGN.md Motion tokens */
   --duration-exit: 170ms;
   --duration-enter: 240ms;
@@ -63,6 +70,38 @@
   --motion-panel: 320ms;
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  /*
+   * Mobile dock clearance. The pill is h-16; the dock floats
+   * max(safe-area, 0.75rem) above the screen edge. Pages and sheets
+   * share this one length — do not add per-page pb-* to clear the dock.
+   */
+  --dock-bar-height: 4rem;
+  --dock-float-gap: 0.75rem;
+  --dock-clearance: calc(
+    var(--dock-bar-height) + max(env(safe-area-inset-bottom, 0px), var(--dock-float-gap))
+  );
+  /* Smallest readable text. JOR-311 adopts this as the caption step. */
+  --text-caption-size: 0.6875rem;
+
+  /* Financial status. Text color is the token; soft/border follow it. */
+  --status-success: oklch(0.45 0.13 155);
+  --status-pending: oklch(0.48 0.12 70);
+  --status-overdue: oklch(0.5 0.2 25);
+  --status-income: oklch(0.45 0.14 255);
+  --status-expense: oklch(0.46 0.16 305);
+  --status-info: oklch(0.48 0.1 230);
+  --status-success-soft: color-mix(in oklch, var(--status-success) 14%, transparent);
+  --status-success-border: color-mix(in oklch, var(--status-success) 40%, transparent);
+  --status-pending-soft: color-mix(in oklch, var(--status-pending) 16%, transparent);
+  --status-pending-border: color-mix(in oklch, var(--status-pending) 42%, transparent);
+  --status-overdue-soft: color-mix(in oklch, var(--status-overdue) 14%, transparent);
+  --status-overdue-border: color-mix(in oklch, var(--status-overdue) 40%, transparent);
+  --status-income-soft: color-mix(in oklch, var(--status-income) 14%, transparent);
+  --status-income-border: color-mix(in oklch, var(--status-income) 40%, transparent);
+  --status-expense-soft: color-mix(in oklch, var(--status-expense) 14%, transparent);
+  --status-expense-border: color-mix(in oklch, var(--status-expense) 40%, transparent);
+  --status-info-soft: color-mix(in oklch, var(--status-info) 14%, transparent);
+  --status-info-border: color-mix(in oklch, var(--status-info) 40%, transparent);
 }
 
 .dark {
@@ -84,7 +123,8 @@
   --accent: #12183a;
   --accent-foreground: #f7f8ff;
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
+  /* #1a0508 on #ff6467 is 6.80:1. The hover fill on navy stays 5.64:1. #fafafa was 2.77:1. */
+  --destructive-foreground: #1a0508;
   --border: rgb(255 255 255 / 0.1);
   --input: rgb(255 255 255 / 0.1);
   --ring: #3a37fc;
@@ -102,11 +142,38 @@
   --sidebar-border: rgb(255 255 255 / 0.08);
   --sidebar-ring: #3a37fc;
   --shadow-card: 0 18px 40px -24px rgb(0 0 0 / 0.7), 0 28px 80px -36px rgb(58 55 252 / 0.16);
+  --shadow-panel:
+    0 0 0 1px rgb(255 255 255 / 0.04),
+    0 18px 40px -22px rgb(0 0 0 / 0.72),
+    0 32px 80px -36px rgb(58 55 252 / 0.16);
+  --shadow-face:
+    0 12px 32px -14px rgb(0 0 0 / 0.62),
+    0 4px 12px -6px rgb(0 0 0 / 0.4);
+  --shadow-glow: 0 0 12px -1px rgb(58 55 252 / 0.8);
+  --status-success: oklch(0.78 0.14 155);
+  --status-pending: oklch(0.82 0.12 85);
+  --status-overdue: oklch(0.74 0.16 25);
+  --status-income: oklch(0.78 0.1 250);
+  --status-expense: oklch(0.78 0.12 320);
+  --status-info: oklch(0.8 0.06 240);
+  --status-success-soft: color-mix(in oklch, var(--status-success) 18%, transparent);
+  --status-success-border: color-mix(in oklch, var(--status-success) 45%, transparent);
+  --status-pending-soft: color-mix(in oklch, var(--status-pending) 18%, transparent);
+  --status-pending-border: color-mix(in oklch, var(--status-pending) 45%, transparent);
+  --status-overdue-soft: color-mix(in oklch, var(--status-overdue) 18%, transparent);
+  --status-overdue-border: color-mix(in oklch, var(--status-overdue) 45%, transparent);
+  --status-income-soft: color-mix(in oklch, var(--status-income) 18%, transparent);
+  --status-income-border: color-mix(in oklch, var(--status-income) 45%, transparent);
+  --status-expense-soft: color-mix(in oklch, var(--status-expense) 18%, transparent);
+  --status-expense-border: color-mix(in oklch, var(--status-expense) 45%, transparent);
+  --status-info-soft: color-mix(in oklch, var(--status-info) 18%, transparent);
+  --status-info-border: color-mix(in oklch, var(--status-info) 45%, transparent);
 }
 
 @theme inline {
   /* Map Tailwind theme to CSS variables so light/dark switch works */
   --color-background: var(--background);
+  --color-chrome-ink: var(--chrome-ink);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -131,6 +198,24 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-status-success: var(--status-success);
+  --color-status-success-soft: var(--status-success-soft);
+  --color-status-success-border: var(--status-success-border);
+  --color-status-pending: var(--status-pending);
+  --color-status-pending-soft: var(--status-pending-soft);
+  --color-status-pending-border: var(--status-pending-border);
+  --color-status-overdue: var(--status-overdue);
+  --color-status-overdue-soft: var(--status-overdue-soft);
+  --color-status-overdue-border: var(--status-overdue-border);
+  --color-status-income: var(--status-income);
+  --color-status-income-soft: var(--status-income-soft);
+  --color-status-income-border: var(--status-income-border);
+  --color-status-expense: var(--status-expense);
+  --color-status-expense-soft: var(--status-expense-soft);
+  --color-status-expense-border: var(--status-expense-border);
+  --color-status-info: var(--status-info);
+  --color-status-info-soft: var(--status-info-soft);
+  --color-status-info-border: var(--status-info-border);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -144,6 +229,25 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --radius-face: 1.375rem;
+  --text-display: 1.875rem;
+  --text-display--line-height: 1.15;
+  --text-display--font-weight: 700;
+  --text-display--letter-spacing: -0.025em;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.25;
+  --text-title--font-weight: 600;
+  --text-section: 0.875rem;
+  --text-section--line-height: 1.25;
+  --text-section--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.5;
+  --text-caption: var(--text-caption-size);
+  --text-caption--line-height: 1.35;
+  --text-eyebrow: var(--text-caption-size);
+  --text-eyebrow--line-height: 1.35;
+  --text-eyebrow--font-weight: 600;
+  --text-eyebrow--letter-spacing: 0.05em;
   --animate-shine: shine var(--duration) infinite linear;
   @keyframes shine {
     0% {
@@ -162,46 +266,32 @@
    Fintech dashboard – card depth, glass, and glow utilities
    ========================================================================== */
 
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility shadow-panel {
+  box-shadow: var(--shadow-panel);
+}
+@utility shadow-face {
+  box-shadow: var(--shadow-face);
+}
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+@utility eyebrow {
+  font-size: var(--text-caption-size);
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 @layer components {
   /* Elevated panel shell: stronger separation in light, calm in dark */
   .card-surface {
-    @apply rounded-xl border border-border/80 bg-card dark:rounded-2xl dark:border-white/[0.08];
+    @apply rounded-xl border border-border/80 bg-card dark:border-white/[0.08];
     box-shadow: var(--shadow-card);
-  }
-
-  /* Glass card: same language as planner shells (hairline + frost). */
-  .card-glass {
-    @apply border border-border/50 backdrop-blur-xl bg-card/60! dark:border-white/[0.12] dark:bg-[#090e1d]/55!;
-  }
-
-  /* Inner depth: inset shadow + subtle inset ring (tactile, 3D) */
-  .card-depth {
-    box-shadow: inset 0 1px 2px 0 rgb(0 0 0 / 0.06);
-    @apply ring-1 ring-inset ring-white/5;
-  }
-
-  /* Orange glow for active/highlighted elements */
-  .glow-orange {
-    box-shadow: 0 0 15px rgba(249, 115, 22, 0.15);
-    @apply border-orange-500/50 border;
-  }
-
-  /* Indigo glow for primary accent elements */
-  .glow-primary {
-    box-shadow: 0 0 18px rgb(58 55 252 / 0.28);
-    @apply border-primary/40 border;
-  }
-
-  /* Status glow: red (Vencido) */
-  .glow-status-destructive {
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
-    @apply border border-destructive/50;
-  }
-
-  /* Status glow: green (Pagado) */
-  .glow-status-success {
-    box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
-    @apply border border-green-500/50;
   }
 
   /* Utility: hide scrollbar while keeping scroll functionality */
@@ -326,7 +416,6 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-    --font-landing-display: var(--font-display);
   }
 
   h1,
@@ -382,22 +471,10 @@
 }
 
 /* ==========================================================================
-   Marketing landing — Orion-style dark canvas (scoped; does not retoken the app)
+   Marketing landing — atmosphere only. Surfaces, type, and CTAs use app tokens.
+   Light and dark follow .dark / :root. Loops are off under reduced motion.
+   The fortnight stage is normal flow below md and when motion is reduced.
    ========================================================================== */
-
-.landing-root {
-  --landing-bg: #060914;
-  --landing-surface: #090e1d;
-  --landing-card: #0d1327;
-  --landing-muted: #9ca3af;
-  --landing-cta-from: #ff5733;
-  --landing-cta-to: #ff2e00;
-  --landing-glow-blue: #3a37fc;
-  --landing-glow-purple: #911efe;
-  --landing-glow-magenta: #cf1ae6;
-  --landing-glow-pink: #ee477a;
-  color-scheme: dark;
-}
 
 html:has(.landing-root) {
   scroll-behavior: smooth;
@@ -409,71 +486,144 @@ html:has(.landing-root) {
   }
 }
 
-.landing-cta {
-  background-image: linear-gradient(90deg, var(--landing-cta-from), var(--landing-cta-to));
-}
-
-.landing-pro-border {
-  background-image: linear-gradient(135deg, #ff4d00 0%, #8a2be2 100%);
-}
-
-.landing-pro-inner {
-  background-color: #0d1327;
-  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.08) 0%, transparent 36%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
-}
-
-.landing-accent-text {
-  background-image: linear-gradient(115deg, #ffffff 8%, #911efe 48%, #ee477a 92%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Oriton-style marketing hero: purple → pink wash + faint grid. */
-.landing-hero-wash {
-  isolation: isolate;
-  border: 1px solid rgb(255 255 255 / 0.1);
-  background:
-    radial-gradient(120% 90% at 8% -10%, rgb(145 30 254 / 0.62) 0%, transparent 52%),
-    radial-gradient(90% 80% at 92% 8%, rgb(238 71 122 / 0.48) 0%, transparent 48%),
-    radial-gradient(70% 50% at 50% 110%, rgb(58 55 252 / 0.4) 0%, transparent 50%),
-    linear-gradient(165deg, #1c1048 0%, #24103c 45%, #160e2c 100%);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.14),
-    0 40px 90px -36px rgb(145 30 254 / 0.5);
-}
-
-.landing-hero-wash::before {
-  content: '';
-  pointer-events: none;
+/* Theme is the .dark class, so both captures stay in the first HTML. */
+.landing-shot-light,
+.landing-shot-dark {
   position: absolute;
   inset: 0;
-  z-index: 0;
-  background-image:
-    linear-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.06) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 70% 80% at 30% 40%, black 15%, transparent 72%);
-  opacity: 0.5;
 }
 
-.landing-glass-card {
-  border: 1px solid rgb(255 255 255 / 0.12);
-  background-color: rgb(9 14 29 / 0.55);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.04),
-    0 18px 40px -24px rgb(0 0 0 / 0.65),
-    0 28px 80px -36px rgb(58 55 252 / 0.14);
-  backdrop-filter: blur(28px) saturate(120%);
+.landing-shot-light {
+  display: block;
+}
+
+.dark .landing-shot-light {
+  display: none;
+}
+
+.landing-shot-dark {
+  display: none;
+}
+
+.dark .landing-shot-dark {
+  display: block;
+}
+
+.landing-hero-wash {
+  isolation: isolate;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background:
+    radial-gradient(
+      120% 90% at 8% -10%,
+      color-mix(in oklch, var(--chart-4) 42%, transparent) 0%,
+      transparent 52%
+    ),
+    radial-gradient(
+      90% 80% at 92% 8%,
+      color-mix(in oklch, var(--chart-2) 32%, transparent) 0%,
+      transparent 48%
+    ),
+    radial-gradient(
+      70% 50% at 50% 110%,
+      color-mix(in oklch, var(--primary) 28%, transparent) 0%,
+      transparent 50%
+    ),
+    linear-gradient(165deg, var(--secondary) 0%, var(--card) 100%);
+  box-shadow: var(--shadow-panel);
+}
+
+.landing-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(64px);
+}
+
+.landing-orb-a {
+  top: 2.5rem;
+  left: -6rem;
+  height: 28rem;
+  width: 28rem;
+  background: color-mix(in oklch, var(--primary) 28%, transparent);
+}
+
+.landing-orb-b {
+  top: 8rem;
+  right: -4rem;
+  height: 24rem;
+  width: 24rem;
+  background: color-mix(in oklch, var(--chart-2) 22%, transparent);
+}
+
+.landing-orb-c {
+  bottom: 0;
+  left: 30%;
+  height: 20rem;
+  width: 32rem;
+  background: color-mix(in oklch, var(--chart-4) 18%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-orb-a {
+    animation: landing-drift-a 18s var(--ease-out-soft) infinite;
+  }
+
+  .landing-orb-b {
+    animation: landing-drift-b 22s var(--ease-out-soft) infinite;
+  }
+
+  .landing-orb-c {
+    animation: landing-drift-c 16s var(--ease-out-soft) infinite;
+  }
+}
+
+@keyframes landing-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(1.5rem, 1rem, 0);
+  }
+}
+
+@keyframes landing-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-1.25rem, -0.75rem, 0);
+  }
+}
+
+@keyframes landing-drift-c {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* 140vh pin only on desktop when motion is allowed. Mobile stays in flow. */
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .landing-fortnight-stage {
+    height: 140vh;
+  }
+
+  .landing-fortnight-sticky {
+    position: sticky;
+    top: 5rem;
+  }
 }
 
 /* Planner glass: even translucent navy. No corner sheen, no grid. */
 .orion-panel-glass {
   isolation: isolate;
   background-color: var(--card);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-panel);
 }
 
 .dark .orion-panel-glass {
@@ -482,10 +632,7 @@ html:has(.landing-root) {
   background-image: none;
   backdrop-filter: blur(28px) saturate(120%);
   -webkit-backdrop-filter: blur(28px) saturate(120%);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.04),
-    0 18px 40px -22px rgb(0 0 0 / 0.72),
-    0 32px 80px -36px rgb(58 55 252 / 0.16);
+  box-shadow: var(--shadow-panel);
 }
 
 /* Soft glass rim: top hairline + faint inner glow. Host must be positioned. */
@@ -539,18 +686,6 @@ html:has(.landing-root) {
   box-shadow:
     0 0 0 1px rgb(107 104 255 / 0.4),
     0 0 18px -6px rgb(58 55 252 / 0.75);
-}
-
-@keyframes landing-glow-drift {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-    opacity: 0.55;
-  }
-  50% {
-    transform: translate(4%, -6%) scale(1.08);
-    opacity: 0.85;
-  }
 }
 
 /* ==========================================================================

@@ -3,14 +3,18 @@
 import type { ReactNode } from 'react';
 import { Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Money } from '@/components/money';
 import { SwipeDeleteRow } from '@/components/ui/swipe-delete-row';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { cn, formatCurrency } from '@/lib/utils';
+import type { MoneyTone } from '@/lib/money';
+import { cn } from '@/lib/utils';
 
 type TemplateSwipeRowProps = {
   name: string;
   subtitle?: ReactNode;
   amount: number | null;
+  /** Same tone as the desktop amount cell. */
+  tone?: MoneyTone;
   active: boolean;
   onEdit: () => void;
   onRequestDelete: () => void;
@@ -21,6 +25,7 @@ export const TemplateSwipeRow = ({
   name,
   subtitle,
   amount,
+  tone = 'auto',
   active,
   onEdit,
   onRequestDelete,
@@ -48,20 +53,27 @@ export const TemplateSwipeRow = ({
               {!active ? (
                 <Badge
                   variant="outline"
-                  className="shrink-0 px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wider"
+                  className="shrink-0 px-1.5 py-0 eyebrow"
                 >
                   Inactiva
                 </Badge>
               ) : null}
             </span>
             {subtitle ? (
-              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+              <span
+                className="mt-0.5 block text-pretty text-xs text-muted-foreground"
+                title={typeof subtitle === 'string' ? subtitle : undefined}
+              >
                 {subtitle}
               </span>
             ) : null}
           </span>
-          <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
-            {amount != null ? formatCurrency(amount) : '—'}
+          <span className="shrink-0">
+            {amount != null ? (
+              <Money value={amount} size="row" tone={tone} />
+            ) : (
+              '—'
+            )}
           </span>
           <Pencil
             className="h-4 w-4 shrink-0 text-muted-foreground"

@@ -4,7 +4,8 @@ import { useId, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn, formatCurrency } from '@/lib/utils';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { SectionHeader } from '@/components/section-header';
+import { kpiMetricCardShellClass } from '@/components/finance/kpi-metric-card-styles';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { groupGapBreakdownLines } from '@/components/wallets/liquidity/plan/group-gap-lines';
@@ -28,7 +29,13 @@ const loanCountLabel = (count: number): string =>
   count === 1 ? '1 préstamo' : `${count} préstamos`;
 
 const Amount = ({ amount }: { amount: number }) => (
-  <span className={cn('shrink-0 font-mono tabular-nums', amount < 0 && 'text-emerald-600 dark:text-emerald-400')}>
+  <span
+    className={cn(
+      'shrink-0 font-sans tabular-nums',
+      amount > 0 && 'text-status-expense',
+      amount < 0 && 'text-status-income',
+    )}
+  >
     {formatCurrency(amount)}
   </span>
 );
@@ -96,25 +103,26 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
   const panelId = useId();
   const amount = Math.abs(gapAmount);
   const label = mode === 'surplus' ? PLAN_COPY.extraLabel : mode === 'shortfall' ? PLAN_COPY.gapLabel : PLAN_COPY.month;
-  const accent = mode === 'shortfall' ? 'border-l-amber-500/50' : mode === 'surplus' ? 'border-l-emerald-500/50' : 'border-l-primary/40';
+  const kpiTone = mode === 'shortfall' ? 'destructive' : mode === 'surplus' ? 'income' : 'neutral';
   const showBreakdown = mode !== 'balanced' && lines.length > 0;
 
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {horizon === 'quincena' ? PLAN_COPY.fortnight : PLAN_COPY.month}
-        </p>
-        <h2 className="text-xl font-semibold tracking-tight">{titleFor(mode)}</h2>
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground">{PLAN_COPY.heroHint}</p>
+        <SectionHeader
+          eyebrow={horizon === 'quincena' ? PLAN_COPY.fortnight : PLAN_COPY.month}
+          title={titleFor(mode)}
+          titleClassName="text-title"
+          subtitle={PLAN_COPY.heroHint}
+        />
       </div>
       {mode === 'balanced' ? (
         <p className="text-sm text-muted-foreground">{PLAN_COPY.balancedBody}</p>
       ) : (
         <div className="space-y-2">
-          <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px]', accent)}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-            <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+          <div className={kpiMetricCardShellClass(kpiTone)}>
+            <p className="eyebrow text-muted-foreground">{label}</p>
+            <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
               <CurrencyTicker value={amount} />
             </p>
           </div>

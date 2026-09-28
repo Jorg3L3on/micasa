@@ -164,17 +164,17 @@ export const EditCardPaymentPlanDialog = ({
             {knownPeriodAmount != null ? (
               <>
                 Toca pagar:{' '}
-                <span className="font-mono font-semibold tabular-nums text-foreground">
+                <span className="font-sans font-semibold tabular-nums text-foreground">
                   {formatCurrency(knownPeriodAmount)}
                 </span>
               </>
             ) : (
-              <span className="font-medium text-amber-700 dark:text-amber-300">
+              <span className="font-medium text-status-pending">
                 Falta el pago del corte
               </span>
             )}
             {' · '}Deuda total:{' '}
-            <span className="font-mono font-semibold tabular-nums text-foreground">
+            <span className="font-sans font-semibold tabular-nums text-foreground">
               {formatCurrency(outstandingBalance)}
             </span>
           </OverlayHint>
@@ -272,7 +272,7 @@ export const EditCardPaymentPlanDialog = ({
               variant="ghost"
               className={cn(
                 OVERLAY_SECONDARY_BUTTON_CLASS,
-                'text-amber-700 dark:text-amber-300',
+                'text-status-pending',
               )}
               disabled={form.formState.isSubmitting}
               onClick={() => void handleDeclareZero()}

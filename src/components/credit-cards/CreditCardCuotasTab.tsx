@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, CreditCard, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -138,33 +139,22 @@ export const CreditCardCuotasTab = ({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-2">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-            <CreditCard
-              className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400"
-              aria-hidden
-            />
-          </span>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold leading-none">
-              Cuotas y pagos futuros
-            </h3>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              MSI en tarjeta, planes manuales y calendario
-            </p>
-          </div>
-        </div>
+      <SectionHeader
+        level={3}
+        icon={CreditCard}
+        title="Cuotas y pagos futuros"
+        subtitle="MSI en tarjeta, planes manuales y calendario"
+        actions={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
               size="sm"
               className="h-8 shrink-0 rounded-xl"
-              aria-label="Agregar cuota o plan"
+              aria-label="Agregar compra"
             >
               <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
-              Agregar
+              Agregar compra
               <ChevronDown className="ml-0.5 h-3.5 w-3.5 opacity-70" aria-hidden />
             </Button>
           </DropdownMenuTrigger>
@@ -172,14 +162,15 @@ export const CreditCardCuotasTab = ({
             <DropdownMenuItem
               onClick={() => onCreatePlanDialogOpenChange?.(true)}
             >
-              Nuevo plan a meses
+              Agregar plan a meses
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleOpenCreateScheduled}>
               Cuota futura programada
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+        }
+      />
 
       {cycleLoading || !commitmentsReady ? (
         <Skeleton
@@ -206,22 +197,22 @@ export const CreditCardCuotasTab = ({
           aria-label="Saldo del plan, informativo"
         >
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               Saldo MSI
             </p>
-            <p className="font-mono text-base font-bold tabular-nums sm:text-lg">
+            <p className="font-sans text-base font-bold tabular-nums sm:text-lg">
               {formatCurrency(msiExposure)}
             </p>
           </div>
           <div className="min-w-0 border-l border-border/50 pl-2 sm:pl-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               Saldo del plan
             </p>
-            <p className="font-mono text-base font-bold tabular-nums sm:text-lg">
+            <p className="font-sans text-base font-bold tabular-nums sm:text-lg">
               {formatCurrency(plansExposure)}
             </p>
             {planCount > 0 ? (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-caption text-muted-foreground">
                 {planCount} plan{planCount === 1 ? '' : 'es'}
               </p>
             ) : null}
@@ -229,7 +220,7 @@ export const CreditCardCuotasTab = ({
         </div>
       ) : null}
       {showSummary ? (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Saldo restante informativo. Este corte solo incluye la mensualidad.
         </p>
       ) : null}

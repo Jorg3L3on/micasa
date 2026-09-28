@@ -2,13 +2,22 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ImageResponse } from 'next/og';
 
-export const alt = 'MiCasa — Planifica tu dinero por quincenas';
+export const alt = 'MiCasa — Planea tu dinero por quincenas';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
+const CANVAS = '#060914';
+
 export default async function OpenGraphImage() {
-  const mark = await readFile(path.join(process.cwd(), 'public/brand/mark.png'));
+  const [mark, shot, manrope, geist] = await Promise.all([
+    readFile(path.join(process.cwd(), 'public/brand/mark-160.png')),
+    readFile(path.join(process.cwd(), 'public/landing/og-panel.png')),
+    readFile(path.join(process.cwd(), 'src/app/fonts/Manrope-Bold.ttf')),
+    readFile(path.join(process.cwd(), 'src/app/fonts/Geist-Regular.ttf')),
+  ]);
+
   const markSrc = `data:image/png;base64,${mark.toString('base64')}`;
+  const shotSrc = `data:image/png;base64,${shot.toString('base64')}`;
 
   return new ImageResponse(
     (
@@ -17,66 +26,80 @@ export default async function OpenGraphImage() {
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '64px 72px',
-          backgroundColor: '#0a0b10',
-          backgroundImage:
-            'radial-gradient(ellipse at 20% 0%, rgba(46, 141, 245, 0.85) 0%, transparent 45%), radial-gradient(ellipse at 100% 80%, rgba(172, 61, 243, 0.7) 0%, transparent 40%)',
-          color: '#ffffff',
-          fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+          backgroundColor: CANVAS,
+          color: '#f7f8ff',
+          fontFamily: 'Geist',
         }}
       >
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            fontSize: 42,
-            fontWeight: 700,
-            letterSpacing: '-0.03em',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            width: 560,
+            padding: '56px 48px 48px 56px',
           }}
         >
-          <img src={markSrc} width={64} height={64} alt="" />
-          MiCasa
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div
             style={{
-              fontSize: 64,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              fontFamily: 'Manrope',
+              fontSize: 36,
               fontWeight: 700,
-              letterSpacing: '-0.035em',
-              lineHeight: 1.1,
-              maxWidth: 900,
             }}
           >
-            Tu quincena, clara de punta a punta.
+            <img src={markSrc} width={52} height={52} alt="" />
+            MiCasa
           </div>
-          <div
-            style={{
-              fontSize: 28,
-              color: 'rgba(255,255,255,0.72)',
-              maxWidth: 820,
-              lineHeight: 1.35,
-            }}
-          >
-            Planifica ingresos, gastos y obligaciones por quincenas — el ritmo
-            real de cobrar y pagar en México.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div
+              style={{
+                fontFamily: 'Manrope',
+                fontSize: 48,
+                fontWeight: 700,
+                letterSpacing: '-0.03em',
+                lineHeight: 1.12,
+              }}
+            >
+              Tu quincena, clara de punta a punta.
+            </div>
+            <div style={{ fontSize: 22, color: '#9ca3af', lineHeight: 1.4 }}>
+              Ingresos, gastos y operaciones por quincenas.
+            </div>
           </div>
+          <div style={{ fontSize: 18, color: '#9ca3af' }}>Gratis para usar</div>
         </div>
-
         <div
           style={{
             display: 'flex',
-            fontSize: 22,
-            color: 'rgba(255,255,255,0.55)',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            flex: 1,
+            padding: '40px 40px 40px 0',
           }}
         >
-          micasa · planificación financiera
+          <img
+            src={shotSrc}
+            width={560}
+            height={350}
+            alt=""
+            style={{
+              borderRadius: 16,
+              objectFit: 'cover',
+              objectPosition: 'left top',
+            }}
+          />
         </div>
       </div>
     ),
-    { ...size }
+    {
+      ...size,
+      fonts: [
+        { name: 'Manrope', data: manrope, weight: 700, style: 'normal' },
+        { name: 'Geist', data: geist, weight: 400, style: 'normal' },
+      ],
+    },
   );
-}
+};

@@ -45,10 +45,10 @@ describe('buildLaunchRedirectScript', () => {
   it('replaces a stale monthly URL on a fresh standalone launch', () => {
     const { replace, storage } = runLaunchScript({
       pathname: '/monthly/2026/08',
-      search: '?ownerType=house&ownerId=3',
+      search: '?ownerType=house&ownerId=42',
     });
     expect(replace).toHaveBeenCalledWith(
-      '/monthly/2026/09?ownerType=house&ownerId=3',
+      '/monthly/2026/09?ownerType=house&ownerId=42',
     );
     expect(storage.get(PWA_LAUNCH_HANDLED_KEY)).toBe('1');
   });
@@ -99,10 +99,10 @@ describe('getStaleMonthlyRedirect', () => {
     expect(
       getStaleMonthlyRedirect(
         '/monthly/2026/08',
-        '?ownerType=house&ownerId=3',
+        '?ownerType=house&ownerId=42',
         mxNoon('2026-09-26'),
       ),
-    ).toBe('/monthly/2026/09?ownerType=house&ownerId=3');
+    ).toBe('/monthly/2026/09?ownerType=house&ownerId=42');
   });
 
   it('ignores non-monthly paths', () => {

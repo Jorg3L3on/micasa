@@ -4,9 +4,12 @@ import FortnightHeader from '@/components/FortnightHeader';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EmptyState from '@/components/EmptyState';
+import { ErrorBanner } from '@/components/error-banner';
 import { ReceivePayrollTrigger } from '@/components/ReceivePayrollButton';
 import type { Metadata } from 'next';
-import { formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
+import { notFound, redirect } from 'next/navigation';
+import { formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
+import { parseFortnightPeriod } from '@/lib/finance/report-helpers';
 import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
@@ -79,41 +82,45 @@ async function getTransactions(
   month: string,
   period: string,
   ownerContext?: OwnerContext,
-): Promise<TransactionRow[]> {
+): Promise<{ rows: TransactionRow[]; failed: boolean }> {
   try {
-    return await fetchFromApi<TransactionRow[]>(
+    const rows = await fetchFromApi<TransactionRow[]>(
       `/api/transactions?year=${year}&month=${month}&period=${period}&type=expense&exclude_credit_installment=true`,
       ownerContext,
     );
+    return { rows, failed: false };
   } catch (error) {
     console.error('Error fetching transactions:', error);
-    return [];
+    return { rows: [], failed: true };
   }
 }
+
+const emptySummary = (): Summary => ({
+  totalIncome: 0,
+  totalExpense: 0,
+  totalPaid: 0,
+  totalUnpaid: 0,
+  balance: 0,
+  fundingWalletBalanceTotal: 0,
+  fundingNetVsPendingExpense: 0,
+  fundingWalletBreakdown: [],
+});
 
 async function getSummary(
   year: string,
   month: string,
   period: string,
   ownerContext?: OwnerContext,
-): Promise<Summary> {
+): Promise<{ summary: Summary; failed: boolean }> {
   try {
-    return await fetchFromApi<Summary>(
+    const summary = await fetchFromApi<Summary>(
       `/api/reports?type=summary&year=${year}&month=${month}&period=${period}&exclude_credit_installment=true`,
       ownerContext,
     );
+    return { summary, failed: false };
   } catch (error) {
     console.error('Error fetching summary:', error);
-    return {
-      totalIncome: 0,
-      totalExpense: 0,
-      totalPaid: 0,
-      totalUnpaid: 0,
-      balance: 0,
-      fundingWalletBalanceTotal: 0,
-      fundingNetVsPendingExpense: 0,
-      fundingWalletBreakdown: [],
-    };
+    return { summary: emptySummary(), failed: true };
   }
 }
 
@@ -138,9 +145,8 @@ export async function generateMetadata({
     return { title: 'Quincena' };
   }
 
-  const ordinal = period === 'FIRST' ? '1ª' : '2ª';
   return {
-    title: `${ordinal} quincena · ${formatFortnightDateRangeLabel(year, month, period)}`,
+    title: formatFortnightOrdinalTitle(period, month, year),
   };
 }
 
@@ -167,14 +173,33 @@ export default async function FortnightPage({
 
   const year = parseInt(yearParam, 10);
   const month = parseInt(monthParam, 10);
-  const period = periodParam.toUpperCase() as 'FIRST' | 'SECOND';
+  const period = parseFortnightPeriod(periodParam);
+  if (!period || !Number.isFinite(year) || !Number.isFinite(month)) {
+    notFound();
+  }
+  if (periodParam !== period) {
+    const qs = new URLSearchParams();
+    if (resolvedSearchParams.ownerType) {
+      qs.set('ownerType', resolvedSearchParams.ownerType);
+    }
+    if (resolvedSearchParams.ownerId) {
+      qs.set('ownerId', resolvedSearchParams.ownerId);
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    redirect(
+      `/fortnight/${yearParam}/${monthParam}/${period}${suffix}`,
+    );
+  }
 
-  const [fortnightInfo, transactions, summary, wallets] = await Promise.all([
+  const [fortnightInfo, transactionResult, summaryResult, wallets] = await Promise.all([
     getFortnightInfo(yearParam, monthParam, periodParam, ownerContext),
     getTransactions(yearParam, monthParam, periodParam, ownerContext),
     getSummary(yearParam, monthParam, periodParam, ownerContext),
     fetchFromApi<WalletListItem[]>('/api/wallets', ownerContext).catch(() => []),
   ]);
+  const transactions = transactionResult.rows;
+  const summary = summaryResult.summary;
+  const movementsFailed = transactionResult.failed || summaryResult.failed;
   const fortnightId = fortnightInfo.id;
 
   const transactionsByDate = groupTransactionsByDate(transactions);
@@ -203,6 +228,12 @@ export default async function FortnightPage({
         }
       />
 
+      {movementsFailed ? (
+        <ErrorBanner>
+          No se pudieron cargar los gastos de esta quincena.
+        </ErrorBanner>
+      ) : (
+      <>
       {/* TOP SECTION - Summary Cards */}
       <SummaryBlock
         tenemos={tenemos}
@@ -241,7 +272,7 @@ export default async function FortnightPage({
       {/* BOTTOM SECTION - Expense Tables */}
       <div className="space-y-6">
         {sortedDates.length === 0 ? (
-          <EmptyState message="No hay transacciones para esta quincena" />
+          <EmptyState message="No hay movimientos para esta quincena" />
         ) : (
           sortedDates.map((date) => (
             <ExpenseTable
@@ -257,6 +288,8 @@ export default async function FortnightPage({
           ))
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

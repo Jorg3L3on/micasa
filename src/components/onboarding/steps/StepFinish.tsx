@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
+import { formatDisplayDate } from '@/lib/calendar-dates';
 import {
   useOnboarding,
   type ExpenseTemplateDraft,
@@ -11,12 +12,6 @@ import {
 type Props = {
   setCanProceed?: (value: boolean) => void;
 };
-
-const dateFormatter = new Intl.DateTimeFormat('es-MX', {
-  day: '2-digit',
-  month: 'long',
-  year: 'numeric',
-});
 
 export default function StepFinish({ setCanProceed }: Props) {
   const onboarding = useOnboarding();
@@ -64,7 +59,7 @@ export default function StepFinish({ setCanProceed }: Props) {
           </h4>
           <p className="text-sm">
             {startDate
-              ? dateFormatter.format(startDate)
+              ? formatDisplayDate(startDate)
               : 'Sin fecha de inicio definida'}
           </p>
         </section>
@@ -129,7 +124,7 @@ export default function StepFinish({ setCanProceed }: Props) {
 
       {onboarding.isStepLoading && (
         <p className="text-muted-foreground text-xs">
-          Preparando tu espacio financiero...
+          Preparando tu espacio financiero…
         </p>
       )}
     </div>

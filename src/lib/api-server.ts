@@ -1,4 +1,8 @@
 import { headers } from 'next/headers'
+import {
+  NETWORK_ERROR_MESSAGE,
+  isBrowserNetworkError,
+} from '@/lib/user-facing-error'
 
 export type OwnerContext = {
   ownerType?: 'user' | 'house'
@@ -35,10 +39,18 @@ export async function fetchFromApi<T>(
   const baseUrl = await getApiBaseUrl()
   const cookie = headersList.get('cookie')
   const url = buildUrlWithOwnerContext(endpoint, ownerContext)
-  const res = await fetch(`${baseUrl}${url}`, {
-    cache: 'no-store',
-    headers: cookie ? { cookie } : undefined,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${baseUrl}${url}`, {
+      cache: 'no-store',
+      headers: cookie ? { cookie } : undefined,
+    })
+  } catch (error) {
+    if (isBrowserNetworkError(error)) {
+      throw new Error(NETWORK_ERROR_MESSAGE)
+    }
+    throw error
+  }
 
   if (!res.ok) {
     throw new Error(

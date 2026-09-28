@@ -5,12 +5,9 @@ import { motion, useReducedMotion, type Transition } from 'framer-motion';
 import {
   useCallback,
   useId,
-  useLayoutEffect,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { EASE_OUT } from '@/components/motion/ease';
 import { cn } from '@/lib/utils';
 
 export type BouncyAccordionItem = {
@@ -47,23 +44,6 @@ const ROW_TRANSITION: Transition = {
   type: 'spring',
   duration: 0.55,
   bounce: 0.38,
-};
-
-const CONTENT_OPEN_TRANSITION: Transition = {
-  type: 'spring',
-  duration: 0.58,
-  bounce: 0.32,
-};
-
-const CONTENT_CLOSE_TRANSITION: Transition = {
-  type: 'spring',
-  duration: 0.46,
-  bounce: 0.26,
-};
-
-const DESCRIPTION_TRANSITION: Transition = {
-  duration: 0.18,
-  ease: EASE_OUT,
 };
 
 const CHEVRON_TRANSITION: Transition = {
@@ -121,30 +101,8 @@ const BouncyAccordionRow = ({
   classNames?: BouncyAccordionClassNames;
   onToggle: () => void;
 }) => {
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [contentHeight, setContentHeight] = useState(0);
-
-  useLayoutEffect(() => {
-    const node = contentRef.current;
-    if (!node) return;
-
-    const updateHeight = () => {
-      setContentHeight(node.offsetHeight);
-    };
-
-    updateHeight();
-
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(node);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-
   return (
     <motion.div
-      layout="position"
       initial={false}
       style={{ marginTop: separatedFromPrevious ? 12 : 0 }}
       transition={reduce ? { duration: 0 } : ROW_TRANSITION}
@@ -191,7 +149,7 @@ const BouncyAccordionRow = ({
           ) : null}
           <span
             className={cn(
-              'min-w-0 flex-1 truncate text-[15px] font-medium text-foreground',
+              'min-w-0 flex-1 truncate text-body font-medium text-foreground',
               classNames?.title,
             )}
           >
@@ -210,40 +168,34 @@ const BouncyAccordionRow = ({
           </motion.span>
         </button>
 
-        <motion.div
-          layout="size"
+        <div
           id={contentId}
           role="region"
           aria-labelledby={triggerId}
           aria-hidden={!open}
           inert={!open}
-          initial={false}
-          style={{ height: open && item.description ? contentHeight : 0 }}
-          transition={
-            reduce
-              ? { duration: 0 }
-              : open
-                ? CONTENT_OPEN_TRANSITION
-                : CONTENT_CLOSE_TRANSITION
-          }
-          className={cn('overflow-hidden', classNames?.content)}
+          className={cn(
+            'grid',
+            reduce ? 'transition-none' : 'transition-[grid-template-rows] duration-300 ease-out',
+            open && item.description ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+            classNames?.content,
+          )}
         >
-          <motion.div
-            ref={contentRef}
-            animate={{ opacity: open ? 1 : 0 }}
-            transition={reduce ? { duration: 0 } : DESCRIPTION_TRANSITION}
-            className={cn('px-5 pb-5', classNames?.body)}
-          >
-            <div
-              className={cn(
-                'text-[15px] leading-6 text-muted-foreground',
-                classNames?.description,
-              )}
-            >
-              {item.description}
-            </div>
-          </motion.div>
-        </motion.div>
+          <div className={cn('min-h-0 overflow-hidden', !open && 'h-0')}>
+            {open ? (
+              <div className={cn('px-5 pb-5', classNames?.body)}>
+                <div
+                  className={cn(
+                    'text-body leading-6 text-muted-foreground',
+                    classNames?.description,
+                  )}
+                >
+                  {item.description}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </motion.div>
     </motion.div>
   );

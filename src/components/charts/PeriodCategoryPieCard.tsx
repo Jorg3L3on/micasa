@@ -1,13 +1,16 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { useId, useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { PieChart as PieChartIcon } from 'lucide-react';
+import { SectionHeader } from '@/components/section-header';
 import { cn, formatCurrency } from '@/lib/utils';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { ChartTooltip } from '@/components/charts/chart-tooltip';
+import { chartSliceColor } from '@/components/charts/chart-theme';
 import {
   buildCategoryPieChartData,
-  CATEGORY_PIE_SLICE_COLORS,
   type CategoryPieSlice,
   type CategoryPieRow,
 } from '@/components/charts/period-category-pie';
@@ -25,18 +28,18 @@ const PieTooltip = ({ active, payload }: PieTooltipProps) => {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   return (
-    <div className="rounded-lg border border-border/60 bg-card px-3 py-2 text-xs shadow-lg">
+    <ChartTooltip active>
       <CategoryLabel
         name={row.category}
         icon={row.categoryIcon}
         className="font-medium text-foreground"
         iconClassName="h-3.5 w-3.5"
       />
-      <p className="font-mono tabular-nums text-foreground">
+      <p className="font-sans tabular-nums text-foreground">
         {formatCurrency(row.value)}
       </p>
-      <p className="text-[10px] text-muted-foreground">{row.pct.toFixed(1)}%</p>
-    </div>
+      <p className="text-caption text-muted-foreground">{row.pct.toFixed(1)}%</p>
+    </ChartTooltip>
   );
 };
 
@@ -51,7 +54,7 @@ type PeriodCategoryPieCardProps = {
 export const PeriodCategoryPieCard = ({
   title = 'Gasto por categoría',
   scopeLabel,
-  subtitle = 'Planificación (efectivo/débito); sin cargos solo TC ni cuotas MSI.',
+  subtitle = 'Planeación (efectivo/débito); sin cargos solo TC ni cuotas MSI.',
   rows,
   compact = false,
 }: PeriodCategoryPieCardProps) => {
@@ -72,27 +75,20 @@ export const PeriodCategoryPieCard = ({
       role="region"
       aria-label={`${title}, ${scopeLabel}`}
     >
-      <div className="mb-3 flex items-start gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-          <PieChartIcon
-            className="h-4 w-4 text-violet-600 dark:text-violet-400"
-            aria-hidden data-icon="inline-start" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold leading-none text-foreground sm:text-base">
-            {title}
-          </h3>
-          <p className="mt-1 text-[10px] text-muted-foreground">{scopeLabel}</p>
-          {subtitle ? (
-            <p className="mt-0.5 text-[10px] text-muted-foreground">{subtitle}</p>
-          ) : null}
-        </div>
-      </div>
+      <SectionHeader
+        className="mb-3"
+        icon={PieChartIcon}
+        title={title}
+        subtitle={
+          <>
+            {scopeLabel}
+            {subtitle ? <span className="mt-0.5 block">{subtitle}</span> : null}
+          </>
+        }
+      />
 
       {chartData.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          No hay gastos categorizados en este periodo.
-        </p>
+        <EmptyState message="No hay gastos categorizados en este periodo." className="py-8" />
       ) : (
         <div className="relative flex flex-col items-center">
           <div className={cn('relative w-full max-w-[280px]', chartHeight)}>
@@ -112,11 +108,7 @@ export const PeriodCategoryPieCard = ({
                   {chartData.map((_, i) => (
                     <Cell
                       key={`${chartId}-slice-${i}`}
-                      fill={
-                        CATEGORY_PIE_SLICE_COLORS[
-                          i % CATEGORY_PIE_SLICE_COLORS.length
-                        ]
-                      }
+                      fill={chartSliceColor(i)}
                     />
                   ))}
                 </Pie>
@@ -124,26 +116,21 @@ export const PeriodCategoryPieCard = ({
               </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pt-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="eyebrow text-muted-foreground">
                 Total
               </span>
-              <span className="mt-0.5 font-mono text-base font-bold tabular-nums text-foreground sm:text-lg">
+              <span className="mt-0.5 font-sans text-base font-bold tabular-nums text-foreground sm:text-lg">
                 {formatCurrency(totalExpense)}
               </span>
             </div>
           </div>
 
-          <ul className="mt-3 grid w-full gap-1.5 text-[11px]">
+          <ul className="mt-3 grid w-full gap-1.5 text-caption">
             {chartData.map((row, i) => (
               <li key={row.name} className="flex min-w-0 items-center gap-2">
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
-                  style={{
-                    background:
-                      CATEGORY_PIE_SLICE_COLORS[
-                        i % CATEGORY_PIE_SLICE_COLORS.length
-                      ],
-                  }}
+                  style={{ background: chartSliceColor(i) }}
                 />
                 <CategoryLabel
                   name={row.category}
@@ -151,10 +138,10 @@ export const PeriodCategoryPieCard = ({
                   className="min-w-0 flex-1 text-muted-foreground"
                   iconClassName="h-3.5 w-3.5"
                 />
-                <span className="shrink-0 font-mono tabular-nums text-foreground">
+                <span className="shrink-0 font-sans tabular-nums text-foreground">
                   {formatCurrency(row.value)}
                 </span>
-                <span className="w-8 shrink-0 text-right font-mono tabular-nums text-muted-foreground">
+                <span className="w-8 shrink-0 text-right font-sans tabular-nums text-muted-foreground">
                   {row.pct.toFixed(0)}%
                 </span>
               </li>

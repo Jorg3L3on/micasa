@@ -528,7 +528,7 @@ export const PullToRefresh = ({
             : { opacity: indicatorOpacity, scale: indicatorScale }
         }
         className={cn(
-          'pointer-events-none absolute inset-x-0 top-0 z-20 flex h-[4.25rem] flex-col items-center justify-center gap-0.5 bg-gradient-to-b from-background via-background/95 to-transparent text-[11px] font-medium text-muted-foreground',
+          'pointer-events-none absolute inset-x-0 top-0 z-20 flex h-[4.25rem] flex-col items-center justify-center gap-0.5 bg-gradient-to-b from-background via-background/95 to-transparent text-caption font-medium text-muted-foreground',
           indicatorClassName,
         )}
       >

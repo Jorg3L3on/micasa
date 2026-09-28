@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { CalendarClock, CheckCircle2, Goal, Hourglass } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/motion/tabs';
+import { SegmentedControl } from '@/components/segmented-control';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -15,7 +15,6 @@ import { MonthlyMonthPicker } from '@/components/monthly/MonthlyMonthPicker';
 import {
   GLASS_TAB_ACTIVE_LABEL_CLASS,
   AURA_TAB_INDICATOR_CLASS,
-  GLASS_TAB_TRACK_CLASS,
   MONTHLY_ACCENT_TEXT_CLASS,
   MONTHLY_ICON_PILL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
@@ -95,7 +94,7 @@ export const statusGlyphClass = (tone: ProgressTone) => {
   if (tone === 'complete') {
     return cn(
       'flex size-8 shrink-0 items-center justify-center rounded-xl',
-      'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300',
+      'bg-status-income/15 text-status-income',
     );
   }
   return cn(
@@ -127,7 +126,7 @@ export const FortnightProgressTrack = ({
       >
         <div
           className={cn(
-            'h-full rounded-full bg-linear-to-r from-[#3a37fc] to-violet-500 shadow-[0_0_12px_-1px_rgba(58,55,252,0.8)] transition-[width] duration-500',
+            'h-full rounded-full bg-linear-to-r from-primary to-status-info shadow-glow transition-[width] duration-500',
             tone === 'upcoming' && 'bg-none shadow-none',
           )}
           style={{ width: `${percent}%` }}
@@ -135,7 +134,7 @@ export const FortnightProgressTrack = ({
       </div>
       {showKnob ? (
         <span
-          className="pointer-events-none absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#3a37fc] shadow-[0_0_10px_rgba(58,55,252,0.85)]"
+          className="pointer-events-none absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow-glow"
           style={{ left: `${Math.min(percent, 100)}%` }}
           aria-hidden
         />
@@ -206,29 +205,25 @@ const FortnightProgressStatus = ({
 
   return (
     <div className={chromeTileClass} aria-live="polite">
-      <span
-        className={cn(
-          'flex @min-[42rem]:hidden @min-[62rem]:flex',
-          statusGlyphClass(tone),
-        )}
-        aria-hidden
-      >
-        <StatusIcon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-baseline justify-between gap-2">
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
           <p
-            className="min-w-0 truncate text-sm font-semibold leading-tight tracking-tight"
+            className="flex min-w-0 items-center gap-2 text-sm font-semibold leading-tight tracking-tight"
             aria-label={titleSr}
           >
-            {position.kind === 'current' && position.remainingDays > 1 ? (
-              <span className="tabular-nums">{title}</span>
-            ) : (
-              title
-            )}
+            <span className={statusGlyphClass(tone)} aria-hidden>
+              <StatusIcon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 truncate">
+              {position.kind === 'current' && position.remainingDays > 1 ? (
+                <span className="tabular-nums">{title}</span>
+              ) : (
+                title
+              )}
+            </span>
           </p>
           {tone === 'upcoming' ? (
-            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 eyebrow text-muted-foreground">
               Próxima
             </span>
           ) : (
@@ -242,12 +237,14 @@ const FortnightProgressStatus = ({
             </span>
           )}
         </div>
-        <FortnightProgressTrack
-          percent={percent}
-          tone={tone}
-          label={progressLabel}
-        />
-        <div className="flex items-center justify-between gap-2 text-[10px] leading-none text-muted-foreground sm:text-[11px]">
+        <div className="py-1">
+          <FortnightProgressTrack
+            percent={percent}
+            tone={tone}
+            label={progressLabel}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-2 text-caption leading-none text-muted-foreground sm:text-caption">
           <span className={cn('min-w-0 truncate', accentEmphasisClass)}>
             {leftDate}
           </span>
@@ -296,46 +293,32 @@ export const MonthlyChromeHeader = ({
       aria-hidden
     />
   ) : (
-    <Tabs
+    <SegmentedControl
       value={period}
       onValueChange={(next) => {
         if (next === 'FIRST' || next === 'SECOND') handlePeriodChange(next);
       }}
-      variant="pill"
+      ariaLabel="Quincena"
+      stretch
       className="w-full @min-[42rem]:w-auto"
-    >
-      <TabsList
-        aria-label="Quincena"
-        wrapperClassName="w-full @min-[42rem]:w-auto"
-        className={cn(
-          'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:w-max',
-          GLASS_TAB_TRACK_CLASS,
-        )}
-      >
-        <TabsTrigger
-          value="FIRST"
-          stretch
-          aria-label={`Primera quincena: ${firstLabel}`}
-          title={firstLabel}
-          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-          className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
-        >
-          1ª Quincena
-        </TabsTrigger>
-        <TabsTrigger
-          value="SECOND"
-          stretch
-          aria-label={`Segunda quincena: ${secondLabel}`}
-          title={secondLabel}
-          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-          className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
-        >
-          2ª Quincena
-        </TabsTrigger>
-      </TabsList>
-    </Tabs>
+      wrapperClassName="w-full @min-[42rem]:w-auto"
+      indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+      activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+      options={[
+        {
+          value: 'FIRST',
+          label: '1ª Quincena',
+          ariaLabel: `Primera quincena: ${firstLabel}`,
+          title: firstLabel,
+        },
+        {
+          value: 'SECOND',
+          label: '2ª Quincena',
+          ariaLabel: `Segunda quincena: ${secondLabel}`,
+          title: secondLabel,
+        },
+      ]}
+    />
   );
 
   const jumpToCurrent = !isCurrentMonth ? (

@@ -10,6 +10,7 @@ import {
   Inbox,
 } from 'lucide-react';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -106,7 +107,7 @@ export const WalletMovementsFeed = ({
   movements,
   ownerQueryString,
   onAddTransaction,
-  addTransactionLabel = 'Agregar transacción',
+  addTransactionLabel = 'Agregar movimiento',
   canRegister = false,
 }: WalletMovementsFeedProps) => {
   const [query, setQuery] = useState('');
@@ -139,8 +140,9 @@ export const WalletMovementsFeed = ({
 
   return (
     <div role="region" aria-label="Movimientos" className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Movimientos</h2>
+      <SectionHeader
+        title="Movimientos"
+        actions={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -171,7 +173,8 @@ export const WalletMovementsFeed = ({
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+        }
+      />
 
       <div className={creditCardSegmentedTabChromeClass}>
         <div className="grid w-full grid-cols-3 gap-1" role="tablist" aria-label="Filtrar movimientos">
@@ -214,7 +217,7 @@ export const WalletMovementsFeed = ({
         <div className="space-y-5">
           {grouped.map(([date, rows]) => (
             <section key={date} aria-label={`Movimientos del ${formatDate(date)}`}>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 eyebrow text-muted-foreground">
                 {formatDate(date)}
               </p>
               <ul className="divide-y divide-border/40 rounded-2xl border border-border/50 bg-muted/10 dark:bg-muted/5">
@@ -237,8 +240,8 @@ export const WalletMovementsFeed = ({
                         className={cn(
                           'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
                           isIn
-                            ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-rose-500/12 text-rose-600 dark:text-rose-400',
+                            ? 'bg-status-income/12 text-status-income'
+                            : 'bg-status-expense/12 text-status-expense',
                         )}
                         aria-hidden
                       >
@@ -280,8 +283,8 @@ export const WalletMovementsFeed = ({
                       </div>
                       <span
                         className={cn(
-                          'shrink-0 font-mono text-sm font-bold tabular-nums',
-                          isIn && 'text-emerald-600 dark:text-emerald-400',
+                          'shrink-0 font-sans text-sm font-bold tabular-nums',
+                          isIn && 'text-status-income',
                         )}
                       >
                         {isIn ? '+' : '−'} {formatCurrency(m.amount)}

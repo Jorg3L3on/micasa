@@ -138,26 +138,19 @@ function NavMainWithSearchParams({
   )
 }
 
-/** Sin Collapsible/Tooltip de Radix: mismo aspecto aproximado para SSR + primer paint. */
-function NavMainSkeleton({
+/**
+ * Same destinations as the hydrated menu.
+ * Server HTML and the first client paint must already show these titles.
+ */
+function NavMainStatic({
   groupLabel = "Navegación",
-  rowCount = 7,
+  items,
 }: {
   groupLabel?: string
-  rowCount?: number
+  items: NavMainItem[]
 }) {
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>
-      <div className="flex flex-col gap-1.5 px-2 py-1">
-        {Array.from({ length: rowCount }).map((_, i) => (
-          <div
-            key={i}
-            className="h-8 rounded-md bg-sidebar-accent/25 animate-pulse"
-          />
-        ))}
-      </div>
-    </SidebarGroup>
+    <NavMainMenu groupLabel={groupLabel} items={items} queryString="" />
   )
 }
 
@@ -173,12 +166,9 @@ export function NavMain({
   items: NavMainItem[]
 }) {
   const mounted = useClientMounted()
-  const skeletonRows = Math.max(7, items.length + 2)
 
   if (!mounted) {
-    return (
-      <NavMainSkeleton groupLabel={groupLabel} rowCount={skeletonRows} />
-    )
+    return <NavMainStatic groupLabel={groupLabel} items={items} />
   }
 
   return (

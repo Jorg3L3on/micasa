@@ -215,7 +215,7 @@ const ctxWithToken = (token?: string) => ({
   },
 });
 
-const houseArgs = { ownerType: 'house' as const, ownerId: 3 };
+const houseArgs = { ownerType: 'house' as const, ownerId: 42 };
 
 const invokeTool = async (name: string, args: Record<string, unknown>) => {
   const handler = registeredTools.get(name);
@@ -271,7 +271,7 @@ beforeEach(() => {
   updateApiKey.mockResolvedValue({});
   findUniqueApiKey.mockResolvedValue(writeApiKey);
   findFirstMembership.mockResolvedValue({ role: 'OWNER' });
-  findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 3 }]);
+  findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 42 }]);
   resolveCategoryRef.mockResolvedValue(10);
   resolveWalletRef.mockResolvedValue({ id: 4, name: 'Efectivo', type: 'CASH' });
   resolveDateRange.mockReturnValue({ from: '2026-08-01', to: '2026-08-31' });
@@ -337,7 +337,7 @@ describe('registered set_expense_paid', () => {
     expect(toggleExpensePaid).toHaveBeenCalledWith({
       id: 12,
       paid: true,
-      ownerFilter: { user_id: null, house_id: 3 },
+      ownerFilter: { user_id: null, house_id: 42 },
     });
     expect(parseResult(result)).toMatchObject({
       expense_id: 12,
@@ -509,7 +509,7 @@ describe('registered add_loan_payment', () => {
     expect(result.isError).toBeFalsy();
     expect(updateLoanPaymentForOwner).toHaveBeenCalledWith(
       7,
-      { user_id: null, house_id: 3 },
+      { user_id: null, house_id: 42 },
       expect.objectContaining({ action: 'MARK_PAID', sourceWalletId: 4 }),
     );
   });
@@ -554,7 +554,7 @@ describe('registered card calendar tools', () => {
     expect(result.isError).toBeFalsy();
     expect(createScheduledPayment).toHaveBeenCalledWith(
       9,
-      { user_id: null, house_id: 3 },
+      { user_id: null, house_id: 42 },
       expect.objectContaining({ due_date: '2026-09-01', amount: 500 }),
     );
   });
@@ -575,7 +575,7 @@ describe('registered card calendar tools', () => {
 
     expect(result.isError).toBeFalsy();
     expect(upsertCreditCardPaymentPlan).toHaveBeenCalledWith(
-      { user_id: null, house_id: 3 },
+      { user_id: null, house_id: 42 },
       55,
       9,
       1200,
@@ -627,7 +627,7 @@ describe('registered list_wallet_movements', () => {
     expect(result.isError).toBeFalsy();
     expect(listWalletMovements).toHaveBeenCalledWith(
       4,
-      { user_id: null, house_id: 3 },
+      { user_id: null, house_id: 42 },
       '2026-08-01',
       '2026-08-31',
     );

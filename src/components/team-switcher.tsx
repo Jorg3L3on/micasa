@@ -32,7 +32,7 @@ import {
  * Placeholder con la misma envoltura que el botón real pero sin DropdownMenu ni useId de Radix.
  * Evita mismatch de hidratación cuando la sesión no existe en el SSR pero sí en el primer paint del cliente.
  */
-const TeamSwitcherShell = () => (
+export const TeamSwitcherShell = () => (
   <SidebarMenu>
     <SidebarMenuItem>
       <div
@@ -61,10 +61,10 @@ const TEAM_SWITCHER_TRIGGER_CLASS = [
   'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
   'dark:hover:bg-white/[0.05] dark:hover:text-white',
   'data-[state=open]:border-black/[0.08] data-[state=open]:bg-white/80',
-  'data-[state=open]:shadow-[0_1px_2px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]',
+  'data-[state=open]:shadow-panel',
   'dark:data-[state=open]:border-white/20 dark:data-[state=open]:bg-white/[0.10]',
   'dark:data-[state=open]:text-white',
-  'dark:data-[state=open]:shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_1px_2px_rgba(0,0,0,0.35)]',
+  'dark:data-[state=open]:shadow-panel',
   'ring-0 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0',
   'group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1!',
 ].join(' ');
@@ -171,13 +171,18 @@ export function TeamSwitcher() {
                 size="lg"
                 className={TEAM_SWITCHER_TRIGGER_CLASS}
                 aria-label={`Contexto: ${displayLabel}`}
+                title={displayLabel}
+                tooltip={displayLabel}
               >
                 <SidebarGlyph icon={DisplayIcon} />
                 <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-[family-name:var(--font-display)] text-sm font-semibold tracking-tight">
+                  <span
+                    className="truncate font-[family-name:var(--font-display)] text-sm font-semibold tracking-tight"
+                    title={displayLabel}
+                  >
                     {displayLabel}
                   </span>
-                  <span className="truncate text-[11px] text-muted-foreground">
+                  <span className="truncate text-caption text-muted-foreground">
                     {context.type === 'user' ? 'Finanzas personales' : 'Casa'}
                   </span>
                 </div>
@@ -185,7 +190,7 @@ export function TeamSwitcher() {
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl border-border/60 dark:border-white/[0.08] dark:bg-[#0d1327]/95 dark:backdrop-blur-xl"
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl border-border/60 dark:border-white/[0.08] dark:bg-popover/95 dark:backdrop-blur-xl"
               align="start"
               side={isMobile ? 'bottom' : 'right'}
               sideOffset={4}
@@ -240,7 +245,7 @@ export function TeamSwitcher() {
               >
                 <SidebarGlyph icon={Plus} size="sm" />
                 <div className="text-muted-foreground font-medium">
-                  Crear casa
+                  Agregar casa
                 </div>
               </DropdownMenuItem>
 

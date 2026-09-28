@@ -1,7 +1,8 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
+import { ErrorBanner } from '@/components/error-banner';
 import { useEffect, useMemo, useState } from 'react';
-import { useTheme } from 'next-themes';
 import {
   Bar,
   BarChart,
@@ -18,6 +19,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
 import { getCreditCardInstallmentProjection } from '@/lib/api/credit-cards';
+import { CHART_AXIS_TICK, CHART_COLOR, chartSliceColor } from '@/components/charts/chart-theme';
+import { ChartTooltip } from '@/components/charts/chart-tooltip';
+import { formatAxisMoney } from '@/lib/money';
 import { formatCurrency } from '@/lib/utils';
 import type { InstallmentProjectionMonthItem } from '@/types/catalog';
 
@@ -31,32 +35,25 @@ const InstallmentTooltip = ({ active, payload, label }: TooltipProps) => {
   if (!active || !payload?.length) return null;
   const item = payload[0].payload;
   return (
-    <div className="rounded-md border border-border/60 bg-popover px-3 py-2 text-xs shadow-md">
-      <p className="mb-1.5 font-medium text-foreground">{label}</p>
+    <ChartTooltip active label={label}>
       {item.cards.map((c) => (
-        <p key={c.cardId} className="font-mono tabular-nums text-muted-foreground">
+        <p key={c.cardId} className="font-sans tabular-nums text-muted-foreground">
           {c.cardName}:{' '}
           <span className="font-semibold text-foreground">{formatCurrency(c.amount)}</span>
         </p>
       ))}
       {item.cards.length > 1 && (
-        <p className="mt-1 border-t border-border/40 pt-1 font-mono tabular-nums font-semibold text-amber-600 dark:text-amber-400">
+        <p className="mt-1 border-t border-border/40 pt-1 font-sans tabular-nums font-semibold text-status-pending">
           Total: {formatCurrency(item.total)}
         </p>
       )}
-    </div>
+    </ChartTooltip>
   );
 };
 
-const shortAxisMoney = (n: number): string => {
-  if (!Number.isFinite(n)) return '';
-  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
-  return String(Math.round(n));
-};
 
 export function CreditCardInstallmentProjectionBlock() {
   const { context } = useFinanceContext();
-  const { resolvedTheme } = useTheme();
   const [expanded, setExpanded] = useState(true);
   const [data, setData] = useState<InstallmentProjectionMonthItem[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,23 +73,18 @@ export function CreditCardInstallmentProjectionBlock() {
       .finally(() => setLoading(false));
   }, [context]);
 
-  const isDark = resolvedTheme === 'dark';
-  const axisColor = isDark ? '#a1a1aa' : '#71717a';
-  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const barColor = isDark ? '#fbbf24' : '#d97706';
+  const gridColor = CHART_COLOR.grid;
+  const barColor = CHART_COLOR.pending;
 
   const cardColors = useMemo(() => {
     if (!data) return new Map<number, string>();
-    const palette = isDark
-      ? ['#fbbf24', '#60a5fa', '#34d399', '#f87171', '#a78bfa', '#fb923c']
-      : ['#d97706', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#f97316'];
     const map = new Map<number, string>();
     const allCardIds = Array.from(
       new Set(data.flatMap((m) => m.cards.map((c) => c.cardId))),
     );
-    allCardIds.forEach((id, i) => map.set(id, palette[i % palette.length]));
+    allCardIds.forEach((id, i) => map.set(id, chartSliceColor(i)));
     return map;
-  }, [data, isDark]);
+  }, [data]);
 
   const isMultiCard = useMemo(() => {
     if (!data) return false;
@@ -110,15 +102,15 @@ export function CreditCardInstallmentProjectionBlock() {
   return (
     <Card className="overflow-hidden border-border/60">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 py-2.5">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 dark:bg-amber-500/15">
-          <CalendarClock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" data-icon="inline-start" />
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-status-pending-soft">
+          <CalendarClock className="h-3.5 w-3.5 text-status-pending" data-icon="inline-start" />
         </span>
         <div className="min-w-0 flex-1">
           <CardTitle className="text-sm font-semibold leading-none">
             Proyección de cuotas
           </CardTitle>
           {!expanded && (
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
+            <p className="mt-0.5 text-caption text-muted-foreground">
               {data.length} mes{data.length !== 1 ? 'es' : ''} con cuotas pendientes ·{' '}
               próximo {formatCurrency(data[0].total)}
             </p>
@@ -144,13 +136,9 @@ export function CreditCardInstallmentProjectionBlock() {
       {expanded && (
         <CardContent className="pt-0">
           {error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-              {error}
-            </div>
+            <ErrorBanner>{error}</ErrorBanner>
           ) : data.length === 0 ? (
-            <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-3 text-xs text-muted-foreground">
-              No hay items en MSI activos en este momento.
-            </div>
+            <EmptyState message="No hay items en MSI activos en este momento." className="py-4" />
           ) : (
           <div className="h-48 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -158,16 +146,16 @@ export function CreditCardInstallmentProjectionBlock() {
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 10, fill: axisColor }}
+                  tick={CHART_AXIS_TICK}
                   tickLine={false}
                   axisLine={{ stroke: gridColor }}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: axisColor }}
+                  tick={CHART_AXIS_TICK}
                   tickLine={false}
                   axisLine={false}
                   width={44}
-                  tickFormatter={shortAxisMoney}
+                  tickFormatter={formatAxisMoney}
                 />
                 <Tooltip content={<InstallmentTooltip />} cursor={{ fill: gridColor }} />
                 <Bar dataKey="total" radius={[4, 4, 0, 0]}>
@@ -194,7 +182,7 @@ export function CreditCardInstallmentProjectionBlock() {
                 return (
                   <span
                     key={cardId}
-                    className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
+                    className="flex items-center gap-1.5 text-caption text-muted-foreground"
                   >
                     <span
                       className="inline-block h-2 w-2 shrink-0 rounded-sm"

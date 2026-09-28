@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState';
+import { ErrorBanner } from '@/components/error-banner';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import WalletDeleteDialog from '@/components/wallets/WalletDeleteDialog';
@@ -72,12 +73,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { WalletListItem } from '@/types/catalog';
-import type { LenderListItem } from '@/types/lenders';
-import { listLenders } from '@/lib/api/lenders';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletListCard } from '@/components/wallets/WalletListCard';
 import { WalletCardsList } from '@/components/wallets/WalletCardsList';
-import { LenderRail } from '@/components/wallets/LenderRail';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
@@ -92,6 +90,7 @@ import {
   walletListOwnerKey,
 } from '@/lib/ui/wallet-list-cache';
 import { cn } from '@/lib/utils';
+import { FilterChip } from '@/components/filter-chip';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
 
@@ -164,13 +163,12 @@ const CREDIT_LINE_OPTIONS: { value: CreditLineFilterValue; label: string }[] =
   ];
 
 /** Efectivo/débito vs tarjetas; al elegir un tipo concreto en chips, se vuelve a «all». */
-type KindFilterValue = 'all' | 'funding' | 'credit' | 'lenders';
+type KindFilterValue = 'all' | 'funding' | 'credit';
 
 const KIND_FILTER_CHIPS: { value: KindFilterValue; label: string }[] = [
   { value: 'all', label: 'Todas' },
   { value: 'funding', label: 'Efectivo y débito' },
   { value: 'credit', label: 'Tarjetas' },
-  { value: 'lenders', label: 'Prestamistas' },
 ];
 
 const FILTERS_STORAGE_KEY = 'micasa.wallets.listFilters';
@@ -230,8 +228,7 @@ const parseStoredFilters = (): StoredWalletListFilters | null => {
     if (
       o.kindFilter === 'all' ||
       o.kindFilter === 'funding' ||
-      o.kindFilter === 'credit' ||
-      o.kindFilter === 'lenders'
+      o.kindFilter === 'credit'
     ) {
       out.kindFilter = o.kindFilter;
     }
@@ -253,7 +250,7 @@ const parseStoredFilters = (): StoredWalletListFilters | null => {
 const ScrollFadeChipRow = ({
   ariaLabel,
   children,
-  mode = 'tablist',
+  mode = 'group',
 }: {
   ariaLabel: string;
   children: ReactNode;
@@ -283,7 +280,6 @@ const walletMatchesKindFilter = (
   kindFilter: KindFilterValue,
 ): boolean => {
   if (w.type === 'GOAL') return false;
-  if (kindFilter === 'lenders') return false;
   if (kindFilter === 'all') return true;
   if (kindFilter === 'funding') {
     return w.type === 'CASH' || w.type === 'DEBIT_CARD';
@@ -441,24 +437,8 @@ export default function WalletsPage() {
   >([]);
   const [filtersReady, setFiltersReady] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [lenders, setLenders] = useState<LenderListItem[]>([]);
 
   const isHouseContext = context?.type === 'house';
-
-  useEffect(() => {
-    if (!context) return;
-    let cancelled = false;
-    listLenders(context)
-      .then((rows) => {
-        if (!cancelled) setLenders(rows.filter((lender) => lender.active));
-      })
-      .catch(() => {
-        if (!cancelled) setLenders([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [context]);
 
   const displayWallets = useMemo(() => {
     const q = searchQuery;
@@ -490,14 +470,6 @@ export default function WalletsPage() {
     sortKey,
     sortDir,
   ]);
-
-  const visibleLenders = useMemo(() => {
-    if (!context) return [];
-    const query = searchQuery.trim().toLowerCase();
-    const active = lenders.filter((lender) => lender.active);
-    if (!query) return active;
-    return active.filter((lender) => lender.name.toLowerCase().includes(query));
-  }, [context, lenders, searchQuery]);
 
   /** Conteos para chips: aplica búsqueda y todos los filtros excepto la dimensión del chip. */
   const statusChipCounts = useMemo(() => {
@@ -603,13 +575,9 @@ export default function WalletsPage() {
         (w) => w.type === 'CASH' || w.type === 'DEBIT_CARD',
       ).length,
       credit: pool.filter((w) => isCreditType(w.type)).length,
-      lenders: lenders.filter((lender) =>
-        lender.name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
-      ).length,
     };
   }, [
     wallets,
-    lenders,
     searchQuery,
     typeFilter,
     statusFilter,
@@ -874,12 +842,8 @@ export default function WalletsPage() {
   );
 
   const handlePullRefresh = useCallback(async () => {
-    const [, lenderRows] = await Promise.all([
-      fetchWallets({ soft: true, rethrow: true }),
-      listLenders(context),
-    ]);
-    setLenders(lenderRows.filter((lender) => lender.active));
-  }, [context, fetchWallets]);
+    await fetchWallets({ soft: true, rethrow: true });
+  }, [fetchWallets]);
 
   useEffect(() => {
     const key = walletListOwnerKey(context);
@@ -1052,7 +1016,7 @@ export default function WalletsPage() {
   return (
     <DirectionalTransition>
     <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Billeteras">
-    <div className="space-y-4 pb-8 md:pb-4">
+    <div className="space-y-4">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
@@ -1105,7 +1069,7 @@ export default function WalletsPage() {
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 eyebrow text-muted-foreground">
                     Atajos
                   </p>
                   <ScrollFadeChipRow
@@ -1149,14 +1113,14 @@ export default function WalletsPage() {
                       Cupo en rojo
                     </Button>
                   </ScrollFadeChipRow>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     Combinan varios filtros de una vez; no borran tu búsqueda por
                     nombre.
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 eyebrow text-muted-foreground">
                     Ámbito
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por efectivo o tarjetas">
@@ -1167,38 +1131,21 @@ export default function WalletsPage() {
                           ? kindChipCounts.all
                           : v === 'funding'
                             ? kindChipCounts.funding
-                            : v === 'credit'
-                              ? kindChipCounts.credit
-                              : kindChipCounts.lenders;
+                        : kindChipCounts.credit;
                       return (
-                        <button
-                          key={v}
-                          type="button"
-                          role="tab"
-                          aria-selected={selected}
-                          onClick={() => handleKindFilterChange(v)}
-                          className={cn(
-                            'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
-                            selected
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                          )}
-                        >
-                          {label}{' '}
-                          <span className="tabular-nums opacity-80">
-                            ({count})
-                          </span>
-                        </button>
+                        <FilterChip key={v} selected={selected} count={count} onClick={() => handleKindFilterChange(v)}>
+                          {label}
+                        </FilterChip>
                       );
                     })}
                   </ScrollFadeChipRow>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     Si eliges un tipo concreto abajo, el ámbito vuelve a «Todas».
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 eyebrow text-muted-foreground">
                     Estado
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por estado">
@@ -1211,24 +1158,9 @@ export default function WalletsPage() {
                             ? statusChipCounts.active
                             : statusChipCounts.inactive;
                       return (
-                        <button
-                          key={v}
-                          type="button"
-                          role="tab"
-                          aria-selected={selected}
-                          onClick={() => setStatusFilter(v)}
-                          className={cn(
-                            'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
-                            selected
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                          )}
-                        >
-                          {label}{' '}
-                          <span className="tabular-nums opacity-80">
-                            ({count})
-                          </span>
-                        </button>
+                        <FilterChip key={v} selected={selected} count={count} onClick={() => setStatusFilter(v)}>
+                          {label}
+                        </FilterChip>
                       );
                     })}
                   </ScrollFadeChipRow>
@@ -1236,70 +1168,35 @@ export default function WalletsPage() {
 
                 {isHouseContext ? (
                   <div>
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1.5 eyebrow text-muted-foreground">
                       Asignado a
                     </p>
                     <ScrollFadeChipRow ariaLabel="Filtrar por asignación">
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={assigneeFilter === ASSIGNEE_FILTER_ALL}
+                      <FilterChip
+                        selected={assigneeFilter === ASSIGNEE_FILTER_ALL}
+                        count={assigneeChipCounts.all}
                         onClick={() => setAssigneeFilter(ASSIGNEE_FILTER_ALL)}
-                        className={cn(
-                          'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
-                          assigneeFilter === ASSIGNEE_FILTER_ALL
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                        )}
                       >
-                        Todas{' '}
-                        <span className="tabular-nums opacity-80">
-                          ({assigneeChipCounts.all})
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={assigneeFilter === 'unassigned'}
+                        Todas
+                      </FilterChip>
+                      <FilterChip
+                        selected={assigneeFilter === 'unassigned'}
+                        count={assigneeChipCounts.unassigned}
                         onClick={() => setAssigneeFilter('unassigned')}
-                        className={cn(
-                          'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
-                          assigneeFilter === 'unassigned'
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                        )}
                       >
-                        Sin asignar{' '}
-                        <span className="tabular-nums opacity-80">
-                          ({assigneeChipCounts.unassigned})
-                        </span>
-                      </button>
+                        Sin asignar
+                      </FilterChip>
                       {houseMembers.map((m) => {
                         const selected = assigneeFilter === m.id;
                         const count = assigneeChipCounts.byMember[m.id] ?? 0;
                         return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            role="tab"
-                            aria-selected={selected}
-                            onClick={() => setAssigneeFilter(m.id)}
-                            className={cn(
-                              'h-8 max-w-[200px] shrink-0 truncate rounded-full border px-3 text-xs font-medium transition-colors',
-                              selected
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                            )}
-                          >
-                            {m.name}{' '}
-                            <span className="tabular-nums opacity-80">
-                              ({count})
-                            </span>
-                          </button>
+                          <FilterChip key={m.id} selected={selected} count={count} className="max-w-[200px] truncate" onClick={() => setAssigneeFilter(m.id)}>
+                          {m.name}
+                        </FilterChip>
                         );
                       })}
                     </ScrollFadeChipRow>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
+                    <p className="mt-1 text-caption text-muted-foreground">
                       Solo en contexto casa: billeteras compartidas o asignadas a
                       un miembro.
                     </p>
@@ -1307,7 +1204,7 @@ export default function WalletsPage() {
                 ) : null}
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 eyebrow text-muted-foreground">
                     Tipo
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por tipo de billetera">
@@ -1320,24 +1217,9 @@ export default function WalletsPage() {
                               v as keyof typeof typeChipCounts
                             ] ?? 0;
                       return (
-                        <button
-                          key={v}
-                          type="button"
-                          role="tab"
-                          aria-selected={selected}
-                          onClick={() => handleTypeFilterChange(v)}
-                          className={cn(
-                            'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
-                            selected
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                          )}
-                        >
-                          {label}{' '}
-                          <span className="tabular-nums opacity-80">
-                            ({count})
-                          </span>
-                        </button>
+                        <FilterChip key={v} selected={selected} count={count} onClick={() => handleTypeFilterChange(v)}>
+                          {label}
+                        </FilterChip>
                       );
                     })}
                   </ScrollFadeChipRow>
@@ -1345,7 +1227,7 @@ export default function WalletsPage() {
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1.5 eyebrow text-muted-foreground">
                       Monto registrado
                     </p>
                     <ScrollFadeChipRow ariaLabel="Filtrar por monto en libros">
@@ -1358,24 +1240,9 @@ export default function WalletsPage() {
                               ? balanceChipCounts.nonzero
                               : balanceChipCounts.zero;
                         return (
-                          <button
-                            key={v}
-                            type="button"
-                            role="tab"
-                            aria-selected={selected}
-                            onClick={() => setBalanceFilter(v)}
-                            className={cn(
-                              'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
-                              selected
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                            )}
-                          >
-                            {label}{' '}
-                            <span className="tabular-nums opacity-80">
-                              ({count})
-                            </span>
-                          </button>
+                          <FilterChip key={v} selected={selected} count={count} onClick={() => setBalanceFilter(v)}>
+                          {label}
+                        </FilterChip>
                         );
                       })}
                     </ScrollFadeChipRow>
@@ -1395,7 +1262,7 @@ export default function WalletsPage() {
                           {creditLineFilter !== 'all' ? (
                             <Badge
                               variant="secondary"
-                              className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px]"
+                              className="h-5 min-w-5 justify-center rounded-full px-1.5 text-caption"
                             >
                               1
                             </Badge>
@@ -1442,30 +1309,40 @@ export default function WalletsPage() {
       </ToolbarFiltersPortal>
 
       <div className="relative z-0">
-      {error && !deleteDialogOpen && (
-        <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      {error && !deleteDialogOpen ? (
+        <ErrorBanner className="mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>{error}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 shrink-0 text-status-overdue hover:text-status-overdue"
+              onClick={() => {
+                void fetchWallets();
+              }}
+            >
+              Reintentar
+            </Button>
+          </div>
+        </ErrorBanner>
+      ) : null}
 
       <div className="min-w-0">
           {loading && wallets.length === 0 ? (
             <SkeletonExit>
               <WalletsListSkeleton />
             </SkeletonExit>
-          ) : (
+          ) : error && wallets.length === 0 ? null : (
             <ContentEnter>
-              {wallets.length === 0 && visibleLenders.length === 0 ? (
+              {wallets.length === 0 ? (
                 <EmptyState message="No se encontraron billeteras" />
               ) : (
                 <div className="@container w-full min-w-0">
-                  <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
-                    {kindFilter === 'lenders' ? (
-                      <LenderRail lenders={visibleLenders} />
-                    ) : displayWallets.length === 0 ? (
-                      <p className="py-8 text-center text-muted-foreground">
-                        Ninguna billetera coincide con los filtros.
-                      </p>
+                  <div className="mx-auto w-full max-w-full space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
+                    {displayWallets.length === 0 ? (
+                      error ? null : (
+                        <EmptyState message="Ninguna billetera coincide con los filtros." />
+                      )
                     ) : (
                       <WalletCardsList
                         wallets={displayWallets}
@@ -1483,17 +1360,19 @@ export default function WalletsPage() {
                       />
                     )}
 
-                    <div
-                      className="flex flex-wrap items-baseline justify-center gap-2"
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <p className="text-[13px] text-muted-foreground">
-                        {displayWallets.length} de {wallets.length}{' '}
-                        {wallets.length === 1 ? 'billetera' : 'billeteras'}
-                        {listIsFiltered ? ' · filtrado' : ''}
-                      </p>
-                    </div>
+                    {filtersReady && !loading ? (
+                      <div
+                        className="flex flex-wrap items-baseline justify-center gap-2"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <p className="text-body text-muted-foreground">
+                          {displayWallets.length} de {wallets.length}{' '}
+                          {wallets.length === 1 ? 'billetera' : 'billeteras'}
+                          {listIsFiltered ? ' · filtrado' : ''}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
-import { TeamSwitcher } from '@/components/team-switcher';
+import { TeamSwitcher, TeamSwitcherShell } from '@/components/team-switcher';
 import { NavMain, type NavMainItem } from '@/components/nav-main';
 import { NAV_DESTINATIONS } from '@/components/nav-destinations';
 import {
@@ -15,7 +15,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { AlertsBell } from '@/components/AlertsBell';
+import { AlertsBell, AlertsChrome } from '@/components/AlertsBell';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 /** Cierra el drawer en móvil al cambiar ruta o query (p. ej. contexto de casa). */
@@ -60,11 +60,13 @@ export function AppSidebar({
   }));
 
   return (
-    <>
+    <AlertsChrome>
       <MobileSidebarCloseOnRoute />
       <Sidebar collapsible="icon" {...props}>
         <SidebarHeader>
-          <TeamSwitcher />
+          <Suspense fallback={<TeamSwitcherShell />}>
+            <TeamSwitcher />
+          </Suspense>
         </SidebarHeader>
         <SidebarContent>
           <NavMain groupLabel="Menú" items={menuItems} />
@@ -77,6 +79,6 @@ export function AppSidebar({
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-    </>
+    </AlertsChrome>
   );
 }

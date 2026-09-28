@@ -317,13 +317,23 @@ export default function StepWallets() {
       </div>
 
       {wallets.length === 0 ? (
-        <div
-          className="rounded-lg border border-dashed border-border/60 px-4 py-8 text-center"
-          role="status"
-        >
-          <p className="text-muted-foreground text-sm">
-            Aún no hay billeteras. Elige una plantilla para empezar.
-          </p>
+        <div className="space-y-3">
+          <div
+            className="rounded-lg border border-dashed border-border/60 px-4 py-8 text-center"
+            role="status"
+          >
+            <p className="text-muted-foreground text-sm">
+              Aún no hay billeteras. Elige una plantilla para empezar.
+            </p>
+          </div>
+          <Button
+            type="button"
+            className="h-11 w-full"
+            aria-label="Agregar mi primera billetera"
+            onClick={() => handleAddPreset('CASH')}
+          >
+            Agregar mi primera billetera
+          </Button>
         </div>
       ) : (
         <ul className="flex flex-col gap-3" role="list">
@@ -389,7 +399,7 @@ export default function StepWallets() {
         ))}
       </div>
       {!canContinue ? (
-        <p className="text-sm text-amber-700 dark:text-amber-400">
+        <p className="text-sm text-status-pending">
           Para continuar, agrega al menos una billetera de Efectivo y una de
           Débito, ambas con nombre.
         </p>

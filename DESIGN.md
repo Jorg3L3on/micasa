@@ -6,7 +6,7 @@ Encode the UI in **tokens, recipes, and live screenshots of this codebase**. Do 
 
 | Surface | Route | Code |
 | --- | --- | --- |
-| Marketing landing | `/` | `src/components/landing/*`, Nunito in `src/app/page.tsx`, Manrope in `src/app/layout.tsx` |
+| Marketing landing | `/` | `src/components/landing/*`. Same Geist + Manrope and light/dark theme as the app. |
 | Login | `/login` | `src/components/login/*` |
 | Panel financiero | `/monthly/{year}/{month}` | `src/components/monthly/*`, `src/app/(app)/monthly/` |
 
@@ -25,29 +25,26 @@ Agent entry points:
 
 ## Visual contract
 
-Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** accents. Orange is **landing CTAs only**. Atmosphere is soft blurred orbs, not busy illustration.
+Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** accents. Primary actions use the shared `Button`. Atmosphere is soft blurred orbs, not busy illustration.
 
 | Role | Hex | CSS / class |
 | --- | --- | --- |
-| Canvas | `#060914` | `--background`, `--landing-bg` |
-| Surface / sidebar | `#090e1d` | `--secondary`, `--sidebar`, `--landing-surface` |
-| Card | `#0d1327` | `--card`, `--landing-card` |
+| Canvas | `#060914` | `--background` (dark) |
+| Surface / sidebar | `#090e1d` | `--secondary`, `--sidebar` |
+| Card | `#0d1327` | `--card` |
 | Muted chip | `#12183a` | `--muted`, `--accent` |
 | Text | `#f7f8ff` | `--foreground` |
 | Muted text | `#9ca3af` | `--muted-foreground` |
 | Electric blue (primary, brand) | `#3a37fc` | `--primary`, `--chart-1` |
 | Primary text (on canvas) | `#f7f8ff` (dark, same as text) | `--primary-text`, `text-primary-text` |
-| Violet glow / ring | `#911efe` | `--ring`, `--landing-glow-purple` |
-| Magenta | `#cf1ae6` | `--landing-glow-magenta` |
-| Pink | `#ee477a` | `--chart-2`, `--landing-glow-pink` |
-| CTA orange | `#FF5733` → `#FF2E00` | `.landing-cta` only (marketing) |
-| In-app primary button | `#3a37fc` + violet ring | `Button` `variant="default"` |
-| Featured / Pro border | `#FF4D00` → `#8A2BE2` | `.landing-pro-border` |
+| Violet glow / ring | `#911efe` | `--ring`, `--chart-4` (dark) |
+| Pink | `#ee477a` | `--chart-2` (dark) |
+| In-app and landing primary button | `#3a37fc` + violet ring | `Button` `variant="default"` |
 | Hairline | `rgb(255 255 255 / 0.08–0.1)` | `--border`, `dark:border-white/[0.08]` |
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): the official artwork in `public/brand/mark.png`. Do not redraw it. App icons place that file on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
+Brand mark (`MicasaMark`): display the optimized `public/brand/mark-160.png` through `next/image`. Do not redraw it. Icon scripts still read the source `public/brand/mark.png` and plate it on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 
@@ -57,21 +54,23 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 
 ### Marketing landing (`/`)
 
-- **Fonts:** Manrope (`--font-display`, aliased as `--font-landing-display`) + Nunito (`--font-landing-sans`). Nunito stays scoped on the landing wrapper. Manrope loads in the root layout for app headings too.
-- **Canvas:** `#060914` with `LandingAtmosphere` blue/pink orbs.
-- **Hero panel:** `.landing-hero-wash` — purple → pink gradient wash + faint grid. Headline is white; last words may use `.landing-accent-text`.
-- **Primary CTA:** pill (`rounded-full`) + `.landing-cta` orange gradient + orange glow shadow. Secondary: ghost / hairline glass, not a second orange button.
-- **Product mocks / feature cards:** `.landing-glass-card` (specular + navy). Money in `font-mono tabular-nums`.
-- **Featured pricing card:** `.landing-pro-border` (orange → purple). Featured CTA is dark glass, not a white fill.
-- **Accent headline wash:** `.landing-accent-text` (clipped gradient).
+The landing follows the signed-in theme. `ThemeProvider` (`attribute="class"`, `defaultTheme="dark"`, `enableSystem`) wraps the root layout, and the landing uses the same `--background`, `--card`, `--foreground`, type scale, `Button`, and `<Money>` as the app. Light is a working theme here, not a dark-only exception.
+
+- **Fonts:** Geist for body, Manrope for `h1`–`h3`. No Nunito and no landing-only font variables.
+- **Type scale:** `text-display`, `text-title`, `text-section`, `text-body`, `text-caption`, `eyebrow`. Nothing smaller than caption.
+- **Canvas:** `bg-background`. `LandingAtmosphere` orbs use `color-mix` of `--primary`, `--chart-2`, and `--chart-4`. Loops run only under `prefers-reduced-motion: no-preference`. No pointer spotlight, parallax, or magnetic controls.
+- **Hero:** `.landing-hero-wash` is a marketing-only wash built from those tokens and `--shadow-panel`. One primary `Button` (`Crear cuenta`); the second action is `ghost`.
+- **Product:** real screenshots in `public/landing/` (`next/image`, webp), desktop and mobile, light and dark. Both themes are in the first HTML; `.dark` on `<html>` shows one and hides the other, so the shot does not swap after paint. There is no pricing section — the product has no paid plans; copy may say it is free to use. Statement import is the card action Más → Estado de cuenta (dialog Importar estado de cuenta): the user uploads a PDF. Agents are one optional caption pointing at Configuración → Conexiones (`/settings/connections`), not a headline.
+- **Quincena block:** normal document flow below `md` and whenever reduced motion is on. From `md` up, with motion allowed, the pair sits in a 140vh sticky stage.
+- **Money** on the landing uses `<Money>` / `formatCurrency` (sans, tabular). Status chips use `src/lib/status-tone.ts`.
 
 ### Logged-in app (and login)
 
-- **Fonts:** Geist + Geist Mono for body/UI; **Manrope** (`--font-display`) for `h1`–`h3` and brand lockup. Money still `font-mono tabular-nums`.
+- **Fonts:** Geist + Geist Mono for body/UI; **Manrope** (`--font-display`) for `h1`–`h3` and brand lockup. Money uses `<Money>` (sans, tabular).
 - **Same navy tokens** as landing (`.dark` in `globals.css`).
 - **`--primary` is electric blue** — icon pills, focus rings, toggle ON, active nav, semantic “selected”.
 - **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. In dark this matches `--foreground` (`#f7f8ff`). Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
-- **Primary labeled buttons in dark** use **electric blue** (`#3a37fc`) with a violet ring (`Button` `variant="default"`). Do not invent a second primary fill. Orange stays on **landing** `.landing-cta` pills only.
+- **Primary labeled buttons** use **electric blue** (`#3a37fc` in dark) with a violet ring (`Button` `variant="default"`), including the landing. Do not invent a second primary fill.
 - **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login has its own aurora (`login-stage`).
 - **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page. Do **not** put a grid overlay on these cards.
 
@@ -98,7 +97,7 @@ Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914
 
 ## Logged-in UI contract
 
-Panel financiero is the reference for **tokens, glass, overlay chrome, and operate motion** — not a layout to paste onto Configuración or onto wallet and goal card faces. These decisions are locked; do not invent a second pattern.
+Panel financiero is the reference for **tokens, glass, overlay chrome, and operate motion** — not a layout to paste onto Configuración or onto wallet and goal card faces. These decisions are locked; do not invent a second pattern. F1 and F2 live in **Glossary**, **Fintech data UI**, **Filters**, **Surfaces**, **Empty, error, and loading**, and **Chrome**. F3 screen choices (Operaciones as a mobile list, Billeteras rows vs desktop faces, Alertas, onboarding, one mobile plus) are in **Surfaces** and **Chrome**.
 
 ### Page archetypes
 
@@ -106,8 +105,8 @@ Every logged-in route is one of four archetypes:
 
 | Archetype | Purpose | Routes | Surface |
 | --- | --- | --- | --- |
-| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
-| **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell |
+| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Liquidez / Plan), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
+| **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell. Operaciones below `md` is a row list, not a table |
 | **Detail** | One object, back to its collection | Billetera, estado de cuenta (tarjeta), meta | Same as collection; card faces stay solid |
 | **Settings** | Quiet catalogs and account | Configuración (cuenta, categorías, plantillas, usuarios, conexiones) | Calm `bg-card` cards — **never** glass |
 
@@ -116,11 +115,12 @@ The quincena route stays for deep links and adopts planner chrome. It is **not**
 ### Chrome (toolbar-first)
 
 - The **app header** owns the route title, search, filters, and the **one primary action** — register them with `useRegisterToolbarActions` (`src/context/toolbar-actions-context.tsx`). Rare actions go in the header overflow (`overflow` / `useRegisterToolbarOverflow`).
+- **Create actions.** From `md` up, the primary action is a labeled button (`Agregar …`, or the action’s own verb such as `Ahorrar`). Below `md`, the dock’s central **+** is the only floating action. Page create actions whose label starts with **Agregar** are not a second **+**; they live in the header **Más** menu. Other primaries stay an icon button on small screens.
 - Do **not** repeat the header title with an in-page heading. Do **not** add an in-page sticky action bar.
 - Page rhythm under the header is **`space-y-5`**.
 - The month name in the planner glass band stays — that band is the period control, not a second page title.
 - Glass uses the single planner shell. Wallet and goal card faces stay solid. Do not glass-wash Configuración.
-- Do not revive the unused `PageHeader` component. Do not put a grid or a tinted wash on glass panels.
+- Do not put a grid or a tinted wash on glass panels.
 
 ### Mobile map
 
@@ -140,7 +140,7 @@ Apply **only**:
 | --- | --- |
 | Currency ticker | Hero money amounts (planner summary, liquidez hero, préstamos / metas / presupuestos totals). **Not** table cells or list rows |
 | Motion tabs | In-page choice of two or three views (quincena toggle, Presupuestos vs Plantillas, budget status views) |
-| Pull to refresh (mobile only) | Planner, Billeteras, Metas, Préstamos, Operaciones, Análisis. **Not** Configuración (incl. Presupuestos) |
+| Pull to refresh (mobile only) | Planner, Billeteras, Metas, Préstamos, Operaciones, Análisis, and Presupuestos. The rest of Configuración (cuenta, categorías, plantillas, usuarios, conexiones) does not pull to refresh |
 | Shared-element morph | Billeteras and tarjetas only. Do not add one for metas or préstamos |
 | Swipe to delete | Below `md` only, then `ConfirmDeleteDialog` (see **Viewport delete**). Billeteras, metas, préstamos, plantillas, categorías, expense rows |
 
@@ -148,7 +148,7 @@ Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy su
 
 ### Out of scope
 
-Marketing landing, login, admin, the tasks route, and OAuth consent keep their own surfaces. Orange pills stay on the landing page.
+Login, admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing uses the shared `Button` and the same light and dark tokens as the app.
 
 ---
 
@@ -160,7 +160,7 @@ Keep chrome **sparse**. One dominant labeled control per block; rare actions in 
 2. **Content row** — wide data (wallet chips, KPI strips) full width **below** chrome, not squeezed beside nav icons.
 3. **Primary work** — the repeated action (add expense, pay, etc.) sits next to the data it changes.
 
-Tertiary view controls: `Button variant="ghost"` at `h-8`–`h-9`. Stronger secondary: `outline` + `rounded-xl`. Marketing CTAs stay `rounded-full`; in-app default buttons stay the shared `Button` radius unless the control is a pill toggle (quincena, pricing).
+Tertiary view controls: `Button variant="ghost"` at `h-8`–`h-9`. Stronger secondary: `outline` + `rounded-xl`. Default buttons, including landing CTAs, use the shared `Button` radius (`rounded-xl`) unless the control is a pill toggle (quincena).
 
 Icon-only: always `aria-label` + usually `Tooltip` in Spanish.
 
@@ -210,8 +210,8 @@ Fix these when touching light parity (do not leave new hardcoded dark-only chrom
 
 - Settings income/expense template inputs: use `TEMPLATE_FIELD_SHELL_CLASS` (theme-aware); avoid raw `border-white/15 bg-black/35`
 - Glass / monthly shells: light uses `--shadow-card`; dark keeps Orion glass under `dark:`
-- Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`); orange is landing `.landing-cta` only
-- Landing stays always-dark (`.landing-root`) — out of light scope
+- Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`), on the landing and in the app
+- Landing follows the same light and dark theme as the app (`ThemeProvider` on the root layout)
 - Card faces that are always “dark plastic” (e.g. wallet list card art) may stay dark by design
 
 ---
@@ -231,13 +231,13 @@ Mobile sheets follow Apple’s [Sheets](https://developer.apple.com/design/human
 
 **Reference implementation:** **Agregar gasto** — `src/components/quick-capture/QuickExpenseSheet.tsx` (Panel financiero). `AddTransactionDialog.tsx`, `WalletForm.tsx` (Nueva meta / billetera), and `WalletTransferDialog.tsx` follow it exactly. When in doubt, open Agregar gasto and copy it.
 
-Live references (dark, this app):
+Open these components in the running app. Do not commit overlay screenshots.
 
-| Overlay | Desktop Dialog | Mobile Sheet |
-| --- | --- | --- |
-| Agregar gasto | [`agregar-gasto-desktop.png`](docs/images/overlays/agregar-gasto-desktop.png) | [`agregar-gasto-mobile.png`](docs/images/overlays/agregar-gasto-mobile.png) |
-| Nueva meta | [`nueva-meta-desktop.png`](docs/images/overlays/nueva-meta-desktop.png) | [`nueva-meta-mobile.png`](docs/images/overlays/nueva-meta-mobile.png) |
-| Transferir saldo | [`transferir-desktop.png`](docs/images/overlays/transferir-desktop.png) | [`transferir-mobile.png`](docs/images/overlays/transferir-mobile.png) |
+| Overlay | Component |
+| --- | --- |
+| Agregar gasto | `src/components/quick-capture/QuickExpenseSheet.tsx` |
+| Nueva meta / billetera | `src/components/WalletForm.tsx` |
+| Transferir saldo | `src/components/wallets/WalletTransferDialog.tsx` |
 
 - The breakpoint lives **inside** `ResponsiveOverlay` (`useIsMobile()` from `src/hooks/use-mobile.ts`). Callers never branch on `isMobile` for layout or field sizes.
 - Same fields, order, and actions on both breakpoints.
@@ -314,7 +314,7 @@ Every confirm (delete, archive, "registrar sin descontar", "transferir de todos 
 
 **Exceptions**
 
-- Marketing landing, login, admin: out of scope
+- Login, admin: out of scope. The marketing landing is in scope for light and dark.
 - Existing Dialog-only forms: migrate onto `ResponsiveOverlay` + the kit (one flow per change is fine)
 - Do not extract a mega form wrapper that owns fields/validation; the kit stays presentational
 
@@ -324,37 +324,114 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
 
 ## Fintech data UI
 
-- Amounts: **`font-mono tabular-nums`**. Format with `formatCurrency` from `@/lib/utils`.
+- Amounts: **`<Money>`** (`src/components/money.tsx`). Sans with `tabular-nums` — never `font-mono`. Format with `formatMoney` / `formatCurrency` (`es-MX`). Negatives use that formatter’s single hyphen (`-$12.50`); do not prefix another minus or a `+`.
+- Type scale (both themes, `text-*` utilities). Do not use `text-[Npx]`.
+
+  | Step | Utility | Size | Use |
+  | --- | --- | --- | --- |
+  | Display | `text-display` | 30px / 700 | Rare hero words |
+  | Title | `text-title` | 18px / 600 | The page title (`PageTitle`, the only `h1`) |
+  | Section | `text-section` | 14px / 600 | `SectionHeader` (`h2`, nested `h3`) |
+  | Body | `text-body` | 14px / 1.5 | Reading copy |
+  | Caption | `text-caption` | 11px / 1.35 | Minimum size. Labels, hints |
+  | Eyebrow | `eyebrow` | 11px / 600 / uppercase | Eyebrows. One utility, not a copied class string |
+
+- `SectionHeader` (`src/components/section-header.tsx`) is the only section heading. `LiquidityPanelHeader` renders it. Page sections are `h2`; nested sections are `h3`. Do not add a second `h1`.
+- Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.
+- Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS`: neutral `text-foreground`, positive `text-status-income`, negative `text-status-expense`.
+- Chart axes use `formatAxisMoney` (`$`, `k` from 1,000, `M` from 1,000,000).
+- Charts (`src/components/charts/chart-theme.ts`, `chart-tooltip.tsx`): fills and strokes come from `--chart-1`…`--chart-5` and the status tokens (`--status-income`, `--status-expense`, `--status-pending`, `--status-success`, `--status-info`). Axis ticks use `CHART_AXIS_TICK` (11px, `--muted-foreground`). Grid and cursor use `--border` / a foreground mix. Every tooltip is `ChartTooltip` (popover surface, `shadow-panel`, `text-caption`). Do not hardcode hex or a second palette inside a chart component. Slice order cycles `chartSliceColor`.
+- Dates go through `src/lib/calendar-dates.ts` (`America/Mexico_City`). Do not call `toLocaleDateString`, `toLocaleString` for a month name, or keep a month-name array in a screen.
+  - **Titles** (`formatMonthTitle`, `formatMonthHeading`, `formatMonthYearTitle`): capitalized. `Septiembre` in the current Mexico City year; `Septiembre 2025` or `Noviembre de 2025` otherwise.
+  - **Phrases** (`formatMonthPhrase`, `formatMonthInPhrase`, `formatMonthYearPhrase`): lowercase. `septiembre`, or `septiembre de 2025`.
+  - **Rows** (`formatDisplayDate` / `formatRowDate`): `31 may`, or `31 may 2025` when the year is not current.
+  - **Ranges** (`formatWallClockDateRange`, `formatChartMonthRange`, fortnight labels): hide the year inside the current year. Show the year on both ends when the range crosses years.
+  - **Chart axes** (`formatChartAxisMonth`): `sep`, or `sep 25`.
+  - **Steppers** (`formatStepperDate`) always include the year. The control is an input, so the saved day stays unambiguous.
+  - Statement parsers keep a month map because they read bank files. Préstamos uses these helpers.
+- Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
 - Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
-- Semantic left-border / icon-pill colors:
-  - Income / bank — blue
-  - Paid / success — green / emerald
-  - Pending / warning — amber
-  - Balance / available — emerald
-  - Expenses — violet
-  - Overdue / negative — destructive
-- Icon pills: small tinted square (`bg-*-500/10 dark:bg-*-500/15`), not a full card wash.
-- Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in mono.
+- Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.
+- Brand badges (`WalletProviderIcon`, catalog in `src/lib/wallet-provider-icons.ts`) are a valid exception to that palette. The mark keeps the issuer hue so a billetera stays recognizable. That color is not income, expense, or paid. The short label or fallback glyph must stay at least 4.5:1 against the badge fill in both themes. Do not reuse those classes for status.
+  - An expense row uses **expense** for the icon, the amount, and the type badge. A due or paid chip may use **overdue**, **pending**, or **success** — that is the time status, not a second type color.
+  - Income rows use **income** the same way.
+  - Overdue shares the destructive hue; it is its own token so Préstamos and the rest of the app match.
+- Icon pills: `STATUS_SOFT_CLASS`, not a full card wash.
+- `Button` `default` is `bg-primary` in both themes (no hex override). `destructive` stays full `--destructive` with `--destructive-foreground` in dark — do not fade it to `/60`.
+- Hex in `className` only when no token exists. `#3a37fc` is `--primary`, dark `#060914` is `--background`, the light-mode status-bar strip is `--chrome-ink`, `#0d1327` is `--card` / `--popover`, `#090e1d` is `--secondary` / `--sidebar`. Marketing and login keep their own surfaces.
+- Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in `<Money size="row">`.
 - Horizontal chips (wallets): `overflow-x-auto`, `shrink-0`, edge fades `from-background`.
 
 Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmosphere`, sticky header, `container`). Page rhythm: `space-y-5`. Title, search, filters, and the primary action live in the app header — no in-page sticky action bar (see **Chrome**).
 
 ---
 
+## Filters
+
+- `FilterChip` (`src/components/filter-chip.tsx`) is a single on/off filter: Billeteras, Metas, Operaciones, and the Configuración mobile nav. It sets `aria-pressed` (or `aria-current="page"` when it is a link), can show a count, and uses a 44px target on mobile (`min-h-11`, `sm:min-h-9`) with a visible focus ring.
+- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Plan horizon and strategy, Presupuestos, and Análisis (Liquidez / Plan).
+
+## Surfaces
+
+Three surfaces. Radius does not change with the theme.
+
+| Surface | Where | Radius | Shadow |
+| --- | --- | --- | --- |
+| Panel glass | `orion-panel-glass` / `MONTHLY_PANEL_SHELL_CLASS` | `rounded-2xl` | `--shadow-panel` (`shadow-panel`) |
+| Calm card | `.card-surface`, settings cards | `rounded-xl` | `--shadow-card` (`shadow-card`) |
+| Card face | Wallet and credit-card faces, desktop Billeteras only | `rounded-face` (1.375rem) | `--shadow-face` (`shadow-face`) |
+
+**Billeteras layout.** Below `md`, Billeteras is a list of calm rows (`bg-card`, one row per wallet). Disponible, Límite, and saldo sit in the row, and rows do not overlap. From `md` up, the same wallets are card faces in a grid. That face uses the `wow` tone: dark plastic in light and dark, like a physical card, not a theme surface (`isProviderCardDarkSurface`). Do not paint a light-theme version of the face. The Panel wallet strip may still use the theme-adaptive `aura` tone. The Prestamistas chip stays off this page.
+
+**Alertas.** The bell sits in the sidebar footer. Below `md` it opens a `ResponsiveOverlay` sheet titled Alertas and closes the sidebar. From `md` it opens a menu to the right of the footer so the panel wallet strip stays visible. Severity uses status tokens (`overdue`, `pending`, `info`). Empty, error, and loading use `EmptyState`, `ErrorBanner`, and skeletons.
+
+**Onboarding** sits outside the `(app)` layout, so it draws `AppAtmosphere` itself and uses the planner glass shell, the type scale, and one progress bar. Create copy starts with **Agregar**.
+
+Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
+
+## Empty, error, and loading
+
+- Empty lists, filters, and charts use `EmptyState` (`src/components/EmptyState.tsx`).
+- Failures use one banner: `ErrorBanner` (`src/components/error-banner.tsx`). Overlays re-export it as `OverlayErrorBanner`. Route errors use `AppErrorScreen`.
+- Each route `loading.tsx` matches its archetype (planner, collection cards, collection table, detail, settings, form) via `src/components/loading/page-skeletons.tsx`. The root splash stays the Orion brand loader.
+- A button in progress shows a word with an ellipsis (`Guardando…`, `Creando…`). It does not show a spinner.
+- Billeteras hides the “N de N” count until stored filters are applied and the list has finished loading.
+
+## Glossary
+
+Use these names in the UI, in `PageTitle`, and in the browser tab. The document title (`documentTitle`) matches the header for that route.
+
+| Concept | Say | Do not say |
+| --- | --- | --- |
+| The section | **Operaciones** | Transacciones (as the page name) |
+| One record | **movimiento** | transacción |
+| Money container | **billetera** | cartera, or “cuenta” for a wallet |
+| Signed-in profile | **Cuenta** (only under Configuración) | — |
+| Credit-card statement | **Estado de cuenta** | — |
+| Linked wallet on a loan | **Billetera relacionada** | Cuenta relacionada |
+| Create | **Agregar** | Nueva / Nuevo on create actions |
+| Badges | Sentence case (`Gasto`, `Ingreso`, `Pagada`) | all-lowercase or ALL CAPS badges |
+| Ellipsis | **…** | `...` |
+| Analysis section | **Análisis** | Liquidez y análisis, as a nav item |
+
+**Análisis** is the section (nav, document title, header). Its two views are the tabs **Liquidez** and **Plan**. The tab list is named Análisis.
+
+Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` in Spanish (`Comida`, not `Food`). Existing rows already stored as `Food` are not migrated in code.
+
 ## Do / don’t
 
 **Do**
 
 - Reuse CSS variables and the shared glass / CTA classes.
-- Put **electric blue** on the in-app primary action; keep `--primary` for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy — in dark that is `#f7f8ff`, same as body text. Orange is landing `.landing-cta` only.
-- Match landing mocks and Panel financiero before inventing a new card language.
+- Put **electric blue** on the primary action (app and landing); keep `--primary` for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy — in dark that is `#f7f8ff`, same as body text.
+- Match Panel financiero before inventing a new card language. Landing product shots are captures of that UI.
 - Capture README screenshots from **this** app (see below).
 
 **Don’t**
 
 - Commit Orion/Oriton (or any vendor) mockup PNGs, or chat-attached reference frames.
 - Paint whole panels with `bg-blue-500/5` / `bg-violet-500/5` for “identity.”
-- Mix Nunito into the logged-in app (Manrope is for headings/display only).
+- Load a second marketing typeface. The landing uses Geist + Manrope, same as the app.
 - Add a second orange button beside the primary CTA.
 - Use `toISOString().split('T')[0]` for business dates (see `src/lib/calendar-dates.ts`).
 
@@ -374,13 +451,6 @@ When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
 
 ## Refreshing README screenshots
 
-Replace files under `docs/images/` with captures of localhost (or production) — never with external mockups.
+Product captures for the README live in `public/landing/` (fictional house Hogar). One file per screen, viewport, and theme: `{id}-{desktop|mobile}-{dark|light}.webp`. Screens: `panel`, `billeteras`, `liquidez`, `plan`, `prestamos`, `metas`, `operaciones`, `toca-pagar`. The README links those files. Do not add a second copy under `docs/images/`, and do not commit captures that show a real name, email, wallet, issuer, or amount.
 
-| File | What to capture |
-| --- | --- |
-| `docs/images/landing-hero.jpg` | `/` hero (headline + glass dashboard mock) |
-| `docs/images/landing-pricing.jpg` | `/` pricing section |
-| `docs/images/login.jpg` | `/login` |
-| `docs/images/panel-financiero.jpg` | Panel financiero with a seeded month |
-
-`docs/images/orion-tokens.svg` is drawn from the table above; update it if hex values change.
+`docs/images/orion-tokens.svg` is the palette swatch drawn from the table above; update it if hex values change.

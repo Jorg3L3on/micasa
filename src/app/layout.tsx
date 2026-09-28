@@ -11,6 +11,7 @@ import { Toaster } from 'sonner';
 import { DOCUMENT_TITLE_TEMPLATE, SITE_NAME } from '@/lib/document-title';
 import { IOS_SPLASH_IMAGES } from '@/lib/pwa/ios-splash';
 import { buildLaunchRedirectScript } from '@/lib/pwa/pwa-launch';
+import { VIEW_TRANSITION_GUARD_SCRIPT } from '@/lib/ui/view-transition-guard';
 import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
 import { ServiceWorkerRegistrar } from '@/components/pwa/ServiceWorkerRegistrar';
 
@@ -37,7 +38,7 @@ export const metadata: Metadata = {
     template: DOCUMENT_TITLE_TEMPLATE,
   },
   description:
-    'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+    'Gestión financiera y planeación por quincenas. Controla ingresos, gastos y operaciones.',
   icons: {
     icon: [
       { url: '/icons/icon-32.png', type: 'image/png', sizes: '32x32' },
@@ -49,7 +50,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'MiCasa',
     description:
-      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+      'Gestión financiera y planeación por quincenas. Controla ingresos, gastos y operaciones.',
     locale: 'es_MX',
     type: 'website',
     siteName: 'MiCasa',
@@ -58,7 +59,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'MiCasa',
     description:
-      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+      'Gestión financiera y planeación por quincenas. Controla ingresos, gastos y operaciones.',
   },
   appleWebApp: {
     capable: true,
@@ -88,6 +89,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${display.variable} antialiased`}
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: VIEW_TRANSITION_GUARD_SCRIPT,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: buildLaunchRedirectScript(getCurrentMonthlyPanelHref()),

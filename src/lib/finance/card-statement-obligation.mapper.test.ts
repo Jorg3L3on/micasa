@@ -8,10 +8,10 @@ describe('reconcileDuePaymentItemCanonicalFields', () => {
   it('subtracts payments from planned gross for effective amount', () => {
     const result = reconcileDuePaymentItemCanonicalFields(
       {
-        nextDuePayment: 3884.78,
-        paymentsAppliedToStatement: 694.76,
+        nextDuePayment: 3900,
+        paymentsAppliedToStatement: 700,
         statementDueDate: '2026-04-17',
-        plannedPayment: 694.76,
+        plannedPayment: 700,
         obligationAmountSource: 'import',
       },
       '2026-04-10',

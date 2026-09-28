@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeftIcon } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { DOCK_CLEARANCE_PADDING_CLASS } from "@/lib/ui/dock-clearance"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -164,7 +165,12 @@ function MobileSidebarSheetBody({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {children}
       </div>
-      <div className="border-sidebar-border shrink-0 border-t px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div
+        className={cn(
+          "border-sidebar-border shrink-0 border-t px-2 pt-2",
+          DOCK_CLEARANCE_PADDING_CLASS,
+        )}
+      >
         <Button
           type="button"
           variant="ghost"
@@ -277,7 +283,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm dark:border-r dark:border-white/[0.1] dark:bg-[#090e1d]/78 dark:backdrop-blur-2xl dark:backdrop-saturate-120"
+          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm dark:border-r dark:border-white/[0.1] dark:bg-sidebar/78 dark:backdrop-blur-2xl dark:backdrop-saturate-120"
         >
           {children}
         </div>
@@ -438,7 +444,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "text-sidebar-foreground/55 ring-sidebar-ring flex h-7 shrink-0 items-center rounded-md px-2 text-[10px] font-semibold uppercase tracking-wider outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-3.5 [&>svg]:shrink-0",
+        "text-sidebar-foreground/55 ring-sidebar-ring flex h-7 shrink-0 items-center rounded-md px-2 eyebrow outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-3.5 [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className
       )}
@@ -507,16 +513,16 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-xl px-2 py-1.5 text-left text-[13px] outline-hidden ring-sidebar-ring transition-[width,height,padding,background-color,color] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground dark:hover:bg-white/[0.05] dark:hover:text-white focus-visible:ring-2 active:bg-sidebar-accent disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-sidebar-foreground/80 data-[active=true]:bg-primary/10 data-[active=true]:font-medium data-[active=true]:text-foreground dark:data-[active=true]:bg-white/[0.07] dark:data-[active=true]:text-white data-[state=open]:hover:bg-sidebar-accent dark:data-[state=open]:hover:bg-white/[0.05] dark:data-[state=open]:hover:text-white group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-xl px-2 py-1.5 text-left text-body outline-hidden ring-sidebar-ring transition-[width,height,padding,background-color,color] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground dark:hover:bg-white/[0.05] dark:hover:text-white focus-visible:ring-2 active:bg-sidebar-accent disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-sidebar-foreground/80 data-[active=true]:bg-primary/10 data-[active=true]:font-medium data-[active=true]:text-foreground dark:data-[active=true]:bg-white/[0.07] dark:data-[active=true]:text-white data-[state=open]:hover:bg-sidebar-accent dark:data-[state=open]:hover:bg-white/[0.05] dark:data-[state=open]:hover:text-white group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
         default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         outline:
-          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+          "bg-background shadow-panel hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-panel",
       },
       size: {
-        default: "h-9 text-[13px]",
+        default: "h-9 text-body",
         sm: "h-7 text-xs",
         lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
       },

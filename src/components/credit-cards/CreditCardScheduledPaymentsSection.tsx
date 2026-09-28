@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarClock, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -123,37 +124,25 @@ export const CreditCardScheduledPaymentsSection = ({
       aria-label="Calendario de pagos futuros"
     >
       {!embedded ? (
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-              <CalendarClock
-                className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
-                aria-hidden
-              />
-            </span>
-            <div>
-              <h3 className="text-sm font-semibold leading-none">
-                Calendario de pagos
-              </h3>
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                Cuotas futuras sin registrar compra ni mover deuda
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            className="h-8 shrink-0 rounded-xl"
-            onClick={handleOpenCreate}
-          >
-            <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
-            Agregar cuota futura
-          </Button>
-        </div>
+        <SectionHeader
+          level={3}
+          icon={CalendarClock}
+          title="Calendario de pagos"
+          subtitle="Cuotas futuras sin registrar compra ni mover deuda"
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 shrink-0 rounded-xl"
+              onClick={handleOpenCreate}
+            >
+              <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
+              Agregar cuota futura
+            </Button>
+          }
+        />
       ) : (
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Calendario de pagos
-        </h4>
+        <SectionHeader level={3} title="Calendario de pagos" />
       )}
 
       {loading ? (
@@ -169,7 +158,7 @@ export const CreditCardScheduledPaymentsSection = ({
             <p className="text-sm font-medium">Sin pagos programados</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Agrega MSI o mensualidades conocidas para ver el pago próximo y la
-              planificación del mes.
+              planeación del mes.
             </p>
             <Button
               type="button"
@@ -198,7 +187,7 @@ export const CreditCardScheduledPaymentsSection = ({
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <span className="font-mono text-sm font-bold tabular-nums">
+                <span className="font-sans text-sm font-bold tabular-nums">
                   {formatCurrency(item.amount)}
                 </span>
                 <DropdownMenu>
@@ -248,7 +237,7 @@ export const CreditCardScheduledPaymentsSection = ({
                 <span className="truncate">
                   {item.label ?? 'Pago programado'} · {formatDate(item.dueDate)}
                 </span>
-                <span className="font-mono tabular-nums">
+                <span className="font-sans tabular-nums">
                   {formatCurrency(item.amount)}
                 </span>
               </li>

@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorBanner } from '@/components/error-banner';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
@@ -248,7 +249,7 @@ export default function CategoriesPage() {
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Nueva categoría',
+      label: 'Agregar categoría',
       onClick: openCreate,
       icon: primaryActionIcon,
     },
@@ -286,12 +287,7 @@ export default function CategoriesPage() {
         </div>
 
         {error && !deleteDialogOpen ? (
-          <div
-            className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-            role="alert"
-          >
-            {error}
-          </div>
+          <ErrorBanner>{error}</ErrorBanner>
         ) : null}
 
         <Card className="overflow-hidden border-border/60">
@@ -318,7 +314,7 @@ export default function CategoriesPage() {
                     : `Se crean por defecto al registrar; puedes agregar padres o subcategorías de ${kindNoun}.`
                 }
                 action={{
-                  label: 'Nueva categoría',
+                  label: 'Agregar categoría',
                   onClick: openCreate,
                 }}
               />
