@@ -25,10 +25,10 @@ const wallet = (
 describe('defaultWalletStripOrder', () => {
   it('orders cash, debit, then credit by name', () => {
     const ordered = defaultWalletStripOrder([
-      wallet(3, 'Sears', 'CREDIT_CARD', 100, 1000),
+      wallet(3, 'Crédito A', 'CREDIT_CARD', 100, 1000),
       wallet(1, 'Efectivo', 'CASH', 50),
-      wallet(2, 'Banamex', 'DEBIT_CARD', 200),
-      wallet(4, 'BBVA', 'DEBIT_CARD', 10),
+      wallet(2, 'Débito ahorro', 'DEBIT_CARD', 200),
+      wallet(4, 'Débito casa', 'DEBIT_CARD', 10),
     ]);
     expect(ordered.map((item) => item.id)).toEqual([1, 2, 4, 3]);
   });

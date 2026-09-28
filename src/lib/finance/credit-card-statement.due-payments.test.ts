@@ -179,7 +179,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 99,
-        name: 'Mercado Pago',
+        name: 'Crédito B',
         type: 'CREDIT_CARD',
         amount: 4494.74,
         cutoff_day: 7,
@@ -213,7 +213,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 31,
-        name: 'Liverpool',
+        name: 'Tienda departamental',
         type: 'DEPARTMENT_STORE_CARD',
         amount: 3884.78,
         cutoff_day: 6,
@@ -253,12 +253,12 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second).toEqual([]);
   });
 
-  it('keeps same-day corte/pago due in the planner month (Liverpool extra)', async () => {
+  it('keeps same-day corte/pago due in the planner month (Tienda del hogar)', async () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 8, 20, 15, 0, 0)));
     findManyWallets.mockResolvedValue([
       {
         id: 30,
-        name: 'Liverpool extra',
+        name: 'Tienda del hogar',
         type: 'DEPARTMENT_STORE_CARD',
         amount: 5666.01,
         cutoff_day: 13,
@@ -293,7 +293,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 26,
-        name: 'DIDI Card',
+        name: 'Tarjeta digital',
         type: 'CREDIT_CARD',
         amount: 0,
         cutoff_day: 3,
@@ -325,7 +325,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second).toHaveLength(1);
     expect(result.second[0]).toMatchObject({
       walletId: 26,
-      walletName: 'DIDI Card',
+      walletName: 'Tarjeta digital',
       statementDueDate: '2026-06-18',
       nextDuePayment: 0,
       paymentsAppliedToStatement: 2519.99,
@@ -334,13 +334,13 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     });
   });
 
-  it('keeps Liverpool-style full pay visible when debt is zero but statement credit is zero', async () => {
+  it('keeps Tienda departamental-style full pay visible when debt is zero but statement credit is zero', async () => {
     // Pay after due day: debt cleared, payment not in statement window → must NOT disappear.
     vi.setSystemTime(new Date(Date.UTC(2026, 5, 10, 15, 0, 0)));
     findManyWallets.mockResolvedValue([
       {
         id: 31,
-        name: 'Liverpool',
+        name: 'Tienda departamental',
         type: 'DEPARTMENT_STORE_CARD',
         amount: 0,
         cutoff_day: 6,
@@ -382,7 +382,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 29,
-        name: 'Mercado Pago',
+        name: 'Crédito B',
         type: 'CREDIT_CARD',
         amount: 0,
         cutoff_day: 7,
@@ -417,7 +417,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 36,
-        name: 'DIDI Ana',
+        name: 'Crédito personal',
         type: 'CREDIT_CARD',
         amount: 0,
         cutoff_day: 12,
@@ -580,7 +580,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 29,
-        name: 'Mercado Pago',
+        name: 'Crédito B',
         type: 'CREDIT_CARD',
         amount: 5000,
         cutoff_day: 7,
@@ -669,7 +669,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 30,
-        name: 'Liverpool extra',
+        name: 'Tienda del hogar',
         type: 'DEPARTMENT_STORE_CARD',
         amount: 5798,
         cutoff_day: 13,
@@ -692,7 +692,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         status: 'SCHEDULED',
         paid_at: null,
         credit_card_wallet: {
-          name: 'Liverpool extra',
+          name: 'Tienda del hogar',
           type: 'DEPARTMENT_STORE_CARD',
           cutoff_day: 13,
           due_day: 13,
@@ -710,7 +710,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         plan: {
           id: 3,
           name: 'iPad',
-          credit_card_wallet: { id: 30, name: 'Liverpool extra' },
+          credit_card_wallet: { id: 30, name: 'Tienda del hogar' },
         },
       },
     ]);
