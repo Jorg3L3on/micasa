@@ -28,7 +28,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi, type ClientApiError } from '@/lib/api/client-fetch';
 import { deleteExpenseTemplate } from '@/lib/api/expense-templates';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { Money } from '@/components/money';
 import type { ExpenseTemplateListItem } from '@/types/catalog';
 import {
   CategoryLabel,
@@ -193,9 +193,12 @@ export default function ExpenseTemplatesPage() {
           />
         ),
         cell: ({ row }) => (
-          <span className="text-right font-medium">
-            {formatCurrency(row.original.totalEstimatedAmount ?? 0)}
-          </span>
+          <Money
+            value={row.original.totalEstimatedAmount ?? 0}
+            size="row"
+            tone="negative"
+            className="block text-right"
+          />
         ),
       },
       {

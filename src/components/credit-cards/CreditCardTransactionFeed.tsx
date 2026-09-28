@@ -282,7 +282,7 @@ export const CreditCardRecentMovements = ({
             description="Registra una compra o un pago para verlos aquí."
             action={
               onRegisterPurchase
-                ? { label: 'Registrar compra', onClick: onRegisterPurchase }
+                ? { label: 'Agregar compra', onClick: onRegisterPurchase }
                 : undefined
             }
           />
@@ -292,7 +292,7 @@ export const CreditCardRecentMovements = ({
             description="Registra un gasto con esta tarjeta."
             action={
               onRegisterPurchase
-                ? { label: 'Registrar compra', onClick: onRegisterPurchase }
+                ? { label: 'Agregar compra', onClick: onRegisterPurchase }
                 : undefined
             }
           />
