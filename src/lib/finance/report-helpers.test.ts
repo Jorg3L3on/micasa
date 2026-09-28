@@ -4,6 +4,7 @@ import { buildFortnightWhereForReport } from '@/lib/finance/planning-credit-card
 import {
   fortnightPeriodParamError,
   parseFortnightPeriod,
+  strictFortnightPeriodParamError,
 } from '@/lib/finance/report-helpers';
 
 describe('parseFortnightPeriod', () => {
@@ -26,6 +27,19 @@ describe('parseFortnightPeriod', () => {
     expect(fortnightPeriodParamError('FIRST')).toBeNull();
     expect(fortnightPeriodParamError('1')).toBeNull();
     expect(fortnightPeriodParamError('THIRD')).toBe(
+      'period must be FIRST or SECOND',
+    );
+    expect(fortnightPeriodParamError('')).toBeNull();
+    expect(fortnightPeriodParamError('  ')).toBeNull();
+    expect(strictFortnightPeriodParamError(null)).toBeNull();
+    expect(strictFortnightPeriodParamError('1')).toBeNull();
+    expect(strictFortnightPeriodParamError('')).toBe(
+      'period must be FIRST or SECOND',
+    );
+    expect(strictFortnightPeriodParamError('  ')).toBe(
+      'period must be FIRST or SECOND',
+    );
+    expect(strictFortnightPeriodParamError('abc')).toBe(
       'period must be FIRST or SECOND',
     );
   });

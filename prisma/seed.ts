@@ -864,10 +864,10 @@ async function main() {
       {
         fortnight_id: otherFortnight.id,
         house_id: casaDemo.id,
-        description: 'Pago de tarjeta',
+        description: 'Seguro',
         amount: 2100,
         is_paid: false,
-        due_day: dueDay,
+        due_day: 10,
         category_id: catServiciosHouse.id,
         wallet_id: walletCasaDebito.id,
       },

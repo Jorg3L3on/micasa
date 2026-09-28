@@ -7,6 +7,7 @@ import {
   buildExpenseWhereForFortnightScope,
   fortnightIdsForRollingCalendarMonths,
   fortnightPeriodParamError,
+  parseFortnightPeriod,
 } from '@/lib/finance/report-helpers';
 import { getReportSummary } from '@/lib/finance/report-summary.service';
 
@@ -20,11 +21,12 @@ export async function GET(request: NextRequest) {
     const reportType = searchParams.get('type');
     const month = searchParams.get('month');
     const year = searchParams.get('year');
-    const period = searchParams.get('period');
-    const periodError = fortnightPeriodParamError(period);
+    const periodRaw = searchParams.get('period');
+    const periodError = fortnightPeriodParamError(periodRaw);
     if (periodError) {
       return NextResponse.json({ error: periodError }, { status: 400 });
     }
+    const period = parseFortnightPeriod(periodRaw);
     const windowMonthsRaw = searchParams.get('windowMonths');
     const planningCashFlow = searchParams.get('planningCashFlow') === 'true';
     const excludeCreditInstallment =

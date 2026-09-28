@@ -3,14 +3,34 @@ import { FortnightPeriod } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 
-/** Present but not FIRST/SECOND (or 1/2) is a client error. Blank means all periods. */
+const FORTNIGHT_PERIOD_ERROR = 'period must be FIRST or SECOND';
+
+/**
+ * Shared check for `?period=`. Parsing stays in `parseFortnightPeriod`.
+ * A missing param is never an error. Blank is an error only when `blankIsError`.
+ */
+const fortnightPeriodParamErrorFor = (
+  period: string | null | undefined,
+  blankIsError: boolean,
+): string | null => {
+  if (period == null) return null;
+  if (!blankIsError && period.trim() === '') return null;
+  if (!parseFortnightPeriod(period)) return FORTNIGHT_PERIOD_ERROR;
+  return null;
+};
+
+/** Optional period: missing or blank means all periods. Garbage is a client error. */
 export const fortnightPeriodParamError = (
   period: string | null | undefined,
-): string | null => {
-  if (period == null || period.trim() === '') return null;
-  if (parseFortnightPeriod(period)) return null;
-  return 'period must be FIRST or SECOND';
-};
+): string | null => fortnightPeriodParamErrorFor(period, false);
+
+/**
+ * Present period must parse. Blank and garbage are client errors.
+ * A missing param still means the unfiltered catalog.
+ */
+export const strictFortnightPeriodParamError = (
+  period: string | null | undefined,
+): string | null => fortnightPeriodParamErrorFor(period, true);
 
 export const parseFortnightPeriod = (
   value: string | null | undefined,
