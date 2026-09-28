@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FortnightPeriod } from '@/generated/prisma/client';
 
@@ -59,10 +60,10 @@ const ownerContext = {
 };
 
 const getJson = async (
-  handler: (request: Request) => Promise<Response>,
+  handler: (request: NextRequest) => Promise<Response>,
   path: string,
 ) => {
-  const response = await handler(new Request(`http://localhost${path}`));
+  const response = await handler(new NextRequest(`http://localhost${path}`));
   return { status: response.status, body: await response.json() };
 };
 
