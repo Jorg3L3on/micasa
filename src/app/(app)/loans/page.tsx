@@ -113,6 +113,10 @@ import {
 import { STATUS_BADGE_CLASS, STATUS_SOFT_CLASS } from '@/lib/status-tone';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useHydrationSafeTodayYmd } from '@/hooks/use-hydration-safe-today-ymd';
+import {
+  emptyLoanContextLists,
+  isCurrentLoanContext,
+} from './loan-context-reset';
 import type { PaymentMethodOption, IncomeTemplateListItem } from '@/types/catalog';
 import {
   createLoanSchema,
@@ -454,9 +458,12 @@ export default function LoansPage() {
     const contextChanged = contextKeyRef.current !== nextKey;
     if (contextChanged) {
       contextKeyRef.current = nextKey;
-      loansRef.current = [];
-      setLoans([]);
-      setLenders([]);
+      const cleared = emptyLoanContextLists();
+      loansRef.current = cleared.loans;
+      setLoans(cleared.loans);
+      setLenders(cleared.lenders);
+      setWallets(cleared.wallets);
+      setIncomeTemplates(cleared.incomeTemplates);
       setLoadError(null);
     }
     if (context.type === 'user' && context.id === 0) {
@@ -477,14 +484,14 @@ export default function LoansPage() {
           context,
         ),
       ]);
-      if (contextKeyRef.current !== nextKey) return;
+      if (!isCurrentLoanContext(contextKeyRef.current, nextKey)) return;
       setLoans(loanData);
       setLenders(lenderData);
       setWallets(walletData);
       setIncomeTemplates(templateData.filter((template) => template.active));
       setLoadError(null);
     } catch (error) {
-      if (contextKeyRef.current !== nextKey) return;
+      if (!isCurrentLoanContext(contextKeyRef.current, nextKey)) return;
       const message =
         error instanceof Error ? error.message : 'No se pudieron cargar préstamos';
       const hasLoans = loansRef.current.length > 0;
@@ -494,7 +501,7 @@ export default function LoansPage() {
         setLoadError(message);
       }
     } finally {
-      if (contextKeyRef.current === nextKey) {
+      if (isCurrentLoanContext(contextKeyRef.current, nextKey)) {
         setLoading(false);
       }
     }
