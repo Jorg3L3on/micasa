@@ -46,7 +46,7 @@ const PRODUCTS: ProductSection[] = [
     eyebrow: 'Préstamos',
     title: 'El contrato y cada cuota',
     body: 'Un préstamo con calendario, lo pagado y lo que sigue, ligado a la quincena.',
-    alt: 'Préstamos de Hogar: Préstamo del hogar con Caja del barrio, Refrigerador con Fondo vecinal y Bicicleta con Taller Norte.',
+    alt: 'Préstamos de Hogar con los prestamistas Caja del barrio, Fondo vecinal y Taller Norte.',
   },
   {
     id: 'metas',
@@ -67,7 +67,7 @@ const PRODUCTS: ProductSection[] = [
     eyebrow: 'Toca pagar',
     title: 'Lo que sigue en esa quincena',
     body: 'Cuando miras una quincena que no es la de hoy, el panel marca lo que toca pagar.',
-    alt: 'Resumen de quincena con la etiqueta Toca pagar.',
+    alt: 'Quincena de Hogar que no es la de hoy: entra $18,500 y Te queda $251.',
   },
 ];
 
