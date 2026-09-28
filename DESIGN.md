@@ -116,6 +116,7 @@ The quincena route stays for deep links and adopts planner chrome. It is **not**
 ### Chrome (toolbar-first)
 
 - The **app header** owns the route title, search, filters, and the **one primary action** — register them with `useRegisterToolbarActions` (`src/context/toolbar-actions-context.tsx`). Rare actions go in the header overflow (`overflow` / `useRegisterToolbarOverflow`).
+- **Create actions.** From `md` up, the primary action is a labeled button (`Agregar …`, or the action’s own verb such as `Ahorrar`). Below `md`, the dock’s central **+** is the only floating action. Page create actions whose label starts with **Agregar** are not a second **+**; they live in the header **Más** menu. Other primaries stay an icon button on small screens.
 - Do **not** repeat the header title with an in-page heading. Do **not** add an in-page sticky action bar.
 - Page rhythm under the header is **`space-y-5`**.
 - The month name in the planner glass band stays — that band is the period control, not a second page title.
