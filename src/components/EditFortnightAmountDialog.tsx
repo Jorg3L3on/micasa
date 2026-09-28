@@ -25,7 +25,7 @@ type EditFortnightAmountDialogProps = {
   onSave: (data: OverrideAmountFormValues) => Promise<void>;
   defaultAmount: number;
   fortnightLabel: string;
-  /** Income line being edited (e.g. "Salario Jorge"); omit for the fortnight total. */
+  /** Income line being edited (e.g. "Nómina A"); omit for the fortnight total. */
   sourceName?: string;
   error?: string | null;
 };

@@ -34,7 +34,7 @@ describe('liquidity month selection helpers', () => {
   });
 
   it('never shows negative cash as Entra', () => {
-    expect(displayIncomingCash(-8072.82)).toBe(0);
+    expect(displayIncomingCash(-8000)).toBe(0);
     expect(displayIncomingCash(0)).toBe(0);
     expect(displayIncomingCash(166400)).toBe(166400);
   });

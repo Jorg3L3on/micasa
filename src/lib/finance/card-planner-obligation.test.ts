@@ -45,7 +45,7 @@ describe('derivePlannerStatus', () => {
     expect(
       derivePlannerStatus({
         remainingPlannerAmount: 0,
-        paymentsAppliedToFortnight: 694.76,
+        paymentsAppliedToFortnight: 700,
         outstandingBalance: 3190,
         visibleDueDate: '2026-07-05',
         todayYmd: '2026-07-07',
@@ -68,7 +68,7 @@ describe('derivePlannerStatus', () => {
   it('returns por_pagar when remaining and not yet due', () => {
     expect(
       derivePlannerStatus({
-        remainingPlannerAmount: 1217.01,
+        remainingPlannerAmount: 1200,
         paymentsAppliedToFortnight: 0,
         outstandingBalance: 7554,
         visibleDueDate: '2026-07-13',
@@ -109,7 +109,7 @@ describe('derivePlannerStatus', () => {
       derivePlannerStatus({
         remainingPlannerAmount: 0,
         paymentsAppliedToFortnight: 0,
-        paymentsAppliedToStatement: 2519.99,
+        paymentsAppliedToStatement: 2500,
         targetAmount: 0,
         outstandingBalance: 0,
         visibleDueDate: '2026-06-18',
@@ -223,9 +223,9 @@ describe('isPlannerPlanStale', () => {
   it('flags covered plan that should be cleared', () => {
     expect(
       isPlannerPlanStale({
-        plannedGrossAmount: 694.76,
+        plannedGrossAmount: 700,
         remainingPlannerAmount: 0,
-        paymentsAppliedToFortnight: 694.76,
+        paymentsAppliedToFortnight: 700,
       }),
     ).toBe(true);
   });

@@ -680,20 +680,20 @@ describe('getLiquidityProjection', () => {
     findManyLoan.mockResolvedValue([
       {
         id: 31,
-        name: 'Fonacot Carmen',
+        name: 'Préstamo nómina',
         lender: 'FONACOT',
-        payment_amount: 1243.68,
+        payment_amount: 1250,
         payment_source: 'PAYROLL_DEDUCTION',
         payments: [
-          { due_date: parseCalendarDate('2026-04-16'), amount: '1243.68' },
-          { due_date: parseCalendarDate('2026-10-16'), amount: '1243.68' },
+          { due_date: parseCalendarDate('2026-04-16'), amount: '1250' },
+          { due_date: parseCalendarDate('2026-10-16'), amount: '1250' },
         ],
       },
     ]);
     findManyLoanPayment
       .mockResolvedValueOnce([
-        { amount: '1243.68', due_date: parseCalendarDate('2026-04-16') },
-        { amount: '1243.68', due_date: parseCalendarDate('2026-10-16') },
+        { amount: '1250', due_date: parseCalendarDate('2026-04-16') },
+        { amount: '1250', due_date: parseCalendarDate('2026-10-16') },
       ])
       .mockResolvedValueOnce([]);
 
@@ -708,7 +708,7 @@ describe('getLiquidityProjection', () => {
         expect.objectContaining({
           event_type: 'loan_payoff',
           month_key: '2026-10',
-          title: 'Terminas de pagar Fonacot Carmen',
+          title: 'Terminas de pagar Préstamo nómina',
           loan_id: 31,
         }),
       ]),
@@ -723,30 +723,30 @@ describe('getLiquidityProjection', () => {
     expect(april?.debt_items).toEqual([
       expect.objectContaining({
         kind: 'loan',
-        title: 'Fonacot Carmen',
-        amount: 2487.36,
-        payment_amount: 1243.68,
+        title: 'Préstamo nómina',
+        amount: 2500,
+        payment_amount: 1250,
       }),
     ]);
     expect(september?.debt_items).toEqual([
       expect.objectContaining({
         kind: 'loan',
-        title: 'Fonacot Carmen',
-        amount: 1243.68,
+        title: 'Préstamo nómina',
+        amount: 1250,
         payment_amount: 0,
       }),
     ]);
     expect(october?.debt_items).toEqual([
       expect.objectContaining({
         kind: 'loan',
-        title: 'Fonacot Carmen',
-        amount: 1243.68,
-        payment_amount: 1243.68,
+        title: 'Préstamo nómina',
+        amount: 1250,
+        payment_amount: 1250,
       }),
     ]);
-    expect(april?.remaining_payments_from_month).toBeCloseTo(2487.36);
-    expect(september?.remaining_payments_from_month).toBeCloseTo(1243.68);
-    expect(october?.remaining_payments_from_month).toBeCloseTo(1243.68);
+    expect(april?.remaining_payments_from_month).toBeCloseTo(2500);
+    expect(september?.remaining_payments_from_month).toBeCloseTo(1250);
+    expect(october?.remaining_payments_from_month).toBeCloseTo(1250);
     expect(afterPayoff).toBeUndefined();
   });
 

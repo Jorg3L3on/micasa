@@ -20,12 +20,12 @@ describe('computeLedgerExpectedDebt', () => {
 });
 
 describe('isStaleFullyCoveredPlan', () => {
-  it('flags Liverpool-style plan fully paid down', () => {
+  it('flags a store-card plan fully paid down', () => {
     expect(
       isStaleFullyCoveredPlan({
-        plannedAmount: 694.76,
-        paymentsAppliedToStatement: 694.76,
-        remainingStatementDue: 3884.78,
+        plannedAmount: 700,
+        paymentsAppliedToStatement: 700,
+        remainingStatementDue: 3900,
       }),
     ).toBe(true);
   });
@@ -55,7 +55,7 @@ describe('detectWalletDebtDrift', () => {
   it('detects registered debt above ledger', () => {
     const issue = detectWalletDebtDrift({
       walletId: 7,
-      walletName: 'Liverpool',
+      walletName: 'Tienda departamental',
       registeredDebt: 4200,
       paidExpenseTotal: 5000,
       paymentTotal: 1200,
@@ -87,8 +87,8 @@ describe('detectTamperedGeneratedExpense', () => {
     const issue = detectTamperedGeneratedExpense({
       id: 12,
       walletId: 3,
-      walletName: 'Liverpool',
-      amount: 694.76,
+      walletName: 'Tienda departamental',
+      amount: 700,
       paidAt: '2026-04-10',
       expenseId: 88,
       expenseAmount: 500,
@@ -104,11 +104,11 @@ describe('detectTamperedGeneratedExpense', () => {
     const issue = detectTamperedGeneratedExpense({
       id: 12,
       walletId: 3,
-      walletName: 'Liverpool',
-      amount: 694.76,
+      walletName: 'Tienda departamental',
+      amount: 700,
       paidAt: '2026-04-10',
       expenseId: 88,
-      expenseAmount: 694.76,
+      expenseAmount: 700,
       expenseIsPaid: true,
       expenseWalletId: 99,
       sourceWalletId: 2,
@@ -122,12 +122,12 @@ describe('detectStaleCoveredPlan', () => {
     const issue = detectStaleCoveredPlan({
       id: 5,
       walletId: 3,
-      walletName: 'Liverpool',
+      walletName: 'Tienda departamental',
       fortnightId: 20,
       fortnightLabel: 'Abr 2026 · 1ª',
-      plannedAmount: 694.76,
-      paymentsAppliedToStatement: 694.76,
-      remainingStatementDue: 3884.78,
+      plannedAmount: 700,
+      paymentsAppliedToStatement: 700,
+      remainingStatementDue: 3900,
     });
     expect(issue?.kind).toBe('stale_covered_plan');
     expect(issue?.repairAction).toBe('clear_stale_plan');
@@ -139,7 +139,7 @@ describe('detectZeroPlannedAmount', () => {
     const issue = detectZeroPlannedAmount({
       id: 20,
       walletId: 26,
-      walletName: 'DIDI Card',
+      walletName: 'Tarjeta digital',
       fortnightId: 38,
       fortnightLabel: 'Segunda quincena - Julio 2026',
       plannedAmount: 0,
@@ -156,10 +156,10 @@ describe('detectZeroPlannedAmount', () => {
       detectZeroPlannedAmount({
         id: 5,
         walletId: 3,
-        walletName: 'Liverpool',
+        walletName: 'Tienda departamental',
         fortnightId: 20,
         fortnightLabel: 'Abr 2026 · 1ª',
-        plannedAmount: 694.76,
+        plannedAmount: 700,
         paymentsAppliedToStatement: 0,
         remainingStatementDue: 1000,
       }),
@@ -173,7 +173,7 @@ describe('detectCardReconciliationIssues', () => {
       wallets: [
         {
           walletId: 3,
-          walletName: 'Liverpool',
+          walletName: 'Tienda departamental',
           registeredDebt: 4200,
           paidExpenseTotal: 5000,
           paymentTotal: 1200,
@@ -185,8 +185,8 @@ describe('detectCardReconciliationIssues', () => {
         {
           id: 10,
           walletId: 3,
-          walletName: 'Liverpool',
-          amount: 694.76,
+          walletName: 'Tienda departamental',
+          amount: 700,
           paidAt: '2026-04-10',
           expenseId: null,
           expenseAmount: null,
@@ -197,8 +197,8 @@ describe('detectCardReconciliationIssues', () => {
         {
           id: 11,
           walletId: 3,
-          walletName: 'Liverpool',
-          amount: 505.24,
+          walletName: 'Tienda departamental',
+          amount: 500,
           paidAt: '2026-04-12',
           expenseId: 90,
           expenseAmount: 400,
@@ -211,12 +211,12 @@ describe('detectCardReconciliationIssues', () => {
         {
           id: 5,
           walletId: 3,
-          walletName: 'Liverpool',
+          walletName: 'Tienda departamental',
           fortnightId: 20,
           fortnightLabel: 'Abr 2026 · 1ª',
-          plannedAmount: 694.76,
-          paymentsAppliedToStatement: 694.76,
-          remainingStatementDue: 3884.78,
+          plannedAmount: 700,
+          paymentsAppliedToStatement: 700,
+          remainingStatementDue: 3900,
         },
       ],
     });

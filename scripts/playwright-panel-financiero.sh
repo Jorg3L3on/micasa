@@ -14,7 +14,12 @@ if [[ -z "${E2E_EMAIL:-}" || -z "${E2E_PASSWORD:-}" ]]; then
 fi
 EMAIL="$E2E_EMAIL"
 PASSWORD="$E2E_PASSWORD"
-OWNER="${PLAYWRIGHT_OWNER_QUERY:-ownerType=house&ownerId=3}"
+# PLAYWRIGHT_OWNER_QUERY: owner scope for that account, e.g. ownerType=house&ownerId=1
+if [[ -z "${PLAYWRIGHT_OWNER_QUERY:-}" ]]; then
+  echo "PLAYWRIGHT_OWNER_QUERY must be set (for example ownerType=house&ownerId=<house id>)." >&2
+  exit 1
+fi
+OWNER="$PLAYWRIGHT_OWNER_QUERY"
 
 run_pw() {
   local out

@@ -34,8 +34,8 @@ describe('POST /api/admin/users/[id]/password', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          temporaryPassword: 'temp1234',
-          confirmPassword: 'temp1234',
+          temporaryPassword: 'demo-pass',
+          confirmPassword: 'demo-pass',
         }),
       }),
       { params: Promise.resolve({ id: '2' }) },
@@ -59,8 +59,8 @@ describe('POST /api/admin/users/[id]/password', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          temporaryPassword: 'temp1234',
-          confirmPassword: 'temp1234',
+          temporaryPassword: 'demo-pass',
+          confirmPassword: 'demo-pass',
         }),
       }),
       { params: Promise.resolve({ id: '2' }) },
@@ -69,7 +69,7 @@ describe('POST /api/admin/users/[id]/password', () => {
     expect(setTemporaryPasswordForUserMock).toHaveBeenCalledWith({
       admin: { userId: 1, email: 'admin@test.com' },
       targetUserId: 2,
-      temporaryPassword: 'temp1234',
+      temporaryPassword: 'demo-pass',
     });
   });
 
@@ -84,7 +84,7 @@ describe('POST /api/admin/users/[id]/password', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          temporaryPassword: 'temp1234',
+          temporaryPassword: 'demo-pass',
           confirmPassword: 'other',
         }),
       }),

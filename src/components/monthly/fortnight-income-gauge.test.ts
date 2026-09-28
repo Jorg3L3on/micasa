@@ -32,17 +32,17 @@ describe('FortnightIncomeGauge data', () => {
   });
 
   it('scales the bar and marks income when commitment exceeds 100%', () => {
-    // $21k income, $0 paid, $22,861.77 cash, $2,600 budget → 121%
-    const bar = getFortnightCommitmentBar(21_000, 0, 22_861.77, 2_600);
+    // $21k income, $0 paid, $23k pending, $2.4k budget → about 121%
+    const bar = getFortnightCommitmentBar(21_000, 0, 23_000, 2_400);
     expect(bar.totalCommittedPercent).toBe(121);
     expect(bar.tone).toBe('danger');
     expect(bar.freePercent).toBe(0);
-    expect(bar.incomeMarkerPercent).toBeCloseTo(100 / (25_461.77 / 21_000));
+    expect(bar.incomeMarkerPercent).toBeCloseTo(100 / (25_400 / 21_000));
     expect(bar.paidPercent + bar.pendingPercent + bar.budgetPercent).toBeCloseTo(
       100,
     );
-    expect(bar.pendingPercent).toBeCloseTo((22_861.77 / 25_461.77) * 100);
-    expect(bar.budgetPercent).toBeCloseTo((2_600 / 25_461.77) * 100);
+    expect(bar.pendingPercent).toBeCloseTo((23_000 / 25_400) * 100);
+    expect(bar.budgetPercent).toBeCloseTo((2_400 / 25_400) * 100);
   });
 
   it('returns empty percents when income is zero', () => {

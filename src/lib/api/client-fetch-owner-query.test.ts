@@ -8,9 +8,9 @@ import {
 
 describe('parseOwnerQuery', () => {
   it('parses user and house owner queries with or without ?', () => {
-    expect(parseOwnerQuery('?ownerType=user&ownerId=3')).toEqual({
+    expect(parseOwnerQuery('?ownerType=user&ownerId=42')).toEqual({
       type: 'user',
-      id: 3,
+      id: 42,
     });
     expect(parseOwnerQuery('ownerType=house&ownerId=9')).toEqual({
       type: 'house',
@@ -26,7 +26,7 @@ describe('parseOwnerQuery', () => {
   });
 
   it('round-trips with buildOwnerQuery', () => {
-    const context = { type: 'house' as const, id: 3 };
+    const context = { type: 'house' as const, id: 42 };
     expect(parseOwnerQuery(`?${buildOwnerQuery(context).toString()}`)).toEqual(
       context,
     );

@@ -9,14 +9,14 @@ import { PaymentMethodType } from '@/generated/prisma/client';
 
 describe('formatCardPaymentDescription', () => {
   it('uses card name when note is empty', () => {
-    expect(formatCardPaymentDescription('Mercado Pago', null)).toBe(
-      'Pago tarjeta: Mercado Pago',
+    expect(formatCardPaymentDescription('Tarjeta digital', null)).toBe(
+      'Pago tarjeta: Tarjeta digital',
     );
   });
 
   it('includes note when present', () => {
-    expect(formatCardPaymentDescription('DiDi Card', '  corte mayo  ')).toBe(
-      'Pago tarjeta (DiDi Card): corte mayo',
+    expect(formatCardPaymentDescription('Tarjeta digital', '  corte mayo  ')).toBe(
+      'Pago tarjeta (Tarjeta digital): corte mayo',
     );
   });
 });
@@ -37,22 +37,22 @@ describe('mapCreditCardPaymentToTransactionRow', () => {
   it('maps linked and orphan payments with the same planning row shape', () => {
     const row = mapCreditCardPaymentToTransactionRow({
       id: 5,
-      amount: 694.76,
+      amount: 700,
       paid_at: new Date('2026-05-20T12:00:00.000Z'),
       note: null,
       expense_id: 88,
       source_wallet_id: 2,
       credit_card_wallet_id: 7,
-      credit_card_wallet: { name: 'Mercado Pago' },
-      source_wallet: { name: 'Débito BBVA', type: PaymentMethodType.DEBIT_CARD },
+      credit_card_wallet: { name: 'Tarjeta digital' },
+      source_wallet: { name: 'Débito casa', type: PaymentMethodType.DEBIT_CARD },
     } as unknown as CardPaymentPlanningRow);
 
     expect(row).toMatchObject({
       id: 5,
-      description: 'Pago tarjeta: Mercado Pago',
-      amount: 694.76,
+      description: 'Pago tarjeta: Tarjeta digital',
+      amount: 700,
       category: 'Pago a tarjeta',
-      paymentMethod: 'Débito BBVA',
+      paymentMethod: 'Débito casa',
       wallet_id: 2,
       wallet_type: PaymentMethodType.DEBIT_CARD,
       planning_row_kind: 'card_payment',

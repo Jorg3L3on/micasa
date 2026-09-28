@@ -97,7 +97,7 @@ export const ProductMock = ({
         />
         <AppChrome
           title="Quincena · 30 jun–14 jul 2026"
-          subtitle="Casa León · vista compartida"
+          subtitle="Casa Demo · vista compartida"
           tabs={['Resumen', 'Ingresos', 'Gastos']}
         />
 

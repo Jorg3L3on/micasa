@@ -9,7 +9,7 @@ describe('createCreditCardPaymentSchema', () => {
     const parsed = createCreditCardPaymentSchema.parse({
       mode: 'wallet',
       source_wallet_id: 1,
-      amount: 931.55,
+      amount: 900,
       paid_at: '2026-06-05',
       note: null,
       create_fortnight_expense: true,
@@ -23,7 +23,7 @@ describe('createCreditCardPaymentSchema', () => {
     const parsed = createCreditCardPaymentSchema.parse({
       mode: 'wallet',
       source_wallet_id: 1,
-      amount: 944.33,
+      amount: 950,
       paid_at: '2026-11-13',
       create_fortnight_expense: true,
     });
@@ -52,7 +52,7 @@ describe('createCreditCardPaymentSchema', () => {
     expect(() =>
       createCreditCardPaymentSchema.parse({
         source_wallet_id: 1,
-        amount: 931.55,
+        amount: 900,
         paid_at: '05/06/2026',
         create_fortnight_expense: false,
       }),

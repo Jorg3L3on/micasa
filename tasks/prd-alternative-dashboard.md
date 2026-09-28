@@ -47,7 +47,7 @@ Rebuild `DashboardPanel` with a wallet-first, scannable hierarchy: period chrome
 
 - Prefer external behavior: existing `dashboard.service.test.ts` must still pass (no service regression).
 - Run `npm run validate:dashboard-ui` so metric strips stay free of forbidden tinted fills.
-- Manual QA on `/dashboard` with seed user Jorge: Mes/Quincena toggle, wallet strip above KPIs, four hero KPIs including Gastos and Disponible, budget + insight cards visible, obligations/loans still present.
+- Manual QA on `/dashboard` with seed user Luis Demo: Mes/Quincena toggle, wallet strip above KPIs, four hero KPIs including Gastos and Disponible, budget + insight cards visible, obligations/loans still present.
 - Do not add brittle snapshot tests of Tailwind class lists; prefer service tests and UI validation scripts already in CI.
 
 ## Out of Scope

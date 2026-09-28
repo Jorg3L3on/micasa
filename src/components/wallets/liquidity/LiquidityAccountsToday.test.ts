@@ -28,7 +28,7 @@ const wallet = (
 const loan = (
   overrides: Partial<LoanListItem> & Pick<LoanListItem, 'id' | 'name'>,
 ): LoanListItem => ({
-  lender: 'Banamex',
+  lender: 'Caja demo',
   lenderId: 1,
   type: 'PERSONAL',
   status: 'ACTIVE',
@@ -40,7 +40,7 @@ const loan = (
   startDate: '2026-03-01',
   paymentSource: 'WALLET',
   sourceWalletId: 1,
-  sourceWalletName: 'Banamex',
+  sourceWalletName: 'Débito casa',
   linkedWalletId: null,
   linkedWalletName: null,
   incomeTemplateId: null,
@@ -159,12 +159,12 @@ describe('getLoanProgressLabel', () => {
 describe('sortAccountsToday', () => {
   it('keeps cash, then debit, then cards, and skips inactive wallets', () => {
     const sorted = sortAccountsToday([
-      wallet({ id: 1, name: 'Visa', type: 'CREDIT_CARD', amount: 1 }),
+      wallet({ id: 1, name: 'Crédito A', type: 'CREDIT_CARD', amount: 1 }),
       wallet({ id: 2, name: 'Efectivo', type: 'CASH', amount: 2 }),
       wallet({ id: 3, name: 'Old', type: 'CASH', amount: 3, active: false }),
-      wallet({ id: 4, name: 'Banorte', type: 'DEBIT_CARD', amount: 4 }),
+      wallet({ id: 4, name: 'Débito ahorro', type: 'DEBIT_CARD', amount: 4 }),
     ]);
-    expect(sorted.map((row) => row.name)).toEqual(['Efectivo', 'Banorte', 'Visa']);
+    expect(sorted.map((row) => row.name)).toEqual(['Efectivo', 'Débito ahorro', 'Crédito A']);
   });
 });
 
@@ -173,30 +173,30 @@ describe('buildAccountsToday', () => {
     const rows = buildAccountsToday(
       [wallet({ id: 1, name: 'Efectivo', type: 'CASH', amount: 20 })],
       [
-        loan({ id: 2, name: 'Fonacot Jorge', type: 'PAYROLL', lender: 'FONACOT' }),
+        loan({ id: 2, name: 'Descuento de nómina', type: 'PAYROLL', lender: 'FONACOT' }),
         loan({ id: 3, name: 'Viejo', status: 'PAID_OFF', remainingAmount: 0 }),
         loan({ id: 4, name: 'Pausado', status: 'PAUSED', remainingAmount: 4000 }),
-        loan({ id: 5, name: 'Crédito auto Banamex' }),
+        loan({ id: 5, name: 'Préstamo personal' }),
       ],
     );
 
     expect(rows.map((row) => row.kind === 'wallet' ? row.wallet.name : row.loan.name)).toEqual([
       'Efectivo',
-      'Crédito auto Banamex',
-      'Fonacot Jorge',
+      'Descuento de nómina',
+      'Préstamo personal',
     ]);
   });
 
   it('maps loan rows to remaining debt and Fonacot identity', () => {
     const [row] = buildAccountsToday(
       [],
-      [loan({ id: 9, name: 'Fonacot Carmen', type: 'PAYROLL', lender: 'FONACOT' })],
+      [loan({ id: 9, name: 'Descuento de nómina', type: 'PAYROLL', lender: 'FONACOT' })],
     );
     expect(row).toBeDefined();
     const view = toAccountTodayView(row!);
     expect(view).toMatchObject({
       kind: 'loan',
-      name: 'Fonacot Carmen',
+      name: 'Descuento de nómina',
       typeLabel: 'Préstamo de nómina',
       isFonacot: true,
       providerIconKey: null,
@@ -209,7 +209,7 @@ describe('buildAccountsToday', () => {
     expect(
       toAccountTodayView({
         kind: 'wallet',
-        wallet: wallet({ id: 1, name: 'BBVA Jorge', type: 'CASH', amount: 10 }),
+        wallet: wallet({ id: 1, name: 'BBVA', type: 'CASH', amount: 10 }),
       }).providerIconKey,
     ).toBe('BBVA');
     expect(

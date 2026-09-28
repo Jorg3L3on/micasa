@@ -373,7 +373,7 @@ describe('sumPlannerLoanDueForFortnight', () => {
         loan_id: 6,
         sequence: 1,
         due_date: parseCalendarDate('2026-06-14'),
-        amount: '2792.73',
+        amount: '2800',
         status: 'SCHEDULED',
         paid_at: null,
         source_wallet_id: null,
@@ -388,7 +388,7 @@ describe('sumPlannerLoanDueForFortnight', () => {
           payment_source: 'PAYROLL_DEDUCTION',
           linked_wallet_id: null,
           linked_wallet: null,
-          income_template: { name: 'Salario Jorge' },
+          income_template: { name: 'Nómina B' },
         },
       },
     ]);
@@ -397,7 +397,7 @@ describe('sumPlannerLoanDueForFortnight', () => {
 
     expect(result).toEqual({
       wallet: { total: 200, count: 1 },
-      payroll: { total: 2792.73, count: 1 },
+      payroll: { total: 2800, count: 1 },
     });
   });
 });
