@@ -102,18 +102,12 @@ describe('view transition guard', () => {
     finished.reject(aborted('Transition was aborted because of invalid state'));
     ready.reject(aborted('Skipping view transition because viewport size changed.'));
     updateCallbackDone.reject(
-      aborted('Transition was aborted because of invalid state'),
+      aborted('Viewport size changed'),
     );
 
-    await expect(finishedTail).rejects.toMatchObject({
-      name: 'InvalidStateError',
-    });
-    await expect(transition.ready).rejects.toMatchObject({
-      name: 'InvalidStateError',
-    });
-    await expect(transition.updateCallbackDone).rejects.toMatchObject({
-      name: 'InvalidStateError',
-    });
+    await expect(finishedTail).resolves.toBeUndefined();
+    await expect(transition.ready).rejects.toThrow(/viewport size changed/i);
+    await expect(transition.updateCallbackDone).resolves.toBeUndefined();
     await new Promise((resolve) => setTimeout(resolve, 20));
     guard.stop();
     expect(guard.unhandled).toEqual([]);

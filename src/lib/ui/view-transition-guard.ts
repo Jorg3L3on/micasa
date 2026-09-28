@@ -16,18 +16,34 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
   var timer = 0;
   var width = window.innerWidth;
   var height = window.innerHeight;
-  var armed = typeof WeakMap === 'function' ? new WeakMap() : null;
 
   function isIgnorable(error) {
     if (!error || typeof error !== 'object') return false;
     var name = error.name;
     if (name !== 'InvalidStateError' && name !== 'AbortError') return false;
     var message = String(error.message || '');
-    return (
-      message.indexOf('invalid state') !== -1 ||
-      message.indexOf('viewport size') !== -1 ||
-      message.indexOf('Viewport size') !== -1 ||
-      message.indexOf('visibility') !== -1
+    return /viewport|visibility|view transition|invalid state|skipped|aborted/i.test(message);
+  }
+
+  function quietError() {
+    var error = new Error('Skipping view transition because viewport size changed.');
+    error.name = 'InvalidStateError';
+    return error;
+  }
+
+  function shouldSkip() {
+    return resizing || document.visibilityState === 'hidden';
+  }
+
+  function calm(promise, mode) {
+    if (!promise || typeof promise.then !== 'function') return promise;
+    return promise.then(
+      function (value) { return value; },
+      function (error) {
+        if (!isIgnorable(error)) throw error;
+        if (mode === 'ready') throw quietError();
+        return undefined;
+      }
     );
   }
 
@@ -44,56 +60,21 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
     }, 350);
   }, { passive: true });
 
+  if (window.visualViewport && typeof window.visualViewport.addEventListener === 'function') {
+    window.visualViewport.addEventListener('resize', function () {
+      resizing = true;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(function () {
+        resizing = false;
+      }, 350);
+    }, { passive: true });
+  }
+
   window.addEventListener('unhandledrejection', function (event) {
     if (!isIgnorable(event.reason)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
-
-  function arm(promise) {
-    if (!promise || typeof promise.then !== 'function') return promise;
-    promise.catch(function (error) {
-      if (isIgnorable(error)) return;
-      window.setTimeout(function () { throw error; }, 0);
-    });
-    return new Proxy(promise, {
-      get: function (target, prop, receiver) {
-        if (prop === 'finally') {
-          return function (onFinally) {
-            var next = target.finally(onFinally);
-            next.catch(function (error) {
-              if (isIgnorable(error)) return;
-              window.setTimeout(function () { throw error; }, 0);
-            });
-            return next;
-          };
-        }
-        if (prop === 'then') {
-          return function (onFulfilled, onRejected) {
-            return target.then(onFulfilled, onRejected);
-          };
-        }
-        if (prop === 'catch') {
-          return function (onRejected) {
-            return target.catch(onRejected);
-          };
-        }
-        var value = Reflect.get(target, prop, receiver);
-        return typeof value === 'function' ? value.bind(target) : value;
-      }
-    });
-  }
-
-  function armProp(transition, prop) {
-    if (!armed) return arm(transition[prop]);
-    var cache = armed.get(transition);
-    if (!cache) {
-      cache = {};
-      armed.set(transition, cache);
-    }
-    if (!cache[prop]) cache[prop] = arm(transition[prop]);
-    return cache[prop];
-  }
 
   function immediate(callback) {
     var update = typeof callback === 'function' ? callback : callback && callback.update;
@@ -125,13 +106,16 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
   }
 
   function guarded(callback) {
-    if (resizing) return immediate(callback);
+    if (shouldSkip()) return immediate(callback);
     var transition = native(callback);
+    var finished = calm(transition.finished, 'settle');
+    var ready = calm(transition.ready, 'ready');
+    var updateCallbackDone = calm(transition.updateCallbackDone, 'settle');
     return new Proxy(transition, {
       get: function (target, prop, receiver) {
-        if (prop === 'finished' || prop === 'ready' || prop === 'updateCallbackDone') {
-          return armProp(target, prop);
-        }
+        if (prop === 'finished') return finished;
+        if (prop === 'ready') return ready;
+        if (prop === 'updateCallbackDone') return updateCallbackDone;
         var value = Reflect.get(target, prop, receiver);
         return typeof value === 'function' ? value.bind(target) : value;
       }
