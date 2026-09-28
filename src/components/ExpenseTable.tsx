@@ -831,7 +831,7 @@ export default function ExpenseTable({
                       className={swipeEnabled ? 'bg-transparent' : undefined}
                       surfaceClassName={cn(
                         MONTHLY_PANEL_SHELL_CLASS,
-                        'group/row isolate flex flex-nowrap items-center gap-2.5 overflow-hidden rounded-xl px-3',
+                        'group/row isolate flex w-full min-w-0 max-w-full flex-nowrap items-center gap-2.5 overflow-hidden rounded-xl px-3',
                         isCompact ? 'py-2.5' : 'py-3',
                       )}
                     >
@@ -874,16 +874,17 @@ export default function ExpenseTable({
                     </div>
 
                     {/* Body */}
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 max-w-full flex-1">
                       <span
                         className={cn(
-                          'inline-flex min-w-0 items-center gap-1.5 leading-tight',
+                          'inline-flex w-full min-w-0 max-w-full items-center gap-1.5 leading-tight',
                           isCompact ? 'text-xs' : 'text-sm',
                         )}
                       >
                         <CategoryIcon
                           icon={e.categoryIcon}
                           className={cn(
+                            'shrink-0',
                             e.is_paid
                               ? 'text-muted-foreground/70'
                               : 'text-foreground/70',
@@ -892,7 +893,7 @@ export default function ExpenseTable({
                         />
                         <span
                           className={cn(
-                            'min-w-0 truncate',
+                            'min-w-0 max-w-full flex-1 truncate',
                             e.is_paid
                               ? 'font-medium text-muted-foreground/80'
                               : 'font-semibold text-foreground',
