@@ -231,7 +231,7 @@ Mobile sheets follow Apple’s [Sheets](https://developer.apple.com/design/human
 
 **Reference implementation:** **Agregar gasto** — `src/components/quick-capture/QuickExpenseSheet.tsx` (Panel financiero). `AddTransactionDialog.tsx`, `WalletForm.tsx` (Nueva meta / billetera), and `WalletTransferDialog.tsx` follow it exactly. When in doubt, open Agregar gasto and copy it.
 
-Open these components in the running app. Do not commit overlay screenshots: the old files named wallets and issuers.
+Open these components in the running app. Do not commit overlay screenshots.
 
 | Overlay | Component |
 | --- | --- |
