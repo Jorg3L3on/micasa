@@ -255,9 +255,8 @@ const RangeToggle = ({ chartRange, onChartRangeChange }: RangeToggleProps) => {
       value={chartRange}
       onValueChange={handleValueChange}
       ariaLabel="Meses que muestra la gráfica"
-      stretch
-      className="w-full @min-[42rem]:w-auto @min-[42rem]:shrink-0"
-      wrapperClassName="w-full @min-[42rem]:w-auto @min-[42rem]:min-w-60"
+      className="w-max max-w-full shrink-0"
+      wrapperClassName="w-max max-w-full"
       indicatorClassName={AURA_TAB_INDICATOR_CLASS}
       activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
       options={LIQUIDITY_CHART_RANGE_OPTIONS.map((option) => ({
