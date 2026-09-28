@@ -50,7 +50,7 @@ export function getLoanWalletRelationships(
   if (loan.linkedWalletId === walletId) {
     relationships.push({
       role: 'reference_account',
-      label: 'Cuenta relacionada',
+      label: 'Billetera relacionada',
       description:
         'Solo referencia para seguimiento; no ajusta el saldo automáticamente.',
     });

@@ -38,6 +38,7 @@ import {
   todayCalendarDate,
   yesterdayCalendarDate,
 } from '@/lib/calendar-dates';
+import { Money } from '@/components/money';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
 const getDateGroupLabel = (dateStr: string): string => {
@@ -151,7 +152,7 @@ export const CreditCardCycleLedger = ({
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar movimientos..."
+                placeholder="Buscar movimientos…"
                 className="h-9 rounded-xl border-border/60 bg-background/80 pl-9 text-sm"
                 aria-label="Buscar movimientos del ciclo"
               />
@@ -216,7 +217,7 @@ export const CreditCardCycleLedger = ({
         <div className="divide-y divide-border/40">
           {grouped.map(([dateKey, rows]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <p className="sticky top-0 z-[1] bg-card/95 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur-sm">
+              <p className="sticky top-0 z-[1] bg-card/95 px-4 py-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur-sm">
                 {getDateGroupLabel(dateKey)}
               </p>
               <ul className="px-2 pb-2">
@@ -244,7 +245,7 @@ export const CreditCardCycleLedger = ({
                               {msi ? (
                                 <Badge
                                   variant="secondary"
-                                  className="h-5 shrink-0 px-1.5 text-[10px] font-mono"
+                                  className="h-5 shrink-0 px-1.5 text-caption font-sans"
                                 >
                                   {purchase.credit_installment_current}/{purchase.credit_installment_total}
                                 </Badge>
@@ -253,19 +254,17 @@ export const CreditCardCycleLedger = ({
                             <CategoryLabel
                               name={purchase.category}
                               icon={purchase.categoryIcon}
-                              className="text-[11px] text-muted-foreground"
+                              className="text-caption text-muted-foreground"
                             />
                           </div>
                           <div className="shrink-0 text-right">
-                            <p className="font-mono text-sm font-semibold tabular-nums text-destructive">
-                              −{formatCurrency(purchase.amount)}
-                            </p>
+                            <Money value={-purchase.amount} size="row" />
                           </div>
                         </Link>
                         {msi && onGoToCuotas ? (
                           <button
                             type="button"
-                            className="shrink-0 self-center px-2 text-[10px] text-primary-text hover:underline"
+                            className="shrink-0 self-center px-2 text-caption text-primary-text hover:underline"
                             onClick={() => {
                               onGoToCuotas();
                             }}
@@ -292,16 +291,19 @@ export const CreditCardCycleLedger = ({
                             Pago desde {payment.source_wallet_name}
                           </p>
                           {payment.note ? (
-                            <p className="truncate text-[11px] text-muted-foreground">
+                            <p className="truncate text-caption text-muted-foreground">
                               {payment.note}
                             </p>
                           ) : (
-                            <p className="text-[11px] text-muted-foreground">Pago registrado</p>
+                            <p className="text-caption text-muted-foreground">Pago registrado</p>
                           )}
                         </div>
-                        <p className="shrink-0 font-mono text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-                          +{formatCurrency(payment.amount)}
-                        </p>
+                        <Money
+                          value={payment.amount}
+                          size="row"
+                          tone="positive"
+                          className="shrink-0"
+                        />
                       </li>
                     );
                   }
@@ -317,14 +319,14 @@ export const CreditCardCycleLedger = ({
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">Importación de estado de cuenta</p>
-                        <p className="truncate text-[11px] text-muted-foreground">
+                        <p className="truncate text-caption text-muted-foreground">
                           {importRecord.file_name ?? importRecord.provider} ·{' '}
                           {importRecord.expense_count} gasto
                           {importRecord.expense_count === 1 ? '' : 's'}
                         </p>
                       </div>
                       {importRecord.total_due != null ? (
-                        <p className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                        <p className="shrink-0 font-sans text-sm font-semibold tabular-nums">
                           {formatCurrency(importRecord.total_due)}
                         </p>
                       ) : null}

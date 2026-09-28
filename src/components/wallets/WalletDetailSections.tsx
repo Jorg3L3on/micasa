@@ -167,7 +167,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
                 <p className="truncate text-sm font-semibold leading-tight opacity-95">
                   {wallet.name}
                 </p>
-                <p className="text-[10px] uppercase tracking-widest opacity-60">
+                <p className="text-caption uppercase tracking-widest opacity-60">
                   {typeLabel}
                 </p>
               </div>
@@ -180,13 +180,13 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
           </div>
 
           <div className="min-w-0 space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+            <p className="text-caption font-semibold uppercase tracking-wider opacity-70">
               Saldo disponible
             </p>
             <p
               className={cn(
                 // leading-snug: WebKit clips glyph ink at line-height:1 inside overflow-hidden
-                'break-words text-2xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-3xl',
+                'break-words text-2xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-3xl',
                 isNegative && 'text-rose-200',
               )}
             >
@@ -222,7 +222,7 @@ const WalletPeriodMetrics = ({ metrics }: { metrics: PeriodMetric[] }) => (
         <p className={kpiMetricLabelClass(tone)}>{label}</p>
         <p
           className={cn(
-            'mt-1 truncate font-mono text-base font-bold tabular-nums leading-none sm:text-lg',
+            'mt-1 truncate font-sans text-base font-bold tabular-nums leading-none sm:text-lg',
             kpiMetricValueClass(tone),
           )}
         >
@@ -333,7 +333,7 @@ export const WalletPeriodSummary = ({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 shrink-0 rounded-full px-2.5 text-[10px]"
+            className="h-9 shrink-0 rounded-full px-2.5 text-caption"
             onClick={onResetToToday}
             aria-label="Volver al mes actual"
           >
@@ -347,8 +347,8 @@ export const WalletPeriodSummary = ({
         ) : null}
       </div>
       <WalletPeriodMetrics metrics={metrics} />
-      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-        <Badge variant="secondary" className="h-6 rounded-full px-2 font-mono tabular-nums">
+      <div className="flex flex-wrap gap-2 text-caption text-muted-foreground">
+        <Badge variant="secondary" className="h-6 rounded-full px-2 font-sans tabular-nums">
           {movementCount} mov.
         </Badge>
         <Badge variant="outline" className="h-6 rounded-full px-2">

@@ -135,7 +135,7 @@ export const CreditCardScheduledPaymentsSection = ({
               <h3 className="text-sm font-semibold leading-none">
                 Calendario de pagos
               </h3>
-              <p className="mt-1 text-[10px] text-muted-foreground">
+              <p className="mt-1 text-caption text-muted-foreground">
                 Cuotas futuras sin registrar compra ni mover deuda
               </p>
             </div>
@@ -198,7 +198,7 @@ export const CreditCardScheduledPaymentsSection = ({
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <span className="font-mono text-sm font-bold tabular-nums">
+                <span className="font-sans text-sm font-bold tabular-nums">
                   {formatCurrency(item.amount)}
                 </span>
                 <DropdownMenu>
@@ -248,7 +248,7 @@ export const CreditCardScheduledPaymentsSection = ({
                 <span className="truncate">
                   {item.label ?? 'Pago programado'} · {formatDate(item.dueDate)}
                 </span>
-                <span className="font-mono tabular-nums">
+                <span className="font-sans tabular-nums">
                   {formatCurrency(item.amount)}
                 </span>
               </li>

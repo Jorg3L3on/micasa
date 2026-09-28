@@ -324,7 +324,11 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
 
 ## Fintech data UI
 
-- Amounts: **`font-mono tabular-nums`**. Format with `formatCurrency` from `@/lib/utils`.
+- Amounts: **`<Money>`** (`src/components/money.tsx`). Sans with `tabular-nums` — never `font-mono`. Format with `formatMoney` / `formatCurrency` (`es-MX`). Negatives use that formatter’s single hyphen (`-$12.50`); do not prefix another minus or a `+`.
+- Smallest UI text is **caption**: `text-caption` (`--text-caption-size: 0.6875rem`, 11px, line-height 1.35). Do not use `text-[9px]`, `text-[10px]`, or `text-[11px]`. JOR-311 adopts this token as the bottom of the type scale. Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.
+- Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS` (neutral foreground, positive emerald, negative `text-destructive`). JOR-310 swaps that one map for semantic status tokens.
+- Chart axes use `formatAxisMoney` (`$`, `k` from 1,000, `M` from 1,000,000). JOR-315 keeps this helper when it themes charts.
+- Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
 - Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
 - Semantic left-border / icon-pill colors:
   - Income / bank — blue
@@ -334,12 +338,33 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
   - Expenses — violet
   - Overdue / negative — destructive
 - Icon pills: small tinted square (`bg-*-500/10 dark:bg-*-500/15`), not a full card wash.
-- Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in mono.
+- Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in `<Money size="row">`.
 - Horizontal chips (wallets): `overflow-x-auto`, `shrink-0`, edge fades `from-background`.
 
 Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmosphere`, sticky header, `container`). Page rhythm: `space-y-5`. Title, search, filters, and the primary action live in the app header — no in-page sticky action bar (see **Chrome**).
 
 ---
+
+## Glossary
+
+Use these names in the UI, in `PageTitle`, and in the browser tab. The document title (`documentTitle`) matches the header for that route.
+
+| Concept | Say | Do not say |
+| --- | --- | --- |
+| The section | **Operaciones** | Transacciones (as the page name) |
+| One record | **movimiento** | transacción |
+| Money container | **billetera** | cartera, or “cuenta” for a wallet |
+| Signed-in profile | **Cuenta** (only under Configuración) | — |
+| Credit-card statement | **Estado de cuenta** | — |
+| Linked wallet on a loan | **Billetera relacionada** | Cuenta relacionada |
+| Create | **Agregar** | Nueva / Nuevo on create actions |
+| Badges | Sentence case (`Gasto`, `Ingreso`, `Pagada`) | all-lowercase or ALL CAPS badges |
+| Ellipsis | **…** | `...` |
+| Analysis section | **Análisis** | Liquidez y análisis, as a nav item |
+
+**Análisis** is the section (nav, document title, header). Its two views are the tabs **Liquidez** and **Plan**. The tab list is named Análisis.
+
+Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` in Spanish (`Comida`, not `Food`). Existing rows already stored as `Food` are not migrated in code.
 
 ## Do / don’t
 

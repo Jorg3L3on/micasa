@@ -241,7 +241,7 @@ function OnboardingWizardContent() {
               aria-label="Continuar al siguiente paso"
             >
               {isStepLoading
-                ? 'Preparando tu espacio financiero...'
+                ? 'Preparando tu espacio financiero…'
                 : isLastStep
                   ? 'Finalizar'
                   : 'Continuar'}

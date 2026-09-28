@@ -30,7 +30,7 @@ export const OVERLAY_ROW_TRIGGER_CLASS =
 export const OVERLAY_ROW_INPUT_CLASS =
   'h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent';
 
-export const OVERLAY_ROW_NUMBER_INPUT_CLASS = `${OVERLAY_ROW_INPUT_CLASS} font-mono tabular-nums`;
+export const OVERLAY_ROW_NUMBER_INPUT_CLASS = `${OVERLAY_ROW_INPUT_CLASS} font-sans tabular-nums`;
 
 export const OVERLAY_ROW_TEXTAREA_CLASS =
   'min-h-11 resize-none border-0 bg-transparent px-0 py-2.5 shadow-none focus-visible:ring-0 dark:bg-transparent';
@@ -47,7 +47,7 @@ export const OVERLAY_PRIMARY_BUTTON_CLASS = 'h-11 w-full rounded-xl';
 export const OVERLAY_SECONDARY_BUTTON_CLASS = 'h-9 w-full rounded-xl';
 
 export const OVERLAY_AMOUNT_INPUT_CLASS =
-  'h-10 border-0 bg-transparent px-0 font-mono text-2xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-12 md:text-4xl';
+  'h-10 border-0 bg-transparent px-0 font-sans text-2xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-12 md:text-4xl';
 
 const dateStepperFormatter = new Intl.DateTimeFormat('es-MX', {
   weekday: 'long',

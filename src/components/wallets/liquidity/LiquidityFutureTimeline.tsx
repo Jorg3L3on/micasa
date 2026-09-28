@@ -19,6 +19,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { formatAxisMoney } from '@/lib/money';
 import { cn, formatCurrency } from '@/lib/utils';
 import type {
   LiquidityMonthlySeriesItem,
@@ -54,11 +55,6 @@ type ChartPoint = {
   eventTitle: string;
 };
 
-const formatAxisMoney = (value: number): string => {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
-  return String(value);
-};
 
 const ChartTooltip = ({
   active,
@@ -74,16 +70,16 @@ const ChartTooltip = ({
       <p className="text-xs font-semibold text-foreground">
         {formatMonthYearLabel(point.monthKey)}
       </p>
-      <p className="mt-2 font-mono text-sm font-bold tabular-nums text-foreground">
+      <p className="mt-2 font-sans text-sm font-bold tabular-nums text-foreground">
         {formatCurrency(point.monthDebt)}
       </p>
-      <p className="text-[11px] text-muted-foreground">pagos del mes</p>
-      <p className="mt-2 font-mono text-sm font-bold tabular-nums text-amber-300">
+      <p className="text-caption text-muted-foreground">pagos del mes</p>
+      <p className="mt-2 font-sans text-sm font-bold tabular-nums text-amber-300">
         {formatCurrency(point.outstandingDebt)}
       </p>
-      <p className="text-[11px] text-muted-foreground">adeudo total al cierre</p>
+      <p className="text-caption text-muted-foreground">adeudo total al cierre</p>
       {point.eventCount > 0 ? (
-        <p className="mt-2 max-w-[220px] text-[11px] font-medium text-emerald-300">
+        <p className="mt-2 max-w-[220px] text-caption font-medium text-emerald-300">
           {point.eventTitle}
         </p>
       ) : null}
@@ -331,17 +327,17 @@ export const LiquidityFutureTimeline = ({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-4 rounded-full bg-linear-to-r from-[#3a37fc] to-[#ee477a]" aria-hidden />
-            <span className="text-[10px] text-muted-foreground">Pagos del mes (izq.)</span>
+            <span className="text-caption text-muted-foreground">Pagos del mes (izq.)</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-4 rounded-full bg-amber-400" aria-hidden />
-            <span className="text-[10px] text-muted-foreground">Adeudo al cierre (der.)</span>
+            <span className="text-caption text-muted-foreground">Adeudo al cierre (der.)</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-400" aria-hidden>
               <Check className="h-2 w-2 text-[#060914]" />
             </span>
-            <span className="text-[10px] text-muted-foreground">Aquí terminas de pagar</span>
+            <span className="text-caption text-muted-foreground">Aquí terminas de pagar</span>
           </span>
         </div>
 

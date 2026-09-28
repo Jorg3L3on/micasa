@@ -200,7 +200,7 @@ export default function EditIncomeTemplatePage() {
 
   if (loading) {
     return (
-      <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+      <div className="py-8 text-center text-muted-foreground">Cargando…</div>
     );
   }
 
@@ -462,7 +462,7 @@ export default function EditIncomeTemplatePage() {
                   </Link>
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Guardando...' : 'Actualizar'}
+                  {isSubmitting ? 'Guardando…' : 'Actualizar'}
                 </Button>
               </div>
             </form>

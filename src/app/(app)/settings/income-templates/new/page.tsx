@@ -137,7 +137,7 @@ export default function NewIncomeTemplatePage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Nueva plantilla de ingresos</CardTitle>
+          <CardTitle>Agregar plantilla de ingresos</CardTitle>
           <CardDescription>
             Crea una plantilla de ingresos recurrente. Se usará al crear un mes
             para generar ingresos (Income) en las quincenas indicadas.
@@ -369,7 +369,7 @@ export default function NewIncomeTemplatePage() {
                   </Link>
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Guardando...' : 'Crear'}
+                  {isSubmitting ? 'Guardando…' : 'Crear'}
                 </Button>
               </div>
             </form>

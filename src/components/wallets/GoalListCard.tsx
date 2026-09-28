@@ -298,7 +298,7 @@ export const GoalListCard = ({
                     Ahorrado{' '}
                     <span
                       className={cn(
-                        'font-mono font-semibold tabular-nums',
+                        'font-sans font-semibold tabular-nums',
                         goalMetricInkClass(visual),
                       )}
                     >
@@ -307,7 +307,7 @@ export const GoalListCard = ({
                     de{' '}
                     <span
                       className={cn(
-                        'font-mono font-semibold tabular-nums',
+                        'font-sans font-semibold tabular-nums',
                         goalMetricInkClass(visual),
                       )}
                     >
@@ -319,7 +319,7 @@ export const GoalListCard = ({
                 <>
                   <p
                     className={cn(
-                      'text-center font-mono text-3xl font-semibold tabular-nums tracking-tight',
+                      'text-center font-sans text-3xl font-semibold tabular-nums tracking-tight',
                       goalMetricInkClass(visual),
                     )}
                   >
@@ -327,11 +327,11 @@ export const GoalListCard = ({
                   </p>
                   <p className="mt-1.5 text-center text-sm text-muted-foreground">
                     Ahorrado{' '}
-                    <span className="font-mono font-medium tabular-nums text-foreground/80">
+                    <span className="font-sans font-medium tabular-nums text-foreground/80">
                       {formatCurrency(wallet.amount)}
                     </span>{' '}
                     de{' '}
-                    <span className="font-mono font-medium tabular-nums text-foreground/80">
+                    <span className="font-sans font-medium tabular-nums text-foreground/80">
                       {formatCurrency(metrics.goalAmount)}
                     </span>
                     <span> · {daysLabel}</span>

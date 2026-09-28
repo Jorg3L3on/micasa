@@ -101,13 +101,13 @@ export default function CreatePlanningMonthButton({
       <span className="flex min-w-0 flex-col items-start gap-0.5">
         <span
           className={cn(
-            'text-[10px] font-semibold uppercase tracking-wider leading-none',
+            'text-caption font-semibold uppercase tracking-wider leading-none',
             variant === 'compact'
               ? 'text-muted-foreground'
               : 'text-primary-foreground/80',
           )}
         >
-          {submitting ? 'Creando...' : 'Crear mes'}
+          {submitting ? 'Creando…' : 'Crear mes'}
         </span>
         <span
           className={cn(

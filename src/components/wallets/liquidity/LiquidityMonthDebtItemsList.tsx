@@ -31,7 +31,7 @@ const KIND_DOT: Record<MonthDebtItem['kind'], string> = {
   loan: 'bg-amber-500 dark:bg-amber-400',
 };
 
-const ROW_ICON_CLASS = 'h-9 w-9 rounded-lg text-[10px]';
+const ROW_ICON_CLASS = 'h-9 w-9 rounded-lg text-caption';
 const ROW_ICON_INNER_CLASS = 'h-4 w-4';
 
 export type MonthDebtListMode = 'remaining' | 'payment';
@@ -54,7 +54,7 @@ const rowAuraColor = (item: MonthDebtItem): string =>
 
 const amountClass = (mode: MonthDebtListMode): string =>
   cn(
-    'shrink-0 font-mono text-sm font-bold tabular-nums',
+    'shrink-0 font-sans text-sm font-bold tabular-nums',
     mode === 'payment' ? 'text-foreground' : 'text-amber-700 dark:text-amber-300',
   );
 
@@ -128,7 +128,7 @@ export const LiquidityMonthDebtItemsList = ({
             <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <span
                 className={cn(
-                  'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium',
+                  'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-caption font-medium',
                   KIND_PILL[item.kind],
                 )}
               >
@@ -148,7 +148,7 @@ export const LiquidityMonthDebtItemsList = ({
           mode === 'payment' ? 'border-l-violet-500/50' : 'border-l-amber-500/50',
         )}
       >
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
           {resolvedTotalLabel}
         </span>
         <span className={cn(amountClass(mode), 'text-base')}>{formatCurrency(total)}</span>

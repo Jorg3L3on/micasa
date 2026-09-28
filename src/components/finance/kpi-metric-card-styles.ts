@@ -38,7 +38,7 @@ export const kpiMetricCardShellClass = (tone: KpiMetricTone) =>
 
 export const kpiMetricLabelClass = (tone: KpiMetricTone) =>
   cn(
-    'truncate text-[10px] font-semibold leading-tight sm:text-[11px]',
+    'truncate text-caption font-semibold leading-tight sm:text-caption',
     labelByTone[tone],
   );
 

@@ -5,7 +5,7 @@ export const DOCUMENT_TITLE_TEMPLATE = 'MiCasa | %s';
 
 /**
  * Nested layouts that set `title` as a string clear Next’s inherited template,
- * so child routes would render as “Carteras” instead of “MiCasa | Carteras”.
+ * so child routes would render as “Billeteras” instead of “MiCasa | Billeteras”.
  * Keep the template on every layout that defines a page title.
  */
 export const documentTitle = (

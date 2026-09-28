@@ -559,11 +559,12 @@ const WalletBalanceStrip = ({
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <p
                         className={cn(
-                          'truncate text-[9.5px] font-semibold leading-tight',
+                          'truncate text-caption font-semibold leading-tight',
                           onDarkSurface
                             ? 'text-white/85'
                             : 'text-muted-foreground/90',
                         )}
+                        title={wallet.name}
                       >
                         {wallet.name}
                       </p>
@@ -611,7 +612,7 @@ const WalletBalanceStrip = ({
                         {isCreditType && wallet.due_day != null ? (
                           <span
                             className={cn(
-                              'whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none tabular-nums',
+                              'whitespace-nowrap rounded-full px-1.5 py-0.5 text-caption font-semibold leading-none tabular-nums',
                               walletAlreadyPaid
                                 ? onDarkSurface
                                   ? 'bg-emerald-500/25 text-emerald-50'
@@ -633,7 +634,7 @@ const WalletBalanceStrip = ({
                                         : 'text-muted-foreground/70',
                             )}
                           >
-                            {walletAlreadyPaid ? 'pagada' : `Paga ${wallet.due_day}`}
+                            {walletAlreadyPaid ? 'Pagada' : `Paga ${wallet.due_day}`}
                           </span>
                         ) : null}
                       </div>

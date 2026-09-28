@@ -167,10 +167,10 @@ export const LoanCalendarPaymentOverlay = ({
             aria-busy={submitting}
           >
             <div className="rounded-xl border border-border/60 bg-card px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                 Pago #{payment.sequence}
               </p>
-              <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+              <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
                 {formatCurrency(payment.amount)}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -251,7 +251,7 @@ export const LoanCalendarPaymentOverlay = ({
                               providerIconKey={wallet.provider_icon_key}
                               iconClassName="h-5 w-5 rounded-md"
                             />
-                            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                            <span className="font-sans text-xs tabular-nums text-muted-foreground">
                               {formatCurrency(wallet.amount ?? 0)}
                             </span>
                           </span>

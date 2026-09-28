@@ -91,12 +91,12 @@ function PeriodMetric({
         accent === 'available' && 'bg-emerald-500/[0.04]',
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p
         className={cn(
-          'mt-1 font-mono text-sm font-bold tabular-nums',
+          'mt-1 font-sans text-sm font-bold tabular-nums',
           accent === 'spent' && !toneClass && 'text-violet-600 dark:text-violet-400',
           accent === 'neutral' && 'text-foreground',
           !accent && 'text-foreground',
@@ -154,7 +154,7 @@ function SpendProgressBar({
         >
           {displayPct}% usado
         </span>
-        <span className="shrink-0 font-mono tabular-nums">
+        <span className="shrink-0 font-sans tabular-nums">
           {formatCurrency(spent)} / {formatCurrency(total)}
         </span>
       </div>
@@ -189,7 +189,7 @@ function WalletPoolHeader({ pool }: { pool: WalletPool }) {
         <div className="shrink-0 text-right">
           <p
             className={cn(
-              'font-mono text-sm font-bold tabular-nums',
+              'font-sans text-sm font-bold tabular-nums',
               remainingToneClass(pool.remaining, pool.allocated),
             )}
           >
@@ -197,7 +197,7 @@ function WalletPoolHeader({ pool }: { pool: WalletPool }) {
           </p>
           <p
             className={cn(
-              'text-[10px] text-muted-foreground',
+              'text-caption text-muted-foreground',
               overspent && 'text-destructive',
             )}
           >
@@ -248,7 +248,7 @@ function SharedWalletCategoryContext({
   return (
     <div className="space-y-1.5 rounded-md border border-border/60 bg-card px-2.5 py-2">
       <p className="text-xs">
-        <span className="font-mono tabular-nums text-foreground">
+        <span className="font-sans tabular-nums text-foreground">
           {formatCurrency(display.categoryHeadroom)}
         </span>{' '}
         <span className="text-muted-foreground">del límite de categoría</span>
@@ -305,17 +305,17 @@ function AllocationSummary({
             <div className="text-right">
               <p
                 className={cn(
-                  'font-mono text-sm font-bold tabular-nums',
+                  'font-sans text-sm font-bold tabular-nums',
                   remainingToneClass(remaining, allocation.amount),
                 )}
               >
                 {formatCurrency(remaining)}
               </p>
-              <p className="text-[10px] text-muted-foreground">{disponibleLabel}</p>
+              <p className="text-caption text-muted-foreground">{disponibleLabel}</p>
             </div>
           </div>
         ) : allocationOverspent ? (
-          <Badge variant="destructive" className="shrink-0 text-[10px]">
+          <Badge variant="destructive" className="shrink-0 text-caption">
             Excedido
           </Badge>
         ) : null}
@@ -341,8 +341,8 @@ function AllocationSummary({
         >
           <span>
             {expanded
-              ? 'Ocultar transacciones'
-              : `Ver ${expenseCount} ${expenseCount === 1 ? 'transacción' : 'transacciones'}`}
+              ? 'Ocultar movimientos'
+              : `Ver ${expenseCount} ${expenseCount === 1 ? 'movimiento' : 'movimientos'}`}
           </span>
           <ChevronDown
             className={cn(
@@ -366,7 +366,7 @@ function AllocationExpenseList({
   return (
     <ul
       className="max-h-48 divide-y divide-border/60 overflow-y-auto border-t border-border/60"
-      aria-label={`Transacciones de ${categoryName}`}
+      aria-label={`Movimientos de ${categoryName}`}
     >
       {expenses.map((expense) => (
         <li
@@ -379,7 +379,7 @@ function AllocationExpenseList({
               {formatDisplayDate(expense.date)}
             </p>
           </div>
-          <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+          <span className="shrink-0 font-sans text-xs font-semibold tabular-nums text-violet-600 dark:text-violet-400">
             {formatCurrency(expense.amount)}
           </span>
         </li>
@@ -435,7 +435,7 @@ function AllocationRow({
           {...summaryProps}
         />
         <p className="mt-3 border-t border-border/60 pt-2.5 text-xs text-muted-foreground">
-          Sin transacciones en este periodo
+          Sin movimientos en este periodo
         </p>
       </article>
     );
@@ -454,8 +454,8 @@ function AllocationRow({
             aria-expanded={expanded}
             aria-label={
               expanded
-                ? `Ocultar transacciones de ${allocation.category_name}`
-                : `Ver ${expenses.length} transacciones de ${allocation.category_name}`
+                ? `Ocultar movimientos de ${allocation.category_name}`
+                : `Ver ${expenses.length} movimientos de ${allocation.category_name}`
             }
           >
             <AllocationSummary
@@ -587,7 +587,7 @@ export default function BudgetPeriodDetail({
         if (!cancelled) {
           setExpenseGroups([]);
           setExpensesError(
-            err instanceof Error ? err.message : 'Error al cargar transacciones',
+            err instanceof Error ? err.message : 'Error al cargar movimientos',
           );
         }
       })

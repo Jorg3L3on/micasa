@@ -31,7 +31,7 @@ const hintFor = (lender: LenderListItem): string => {
 export const LenderRail = ({ lenders, className }: LenderRailProps) => {
   return (
     <section aria-label="Prestamistas" className={cn('min-w-0', className)}>
-      <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <h2 className="mb-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
         Prestamistas
       </h2>
       {lenders.length === 0 ? (
@@ -66,10 +66,10 @@ export const LenderRail = ({ lenders, className }: LenderRailProps) => {
                     iconInnerClassName="h-4 w-4"
                   />
                   <span className="shrink-0 text-right">
-                    <span className="block font-mono text-sm font-bold tabular-nums">
+                    <span className="block font-sans text-sm font-bold tabular-nums">
                       {formatCurrency(lender.remainingPrincipal)}
                     </span>
-                    <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                    <span className="mt-0.5 block text-caption text-muted-foreground">
                       Pendiente
                     </span>
                   </span>

@@ -212,7 +212,7 @@ export function RegisterForm({
                 disabled={form.formState.isSubmitting}
               >
                 {form.formState.isSubmitting
-                  ? 'Creando cuenta...'
+                  ? 'Creando cuenta…'
                   : 'Crear cuenta'}
               </Button>
               <p className="text-center text-sm text-muted-foreground">

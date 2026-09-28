@@ -290,7 +290,7 @@ export default function ExpenseTemplatesPage() {
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Nueva plantilla de gasto',
+      label: 'Agregar plantilla de gasto',
       onClick: handleCreateTemplate,
       icon: primaryActionIcon,
     },
@@ -343,7 +343,7 @@ export default function ExpenseTemplatesPage() {
         <CardContent className="p-6">
           {loading ? (
             <div className="py-12 text-center text-muted-foreground">
-              Cargando...
+              Cargando…
             </div>
           ) : templates.length === 0 ? (
             <EmptyState message="No se encontraron plantillas de gastos" />
@@ -352,7 +352,7 @@ export default function ExpenseTemplatesPage() {
               data={filteredTemplates}
               columns={columns}
               filterColumn="name"
-              filterPlaceholder="Filtrar por nombre..."
+              filterPlaceholder="Filtrar por nombre…"
               filterSlot={filterSlot}
               columnVisibility
               emptyMessage="No se encontraron plantillas de gastos."

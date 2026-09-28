@@ -32,10 +32,10 @@ const PieTooltip = ({ active, payload }: PieTooltipProps) => {
         className="font-medium text-foreground"
         iconClassName="h-3.5 w-3.5"
       />
-      <p className="font-mono tabular-nums text-foreground">
+      <p className="font-sans tabular-nums text-foreground">
         {formatCurrency(row.value)}
       </p>
-      <p className="text-[10px] text-muted-foreground">{row.pct.toFixed(1)}%</p>
+      <p className="text-caption text-muted-foreground">{row.pct.toFixed(1)}%</p>
     </div>
   );
 };
@@ -82,9 +82,9 @@ export const PeriodCategoryPieCard = ({
           <h3 className="text-sm font-semibold leading-none text-foreground sm:text-base">
             {title}
           </h3>
-          <p className="mt-1 text-[10px] text-muted-foreground">{scopeLabel}</p>
+          <p className="mt-1 text-caption text-muted-foreground">{scopeLabel}</p>
           {subtitle ? (
-            <p className="mt-0.5 text-[10px] text-muted-foreground">{subtitle}</p>
+            <p className="mt-0.5 text-caption text-muted-foreground">{subtitle}</p>
           ) : null}
         </div>
       </div>
@@ -124,16 +124,16 @@ export const PeriodCategoryPieCard = ({
               </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pt-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                 Total
               </span>
-              <span className="mt-0.5 font-mono text-base font-bold tabular-nums text-foreground sm:text-lg">
+              <span className="mt-0.5 font-sans text-base font-bold tabular-nums text-foreground sm:text-lg">
                 {formatCurrency(totalExpense)}
               </span>
             </div>
           </div>
 
-          <ul className="mt-3 grid w-full gap-1.5 text-[11px]">
+          <ul className="mt-3 grid w-full gap-1.5 text-caption">
             {chartData.map((row, i) => (
               <li key={row.name} className="flex min-w-0 items-center gap-2">
                 <span
@@ -151,10 +151,10 @@ export const PeriodCategoryPieCard = ({
                   className="min-w-0 flex-1 text-muted-foreground"
                   iconClassName="h-3.5 w-3.5"
                 />
-                <span className="shrink-0 font-mono tabular-nums text-foreground">
+                <span className="shrink-0 font-sans tabular-nums text-foreground">
                   {formatCurrency(row.value)}
                 </span>
-                <span className="w-8 shrink-0 text-right font-mono tabular-nums text-muted-foreground">
+                <span className="w-8 shrink-0 text-right font-sans tabular-nums text-muted-foreground">
                   {row.pct.toFixed(0)}%
                 </span>
               </li>

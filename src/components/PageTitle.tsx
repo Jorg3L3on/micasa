@@ -105,14 +105,14 @@ export function getPageTitle(pathname: string): {
   if (segments[0] === 'settings') {
     if (segments[1] === 'expense-templates') {
       if (segments[2] === 'new')
-        return { title: 'Nueva plantilla', isHome: false, showBack };
+        return { title: 'Agregar plantilla de gastos', isHome: false, showBack };
       if (segments[3] === 'edit')
         return { title: 'Editar plantilla', isHome: false, showBack };
       return { title: 'Gastos programados', isHome: false, showBack };
     }
     if (segments[1] === 'income-templates') {
       if (segments[2] === 'new')
-        return { title: 'Nueva plantilla', isHome: false, showBack };
+        return { title: 'Agregar plantilla de ingresos', isHome: false, showBack };
       if (segments[3] === 'edit')
         return { title: 'Editar plantilla', isHome: false, showBack };
       return { title: 'Ingresos programados', isHome: false, showBack };
@@ -137,7 +137,7 @@ export function getPageTitle(pathname: string): {
 
   if (segments[0] === 'expense-templates') {
     if (segments[1] === 'new')
-      return { title: 'Nueva plantilla', isHome: false, showBack };
+      return { title: 'Agregar plantilla de gastos', isHome: false, showBack };
     if (segments[2] === 'edit')
       return { title: 'Editar plantilla', isHome: false, showBack };
     return { title: 'Plantillas de gastos', isHome: false, showBack };
@@ -145,7 +145,7 @@ export function getPageTitle(pathname: string): {
 
   if (segments[0] === 'income-templates') {
     if (segments[1] === 'new')
-      return { title: 'Nueva plantilla', isHome: false, showBack };
+      return { title: 'Agregar plantilla de ingresos', isHome: false, showBack };
     if (segments[2] === 'edit')
       return { title: 'Editar plantilla', isHome: false, showBack };
     return { title: 'Plantillas de ingresos', isHome: false, showBack };
@@ -188,7 +188,7 @@ export function getPageTitle(pathname: string): {
   }
 
   if (segments[0] === 'loans') {
-    return { title: 'Prestamos', isHome: false, showBack };
+    return { title: 'Préstamos', isHome: false, showBack };
   }
 
   if (segments[0] === 'transactions') {

@@ -121,7 +121,7 @@ export const MonthlyMonthPicker = ({
               />
             </span>
             {showCurrentBadge ? (
-              <span className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 text-[10px] font-semibold uppercase tracking-wider text-foreground">
+              <span className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 text-caption font-semibold uppercase tracking-wider text-foreground">
                 <span
                   className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
                   aria-hidden
@@ -214,7 +214,7 @@ export const MonthlyMonthPicker = ({
           })}
         </div>
         {createdKeys != null ? (
-          <p className="mt-2 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground">
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-caption text-muted-foreground">
             <span
               className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400"
               aria-hidden

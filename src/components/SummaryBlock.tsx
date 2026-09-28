@@ -6,7 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { BouncyAccordion } from '@/components/motion/bouncy-accordion';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
-import { formatCurrency, cn } from '@/lib/utils';
+import { Money } from '@/components/money';
+import { cn, formatCurrency } from '@/lib/utils';
 import {
   Wallet,
   CheckCircle2,
@@ -247,7 +248,7 @@ export default function SummaryBlock({
                         data-icon="inline-start"
                       />
                     </span>
-                    <span className="truncate text-[10px] font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80">
+                    <span className="truncate text-caption font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80">
                       Ingresos
                     </span>
                   </div>
@@ -274,7 +275,7 @@ export default function SummaryBlock({
                   />
                 </p>
                 {hasUserIncome || incomeItems.length > 0 ? (
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 text-caption text-muted-foreground">
                     {incomeItems.length > 0
                       ? `${incomeItems.length} fuente${incomeItems.length !== 1 ? 's' : ''}`
                       : `${userIncome?.[0]?.userIncome.length ?? 0} fuente${(userIncome?.[0]?.userIncome.length ?? 0) !== 1 ? 's' : ''}`}
@@ -295,7 +296,7 @@ export default function SummaryBlock({
                       data-icon="inline-start"
                     />
                   </span>
-                  <span className="truncate text-[10px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80">
+                  <span className="truncate text-caption font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80">
                     Pagado
                   </span>
                 </div>
@@ -305,7 +306,7 @@ export default function SummaryBlock({
                     className="text-sm font-black text-foreground sm:text-base"
                   />
                 </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                <p className="mt-0.5 text-caption text-muted-foreground">
                   {expenseCount > 0
                     ? `${paidExpenseCount}/${expenseCount}`
                     : '—'}
@@ -325,7 +326,7 @@ export default function SummaryBlock({
                       data-icon="inline-start"
                     />
                   </span>
-                  <span className="truncate text-[10px] font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80">
+                  <span className="truncate text-caption font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80">
                     Pendiente
                   </span>
                 </div>
@@ -335,21 +336,21 @@ export default function SummaryBlock({
                     className="text-sm font-black text-foreground sm:text-base"
                   />
                 </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                <p className="mt-0.5 text-caption text-muted-foreground">
                   {expenseCount > 0
                     ? `${unpaidExpenseCount} gasto${unpaidExpenseCount !== 1 ? 's' : ''}`
                     : '—'}
                 </p>
                 {planningCardStatementDue != null &&
                 planningCardStatementDue.total > 0 ? (
-                  <p className="mt-1 border-t border-amber-500/20 pt-1 text-[10px] leading-snug text-muted-foreground">
+                  <p className="mt-1 border-t border-amber-500/20 pt-1 text-caption leading-snug text-muted-foreground">
                     De eso, {formatCurrency(planningCardStatementDue.total)} son
                     pagos al estado de cuenta (tarjeta).
                   </p>
                 ) : null}
                 {planningWalletLoanDue != null &&
                 planningWalletLoanDue.total > 0 ? (
-                  <p className="mt-1 border-t border-amber-500/20 pt-1 text-[10px] leading-snug text-muted-foreground">
+                  <p className="mt-1 border-t border-amber-500/20 pt-1 text-caption leading-snug text-muted-foreground">
                     De eso, {formatCurrency(planningWalletLoanDue.total)} son
                     cuotas de préstamo desde billetera.
                   </p>
@@ -359,7 +360,7 @@ export default function SummaryBlock({
 
             {planningPayrollLoanDeduction != null &&
             planningPayrollLoanDeduction.total > 0 ? (
-              <p className="text-[10px] leading-snug text-muted-foreground">
+              <p className="text-caption leading-snug text-muted-foreground">
                 Incluye {formatCurrency(planningPayrollLoanDeduction.total)} en{' '}
                 {planningPayrollLoanDeduction.count} deducción
                 {planningPayrollLoanDeduction.count !== 1 ? 'es' : ''} de nómina
@@ -369,7 +370,7 @@ export default function SummaryBlock({
             ) : null}
 
             {budgetRemaining > 0 ? (
-              <p className="text-[10px] leading-snug text-muted-foreground">
+              <p className="text-caption leading-snug text-muted-foreground">
                 Incluye {formatCurrency(budgetRemaining)} del presupuesto de la
                 quincena (lo aún no gastado del sobre); lo ya gastado entra en
                 Pagado.
@@ -388,7 +389,7 @@ export default function SummaryBlock({
 
             {planningOrphanCardPayments != null &&
             planningOrphanCardPayments.count > 0 ? (
-              <p className="text-[10px] leading-snug text-muted-foreground">
+              <p className="text-caption leading-snug text-muted-foreground">
                 Incluye {formatCurrency(planningOrphanCardPayments.total)} en{' '}
                 {planningOrphanCardPayments.count} pago
                 {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
@@ -405,7 +406,7 @@ export default function SummaryBlock({
                 role="region"
                 aria-label="Desglose de ingresos"
               >
-                <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700/90 dark:text-blue-400/90">
+                <h4 className="mb-2 flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-blue-700/90 dark:text-blue-400/90">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-500/15 ring-1 ring-blue-500/25">
                     <Wallet
                       className="h-3 w-3 text-blue-600 dark:text-blue-400"
@@ -434,7 +435,7 @@ export default function SummaryBlock({
                             {displayLabel}
                           </span>
                           <div className="flex shrink-0 items-center gap-1">
-                            <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                            <span className="font-sans text-sm font-semibold tabular-nums text-foreground">
                               {formatCurrency(item.amount)}
                             </span>
                             {onEditIncomeSource && item.incomeTemplateId != null ? (
@@ -471,7 +472,7 @@ export default function SummaryBlock({
                             <span className="truncate text-sm text-foreground/90">
                               {userInc.userName}
                             </span>
-                            <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground">
+                            <span className="shrink-0 font-sans text-sm font-semibold tabular-nums text-foreground">
                               {formatCurrency(userInc.income)}
                             </span>
                           </div>
@@ -492,7 +493,7 @@ export default function SummaryBlock({
                 role="region"
                 aria-label="Desglose de liquidez actual"
               >
-                <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700/90 dark:text-emerald-400/90">
+                <h4 className="mb-2 flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-emerald-700/90 dark:text-emerald-400/90">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 ring-1 ring-emerald-500/25">
                     <Banknote
                       className="h-3 w-3 text-emerald-600 dark:text-emerald-400"
@@ -542,15 +543,15 @@ export default function SummaryBlock({
                                 <AssigneeAvatar
                                   name={w.assignee.name}
                                   size="sm"
-                                  className="size-5 text-[10px]"
+                                  className="size-5 text-caption"
                                 />
                               ) : null}
-                              <span className="shrink-0 text-[10px] text-muted-foreground/80">
+                              <span className="shrink-0 text-caption text-muted-foreground/80">
                                 ({fundingWalletTypeLabel(w.type)})
                               </span>
                             </span>
                           </span>
-                          <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-foreground">
+                          <span className="shrink-0 font-sans text-xs font-semibold tabular-nums text-foreground">
                             {formatCurrency(w.amount)}
                           </span>
                         </div>
@@ -558,7 +559,7 @@ export default function SummaryBlock({
                     })}
                   </div>
                 ) : (
-                  <p className="mb-2 text-[10px] leading-snug text-muted-foreground">
+                  <p className="mb-2 text-caption leading-snug text-muted-foreground">
                     No hay billeteras activas de efectivo o débito.
                   </p>
                 )}
@@ -578,9 +579,7 @@ export default function SummaryBlock({
                       <span className="text-muted-foreground">
                         Menos pendiente de la quincena (no pagado)
                       </span>
-                      <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                        −{formatCurrency(displayPendienteFundingRow)}
-                      </span>
+                      <Money value={-displayPendienteFundingRow} size="caption" />
                     </div>
                     {displayPendienteFundingRow > 0 &&
                     pendingExpenseItems.length > 0 ? (
@@ -591,12 +590,14 @@ export default function SummaryBlock({
                         {pendingExpenseItems.map((item) => (
                           <li
                             key={item.id}
-                            className="flex items-center justify-between gap-2 text-[10px] leading-snug text-muted-foreground"
+                            className="flex items-center justify-between gap-2 text-caption leading-snug text-muted-foreground"
                           >
                             <span className="min-w-0 truncate">{item.name}</span>
-                            <span className="shrink-0 font-mono tabular-nums text-amber-700/90 dark:text-amber-400/90">
-                              −{formatCurrency(item.amount)}
-                            </span>
+                            <Money
+                              value={-item.amount}
+                              size="caption"
+                              className="shrink-0"
+                            />
                           </li>
                         ))}
                       </ul>
@@ -607,9 +608,7 @@ export default function SummaryBlock({
                       <span className="text-muted-foreground">
                         Menos deducciones de nómina (préstamos)
                       </span>
-                      <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                        −{formatCurrency(payrollLoanDeduction)}
-                      </span>
+                      <Money value={-payrollLoanDeduction} size="caption" />
                     </div>
                   ) : null}
                   {displayBudgetFundingRow > 0 ? (
@@ -617,9 +616,7 @@ export default function SummaryBlock({
                       <span className="text-muted-foreground">
                         Menos del presupuesto de la quincena
                       </span>
-                      <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                        −{formatCurrency(displayBudgetFundingRow)}
-                      </span>
+                      <Money value={-displayBudgetFundingRow} size="caption" />
                     </div>
                   ) : null}
                   <div className="flex items-center justify-between gap-2 border-t border-emerald-500/20 pt-2 text-xs font-semibold">

@@ -72,12 +72,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { WalletListItem } from '@/types/catalog';
-import type { LenderListItem } from '@/types/lenders';
-import { listLenders } from '@/lib/api/lenders';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletListCard } from '@/components/wallets/WalletListCard';
 import { WalletCardsList } from '@/components/wallets/WalletCardsList';
-import { LenderRail } from '@/components/wallets/LenderRail';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
@@ -164,13 +161,12 @@ const CREDIT_LINE_OPTIONS: { value: CreditLineFilterValue; label: string }[] =
   ];
 
 /** Efectivo/débito vs tarjetas; al elegir un tipo concreto en chips, se vuelve a «all». */
-type KindFilterValue = 'all' | 'funding' | 'credit' | 'lenders';
+type KindFilterValue = 'all' | 'funding' | 'credit';
 
 const KIND_FILTER_CHIPS: { value: KindFilterValue; label: string }[] = [
   { value: 'all', label: 'Todas' },
   { value: 'funding', label: 'Efectivo y débito' },
   { value: 'credit', label: 'Tarjetas' },
-  { value: 'lenders', label: 'Prestamistas' },
 ];
 
 const FILTERS_STORAGE_KEY = 'micasa.wallets.listFilters';
@@ -230,8 +226,7 @@ const parseStoredFilters = (): StoredWalletListFilters | null => {
     if (
       o.kindFilter === 'all' ||
       o.kindFilter === 'funding' ||
-      o.kindFilter === 'credit' ||
-      o.kindFilter === 'lenders'
+      o.kindFilter === 'credit'
     ) {
       out.kindFilter = o.kindFilter;
     }
@@ -283,7 +278,6 @@ const walletMatchesKindFilter = (
   kindFilter: KindFilterValue,
 ): boolean => {
   if (w.type === 'GOAL') return false;
-  if (kindFilter === 'lenders') return false;
   if (kindFilter === 'all') return true;
   if (kindFilter === 'funding') {
     return w.type === 'CASH' || w.type === 'DEBIT_CARD';
@@ -441,24 +435,8 @@ export default function WalletsPage() {
   >([]);
   const [filtersReady, setFiltersReady] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [lenders, setLenders] = useState<LenderListItem[]>([]);
 
   const isHouseContext = context?.type === 'house';
-
-  useEffect(() => {
-    if (!context) return;
-    let cancelled = false;
-    listLenders(context)
-      .then((rows) => {
-        if (!cancelled) setLenders(rows.filter((lender) => lender.active));
-      })
-      .catch(() => {
-        if (!cancelled) setLenders([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [context]);
 
   const displayWallets = useMemo(() => {
     const q = searchQuery;
@@ -490,14 +468,6 @@ export default function WalletsPage() {
     sortKey,
     sortDir,
   ]);
-
-  const visibleLenders = useMemo(() => {
-    if (!context) return [];
-    const query = searchQuery.trim().toLowerCase();
-    const active = lenders.filter((lender) => lender.active);
-    if (!query) return active;
-    return active.filter((lender) => lender.name.toLowerCase().includes(query));
-  }, [context, lenders, searchQuery]);
 
   /** Conteos para chips: aplica búsqueda y todos los filtros excepto la dimensión del chip. */
   const statusChipCounts = useMemo(() => {
@@ -603,13 +573,9 @@ export default function WalletsPage() {
         (w) => w.type === 'CASH' || w.type === 'DEBIT_CARD',
       ).length,
       credit: pool.filter((w) => isCreditType(w.type)).length,
-      lenders: lenders.filter((lender) =>
-        lender.name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
-      ).length,
     };
   }, [
     wallets,
-    lenders,
     searchQuery,
     typeFilter,
     statusFilter,
@@ -874,12 +840,8 @@ export default function WalletsPage() {
   );
 
   const handlePullRefresh = useCallback(async () => {
-    const [, lenderRows] = await Promise.all([
-      fetchWallets({ soft: true, rethrow: true }),
-      listLenders(context),
-    ]);
-    setLenders(lenderRows.filter((lender) => lender.active));
-  }, [context, fetchWallets]);
+    await fetchWallets({ soft: true, rethrow: true });
+  }, [fetchWallets]);
 
   useEffect(() => {
     const key = walletListOwnerKey(context);
@@ -1052,7 +1014,7 @@ export default function WalletsPage() {
   return (
     <DirectionalTransition>
     <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Billeteras">
-    <div className="space-y-4 pb-8 md:pb-4">
+    <div className="space-y-4">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
@@ -1105,7 +1067,7 @@ export default function WalletsPage() {
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     Atajos
                   </p>
                   <ScrollFadeChipRow
@@ -1149,14 +1111,14 @@ export default function WalletsPage() {
                       Cupo en rojo
                     </Button>
                   </ScrollFadeChipRow>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     Combinan varios filtros de una vez; no borran tu búsqueda por
                     nombre.
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     Ámbito
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por efectivo o tarjetas">
@@ -1167,9 +1129,7 @@ export default function WalletsPage() {
                           ? kindChipCounts.all
                           : v === 'funding'
                             ? kindChipCounts.funding
-                            : v === 'credit'
-                              ? kindChipCounts.credit
-                              : kindChipCounts.lenders;
+                        : kindChipCounts.credit;
                       return (
                         <button
                           key={v}
@@ -1192,13 +1152,13 @@ export default function WalletsPage() {
                       );
                     })}
                   </ScrollFadeChipRow>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     Si eliges un tipo concreto abajo, el ámbito vuelve a «Todas».
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     Estado
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por estado">
@@ -1236,7 +1196,7 @@ export default function WalletsPage() {
 
                 {isHouseContext ? (
                   <div>
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                       Asignado a
                     </p>
                     <ScrollFadeChipRow ariaLabel="Filtrar por asignación">
@@ -1299,7 +1259,7 @@ export default function WalletsPage() {
                         );
                       })}
                     </ScrollFadeChipRow>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
+                    <p className="mt-1 text-caption text-muted-foreground">
                       Solo en contexto casa: billeteras compartidas o asignadas a
                       un miembro.
                     </p>
@@ -1307,7 +1267,7 @@ export default function WalletsPage() {
                 ) : null}
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     Tipo
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por tipo de billetera">
@@ -1345,7 +1305,7 @@ export default function WalletsPage() {
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                       Monto registrado
                     </p>
                     <ScrollFadeChipRow ariaLabel="Filtrar por monto en libros">
@@ -1395,7 +1355,7 @@ export default function WalletsPage() {
                           {creditLineFilter !== 'all' ? (
                             <Badge
                               variant="secondary"
-                              className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px]"
+                              className="h-5 min-w-5 justify-center rounded-full px-1.5 text-caption"
                             >
                               1
                             </Badge>
@@ -1455,14 +1415,12 @@ export default function WalletsPage() {
             </SkeletonExit>
           ) : (
             <ContentEnter>
-              {wallets.length === 0 && visibleLenders.length === 0 ? (
+              {wallets.length === 0 ? (
                 <EmptyState message="No se encontraron billeteras" />
               ) : (
                 <div className="@container w-full min-w-0">
                   <div className="mx-auto w-full max-w-[22.5rem] space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
-                    {kindFilter === 'lenders' ? (
-                      <LenderRail lenders={visibleLenders} />
-                    ) : displayWallets.length === 0 ? (
+                    {displayWallets.length === 0 ? (
                       <p className="py-8 text-center text-muted-foreground">
                         Ninguna billetera coincide con los filtros.
                       </p>

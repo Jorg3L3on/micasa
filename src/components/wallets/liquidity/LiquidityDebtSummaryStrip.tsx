@@ -61,18 +61,18 @@ export const LiquidityDebtSummaryStrip = ({
       role="region"
       aria-label="Resumen de deudas"
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
         Debes
       </p>
-      <p className="mt-1 font-mono text-xl font-bold tabular-nums text-amber-700 dark:text-amber-300">
+      <p className="mt-1 font-sans text-xl font-bold tabular-nums text-amber-700 dark:text-amber-300">
         {formatCurrency(breakdown.debtTotal)}
       </p>
       {composition.length > 0 ? (
-        <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-caption text-muted-foreground">
           {composition.map((item) => (
             <span key={item.key}>
               {item.label}{' '}
-              <span className="font-mono tabular-nums text-foreground">
+              <span className="font-sans tabular-nums text-foreground">
                 {formatCurrency(item.amount)}
               </span>
             </span>

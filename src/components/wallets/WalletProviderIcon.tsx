@@ -27,7 +27,7 @@ export const WalletProviderIcon = ({
   return (
     <span
       className={cn(
-        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/70 text-[10px] font-semibold uppercase tracking-wide',
+        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/70 text-caption font-semibold uppercase tracking-wide',
         provider?.brandClassName,
         className,
       )}

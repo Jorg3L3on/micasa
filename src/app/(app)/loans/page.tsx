@@ -1173,7 +1173,7 @@ export default function LoansPage() {
     const items = [
       {
         key: 'new-lender',
-        label: 'Nuevo prestamista',
+        label: 'Agregar prestamista',
         onClick: openNewLender,
       },
     ];
@@ -1206,7 +1206,7 @@ export default function LoansPage() {
       activeCount: statusFilter === 'ALL' ? 0 : 1,
     },
     primaryAction: {
-      label: 'Nuevo préstamo',
+      label: 'Agregar préstamo',
       onClick: openCreateLoan,
       icon: primaryActionIcon,
     },
@@ -1270,7 +1270,7 @@ export default function LoansPage() {
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               Estado
             </p>
             <div
@@ -1320,7 +1320,7 @@ export default function LoansPage() {
         <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}>
           <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden data-icon="inline-start" />
-            Cargando préstamos...
+            Cargando préstamos…
           </div>
         </div>
       ) : loadError ? (
@@ -1351,7 +1351,7 @@ export default function LoansPage() {
             message="No tienes préstamos registrados."
             description="Crea un préstamo para ver sus pagos en el inicio."
             action={{
-              label: 'Crear préstamo',
+              label: 'Agregar préstamo',
               onClick: openCreateLoan,
             }}
           />
@@ -1463,7 +1463,7 @@ export default function LoansPage() {
                         ? 'default'
                         : 'secondary'
                   }
-                  className="text-[10px]"
+                  className="text-caption"
                 >
                   {statusLabel(selectedLoan.status)}
                 </Badge>
@@ -1475,7 +1475,7 @@ export default function LoansPage() {
               <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
                 <aside className="space-y-3 lg:sticky lg:top-0 lg:max-h-[calc(min(92dvh,44rem)-5.5rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
                   <section className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-3')}>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                       Acciones
                     </p>
                     <div className="mt-2 flex items-center gap-2 md:hidden">
@@ -1676,10 +1676,10 @@ export default function LoansPage() {
                   <section className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-4')}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                           Saldo pendiente
                         </p>
-                        <p className="mt-1 font-mono text-xl font-bold tabular-nums text-foreground">
+                        <p className="mt-1 font-sans text-xl font-bold tabular-nums text-foreground">
                           <CurrencyTicker value={selectedLoan.remainingAmount} />
                         </p>
                       </div>
@@ -1691,7 +1691,7 @@ export default function LoansPage() {
                     <div className="mt-4 space-y-2">
                       <div className="flex items-center justify-between gap-2 text-xs">
                         <span className="text-muted-foreground">Progreso</span>
-                        <span className="font-mono font-semibold tabular-nums text-foreground">
+                        <span className="font-sans font-semibold tabular-nums text-foreground">
                           {selectedLoanProgress}%
                         </span>
                       </div>
@@ -1709,31 +1709,31 @@ export default function LoansPage() {
 
                     <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                           Pagado
                         </p>
-                        <p className="mt-1 font-mono text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                        <p className="mt-1 font-sans text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
                           <CurrencyTicker value={selectedLoan.paidAmount} />
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                           Total
                         </p>
-                        <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">
+                        <p className="mt-1 font-sans text-sm font-bold tabular-nums text-foreground">
                           {formatCurrency(selectedLoan.totalPayable)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                           Pago
                         </p>
-                        <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">
+                        <p className="mt-1 font-sans text-sm font-bold tabular-nums text-foreground">
                           {formatCurrency(selectedLoan.paymentAmount)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                           Inicio
                         </p>
                         <p className="mt-1 text-xs font-semibold text-foreground">
@@ -1753,7 +1753,7 @@ export default function LoansPage() {
                       </div>
                       <div>
                         <dt className="font-semibold uppercase tracking-wider text-muted-foreground">
-                          Cuenta relacionada
+                          Billetera relacionada
                         </dt>
                         <dd className="mt-1 font-medium text-foreground">
                           {selectedLoan.linkedWalletName ?? 'Sin cuenta vinculada'}
@@ -1855,7 +1855,7 @@ export default function LoansPage() {
                             ya generados.
                           </p>
                         </div>
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-caption">
                           Calendario bloqueado
                         </Badge>
                       </div>
@@ -1924,7 +1924,7 @@ export default function LoansPage() {
                           ) : null}
                         </div>
                         <div className="space-y-1.5">
-                          <Label>Cuenta relacionada</Label>
+                          <Label>Billetera relacionada</Label>
                           <Select
                             value={loanEditForm.linkedWalletId}
                             onOpenChange={handleSelectOpenChange}
@@ -1933,7 +1933,7 @@ export default function LoansPage() {
                             }
                           >
                             <SelectTrigger
-                              aria-label="Cuenta relacionada para seguimiento"
+                              aria-label="Billetera relacionada para seguimiento"
                               className={cn(
                                 loanEditErrors.linkedWalletId &&
                                   'border-destructive focus:ring-destructive/30',
@@ -1961,7 +1961,7 @@ export default function LoansPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="text-caption text-muted-foreground">
                             Relaciona el préstamo para consulta; no mueve dinero.
                           </p>
                           {loanEditErrors.linkedWalletId ? (
@@ -2021,7 +2021,7 @@ export default function LoansPage() {
                             </div>
                           )}
                           {selectedLoan.paymentSource === 'PAYROLL_DEDUCTION' ? (
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-caption text-muted-foreground">
                               Opcional. Vincular una plantilla de ingreso mejora
                               las etiquetas en el inicio y obligaciones
                               próximas («Nómina: …»).
@@ -2123,7 +2123,7 @@ export default function LoansPage() {
                                 : 'Sin pagos pendientes'}
                           </p>
                         </div>
-                        <Badge variant="outline" className="w-fit text-[10px]">
+                        <Badge variant="outline" className="w-fit text-caption">
                           {selectedLoan.paidPayments}/{selectedLoan.paymentCount}{' '}
                           cubiertos
                         </Badge>
@@ -2144,7 +2144,7 @@ export default function LoansPage() {
                             className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground"
                           >
                             {label}
-                            <span className="font-mono font-semibold tabular-nums text-foreground">
+                            <span className="font-sans font-semibold tabular-nums text-foreground">
                               {selectedScheduleCounts[status]}
                             </span>
                           </span>
@@ -2199,20 +2199,20 @@ export default function LoansPage() {
                                   <p className="truncate text-sm font-medium leading-tight text-foreground">
                                     {formatDate(payment.dueDate)}
                                   </p>
-                                  <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground">
+                                  <p className="mt-0.5 truncate text-caption leading-tight text-muted-foreground">
                                     #{payment.sequence} ·{' '}
                                     {paymentStatusLabel(visualStatus)} ·{' '}
                                     {originShort}
                                   </p>
                                 </div>
                                 <div className="flex shrink-0 flex-col items-end gap-1">
-                                  <span className="font-mono text-sm font-semibold tabular-nums leading-none">
+                                  <span className="font-sans text-sm font-semibold tabular-nums leading-none">
                                     {formatCurrency(payment.amount)}
                                   </span>
                                   {payment.status === 'SCHEDULED' ? (
                                     <div className="flex items-center gap-0.5">
                                       {isPayrollDeductionLoan ? (
-                                        <span className="max-w-[7.5rem] text-right text-[10px] leading-tight text-muted-foreground">
+                                        <span className="max-w-[7.5rem] text-right text-caption leading-tight text-muted-foreground">
                                           Se descuenta del ingreso
                                         </span>
                                       ) : (
@@ -2220,7 +2220,7 @@ export default function LoansPage() {
                                           type="button"
                                           variant="outline"
                                           size="sm"
-                                          className="h-7 rounded-lg px-2 text-[11px]"
+                                          className="h-7 rounded-lg px-2 text-caption"
                                           onClick={() =>
                                             startPaymentAction(
                                               payment,
@@ -2295,7 +2295,7 @@ export default function LoansPage() {
                                       type="button"
                                       variant="ghost"
                                       size="sm"
-                                      className="h-7 px-1.5 text-[11px] text-muted-foreground"
+                                      className="h-7 px-1.5 text-caption text-muted-foreground"
                                       onClick={() =>
                                         startPaymentAction(
                                           payment,
@@ -2361,12 +2361,12 @@ export default function LoansPage() {
                                       {formatDate(payment.dueDate)}
                                     </span>
                                     {payment.paidAt ? (
-                                      <span className="text-[10px] text-muted-foreground">
+                                      <span className="text-caption text-muted-foreground">
                                         Pagado {formatDate(payment.paidAt)}
                                       </span>
                                     ) : null}
                                     {payment.note ? (
-                                      <span className="mt-0.5 block text-[10px] text-foreground/80">
+                                      <span className="mt-0.5 block text-caption text-foreground/80">
                                         {payment.note}
                                       </span>
                                     ) : null}
@@ -2374,14 +2374,14 @@ export default function LoansPage() {
                                   <TableCell className="whitespace-normal">
                                     <span
                                       className={cn(
-                                        'inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-bold uppercase tracking-wider',
+                                        'inline-flex h-5 items-center rounded-full border px-2 text-caption font-bold uppercase tracking-wider',
                                         tone.badge,
                                       )}
                                     >
                                       {paymentStatusLabel(visualStatus)}
                                     </span>
                                     {payment.linkedExpenseId ? (
-                                      <span className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                                      <span className="mt-1 flex items-center gap-1 text-caption text-muted-foreground">
                                         <ReceiptText
                                           className="h-3 w-3"
                                           aria-hidden
@@ -2395,7 +2395,7 @@ export default function LoansPage() {
                                     {originShort}
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <span className="font-mono text-sm font-semibold tabular-nums">
+                                    <span className="font-sans text-sm font-semibold tabular-nums">
                                       {formatCurrency(payment.amount)}
                                     </span>
                                   </TableCell>
@@ -2403,7 +2403,7 @@ export default function LoansPage() {
                                     {payment.status === 'SCHEDULED' ? (
                                       <div className="inline-flex items-center justify-end gap-1">
                                         {isPayrollDeductionLoan ? (
-                                          <span className="max-w-[8rem] text-right text-[11px] leading-tight text-muted-foreground">
+                                          <span className="max-w-[8rem] text-right text-caption leading-tight text-muted-foreground">
                                             Se descuenta del ingreso
                                           </span>
                                         ) : (
@@ -2411,7 +2411,7 @@ export default function LoansPage() {
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            className="h-8 gap-1 px-2 text-[11px]"
+                                            className="h-8 gap-1 px-2 text-caption"
                                             onClick={() =>
                                               startPaymentAction(
                                                 payment,
@@ -2488,7 +2488,7 @@ export default function LoansPage() {
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 gap-1 px-2 text-[11px]"
+                                        className="h-8 gap-1 px-2 text-caption"
                                         onClick={() =>
                                           startPaymentAction(
                                             payment,
@@ -2612,7 +2612,7 @@ export default function LoansPage() {
               })}
             </ul>
 
-            <p className="font-mono text-sm font-semibold tabular-nums">
+            <p className="font-sans text-sm font-semibold tabular-nums">
               Total {formatCurrency(batchSelectedTotal)}
             </p>
 
@@ -2722,7 +2722,7 @@ export default function LoansPage() {
           setNewLenderOpen(open);
           if (!open) setNewLenderName('');
         }}
-        title="Nuevo prestamista"
+        title="Agregar prestamista"
         description="Identidad a la que le debes. Luego puedes agregar contratos debajo."
         busy={newLenderSubmitting}
       >
@@ -2749,7 +2749,7 @@ export default function LoansPage() {
             className={OVERLAY_PRIMARY_BUTTON_CLASS}
             disabled={newLenderSubmitting || !newLenderName.trim()}
           >
-            {newLenderSubmitting ? 'Creando…' : 'Crear prestamista'}
+            {newLenderSubmitting ? 'Creando…' : 'Agregar prestamista'}
           </Button>
         </form>
       </ResponsiveOverlay>
@@ -2772,7 +2772,7 @@ export default function LoansPage() {
         }
         error={deleteError}
         confirmLabel="Eliminar préstamo"
-        loadingLabel="Eliminando préstamo..."
+        loadingLabel="Eliminando préstamo…"
       />
     </div>
     </MobilePullToRefresh>

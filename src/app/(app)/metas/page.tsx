@@ -167,7 +167,7 @@ export default function MetasPage() {
       activeCount: activeFilterDimensionCount,
     },
     primaryAction: {
-      label: 'Nueva meta',
+      label: 'Agregar meta',
       onClick: openCreateDialog,
       icon: primaryActionIcon,
     },
@@ -279,11 +279,11 @@ export default function MetasPage() {
 
   return (
     <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Metas">
-    <div className="space-y-5 pb-8 md:pb-4">
+    <div className="space-y-5">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               Estado
             </p>
             <div
@@ -346,7 +346,7 @@ export default function MetasPage() {
               onClick={openCreateDialog}
             >
               <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-              Nueva meta
+              Agregar meta
             </Button>
           ) : null}
         </div>

@@ -86,7 +86,7 @@ export default function EditFortnightAmountDialog({
           >
             <OverlayHint role="status">
               Monto actual:{' '}
-              <span className="font-mono font-semibold tabular-nums text-foreground">
+              <span className="font-sans font-semibold tabular-nums text-foreground">
                 {formatCurrency(defaultAmount)}
               </span>
             </OverlayHint>

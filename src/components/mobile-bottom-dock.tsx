@@ -28,6 +28,7 @@ import {
 import { getDockDestinations } from '@/components/nav-destinations';
 import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
 import { useSidebar } from '@/components/ui/sidebar';
+import { DOCK_FLOAT_PADDING_CLASS } from '@/lib/ui/dock-clearance';
 import { cn } from '@/lib/utils';
 
 const PILL_SPRING: Transition = {
@@ -45,7 +46,7 @@ const MENU_TRANSITION: Transition = {
 };
 
 export const MOBILE_DOCK_SHELL_CLASS = cn(
-  'relative grid h-16 grid-cols-5 items-center overflow-hidden rounded-full',
+  'relative grid h-(--dock-bar-height) grid-cols-5 items-center overflow-hidden rounded-full',
   'border border-black/10 bg-background/70 shadow-[0_12px_40px_-16px_rgba(15,23,42,0.35),inset_0_1px_0_rgba(255,255,255,0.5)]',
   'supports-[backdrop-filter]:bg-background/45 backdrop-blur-2xl backdrop-saturate-180',
   'dark:border-white/[0.12] dark:bg-[rgb(9_14_29/0.6)] dark:supports-[backdrop-filter]:bg-[rgb(9_14_29/0.4)] dark:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.72),0_32px_80px_-36px_rgba(58,55,252,0.16),inset_0_1px_0_rgba(255,255,255,0.06)]',
@@ -101,7 +102,7 @@ const DockTabLink = ({
         aria-current={active ? 'page' : undefined}
         aria-label={title}
         className={cn(
-          'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors',
+          'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-caption font-medium transition-colors',
           active ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
         )}
       >
@@ -116,7 +117,7 @@ const DockTabLink = ({
         <Icon className="h-5 w-5 shrink-0" aria-hidden />
         <span
           className={cn(
-            'max-w-full truncate transition-opacity',
+            'max-w-full text-center leading-none tracking-tight transition-opacity',
             active ? 'opacity-100' : 'opacity-60',
           )}
         >
@@ -215,7 +216,10 @@ function MobileBottomDockInner() {
     <nav
       aria-label="Navegación principal"
       data-testid="mobile-bottom-dock"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] md:hidden"
+      className={cn(
+        'pointer-events-none fixed inset-x-0 bottom-0 z-50 px-3 md:hidden',
+        DOCK_FLOAT_PADDING_CLASS,
+      )}
     >
       <div className="pointer-events-auto relative mx-auto max-w-lg">
         <AnimatePresence>
@@ -352,7 +356,7 @@ function MobileBottomDockInner() {
               onClick={handleOpenMore}
               onKeyDown={handleMoreKeyDown}
               className={cn(
-                'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors',
+                'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-caption font-medium transition-colors',
                 moreActive ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
               )}
             >
@@ -367,7 +371,7 @@ function MobileBottomDockInner() {
               <MoreHorizontal className="h-5 w-5 shrink-0" aria-hidden />
               <span
                 className={cn(
-                  'max-w-full truncate transition-opacity',
+                  'max-w-full text-center leading-none tracking-tight transition-opacity',
                   moreActive ? 'opacity-100' : 'opacity-60',
                 )}
               >

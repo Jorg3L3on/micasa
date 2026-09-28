@@ -164,7 +164,7 @@ export const EditCardPaymentPlanDialog = ({
             {knownPeriodAmount != null ? (
               <>
                 Toca pagar:{' '}
-                <span className="font-mono font-semibold tabular-nums text-foreground">
+                <span className="font-sans font-semibold tabular-nums text-foreground">
                   {formatCurrency(knownPeriodAmount)}
                 </span>
               </>
@@ -174,7 +174,7 @@ export const EditCardPaymentPlanDialog = ({
               </span>
             )}
             {' · '}Deuda total:{' '}
-            <span className="font-mono font-semibold tabular-nums text-foreground">
+            <span className="font-sans font-semibold tabular-nums text-foreground">
               {formatCurrency(outstandingBalance)}
             </span>
           </OverlayHint>

@@ -295,7 +295,7 @@ export default function FortnightLoanPaymentsPanel({
                       ? `Nómina · ${group.lenderName}`
                       : `Pagar a ${group.lenderName}`}
                   </button>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-muted-foreground">
                     <span>
                       {group.items.length} contrato
                       {group.items.length === 1 ? '' : 's'}
@@ -310,7 +310,7 @@ export default function FortnightLoanPaymentsPanel({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="font-mono text-sm font-bold tabular-nums">
+                  <span className="font-sans text-sm font-bold tabular-nums">
                     {formatCurrency(group.amount)}
                   </span>
                   {canPay ? (
@@ -318,7 +318,7 @@ export default function FortnightLoanPaymentsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-7 gap-1 px-2 text-[10px]"
+                      className="h-7 gap-1 px-2 text-caption"
                       onClick={() =>
                         isPayroll
                           ? handleOpenManageGroup(group.items)
@@ -347,7 +347,7 @@ export default function FortnightLoanPaymentsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-7 gap-1 px-2 text-[10px]"
+                      className="h-7 gap-1 px-2 text-caption"
                       onClick={() => handleOpenManage(scheduledItems)}
                       aria-label={
                         scheduledItems.length > 1
@@ -367,7 +367,7 @@ export default function FortnightLoanPaymentsPanel({
                   {group.items.map((item) => (
                     <li
                       key={item.id}
-                      className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
+                      className="flex items-center justify-between gap-2 text-caption text-muted-foreground"
                     >
                       <button
                         type="button"
@@ -377,7 +377,7 @@ export default function FortnightLoanPaymentsPanel({
                         {item.loanName}
                       </button>
                       <span className="flex shrink-0 items-center gap-2">
-                        <span className="font-mono tabular-nums">
+                        <span className="font-sans tabular-nums">
                           {formatCurrency(item.amount)}
                         </span>
                         {item.status === 'SCHEDULED' ? (
@@ -385,7 +385,7 @@ export default function FortnightLoanPaymentsPanel({
                             type="button"
                             size="sm"
                             variant="ghost"
-                            className="h-6 px-1.5 text-[10px]"
+                            className="h-6 px-1.5 text-caption"
                             onClick={() => handleOpenManage(item)}
                             aria-label={`Gestionar ${item.loanName}`}
                           >

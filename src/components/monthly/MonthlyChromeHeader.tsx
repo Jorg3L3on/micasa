@@ -228,7 +228,7 @@ const FortnightProgressStatus = ({
             )}
           </p>
           {tone === 'upcoming' ? (
-            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               Próxima
             </span>
           ) : (
@@ -247,7 +247,7 @@ const FortnightProgressStatus = ({
           tone={tone}
           label={progressLabel}
         />
-        <div className="flex items-center justify-between gap-2 text-[10px] leading-none text-muted-foreground sm:text-[11px]">
+        <div className="flex items-center justify-between gap-2 text-caption leading-none text-muted-foreground sm:text-caption">
           <span className={cn('min-w-0 truncate', accentEmphasisClass)}>
             {leftDate}
           </span>

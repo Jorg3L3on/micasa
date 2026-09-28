@@ -61,10 +61,10 @@ export const CreditCardInstallmentPortfolio = ({
     <div className="space-y-4" role="region" aria-label="Cuotas vigentes">
       {!embedded ? (
         <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
             Saldo del plan
           </p>
-          <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
+          <p className="font-sans text-2xl font-bold tabular-nums tracking-tight">
             {formatCurrency(totalExposure)}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -91,7 +91,7 @@ export const CreditCardInstallmentPortfolio = ({
                     <CategoryLabel
                       name={item.purchase.category}
                       icon={item.purchase.categoryIcon}
-                      className="text-[11px] text-muted-foreground"
+                      className="text-caption text-muted-foreground"
                     />
                   </div>
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
@@ -101,17 +101,17 @@ export const CreditCardInstallmentPortfolio = ({
 
                 <div className="mb-2 flex items-end justify-between gap-2">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                       Cuota {item.currentInstallment} de {item.totalInstallments}
                     </p>
-                    <p className="font-mono text-lg font-bold tabular-nums">
+                    <p className="font-sans text-lg font-bold tabular-nums">
                       {formatCurrency(item.purchase.amount)}
                       <span className="text-xs font-normal text-muted-foreground"> / mes</span>
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-muted-foreground">Saldo del plan</p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                    <p className="text-caption text-muted-foreground">Saldo del plan</p>
+                    <p className="font-sans text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
                       {formatCurrency(item.remainingAmount)}
                     </p>
                   </div>
@@ -124,7 +124,7 @@ export const CreditCardInstallmentPortfolio = ({
                   />
                 </div>
 
-                <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-caption text-muted-foreground">
                   <CalendarClock className="h-3 w-3 shrink-0" aria-hidden data-icon="inline-start" />
                   Compra del {formatDate(item.purchase.payment_date)} ·{' '}
                   {item.remainingInstallments} cuota

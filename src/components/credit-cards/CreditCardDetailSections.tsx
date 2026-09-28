@@ -107,15 +107,15 @@ export const CreditCardCycleSpendingBar = ({
     >
       <div className="mb-2 flex items-end justify-between gap-2">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
             {cycleLabel}
           </p>
-          <p className="font-mono text-xl font-bold tabular-nums tracking-tight">
+          <p className="font-sans text-xl font-bold tabular-nums tracking-tight">
             {formatCurrency(total)}
           </p>
         </div>
         {segments.length > 0 ? (
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             {segments.length} categoría{segments.length === 1 ? '' : 's'}
           </p>
         ) : null}
@@ -137,11 +137,11 @@ export const CreditCardCycleSpendingBar = ({
             {segments.slice(0, 4).map(({ category, amount, color }) => (
               <li
                 key={category}
-                className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
+                className="flex items-center gap-1.5 text-caption text-muted-foreground"
               >
                 <span className={cn('inline-block h-1.5 w-1.5 rounded-full', color)} />
                 <span className="max-w-[5.5rem] truncate">{category}</span>
-                <span className="font-mono tabular-nums text-foreground/80">
+                <span className="font-sans tabular-nums text-foreground/80">
                   {formatCurrency(amount)}
                 </span>
               </li>
@@ -229,37 +229,40 @@ export const CreditCardVisualHero = ({
                 </span>
               )}
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold leading-tight opacity-95">
+                <p
+                  className="truncate text-sm font-semibold leading-tight opacity-95"
+                  title={card.name}
+                >
                   {card.name}
                 </p>
-                <p className="text-[10px] uppercase tracking-widest opacity-60">
+                <p className="text-caption uppercase tracking-widest opacity-60">
                   Corte {card.cutoff_day} · Pago {card.due_day}
                 </p>
               </div>
             </div>
-            <span className="font-mono text-[11px] tracking-[0.2em] opacity-50">
+            <span className="font-mono text-caption tracking-[0.2em] opacity-50">
               •••• ••••
             </span>
           </div>
 
           <div className="space-y-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+              <p className="text-caption font-semibold uppercase tracking-wider opacity-70">
                 Deuda total
               </p>
-              <p className="text-3xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-4xl">
+              <p className="text-3xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-4xl">
                 {formatCurrency(outstandingBalance)}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
               <div>
-                <p className="text-[9px] uppercase tracking-wider opacity-70">
+                <p className="text-caption uppercase tracking-wider opacity-70">
                   Disponible
                 </p>
                 <p
                   className={cn(
-                    'font-mono text-sm font-semibold tabular-nums leading-snug',
+                    'font-sans text-sm font-semibold tabular-nums leading-snug',
                     (availableCredit ?? 0) < 0 && 'text-red-200',
                   )}
                 >
@@ -270,10 +273,10 @@ export const CreditCardVisualHero = ({
               </div>
               {limit > 0 ? (
                 <div className="text-right">
-                  <p className="text-[9px] uppercase tracking-wider opacity-70">
+                  <p className="text-caption uppercase tracking-wider opacity-70">
                     Límite
                   </p>
-                  <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                  <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                     {formatCurrency(limit)}
                   </p>
                 </div>
@@ -282,9 +285,9 @@ export const CreditCardVisualHero = ({
 
             {utilizationPct != null && limit > 0 ? (
               <div className="space-y-1">
-                <div className="flex justify-between text-[9px] opacity-70">
-                  <span>Utilización</span>
-                  <span className="font-mono tabular-nums">{utilizationPct}%</span>
+                <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
+                  <span className="shrink-0 whitespace-normal">Utilización</span>
+                  <span className="font-sans tabular-nums">{utilizationPct}%</span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                   <div
@@ -348,13 +351,13 @@ export const CreditCardDuePaymentStrip = ({
       aria-label="Toca pagar este corte"
     >
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
           Toca pagar este corte
         </p>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           No es la deuda total ni el saldo del plan.
         </p>
-        <p className="font-mono text-lg font-bold tabular-nums leading-tight">
+        <p className="font-sans text-lg font-bold tabular-nums leading-tight">
           {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
         </p>
       </div>
@@ -384,7 +387,7 @@ export const CreditCardDuePaymentStrip = ({
         <Badge
           variant="outline"
           className={cn(
-            'gap-1 text-[10px] font-medium',
+            'gap-1 text-caption font-medium',
             isMissingCorte
               ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
               : !hasPendingDue
@@ -399,7 +402,7 @@ export const CreditCardDuePaymentStrip = ({
           <CalendarClock className="h-3 w-3" aria-hidden data-icon="inline-start" />
           {dueLabel}
         </Badge>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-caption text-muted-foreground">
           {formatDate(statement.statement_due_date)}
         </span>
       </div>
@@ -440,7 +443,7 @@ export const CreditCardCycleSummary = ({
           <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
         </Button>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
             {isCurrentCycle ? 'Ciclo actual' : 'Ciclo seleccionado'}
           </p>
           <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">
@@ -461,7 +464,7 @@ export const CreditCardCycleSummary = ({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 shrink-0 rounded-full px-2.5 text-[10px]"
+            className="h-9 shrink-0 rounded-full px-2.5 text-caption"
             onClick={onResetToToday}
             aria-label="Volver al ciclo actual"
           >
@@ -502,7 +505,7 @@ export const CreditCardStatementSummaryCard = ({
           <CardTitle className="text-sm font-semibold leading-none">
             Estado de cuenta
           </CardTitle>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <p className="mt-1 text-caption text-muted-foreground">
             Corte y saldos del periodo
           </p>
         </div>
@@ -524,7 +527,7 @@ export const CreditCardStatementSummaryCard = ({
               ? 'Total importado'
               : 'Saldo del corte'}
           </span>
-          <span className="font-mono tabular-nums font-medium">
+          <span className="font-sans tabular-nums font-medium">
             {formatCurrency(
               statement.imported_statement_total ?? statement.last_statement_balance,
             )}
@@ -532,13 +535,13 @@ export const CreditCardStatementSummaryCard = ({
         </div>
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="text-muted-foreground">Pagos desde corte</span>
-          <span className="font-mono tabular-nums font-medium">
+          <span className="font-sans tabular-nums font-medium">
             {formatCurrency(statement.payments_since_last_cutoff)}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="text-muted-foreground">Pagos aplicados</span>
-          <span className="font-mono tabular-nums font-medium">
+          <span className="font-sans tabular-nums font-medium">
             {formatCurrency(statement.payments_applied_to_statement)}
           </span>
         </div>
@@ -557,7 +560,7 @@ export const CreditCardStatementSummaryCard = ({
           )}
         >
           <span>Toca pagar este corte</span>
-          <span className="font-mono tabular-nums">
+          <span className="font-sans tabular-nums">
             {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
           </span>
         </div>
@@ -603,7 +606,7 @@ export const CreditCardActivitySectionCard = ({
       <div className="min-w-0 flex-1">
         <CardTitle className="text-sm font-semibold">{title}</CardTitle>
         {subtitle ? (
-          <p className="mt-0.5 text-[10px] text-muted-foreground">{subtitle}</p>
+          <p className="mt-0.5 text-caption text-muted-foreground">{subtitle}</p>
         ) : null}
       </div>
       {badge}

@@ -248,7 +248,7 @@ export default function CategoriesPage() {
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Nueva categoría',
+      label: 'Agregar categoría',
       onClick: openCreate,
       icon: primaryActionIcon,
     },
@@ -318,7 +318,7 @@ export default function CategoriesPage() {
                     : `Se crean por defecto al registrar; puedes agregar padres o subcategorías de ${kindNoun}.`
                 }
                 action={{
-                  label: 'Nueva categoría',
+                  label: 'Agregar categoría',
                   onClick: openCreate,
                 }}
               />

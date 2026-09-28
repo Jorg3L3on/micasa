@@ -208,7 +208,7 @@ export default function IncomeTemplatesPage() {
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Nueva plantilla de ingreso',
+      label: 'Agregar plantilla de ingreso',
       onClick: handleCreateTemplate,
       icon: primaryActionIcon,
     },
@@ -227,7 +227,7 @@ export default function IncomeTemplatesPage() {
         <CardContent className="py-4">
           {loading ? (
             <div className="py-8 text-center text-muted-foreground">
-              Cargando...
+              Cargando…
             </div>
           ) : templates.length === 0 ? (
             <EmptyState message="No se encontraron plantillas de ingresos" />
@@ -236,7 +236,7 @@ export default function IncomeTemplatesPage() {
               data={templates}
               columns={columns}
               filterColumn="name"
-              filterPlaceholder="Filtrar por nombre..."
+              filterPlaceholder="Filtrar por nombre…"
               columnVisibility
               emptyMessage="No se encontraron plantillas de ingresos."
               renderMobileRow={(template) => (

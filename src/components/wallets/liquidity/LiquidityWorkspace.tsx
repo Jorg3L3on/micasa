@@ -39,7 +39,7 @@ export const LiquidityWorkspace = () => {
   return (
     <MobilePullToRefresh
       onRefresh={handlePullRefresh}
-      ariaLabel="Liquidez"
+      ariaLabel="Análisis"
       errorMessage="No se pudo actualizar tu panorama. Intenta de nuevo."
     >
       <Tabs defaultValue="liquidez" variant="pill" className="flex flex-col gap-4 sm:gap-5">

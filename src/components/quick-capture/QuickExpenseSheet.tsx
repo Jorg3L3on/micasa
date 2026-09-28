@@ -308,7 +308,7 @@ export function QuickExpenseSheet({
                                   providerIconKey={pm.provider_icon_key}
                                   iconClassName="h-5 w-5 rounded-md"
                                 />
-                                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                <span className="font-sans text-xs tabular-nums text-muted-foreground">
                                   {formatCurrency(pm.amount ?? 0)}
                                 </span>
                               </span>
@@ -373,7 +373,7 @@ export function QuickExpenseSheet({
               <ToggleField
                 layout="row"
                 className="px-3"
-                label="Descontar de la cartera"
+                label="Descontar de la billetera"
                 helper={
                   applyWalletDelta
                     ? 'Se restará del saldo. Apaga esto si el saldo ya incluye el pago.'
@@ -384,7 +384,7 @@ export function QuickExpenseSheet({
                   form.setValue('applyWalletDelta', checked)
                 }
                 disabled={loading || submitting}
-                aria-label="Descontar de la cartera"
+                aria-label="Descontar de la billetera"
               />
             ) : null}
 

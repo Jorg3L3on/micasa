@@ -1,6 +1,6 @@
 import { documentTitle } from '@/lib/document-title';
 
-export const metadata = documentTitle('Plantillas de ingresos', {
+export const metadata = documentTitle('Ingresos programados', {
   description: 'Plantillas de ingresos recurrentes por quincena.',
 });
 

@@ -292,7 +292,7 @@ export const CreditCardInstallmentPlanDialog = ({
           aria-busy={submitting}
           className={OVERLAY_PRIMARY_BUTTON_CLASS}
         >
-          {submitting ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear plan'}
+          {submitting ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Agregar plan'}
         </Button>
       </form>
     </ResponsiveOverlay>

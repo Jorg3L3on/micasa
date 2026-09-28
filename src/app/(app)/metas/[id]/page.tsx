@@ -451,7 +451,7 @@ export default function MetaDetailPage() {
                 Ahorrado{' '}
                 <span
                   className={cn(
-                    'font-mono font-semibold tabular-nums',
+                    'font-sans font-semibold tabular-nums',
                     goalMetricInkClass(visual),
                   )}
                 >
@@ -460,7 +460,7 @@ export default function MetaDetailPage() {
                 de{' '}
                 <span
                   className={cn(
-                    'font-mono font-semibold tabular-nums',
+                    'font-sans font-semibold tabular-nums',
                     goalMetricInkClass(visual),
                   )}
                 >
@@ -472,7 +472,7 @@ export default function MetaDetailPage() {
             <>
               <p
                 className={cn(
-                  'text-center font-mono text-3xl font-semibold tabular-nums tracking-tight',
+                  'text-center font-sans text-3xl font-semibold tabular-nums tracking-tight',
                   goalMetricInkClass(visual),
                 )}
               >
@@ -482,7 +482,7 @@ export default function MetaDetailPage() {
                 Ahorrado{' '}
                 <span
                   className={cn(
-                    'font-mono font-semibold tabular-nums',
+                    'font-sans font-semibold tabular-nums',
                     goalMetricInkClass(visual),
                   )}
                 >
@@ -491,7 +491,7 @@ export default function MetaDetailPage() {
                 de{' '}
                 <span
                   className={cn(
-                    'font-mono font-semibold tabular-nums',
+                    'font-sans font-semibold tabular-nums',
                     goalMetricInkClass(visual),
                   )}
                 >
@@ -543,7 +543,7 @@ export default function MetaDetailPage() {
             <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <p>
               Deberías ahorrar{' '}
-              <span className="font-mono font-semibold tabular-nums">
+              <span className="font-sans font-semibold tabular-nums">
                 {formatCurrency(tipRounded)}
               </span>{' '}
               este mes.

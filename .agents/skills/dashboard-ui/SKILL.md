@@ -113,7 +113,7 @@ import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { cn } from '@/lib/utils';
 
 <div className={cn(METRIC_STRIP_CLASS, 'border-l-sky-500/50')}>
-  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+  <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
     Préstamos activos
   </span>
   <span className="text-sm font-bold font-mono tabular-nums">3</span>
@@ -216,7 +216,7 @@ rounded-xl border border-border/60 bg-card p-4 flex flex-col gap-3 shadow-sm  /*
 - `text-card-foreground` — body inside a card on tinted backgrounds
 - Section title: `text-lg font-semibold leading-tight`
 - Subtitle: `text-xs text-muted-foreground`
-- Micro-label: `text-[10px] font-semibold uppercase tracking-wider text-muted-foreground`
+- Micro-label: `text-caption font-semibold uppercase tracking-wider text-muted-foreground` (11px minimum; `text-caption`)
 
 ### Money
 

@@ -655,12 +655,12 @@ export default function ExpenseTable({
             'flex items-center justify-between gap-2 border-l-[3px] border-l-emerald-500/50',
           )}
         >
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
             Total efectivo/débito
           </span>
           <span
             className={cn(
-              'font-mono font-bold tabular-nums text-foreground',
+              'font-sans font-bold tabular-nums text-foreground',
               isCompact ? 'text-sm' : 'text-base',
             )}
           >
@@ -675,16 +675,16 @@ export default function ExpenseTable({
             )}
           >
             <div className="flex min-w-0 flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              <span className="text-caption font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Cargos a tarjeta
               </span>
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-caption text-muted-foreground">
                 No suman hasta pagar el estado de cuenta
               </span>
             </div>
             <span
               className={cn(
-                'font-mono font-bold tabular-nums text-slate-700 dark:text-slate-300',
+                'font-sans font-bold tabular-nums text-slate-700 dark:text-slate-300',
                 isCompact ? 'text-xs' : 'text-sm',
               )}
             >
@@ -920,7 +920,7 @@ export default function ExpenseTable({
                           <Badge
                             variant={e.is_paid ? 'secondary' : badgeColor}
                             className={cn(
-                              'h-4 rounded-full px-1.5 text-[10px] font-medium',
+                              'h-4 rounded-full px-1.5 text-caption font-medium',
                               e.is_paid && 'opacity-60',
                             )}
                           >
@@ -935,7 +935,7 @@ export default function ExpenseTable({
                       {(isCardPay || isLoanPay || isCardCharge) && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {isCardPay && (
-                            <span className="inline-flex h-4 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
+                            <span className="inline-flex h-4 items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-caption font-medium text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300">
                               <span className="h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
                               Pago TC
                             </span>
@@ -943,7 +943,7 @@ export default function ExpenseTable({
                           {isLoanPay && (
                             <span
                               className={cn(
-                                'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium',
+                                'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-caption font-medium',
                                 e.loan_payment_source === 'PAYROLL_DEDUCTION'
                                   ? 'border-slate-500/40 bg-slate-500/10 text-slate-700 dark:border-slate-400/40 dark:bg-slate-500/15 dark:text-slate-300'
                                   : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300',
@@ -962,7 +962,7 @@ export default function ExpenseTable({
                             </span>
                           )}
                           {isCardCharge && (
-                            <span className="inline-flex h-4 items-center gap-1 rounded-full border border-slate-500/40 bg-slate-500/10 px-1.5 text-[10px] font-medium text-slate-700 dark:border-slate-400/40 dark:bg-slate-500/15 dark:text-slate-300">
+                            <span className="inline-flex h-4 items-center gap-1 rounded-full border border-slate-500/40 bg-slate-500/10 px-1.5 text-caption font-medium text-slate-700 dark:border-slate-400/40 dark:bg-slate-500/15 dark:text-slate-300">
                               <span className="h-1 w-1 rounded-full bg-slate-500 dark:bg-slate-400" aria-hidden />
                               Tarjeta
                             </span>
@@ -974,7 +974,7 @@ export default function ExpenseTable({
                     {/* Amount — vertically centered with the card */}
                     <span
                       className={cn(
-                        'shrink-0 font-mono tabular-nums leading-tight',
+                        'shrink-0 font-sans tabular-nums leading-tight',
                         isCompact ? 'text-xs' : 'text-sm',
                         e.is_paid
                           ? 'text-muted-foreground/60'
@@ -1068,10 +1068,10 @@ export default function ExpenseTable({
                       'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px] border-l-emerald-500/50',
                     )}
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                       Total efectivo/débito
                     </span>
-                    <span className="font-mono text-base font-bold tabular-nums text-foreground">
+                    <span className="font-sans text-base font-bold tabular-nums text-foreground">
                       {formatCurrency(total)}
                     </span>
                   </li>
@@ -1083,14 +1083,14 @@ export default function ExpenseTable({
                       )}
                     >
                       <div className="flex min-w-0 flex-col">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        <span className="text-caption font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                           Cargos a tarjeta
                         </span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-caption text-muted-foreground">
                           No suman hasta pagar el estado de cuenta
                         </span>
                       </div>
-                      <span className="font-mono text-sm font-bold tabular-nums text-slate-700 dark:text-slate-300">
+                      <span className="font-sans text-sm font-bold tabular-nums text-slate-700 dark:text-slate-300">
                         {formatCurrency(cardGrandTotal)}
                       </span>
                     </li>

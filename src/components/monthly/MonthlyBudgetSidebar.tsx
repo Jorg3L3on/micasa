@@ -62,7 +62,7 @@ const BudgetSidebarHeader = ({
         >
           Presupuesto de la quincena
         </Heading>
-        <p className="mt-1 text-[10px] text-muted-foreground">{subtitle}</p>
+        <p className="mt-1 text-caption text-muted-foreground">{subtitle}</p>
       </div>
     </div>
   );
@@ -200,14 +200,17 @@ function BudgetAllocationRow({
                 showTooltipLabel={false}
               />
             ) : null}
-            <p className="truncate text-[10px] text-muted-foreground">
+            <p
+              className="truncate text-caption text-muted-foreground"
+              title={allocation.walletName}
+            >
               {allocation.walletName}
             </p>
             {allocation.walletAssignee ? (
               <AssigneeAvatar
                 name={allocation.walletAssignee.name}
                 size="sm"
-                className="size-4 text-[8px]"
+                className="size-5 text-caption"
               />
             ) : null}
           </div>
@@ -230,7 +233,7 @@ function BudgetAllocationRow({
           style={{ width: `${barPercent}%`, ...getAuraBarStyle(barColor) }}
         />
       </div>
-      <div className="flex justify-between gap-2 text-[10px] text-muted-foreground">
+      <div className="flex justify-between gap-2 text-caption text-muted-foreground">
         <span>
           {allocation.budgeted > 0
             ? `${allocation.percentUsed}% de su presupuesto`
@@ -238,7 +241,7 @@ function BudgetAllocationRow({
         </span>
         <span
           className={cn(
-            'font-mono font-semibold tabular-nums',
+            'font-sans font-semibold tabular-nums',
             overspent
               ? 'text-destructive'
               : 'text-emerald-600 dark:text-emerald-300',

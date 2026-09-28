@@ -63,6 +63,18 @@
   --motion-panel: 320ms;
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  /*
+   * Mobile dock clearance. The pill is h-16; the dock floats
+   * max(safe-area, 0.75rem) above the screen edge. Pages and sheets
+   * share this one length — do not add per-page pb-* to clear the dock.
+   */
+  --dock-bar-height: 4rem;
+  --dock-float-gap: 0.75rem;
+  --dock-clearance: calc(
+    var(--dock-bar-height) + max(env(safe-area-inset-bottom, 0px), var(--dock-float-gap))
+  );
+  /* Smallest readable text. JOR-311 adopts this as the caption step. */
+  --text-caption-size: 0.6875rem;
 }
 
 .dark {
@@ -144,6 +156,8 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --text-caption: var(--text-caption-size);
+  --text-caption--line-height: 1.35;
   --animate-shine: shine var(--duration) infinite linear;
   @keyframes shine {
     0% {

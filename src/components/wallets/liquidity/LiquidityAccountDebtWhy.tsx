@@ -49,10 +49,10 @@ export const LiquidityAccountDebtWhy = ({
         return (
           <section key={block.key} aria-label={block.title}>
             <div className="flex items-baseline justify-between gap-3">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <h4 className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                 {block.title}
               </h4>
-              <p className="font-mono text-xs font-semibold tabular-nums text-foreground">
+              <p className="font-sans text-xs font-semibold tabular-nums text-foreground">
                 {formatCurrency(block.total)}
               </p>
             </div>
@@ -66,19 +66,19 @@ export const LiquidityAccountDebtWhy = ({
                     <p className="truncate text-sm font-medium">{line.title}</p>
                     <p
                       className={cn(
-                        'text-[11px] text-muted-foreground',
+                        'text-caption text-muted-foreground',
                         line.status === 'overdue' && 'text-amber-300',
                       )}
                     >
                       {line.subtitle}
                     </p>
                     {line.amountKind === 'monthly' && (line.remainingAmount ?? 0) > 0 ? (
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-caption text-muted-foreground">
                         quedan {formatCurrency(line.remainingAmount ?? 0)} a meses
                       </p>
                     ) : null}
                   </div>
-                  <p className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                  <p className="shrink-0 font-sans text-sm font-semibold tabular-nums">
                     {lineRightLabel(line)}
                   </p>
                 </li>

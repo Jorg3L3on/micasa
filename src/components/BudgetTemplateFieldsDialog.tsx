@@ -144,7 +144,7 @@ export default function BudgetTemplateFieldsDialog({
                         value={field.value}
                         onChange={field.onChange}
                         placeholder="0"
-                        className={`${FIELD_HEIGHT_CLASS} font-mono tabular-nums`}
+                        className={`${FIELD_HEIGHT_CLASS} font-sans tabular-nums`}
                       />
                     </FormControl>
                     <FormMessage />

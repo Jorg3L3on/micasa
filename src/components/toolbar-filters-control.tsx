@@ -79,7 +79,7 @@ export function ToolbarFiltersControl({
 
   const badge =
     (filters.activeCount ?? 0) > 0 ? (
-      <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground tabular-nums">
+      <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-caption font-medium text-primary-foreground tabular-nums">
         {filters.activeCount}
       </span>
     ) : null;

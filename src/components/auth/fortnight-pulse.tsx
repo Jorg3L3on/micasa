@@ -130,9 +130,9 @@ export const FortnightPulse = ({
         />
       </svg>
       <div className="mt-1.5 flex justify-between">
-        <span className="text-[10px] text-[#55535f]">1</span>
-        <span className="text-[10px] text-[#55535f]">16</span>
-        <span className="text-[10px] text-[#55535f]">{daysInMonth}</span>
+        <span className="text-caption text-[#55535f]">1</span>
+        <span className="text-caption text-[#55535f]">16</span>
+        <span className="text-caption text-[#55535f]">{daysInMonth}</span>
       </div>
     </div>
   );

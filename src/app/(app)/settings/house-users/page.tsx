@@ -215,7 +215,7 @@ export default function HouseUsersPage() {
         <CardContent className="py-4">
           {loading ? (
             <div className="py-8 text-center text-muted-foreground">
-              Cargando...
+              Cargando…
             </div>
           ) : users.length === 0 ? (
             <EmptyState message="No hay usuarios en este hogar" />
@@ -224,7 +224,7 @@ export default function HouseUsersPage() {
               data={users}
               columns={columns}
               filterColumn="name"
-              filterPlaceholder="Filtrar por nombre..."
+              filterPlaceholder="Filtrar por nombre…"
               emptyMessage="No hay usuarios en este hogar."
             />
           )}

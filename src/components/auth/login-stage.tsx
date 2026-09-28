@@ -60,7 +60,7 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
             </Link>
 
             <div className="min-[781px]:mt-10">
-              <p className="mb-3.5 text-[11px] font-semibold tracking-[0.14em] text-[#55535f] uppercase">
+              <p className="mb-3.5 text-caption font-semibold tracking-[0.14em] text-[#55535f] uppercase">
                 Bienvenido de vuelta
               </p>
               <p className="max-w-[260px] text-[26px] leading-[1.25] font-semibold tracking-tight text-[#f4f3f8]">

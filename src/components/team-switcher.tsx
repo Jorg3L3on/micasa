@@ -32,7 +32,7 @@ import {
  * Placeholder con la misma envoltura que el botón real pero sin DropdownMenu ni useId de Radix.
  * Evita mismatch de hidratación cuando la sesión no existe en el SSR pero sí en el primer paint del cliente.
  */
-const TeamSwitcherShell = () => (
+export const TeamSwitcherShell = () => (
   <SidebarMenu>
     <SidebarMenuItem>
       <div
@@ -171,13 +171,18 @@ export function TeamSwitcher() {
                 size="lg"
                 className={TEAM_SWITCHER_TRIGGER_CLASS}
                 aria-label={`Contexto: ${displayLabel}`}
+                title={displayLabel}
+                tooltip={displayLabel}
               >
                 <SidebarGlyph icon={DisplayIcon} />
                 <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-[family-name:var(--font-display)] text-sm font-semibold tracking-tight">
+                  <span
+                    className="truncate font-[family-name:var(--font-display)] text-sm font-semibold tracking-tight"
+                    title={displayLabel}
+                  >
                     {displayLabel}
                   </span>
-                  <span className="truncate text-[11px] text-muted-foreground">
+                  <span className="truncate text-caption text-muted-foreground">
                     {context.type === 'user' ? 'Finanzas personales' : 'Casa'}
                   </span>
                 </div>

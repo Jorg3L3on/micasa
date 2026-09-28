@@ -68,7 +68,7 @@ export const WalletAmountTrendIndicator = ({
     >
       <span
         className={cn(
-          'shrink-0 font-mono text-xs font-medium tabular-nums',
+          'shrink-0 font-sans text-xs font-medium tabular-nums',
           amountColorClass,
         )}
       >

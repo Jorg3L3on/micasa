@@ -25,7 +25,7 @@ describe('NAV_DESTINATIONS', () => {
     }
   });
 
-  it('marks Liquidez active on /wallets/liquidity but not Billeteras', () => {
+  it('marks Análisis active on /wallets/liquidity but not Billeteras', () => {
     const pathname = '/wallets/liquidity';
     expect(getNavDestination('liquidity').isActive(pathname)).toBe(true);
     expect(getNavDestination('wallets').isActive(pathname)).toBe(false);
@@ -45,10 +45,18 @@ describe('NAV_DESTINATIONS', () => {
     expect(settings.isActive('/settings/budgets')).toBe(true);
     expect(settings.isActive('/settingsx')).toBe(false);
   });
+
+  it('does not list a stale top-level Presupuestos or Liquidez y análisis item', () => {
+    const titles = NAV_DESTINATIONS.map((item) => item.title);
+    expect(titles).not.toContain('Presupuestos');
+    expect(titles).not.toContain('Liquidez y análisis');
+    expect(titles).toContain('Análisis');
+    expect(titles).toContain('Configuración');
+  });
 });
 
 describe('getDockDestinations', () => {
-  it('uses Panel, Billeteras and Liquidez as the dock link tabs', () => {
+  it('uses Panel, Billeteras and Análisis as the dock link tabs', () => {
     const tabs = getDockDestinations();
     expect(tabs.map((item) => item.dockTitle ?? item.title)).toEqual([
       'Panel',

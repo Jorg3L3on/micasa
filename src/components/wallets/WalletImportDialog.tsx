@@ -108,12 +108,12 @@ const WalletImportDialog = ({
       <div className="flex flex-col gap-4">
         <p className="text-xs leading-relaxed text-muted-foreground">
           Sube un CSV con columnas{' '}
-          <code className="font-mono text-[11px]">
+          <code className="font-mono text-caption">
             date,description,amount,category,type
           </code>
-          . La columna <code className="font-mono text-[11px]">type</code>{' '}
-          debe ser <code className="font-mono text-[11px]">expense</code> o{' '}
-          <code className="font-mono text-[11px]">income</code>. Los gastos se
+          . La columna <code className="font-mono text-caption">type</code>{' '}
+          debe ser <code className="font-mono text-caption">expense</code> o{' '}
+          <code className="font-mono text-caption">income</code>. Los gastos se
           registran como pagados con esta billetera y los ingresos aumentan el
           saldo.
         </p>
@@ -179,10 +179,10 @@ const WalletImportDialog = ({
                 role="alert"
                 id="wallet-import-field-errors"
               >
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                   Errores
                 </p>
-                <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-4 text-[11px] text-destructive">
+                <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-4 text-caption text-destructive">
                   {result.errors.slice(0, 50).map((e, idx) => (
                     <li key={idx}>
                       Línea {e.line}: {e.message}

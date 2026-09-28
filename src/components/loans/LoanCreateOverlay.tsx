@@ -103,7 +103,7 @@ export const LoanCreateOverlay = ({
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
-      title="Nuevo préstamo"
+      title="Agregar préstamo"
       description="Captura el total, frecuencia y origen de pago para generar el calendario."
       busy={submitting}
       contentClassName="sm:max-w-lg"
@@ -170,7 +170,7 @@ export const LoanCreateOverlay = ({
                       {lender.name}
                     </SelectItem>
                   ))}
-                  <SelectItem value="__new__">Nuevo prestamista…</SelectItem>
+                  <SelectItem value="__new__">Agregar prestamista…</SelectItem>
                 </SelectContent>
               </Select>
             </GroupedRow>
@@ -375,7 +375,7 @@ export const LoanCreateOverlay = ({
                 </Select>
               </GroupedRow>
             )}
-            <GroupedRow label="Cuenta">
+            <GroupedRow label="Billetera">
               <Select
                 value={form.linkedWalletId || 'none'}
                 onOpenChange={handleSelectOpenChange}
@@ -384,7 +384,7 @@ export const LoanCreateOverlay = ({
                 }
               >
                 <SelectTrigger
-                  aria-label="Cuenta relacionada para seguimiento"
+                  aria-label="Billetera relacionada para seguimiento"
                   className={OVERLAY_ROW_TRIGGER_CLASS}
                 >
                   <SelectValue placeholder="Opcional">
@@ -441,7 +441,7 @@ export const LoanCreateOverlay = ({
                 data-icon="inline-start"
               />
             ) : null}
-            {submitting ? 'Creando…' : 'Crear préstamo'}
+            {submitting ? 'Creando…' : 'Agregar préstamo'}
           </Button>
         </form>
       )}

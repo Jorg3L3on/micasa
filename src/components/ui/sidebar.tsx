@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeftIcon } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { DOCK_CLEARANCE_PADDING_CLASS } from "@/lib/ui/dock-clearance"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -164,7 +165,12 @@ function MobileSidebarSheetBody({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {children}
       </div>
-      <div className="border-sidebar-border shrink-0 border-t px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div
+        className={cn(
+          "border-sidebar-border shrink-0 border-t px-2 pt-2",
+          DOCK_CLEARANCE_PADDING_CLASS,
+        )}
+      >
         <Button
           type="button"
           variant="ghost"
@@ -438,7 +444,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "text-sidebar-foreground/55 ring-sidebar-ring flex h-7 shrink-0 items-center rounded-md px-2 text-[10px] font-semibold uppercase tracking-wider outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-3.5 [&>svg]:shrink-0",
+        "text-sidebar-foreground/55 ring-sidebar-ring flex h-7 shrink-0 items-center rounded-md px-2 text-caption font-semibold uppercase tracking-wider outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-3.5 [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className
       )}

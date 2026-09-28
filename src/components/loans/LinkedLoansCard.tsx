@@ -69,7 +69,7 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
         <CardTitle className="text-sm font-semibold">
           Préstamos relacionados
         </CardTitle>
-        <Badge variant="secondary" className="ml-auto text-[10px] tabular-nums">
+        <Badge variant="secondary" className="ml-auto text-caption tabular-nums">
           {loans.length}
         </Badge>
       </CardHeader>
@@ -107,7 +107,7 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       <Badge
                         variant="outline"
-                        className="h-5 text-[10px] text-muted-foreground"
+                        className="h-5 text-caption text-muted-foreground"
                       >
                         {getLoanPaymentSourceLabel(loan)}
                       </Badge>
@@ -119,14 +119,14 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
                               ? 'default'
                               : 'secondary'
                           }
-                          className="h-5 text-[10px]"
+                          className="h-5 text-caption"
                         >
                           {relationship.label}
                         </Badge>
                       ))}
                     </div>
                     {relationships.length > 0 ? (
-                      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                      <p className="mt-1 text-caption leading-snug text-muted-foreground">
                         {relationships
                           .map((relationship) => relationship.description)
                           .join(' ')}
@@ -134,10 +134,10 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
                     ) : null}
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="font-mono text-sm font-bold tabular-nums">
+                    <p className="font-sans text-sm font-bold tabular-nums">
                       {formatCurrency(loan.remainingAmount)}
                     </p>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <p className="text-caption uppercase tracking-wider text-muted-foreground">
                       pendiente
                     </p>
                   </div>

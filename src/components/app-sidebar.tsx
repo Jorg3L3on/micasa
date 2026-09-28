@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
-import { TeamSwitcher } from '@/components/team-switcher';
+import { TeamSwitcher, TeamSwitcherShell } from '@/components/team-switcher';
 import { NavMain, type NavMainItem } from '@/components/nav-main';
 import { NAV_DESTINATIONS } from '@/components/nav-destinations';
 import {
@@ -64,7 +64,9 @@ export function AppSidebar({
       <MobileSidebarCloseOnRoute />
       <Sidebar collapsible="icon" {...props}>
         <SidebarHeader>
-          <TeamSwitcher />
+          <Suspense fallback={<TeamSwitcherShell />}>
+            <TeamSwitcher />
+          </Suspense>
         </SidebarHeader>
         <SidebarContent>
           <NavMain groupLabel="Menú" items={menuItems} />

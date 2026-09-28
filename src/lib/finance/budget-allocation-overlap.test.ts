@@ -11,7 +11,7 @@ describe('allocationOverlapMessage', () => {
     ).toBeNull();
   });
 
-  it('rejects the same category twice with Cualquier cartera', () => {
+  it('rejects the same category twice with Cualquier billetera', () => {
     expect(
       allocationOverlapMessage([
         { wallet_id: null, category_id: 10 },
@@ -20,16 +20,16 @@ describe('allocationOverlapMessage', () => {
     ).toMatch(/dos veces/);
   });
 
-  it('rejects Cualquier cartera combined with a specific wallet on the same category', () => {
+  it('rejects Cualquier billetera combined with a specific wallet on the same category', () => {
     expect(
       allocationOverlapMessage([
         { wallet_id: null, category_id: 10 },
         { wallet_id: 4, category_id: 10 },
       ]),
-    ).toMatch(/cartera específica/);
+    ).toMatch(/billetera específica/);
   });
 
-  it('rejects a child allocation when the parent is Cualquier cartera', () => {
+  it('rejects a child allocation when the parent is Cualquier billetera', () => {
     const parents = new Map<number, number | null>([
       [10, null],
       [11, 10],
@@ -45,7 +45,7 @@ describe('allocationOverlapMessage', () => {
     ).toMatch(/subcategor/);
   });
 
-  it('rejects Cualquier cartera on a child when the parent is also allocated', () => {
+  it('rejects Cualquier billetera on a child when the parent is also allocated', () => {
     const parents = new Map<number, number | null>([
       [10, null],
       [11, 10],

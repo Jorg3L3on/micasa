@@ -179,7 +179,7 @@ export const CreditCardPlannedPaymentSection = ({
             <p className="text-sm font-semibold leading-none">
               Pago en planificación
             </p>
-            <p className="mt-1 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-caption text-muted-foreground">
               Cuánto pagarás en la quincena; no cambia la deuda total.
             </p>
           </div>
@@ -235,16 +235,16 @@ export const CreditCardPlannedPaymentSection = ({
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-foreground">
                     {item.fortnightLabel}
-                    <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
+                    <span className="ml-1.5 text-caption font-normal text-muted-foreground">
                       · {timingLabel}
                     </span>
                     {isStalePlan ? (
-                      <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                      <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                         Plan cubierto
                       </span>
                     ) : null}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 text-caption text-muted-foreground">
                     {item.plannerStatus === 'pagado' ? (
                       <>Pagado esta quincena</>
                     ) : isMissingPayment ? (
@@ -300,7 +300,7 @@ export const CreditCardPlannedPaymentSection = ({
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span
                     className={cn(
-                      'font-mono text-sm font-bold tabular-nums',
+                      'font-sans text-sm font-bold tabular-nums',
                       statusAmountClass(item.plannerStatus, hasCustomPlan),
                     )}
                     aria-label={

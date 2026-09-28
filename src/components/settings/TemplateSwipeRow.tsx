@@ -48,7 +48,7 @@ export const TemplateSwipeRow = ({
               {!active ? (
                 <Badge
                   variant="outline"
-                  className="shrink-0 px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wider"
+                  className="shrink-0 px-1.5 py-0 text-caption font-semibold uppercase tracking-wider"
                 >
                   Inactiva
                 </Badge>
@@ -60,7 +60,7 @@ export const TemplateSwipeRow = ({
               </span>
             ) : null}
           </span>
-          <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+          <span className="shrink-0 font-sans text-sm font-semibold tabular-nums">
             {amount != null ? formatCurrency(amount) : '—'}
           </span>
           <Pencil

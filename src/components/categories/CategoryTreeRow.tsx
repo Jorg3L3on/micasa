@@ -58,7 +58,7 @@ export function CategoryTreeRow({
           {!active ? (
             <Badge
               variant="outline"
-              className="shrink-0 px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wider"
+              className="shrink-0 px-1.5 py-0 text-caption font-semibold uppercase tracking-wider"
             >
               Inactiva
             </Badge>

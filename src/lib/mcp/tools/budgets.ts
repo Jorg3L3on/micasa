@@ -107,7 +107,7 @@ export function registerBudgetTools(server: McpServer) {
     {
       title: 'Crear o actualizar presupuesto',
       description:
-        'Crea o actualiza un presupuesto con una o varias asignaciones (categoría y, si quieres acotar, billetera). Omite wallet_id y wallet_name para Cualquier cartera. La suma de allocations debe igualar amount.',
+        'Crea o actualiza un presupuesto con una o varias asignaciones (categoría y, si quieres acotar, billetera). Omite wallet_id y wallet_name para Cualquier billetera. La suma de allocations debe igualar amount.',
       inputSchema: z.object({
         ...ownerArgs,
         budget_id: z.number().int().positive().optional(),
@@ -122,7 +122,7 @@ export function registerBudgetTools(server: McpServer) {
           .min(1)
           .optional()
           .describe(
-            'Varias asignaciones categoría y billetera opcional. Omite la billetera para Cualquier cartera. La suma debe igualar amount. Si se omite, usa una sola asignación con wallet/category.',
+            'Varias asignaciones categoría y billetera opcional. Omite la billetera para Cualquier billetera. La suma debe igualar amount. Si se omite, usa una sola asignación con wallet/category.',
           ),
       }),
       annotations: { destructiveHint: false, idempotentHint: true },
@@ -244,7 +244,7 @@ export function registerBudgetTools(server: McpServer) {
     {
       title: 'Actualizar asignaciones de presupuesto',
       description:
-        'Reemplaza las asignaciones (categoría, monto y billetera opcional) de un presupuesto existente. Omite la billetera para Cualquier cartera. Mismo PUT /api/budgets/[id]/allocations de la UI.',
+        'Reemplaza las asignaciones (categoría, monto y billetera opcional) de un presupuesto existente. Omite la billetera para Cualquier billetera. Mismo PUT /api/budgets/[id]/allocations de la UI.',
       inputSchema: z.object({
         ...ownerArgs,
         budget_id: z.number().int().positive(),

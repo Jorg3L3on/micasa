@@ -37,7 +37,7 @@ export const LiquidityPanelHeader = ({
           {title}
         </h2>
         {subtitle ? (
-          <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
+          <p className="mt-1.5 text-caption leading-snug text-muted-foreground">{subtitle}</p>
         ) : null}
       </div>
     </div>

@@ -125,10 +125,10 @@ export const LiquiditySpendingCategories = ({
               'flex items-center justify-between gap-2 border-l-[3px] border-l-violet-500/50',
             )}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               Top 5 acumulado
             </span>
-            <span className="font-mono text-sm font-bold tabular-nums text-foreground">
+            <span className="font-sans text-sm font-bold tabular-nums text-foreground">
               {formatCurrency(totalTopFive)}
             </span>
           </div>
@@ -146,7 +146,7 @@ export const LiquiditySpendingCategories = ({
                   <div className="flex min-w-0 items-center gap-2">
                     <span
                       className={cn(
-                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-[10px] font-bold tabular-nums text-white',
+                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-caption font-bold tabular-nums text-white',
                         gradient,
                       )}
                       aria-hidden
@@ -156,10 +156,10 @@ export const LiquiditySpendingCategories = ({
                     <span className="truncate text-sm font-medium">{label}</span>
                   </div>
                   <div className="flex shrink-0 items-baseline gap-2">
-                    <span className="text-[10px] tabular-nums text-muted-foreground">
+                    <span className="text-caption tabular-nums text-muted-foreground">
                       {sharePercent}%
                     </span>
-                    <span className="money-negative font-mono text-sm font-bold tabular-nums">
+                    <span className="money-negative font-sans text-sm font-bold tabular-nums">
                       {formatCurrency(row.total)}
                     </span>
                   </div>

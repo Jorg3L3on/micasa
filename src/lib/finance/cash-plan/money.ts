@@ -15,9 +15,3 @@ export const clamp = (value: number, min: number, max: number): number =>
 
 /** $1. A smaller hole is treated as a balanced period. */
 export const BALANCED_EPS_CENTS = 100;
-
-export const formatPlanMoney = (cents: number): string =>
-  new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-  }).format(fromCents(cents));

@@ -113,9 +113,9 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
             <span className="size-2 rounded-full bg-white/15" />
             <span className="size-2 rounded-full bg-white/15" />
           </span>
-          <span className="hidden text-[11px] text-white/45 sm:inline">Panel financiero</span>
+          <span className="hidden text-caption text-white/45 sm:inline">Panel financiero</span>
         </div>
-        <div className="hidden items-center gap-3 text-[11px] text-white/40 md:flex">
+        <div className="hidden items-center gap-3 text-caption text-white/40 md:flex">
           {['Inicio', 'Quincena', 'Liquidez', 'Tarjetas'].map((item, index) => (
             <span
               key={item}
@@ -125,7 +125,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
             </span>
           ))}
         </div>
-        <div className="flex size-7 items-center justify-center rounded-full bg-linear-to-br from-[#3a37fc] to-[#ee477a] text-[10px] font-bold text-white">
+        <div className="flex size-7 items-center justify-center rounded-full bg-linear-to-br from-[#3a37fc] to-[#ee477a] text-caption font-bold text-white">
           JL
         </div>
       </div>
@@ -136,11 +136,11 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
             <MicasaMark className="h-5 w-auto" />
             <span className="text-sm font-semibold tracking-tight text-white">micasa</span>
           </div>
-          <div className="mb-3 flex items-center gap-2 rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-white/40">
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-1.5 text-caption text-white/40">
             <Search className="size-3" aria-hidden />
             Buscar…
           </div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+          <p className="px-1 text-caption font-semibold uppercase tracking-[0.16em] text-white/35">
             Mis billeteras
           </p>
           <ul className="mt-2 space-y-1.5">
@@ -155,9 +155,9 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                     className="h-5 w-5 border-white/10 bg-white/5"
                     showTooltipLabel={false}
                   />
-                  <span className="truncate text-[11px] text-white/75">{wallet.name}</span>
+                  <span className="truncate text-caption text-white/75">{wallet.name}</span>
                 </span>
-                <span className="font-mono text-[10px] tabular-nums text-white/55">
+                <span className="font-sans text-caption tabular-nums text-white/55">
                   {wallet.amount}
                 </span>
               </li>
@@ -173,7 +173,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                 Welcome Back
               </p>
             </div>
-            <p className="text-[11px] text-white/40">Quincena · 30 jun–14 jul 2026</p>
+            <p className="text-caption text-white/40">Quincena · 30 jun–14 jul 2026</p>
           </div>
 
           <div className="grid gap-3 md:grid-cols-[1.15fr_0.85fr]">
@@ -181,10 +181,10 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
               <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
                 <div className="flex items-end justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                    <p className="text-caption font-semibold uppercase tracking-wider text-white/40">
                       Balance quincena
                     </p>
-                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums tracking-tight text-white sm:text-3xl">
+                    <p className="mt-1 font-sans text-2xl font-bold tabular-nums tracking-tight text-white sm:text-3xl">
                       <AnimatedAmount value={3370} />
                     </p>
                   </div>
@@ -193,7 +193,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                       <div className="h-full w-[58%] rounded-l-full bg-emerald-400" />
                       <div className="h-full w-[42%] bg-amber-400" />
                     </div>
-                    <p className="mt-1 text-right font-mono text-[10px] tabular-nums text-white/45">
+                    <p className="mt-1 text-right font-sans text-caption tabular-nums text-white/45">
                       58% listo
                     </p>
                   </div>
@@ -201,7 +201,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
               </div>
 
               <div className="overflow-hidden rounded-xl border border-white/[0.07]">
-                <table className="w-full text-left text-[11px]">
+                <table className="w-full text-left text-caption">
                   <thead className="bg-white/[0.03] text-white/40">
                     <tr>
                       <th className="px-3 py-2 font-medium">Movimiento</th>
@@ -218,7 +218,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                         <td className="px-3 py-2">
                           <span
                             className={cn(
-                              'inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium',
+                              'inline-flex rounded-full px-2 py-0.5 text-caption font-medium',
                               STATUS_CLASS[row.status]
                             )}
                           >
@@ -227,7 +227,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                         </td>
                         <td
                           className={cn(
-                            'px-3 py-2 text-right font-mono tabular-nums',
+                            'px-3 py-2 text-right font-sans tabular-nums',
                             row.tone === 'emerald' && 'text-emerald-300',
                             row.tone === 'amber' && 'text-amber-200',
                             row.tone === 'slate' && 'text-white/70'
@@ -246,31 +246,31 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
               <div className="relative overflow-hidden rounded-xl border border-white/10 bg-linear-to-br from-[#3a37fc]/25 via-[#0d1327] to-[#ee477a]/20 p-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-white/50">
+                    <p className="text-caption uppercase tracking-wider text-white/50">
                       Linked Card
                     </p>
-                    <p className="mt-0.5 font-mono text-[11px] text-white/45">4928 **** 0012</p>
+                    <p className="mt-0.5 font-mono text-caption text-white/45">4928 **** 0012</p>
                   </div>
                   <QrCode className="size-8 text-white/70" aria-hidden />
                 </div>
-                <p className="mt-4 font-mono text-2xl font-bold tabular-nums text-white">
+                <p className="mt-4 font-sans text-2xl font-bold tabular-nums text-white">
                   <AnimatedAmount value={18450} durationMs={1600} />
                 </p>
-                <p className="mt-1 text-[11px] text-emerald-300">+$43,384 disponible</p>
+                <p className="mt-1 text-caption text-emerald-300">+$43,384 disponible</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-white/40">Earnings</p>
+                  <p className="text-caption uppercase tracking-wider text-white/40">Earnings</p>
                   <EarningsGauge gradientId={gaugeGradientId} />
-                  <p className="mt-1 text-center font-mono text-sm font-bold tabular-nums text-white">
+                  <p className="mt-1 text-center font-sans text-sm font-bold tabular-nums text-white">
                     $3,370
                   </p>
                 </div>
                 <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
                   <div className="mb-1 flex items-center gap-1.5">
                     <LineChart className="size-3 text-[#911efe]" aria-hidden />
-                    <p className="text-[10px] uppercase tracking-wider text-white/40">Flujo</p>
+                    <p className="text-caption uppercase tracking-wider text-white/40">Flujo</p>
                   </div>
                   <div className="h-[4.75rem]">
                     <RadarChart gradientId={radarGradientId} />

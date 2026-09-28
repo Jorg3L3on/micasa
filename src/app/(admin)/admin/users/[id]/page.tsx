@@ -79,7 +79,7 @@ export default async function AdminUserDetailPage({
             />
           </div>
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Alta {formatDisplayDate(user.created_at)} · ID {user.id}
         </p>
       </div>
@@ -134,12 +134,12 @@ export default async function AdminUserDetailPage({
               >
                 <div>
                   <p className="font-medium">{w.name}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-caption text-muted-foreground">
                     {w.type}
                     {w.active ? '' : ' · inactiva'}
                   </p>
                 </div>
-                <span className="font-mono text-sm font-bold tabular-nums">
+                <span className="font-sans text-sm font-bold tabular-nums">
                   {formatCurrency(w.amount)}
                 </span>
               </li>
@@ -173,7 +173,7 @@ export default async function AdminUserDetailPage({
               >
                 <div>
                   <p className="font-medium">{f.label}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-caption text-muted-foreground">
                     {f.period} · {f.month}/{f.year}
                   </p>
                 </div>
@@ -209,11 +209,11 @@ export default async function AdminUserDetailPage({
               >
                 <div>
                   <p className="font-medium">{l.name}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-caption text-muted-foreground">
                     {l.lender} · {l.status}
                   </p>
                 </div>
-                <span className="font-mono text-sm font-bold tabular-nums">
+                <span className="font-sans text-sm font-bold tabular-nums">
                   {formatCurrency(l.principal_amount)}
                 </span>
               </li>
@@ -236,7 +236,7 @@ export default async function AdminUserDetailPage({
             <h2 className="text-sm font-semibold leading-none">
               Actividad reciente
             </h2>
-            <p className="mt-1 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-caption text-muted-foreground">
               Hasta 50 eventos reconstruidos desde la base (finance-log no es
               consultable).
             </p>
@@ -254,16 +254,16 @@ export default async function AdminUserDetailPage({
                 <div className="min-w-0">
                   <p className="font-medium">{event.label}</p>
                   {event.summary ? (
-                    <p className="truncate text-[11px] text-muted-foreground">
+                    <p className="truncate text-caption text-muted-foreground">
                       {event.summary}
                     </p>
                   ) : null}
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-caption text-muted-foreground">
                     {formatDisplayDate(event.at)}
                   </p>
                 </div>
                 {event.amount != null ? (
-                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                  <span className="shrink-0 font-sans text-sm font-bold tabular-nums">
                     {formatCurrency(event.amount)}
                   </span>
                 ) : null}

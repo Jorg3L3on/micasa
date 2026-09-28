@@ -163,7 +163,7 @@ export default function EditExpenseTemplatePage() {
 
   if (loading) {
     return (
-      <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+      <div className="py-8 text-center text-muted-foreground">Cargando…</div>
     );
   }
 

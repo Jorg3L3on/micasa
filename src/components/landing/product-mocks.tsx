@@ -26,7 +26,7 @@ const AppChrome = ({
       <div className="min-w-0">
         <p className="truncate text-xs font-medium text-white/70">{title}</p>
         {subtitle ? (
-          <p className="mt-0.5 truncate text-[11px] text-white/35">{subtitle}</p>
+          <p className="mt-0.5 truncate text-caption text-white/35">{subtitle}</p>
         ) : null}
       </div>
       {tabs?.length ? (
@@ -35,7 +35,7 @@ const AppChrome = ({
             <span
               key={tab}
               className={cn(
-                'rounded-md px-2 py-1 text-[11px]',
+                'rounded-md px-2 py-1 text-caption',
                 index === 0
                   ? 'bg-white/10 text-white'
                   : 'text-white/40'
@@ -67,10 +67,10 @@ const MetricStrip = ({
       border
     )}
   >
-    <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+    <p className="text-caption font-semibold uppercase tracking-wider text-white/45">
       {label}
     </p>
-    <p className={cn('mt-0.5 font-mono text-sm font-bold tabular-nums', tone)}>
+    <p className={cn('mt-0.5 font-sans text-sm font-bold tabular-nums', tone)}>
       {value}
     </p>
   </div>
@@ -105,23 +105,23 @@ export const ProductMock = ({
           <div className="space-y-4 border-b border-white/10 p-4 sm:p-6 lg:border-b-0 lg:border-r">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                <p className="text-caption font-semibold uppercase tracking-wider text-white/45">
                   Balance quincena
                 </p>
-                <p className="mt-1 font-mono text-3xl font-bold tabular-nums tracking-tight text-emerald-400 sm:text-4xl">
+                <p className="mt-1 font-sans text-3xl font-bold tabular-nums tracking-tight text-emerald-400 sm:text-4xl">
                   <AnimatedAmount value={3370} />
                 </p>
               </div>
               <div className="min-w-[9rem]">
-                <div className="flex items-center justify-between text-[11px] text-white/45">
+                <div className="flex items-center justify-between text-caption text-white/45">
                   <span>Pagado</span>
-                  <span className="font-mono tabular-nums text-white/70">58%</span>
+                  <span className="font-sans tabular-nums text-white/70">58%</span>
                 </div>
                 <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-white/10">
                   <div className="h-full w-[58%] rounded-l-full bg-emerald-500" />
                   <div className="h-full w-[42%] bg-amber-400" />
                 </div>
-                <div className="mt-1.5 flex gap-3 text-[9px] text-white/40">
+                <div className="mt-1.5 flex gap-3 text-caption text-white/40">
                   <span className="inline-flex items-center gap-1">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     Listo
@@ -153,7 +153,7 @@ export const ProductMock = ({
                   <span className="text-xs text-white/80">{row.name}</span>
                   <span
                     className={cn(
-                      'font-mono text-xs font-semibold tabular-nums',
+                      'font-sans text-xs font-semibold tabular-nums',
                       row.tone
                     )}
                   >
@@ -171,10 +171,10 @@ export const ProductMock = ({
                   <LineChart className="h-3.5 w-3.5 text-emerald-400" aria-hidden data-icon="inline-start" />
                 </span>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                  <p className="text-caption font-semibold uppercase tracking-wider text-white/45">
                     Disponible
                   </p>
-                  <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
+                  <p className="mt-1 font-sans text-2xl font-bold tabular-nums text-white">
                     <AnimatedAmount value={18450} durationMs={1600} />
                   </p>
                 </div>
@@ -186,9 +186,9 @@ export const ProductMock = ({
                       providerIconKey="BBVA"
                       className="h-5 w-5"
                       showTooltipLabel={false} data-icon="inline-start" />
-                    <p className="truncate text-[11px] text-white/55">BBVA Débito</p>
+                    <p className="truncate text-caption text-white/55">BBVA Débito</p>
                   </div>
-                  <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">
+                  <p className="mt-1 font-sans text-sm font-semibold tabular-nums text-white">
                     $12,200
                   </p>
                 </div>
@@ -198,9 +198,9 @@ export const ProductMock = ({
                       providerIconKey="CASH_GENERIC"
                       className="h-5 w-5"
                       showTooltipLabel={false} data-icon="inline-start" />
-                    <p className="truncate text-[11px] text-white/55">Efectivo</p>
+                    <p className="truncate text-caption text-white/55">Efectivo</p>
                   </div>
-                  <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">
+                  <p className="mt-1 font-sans text-sm font-semibold tabular-nums text-white">
                     $6,250
                   </p>
                 </div>
@@ -253,10 +253,10 @@ export const ProductMock = ({
               <LineChart className="h-4 w-4 text-emerald-400" aria-hidden data-icon="inline-start" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+              <p className="text-caption font-semibold uppercase tracking-wider text-white/45">
                 Punto más bajo
               </p>
-              <p className="mt-1 font-mono text-3xl font-bold tabular-nums text-amber-300">
+              <p className="mt-1 font-sans text-3xl font-bold tabular-nums text-amber-300">
                 <AnimatedAmount value={4820} decimals={0} />
               </p>
               <p className="mt-1 text-xs text-white/45">
@@ -326,14 +326,14 @@ export const ProductMock = ({
                     showTooltipLabel={false} data-icon="inline-start" />
                   <div>
                     <p className="text-sm font-semibold text-white">{card.name}</p>
-                    <p className="text-[11px] text-white/45">{card.due}</p>
+                    <p className="text-caption text-white/45">{card.due}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono text-sm font-bold tabular-nums text-white">
+                  <p className="font-sans text-sm font-bold tabular-nums text-white">
                     {card.used}
                   </p>
-                  <p className="text-[10px] text-white/40">{card.limit}</p>
+                  <p className="text-caption text-white/40">{card.limit}</p>
                 </div>
               </div>
               <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-black/30">
@@ -342,17 +342,17 @@ export const ProductMock = ({
                   style={{ width: `${card.usedPct}%` }}
                 />
               </div>
-              <p className="mt-2 text-[11px] text-white/55">{card.min}</p>
+              <p className="mt-2 text-caption text-white/55">{card.min}</p>
             </div>
           ))}
 
           <div className="rounded-lg border border-white/10 border-l-[3px] border-l-violet-500/50 bg-white/[0.03] px-3 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+            <p className="text-caption font-semibold uppercase tracking-wider text-white/45">
               Cuota activa
             </p>
             <p className="mt-1 text-sm text-white/80">
               Laptop · 4/12 ·{' '}
-              <span className="font-mono font-semibold tabular-nums text-white">
+              <span className="font-sans font-semibold tabular-nums text-white">
                 $1,190
               </span>
               /mes
@@ -374,7 +374,7 @@ export const ProductMock = ({
     >
       <AppChrome title="MiCasa" />
       <div className="p-5">
-        <p className="font-mono text-xl font-bold tabular-nums text-emerald-400">
+        <p className="font-sans text-xl font-bold tabular-nums text-emerald-400">
           $3,370.00
         </p>
       </div>
