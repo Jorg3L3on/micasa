@@ -519,7 +519,7 @@ export default function ConnectionsPanel({
         </p>
       </div>
       <div className="rounded-xl border border-border/60 bg-card p-3">
-        <p className="break-all font-sans text-xs text-foreground">
+        <p className="break-all font-mono text-xs text-foreground">
           {createdToken}
         </p>
       </div>
@@ -932,7 +932,7 @@ export default function ConnectionsPanel({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2">
-            <span className="min-w-0 flex-1 truncate font-sans text-xs text-foreground">
+            <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
               {mcpUrl}
             </span>
             <Button
@@ -975,14 +975,14 @@ export default function ConnectionsPanel({
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   {client.description}
                 </p>
-                <pre className="overflow-x-auto rounded-lg bg-muted/50 p-2 font-sans text-[10px] leading-relaxed text-muted-foreground">
+                <pre className="overflow-x-auto rounded-lg bg-muted/50 p-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
                   {client.snippet(mcpUrl)}
                 </pre>
               </div>
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Reemplaza <span className="font-sans">&lt;TU_TOKEN&gt;</span> con el
+            Reemplaza <span className="font-mono">&lt;TU_TOKEN&gt;</span> con el
             token que se muestra al crear la conexión. Guárdalo en un lugar
             seguro: no se vuelve a mostrar.
           </p>
