@@ -55,6 +55,11 @@
   --shadow-card:
     0 1px 2px rgb(15 23 42 / 0.06),
     0 10px 28px -12px rgb(15 23 42 / 0.18);
+  --shadow-panel: var(--shadow-card);
+  --shadow-face:
+    0 12px 32px -14px rgb(15 23 42 / 0.28),
+    0 4px 12px -6px rgb(15 23 42 / 0.16);
+  --shadow-glow: 0 0 12px -1px color-mix(in oklch, var(--primary) 55%, transparent);
   /* View Transition timing — see DESIGN.md Motion tokens */
   --duration-exit: 170ms;
   --duration-enter: 240ms;
@@ -136,6 +141,14 @@
   --sidebar-border: rgb(255 255 255 / 0.08);
   --sidebar-ring: #3a37fc;
   --shadow-card: 0 18px 40px -24px rgb(0 0 0 / 0.7), 0 28px 80px -36px rgb(58 55 252 / 0.16);
+  --shadow-panel:
+    0 0 0 1px rgb(255 255 255 / 0.04),
+    0 18px 40px -22px rgb(0 0 0 / 0.72),
+    0 32px 80px -36px rgb(58 55 252 / 0.16);
+  --shadow-face:
+    0 12px 32px -14px rgb(0 0 0 / 0.62),
+    0 4px 12px -6px rgb(0 0 0 / 0.4);
+  --shadow-glow: 0 0 12px -1px rgb(58 55 252 / 0.8);
   --status-success: oklch(0.78 0.14 155);
   --status-pending: oklch(0.82 0.12 85);
   --status-overdue: oklch(0.74 0.16 25);
@@ -215,6 +228,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --radius-face: 1.375rem;
   --text-display: 1.875rem;
   --text-display--line-height: 1.15;
   --text-display--font-weight: 700;
@@ -251,6 +265,19 @@
    Fintech dashboard – card depth, glass, and glow utilities
    ========================================================================== */
 
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility shadow-panel {
+  box-shadow: var(--shadow-panel);
+}
+@utility shadow-face {
+  box-shadow: var(--shadow-face);
+}
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
 @utility overline {
   font-size: var(--text-caption-size);
   line-height: 1.35;
@@ -262,7 +289,7 @@
 @layer components {
   /* Elevated panel shell: stronger separation in light, calm in dark */
   .card-surface {
-    @apply rounded-xl border border-border/80 bg-card dark:rounded-2xl dark:border-white/[0.08];
+    @apply rounded-xl border border-border/80 bg-card dark:border-white/[0.08];
     box-shadow: var(--shadow-card);
   }
 
@@ -570,7 +597,7 @@ html:has(.landing-root) {
 .orion-panel-glass {
   isolation: isolate;
   background-color: var(--card);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-panel);
 }
 
 .dark .orion-panel-glass {
@@ -579,10 +606,7 @@ html:has(.landing-root) {
   background-image: none;
   backdrop-filter: blur(28px) saturate(120%);
   -webkit-backdrop-filter: blur(28px) saturate(120%);
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.04),
-    0 18px 40px -22px rgb(0 0 0 / 0.72),
-    0 32px 80px -36px rgb(58 55 252 / 0.16);
+  box-shadow: var(--shadow-panel);
 }
 
 /* Soft glass rim: top hairline + faint inner glow. Host must be positioned. */

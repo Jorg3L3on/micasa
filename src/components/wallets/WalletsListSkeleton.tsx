@@ -24,7 +24,7 @@ export function WalletsListSkeleton({ count = 6 }: { count?: number }) {
               )}
               style={{ zIndex: index + 1 }}
             >
-              <Skeleton className="min-h-[12rem] w-full rounded-[1.375rem] border border-border/40 sm:min-h-[13.5rem]" />
+              <Skeleton className="min-h-[12rem] w-full rounded-face border border-border/40 sm:min-h-[13.5rem]" />
             </li>
           ))}
         </ul>

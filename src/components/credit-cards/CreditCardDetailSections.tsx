@@ -196,7 +196,7 @@ export const CreditCardVisualHero = ({
         className={cn(
           // Grow with content (no fixed aspect): utilization + amounts clip on
           // narrow viewports when locked to aspect-[1.586/1] + overflow-hidden.
-          'relative w-full overflow-hidden rounded-[1.375rem] border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
+          'relative w-full overflow-hidden rounded-face border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
           !cardStyle &&
             'border-slate-500/40 bg-linear-to-br from-slate-700 via-slate-900 to-slate-950',
         )}

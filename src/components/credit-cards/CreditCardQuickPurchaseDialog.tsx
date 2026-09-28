@@ -533,7 +533,7 @@ const CreditCardQuickPurchaseDialog = ({
               <div className="flex min-w-0 items-center gap-2.5">
                 <span
                   className={cn(
-                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]',
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
                     exceedsCreditLimit
                       ? 'bg-destructive/10 dark:bg-destructive/15'
                       : 'bg-black/[0.05] dark:bg-white/[0.08]',

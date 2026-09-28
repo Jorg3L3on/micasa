@@ -356,6 +356,18 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 
 ---
 
+## Surfaces
+
+Three surfaces. Radius does not change with the theme.
+
+| Surface | Where | Radius | Shadow |
+| --- | --- | --- | --- |
+| Panel glass | `orion-panel-glass` / `MONTHLY_PANEL_SHELL_CLASS` | `rounded-2xl` | `--shadow-panel` (`shadow-panel`) |
+| Calm card | `.card-surface`, settings cards | `rounded-xl` | `--shadow-card` (`shadow-card`) |
+| Card face | Wallet and credit-card faces | `rounded-face` (1.375rem) | `--shadow-face` (`shadow-face`) |
+
+Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
+
 ## Empty, error, and loading
 
 - Empty lists, filters, and charts use `EmptyState` (`src/components/EmptyState.tsx`).

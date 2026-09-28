@@ -127,7 +127,7 @@ export const FortnightProgressTrack = ({
       >
         <div
           className={cn(
-            'h-full rounded-full bg-linear-to-r from-primary to-status-info shadow-[0_0_12px_-1px_rgba(58,55,252,0.8)] transition-[width] duration-500',
+            'h-full rounded-full bg-linear-to-r from-primary to-status-info shadow-glow transition-[width] duration-500',
             tone === 'upcoming' && 'bg-none shadow-none',
           )}
           style={{ width: `${percent}%` }}
@@ -135,7 +135,7 @@ export const FortnightProgressTrack = ({
       </div>
       {showKnob ? (
         <span
-          className="pointer-events-none absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow-[0_0_10px_rgba(58,55,252,0.85)]"
+          className="pointer-events-none absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow-glow"
           style={{ left: `${Math.min(percent, 100)}%` }}
           aria-hidden
         />

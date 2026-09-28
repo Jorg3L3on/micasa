@@ -351,6 +351,7 @@ export default function ExpenseTemplatesPage() {
             <EmptyState message="No se encontraron plantillas de gastos" />
           ) : (
             <DataTable
+              embedded
               data={filteredTemplates}
               columns={columns}
               filterColumn="name"

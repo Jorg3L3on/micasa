@@ -63,6 +63,8 @@ export type DataTableProps<TData> = {
   enableMultiRowExpansion?: boolean;
   /** Below `md`, replaces the table with a list of these rows (filters and pagination still apply). */
   renderMobileRow?: (row: TData) => React.ReactNode;
+  /** Inside a Card: the card owns the border, so the table does not draw a second one. */
+  embedded?: boolean;
 };
 
 export function DataTable<TData>({
@@ -81,6 +83,7 @@ export function DataTable<TData>({
   getRowCanExpand,
   enableMultiRowExpansion = false,
   renderMobileRow,
+  embedded = false,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -180,7 +183,10 @@ export function DataTable<TData>({
       )}
       {renderMobileRow ? (
         <ul
-          className="divide-y divide-border/60 overflow-hidden rounded-lg border bg-card md:hidden"
+          className={cn(
+            'divide-y divide-border/60 overflow-hidden md:hidden',
+            !embedded && 'rounded-lg border bg-card',
+          )}
           role="list"
         >
           {table.getRowModel().rows.length ? (
@@ -194,7 +200,8 @@ export function DataTable<TData>({
       ) : null}
       <div
         className={cn(
-          'overflow-x-auto rounded-lg border bg-card',
+          'overflow-x-auto',
+          !embedded && 'rounded-lg border bg-card',
           renderMobileRow && 'hidden md:block',
         )}
       >

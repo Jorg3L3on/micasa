@@ -223,6 +223,7 @@ export default function HouseUsersPage() {
             <EmptyState message="No hay usuarios en este hogar" />
           ) : (
             <DataTable
+              embedded
               data={users}
               columns={columns}
               filterColumn="name"

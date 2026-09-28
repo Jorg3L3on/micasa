@@ -214,7 +214,7 @@ export const WalletListCard = ({
         enabled={isMobile}
         onRequestDelete={handleRequestDelete}
         deleteAriaLabel={`Eliminar ${wallet.name}`}
-        className="rounded-[1.375rem]"
+        className="rounded-face"
         railClassName="items-start"
         actionClassName="h-28"
       >
@@ -225,8 +225,8 @@ export const WalletListCard = ({
         >
           <div
             className={cn(
-              'relative w-full min-w-0 overflow-hidden rounded-[1.375rem] border border-white/15 text-white',
-              'shadow-[0_12px_32px_-14px_rgba(0,0,0,0.62),0_4px_12px_-6px_rgba(0,0,0,0.4)]',
+              'relative w-full min-w-0 overflow-hidden rounded-face border border-white/15 text-white',
+              'shadow-face',
               'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
               'active:scale-[0.985]',
               WALLET_LIST_CARD_SHELL_CLASS,
@@ -240,7 +240,7 @@ export const WalletListCard = ({
               onClick={handleOpenDetail}
               onPointerEnter={handlePrefetchDetail}
               onFocus={handlePrefetchDetail}
-              className="absolute inset-0 z-0 rounded-[1.375rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+              className="absolute inset-0 z-0 rounded-face focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
               aria-label={`Abrir ${wallet.name}`}
             />
 

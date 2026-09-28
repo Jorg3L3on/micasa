@@ -80,7 +80,7 @@ const MOTION_TABS_LIST_CLASS = cn(
   'dark:from-muted/20 dark:via-card dark:to-muted/5',
 );
 const MOTION_TABS_INDICATOR_CLASS =
-  'shadow-[0_12px_32px_-14px_rgba(58,55,252,0.75)] ring-1 ring-primary/35';
+  'shadow-glow ring-1 ring-primary/35';
 const MOTION_TABS_TRIGGER_CLASS = 'min-h-8 px-2.5 py-1.5 text-xs font-semibold leading-none';
 
 const BUDGET_SORT_OPTIONS: ReadonlyArray<{ value: BudgetSort; label: string }> = [

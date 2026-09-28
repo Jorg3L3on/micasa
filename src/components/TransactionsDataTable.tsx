@@ -499,6 +499,7 @@ export default function TransactionsDataTable({
       <Card className="overflow-hidden border-border/60">
         <CardContent className="pt-6">
           <DataTable
+            embedded
             data={filteredTransactions}
             columns={columns}
             emptyMessage={

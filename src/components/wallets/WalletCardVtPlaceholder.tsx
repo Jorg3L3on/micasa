@@ -53,7 +53,7 @@ export function WalletCardVtPlaceholder({
       ) : (
         <Skeleton
           className={cn(
-            'w-full rounded-[1.375rem] border border-border/60',
+            'w-full rounded-face border border-border/60',
             'min-h-[12rem] sm:min-h-[13.5rem]',
           )}
         />
@@ -67,7 +67,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
     return (
       <div
         className={cn(
-          'relative w-full overflow-hidden rounded-[1.375rem] border border-white/15 text-white shadow-xl ring-1 ring-inset ring-white/10',
+          'relative w-full overflow-hidden rounded-face border border-white/15 text-white shadow-xl ring-1 ring-inset ring-white/10',
           WALLET_LIST_CARD_SHELL_CLASS,
         )}
         style={snapshot.style}
@@ -166,7 +166,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
   return (
     <div
       className={cn(
-        'relative w-full overflow-hidden rounded-[1.375rem] border border-white/15 text-white shadow-xl ring-1 ring-inset ring-white/10',
+        'relative w-full overflow-hidden rounded-face border border-white/15 text-white shadow-xl ring-1 ring-inset ring-white/10',
         WALLET_LIST_CARD_SHELL_CLASS,
       )}
       style={snapshot.style}

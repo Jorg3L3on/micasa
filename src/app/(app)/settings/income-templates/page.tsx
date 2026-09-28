@@ -235,6 +235,7 @@ export default function IncomeTemplatesPage() {
             <EmptyState message="No se encontraron plantillas de ingresos" />
           ) : (
             <DataTable
+              embedded
               data={templates}
               columns={columns}
               filterColumn="name"
