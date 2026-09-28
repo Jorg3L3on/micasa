@@ -32,7 +32,7 @@ import {
  * Placeholder con la misma envoltura que el botón real pero sin DropdownMenu ni useId de Radix.
  * Evita mismatch de hidratación cuando la sesión no existe en el SSR pero sí en el primer paint del cliente.
  */
-const TeamSwitcherShell = () => (
+export const TeamSwitcherShell = () => (
   <SidebarMenu>
     <SidebarMenuItem>
       <div

@@ -2,21 +2,7 @@
 
 import dynamic from 'next/dynamic';
 
-const AppSidebarClient = dynamic(
-  () =>
-    import('@/components/app-sidebar').then((mod) => ({
-      default: mod.AppSidebar,
-    })),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="flex h-svh w-12 shrink-0 flex-col border-r border-sidebar-border bg-sidebar"
-        aria-hidden
-      />
-    ),
-  },
-);
+import { AppSidebar } from '@/components/app-sidebar';
 
 const HeaderToolbarClient = dynamic(
   () => import('@/components/app-header-toolbar'),
@@ -48,7 +34,7 @@ const MobileBottomDockClient = dynamic(
 );
 
 export function AppSidebarDynamic() {
-  return <AppSidebarClient />;
+  return <AppSidebar />;
 }
 
 export function AppHeaderToolbarDynamic() {
