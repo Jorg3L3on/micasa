@@ -97,13 +97,11 @@ export default function CreateMonthForm({
       const message =
         parsed.error.issues[0]?.message ?? 'Selecciona un mes y año';
       setValidationError(message);
-      toast.error(message);
       return;
     }
     const [y, m] = parsed.data.month.split('-').map(Number);
     if (Number.isNaN(y) || Number.isNaN(m) || m < 1 || m > 12) {
       setValidationError('Selecciona un mes válido');
-      toast.error('Selecciona un mes válido');
       return;
     }
     setValidationError(null);
@@ -140,7 +138,6 @@ export default function CreateMonthForm({
           ? err.message
           : 'Error al crear las quincenas del mes';
       setValidationError(message);
-      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }

@@ -121,7 +121,7 @@ export function ExpenseTemplateForm({
                   name="categoryId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Categoria</FormLabel>
+                      <FormLabel>Categoría</FormLabel>
                       <CategoryGroupedSelect
                         categories={categories}
                         value={field.value > 0 ? field.value : undefined}
@@ -130,8 +130,8 @@ export function ExpenseTemplateForm({
                           field.value > 0 ? field.value : null
                         }
                         triggerClassName={TEMPLATE_FIELD_SHELL_CLASS}
-                        placeholder="Selecciona una categoria"
-                        ariaLabel="Seleccionar categoria"
+                        placeholder="Selecciona una categoría"
+                        ariaLabel="Seleccionar categoría"
                       />
                       <FormMessage />
                     </FormItem>

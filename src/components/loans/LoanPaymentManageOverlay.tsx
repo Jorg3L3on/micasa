@@ -395,7 +395,6 @@ export const LoanPaymentManageOverlay = ({
           ? error.message
           : 'No se pudo actualizar el pago del préstamo';
       setErrors(mapPaymentActionError(message));
-      toast.error(message);
     } finally {
       setSubmitting(false);
     }

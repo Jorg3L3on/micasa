@@ -75,6 +75,8 @@ export function getPageTitle(pathname: string): {
   isHome: boolean;
   /** Toolbar Back — false on home and module index hubs. */
   showBack: boolean;
+  /** The page body already renders the h1 (fortnight header). */
+  suppressHeading?: boolean;
 } {
   const segments = pathname.split('/').filter(Boolean);
   const showBack = shouldShowToolbarBack(pathname);
@@ -242,7 +244,7 @@ export const pageTitleTooltip = (
 /** Centered toolbar title (Apple-style principal). */
 export default function PageTitle() {
   const pageTitle = useAppPageTitle();
-  const headingRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
   useEffect(() => {
@@ -262,11 +264,17 @@ export default function PageTitle() {
   const title = pageTitleTooltip(isTruncated, pageTitle.title);
 
   if (!pageTitle.periodPrefix) {
-    const HeadingTag = pageTitle.suppressHeading ? 'p' : 'h1';
+    if (pageTitle.suppressHeading) {
+      return (
+        <p className="truncate text-title" title={title}>
+          {pageTitle.title}
+        </p>
+      );
+    }
     return (
-      <HeadingTag ref={headingRef} className="truncate text-title" title={title}>
+      <h1 ref={headingRef} className="truncate text-title" title={title}>
         {pageTitle.title}
-      </HeadingTag>
+      </h1>
     );
   }
   return (

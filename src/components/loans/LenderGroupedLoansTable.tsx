@@ -153,7 +153,7 @@ const HeaderMetric = ({
   <div
     className={cn(
       kpiMetricCardShellClass(tone),
-      'flex h-full min-w-0 flex-col justify-between',
+      'flex min-w-0 flex-col justify-between',
     )}
   >
     <p className="eyebrow text-muted-foreground">
@@ -335,7 +335,7 @@ const InstitutionCard = ({
           </div>
         </div>
 
-        <div className="hidden grid-cols-[auto_minmax(0,1fr)_auto] items-stretch gap-x-4 md:grid">
+        <div className="hidden grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-4 md:grid">
           <LenderIdentity
             name={name}
             providerIconKey={providerIconKey}

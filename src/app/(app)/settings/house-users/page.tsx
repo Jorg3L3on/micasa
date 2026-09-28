@@ -133,7 +133,6 @@ export default function HouseUsersPage() {
       const message =
         err instanceof Error ? err.message : 'Error al eliminar el usuario';
       setError(message);
-      toast.error(message);
     } finally {
       setRemovingId(null);
     }
