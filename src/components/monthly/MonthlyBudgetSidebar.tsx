@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { PiggyBank, SlidersHorizontal } from 'lucide-react';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import { FortnightBudgetProgress } from '@/components/monthly/FortnightBudgetProgress';
@@ -129,9 +130,12 @@ export const MonthlyBudgetSidebar = ({
 
       {allocations.length > 0 ? (
         <section aria-labelledby={allocationsHeadingId}>
-          <h3 id={allocationsHeadingId} className="sr-only">
-            Asignaciones por categoría y billetera
-          </h3>
+          <SectionHeader
+            level={3}
+            id={allocationsHeadingId}
+            className="sr-only"
+            title="Asignaciones por categoría y billetera"
+          />
           <ul className="space-y-2.5" role="list">
             {allocations.map((row) => (
               <BudgetAllocationRow

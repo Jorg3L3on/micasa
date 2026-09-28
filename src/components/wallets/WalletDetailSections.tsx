@@ -167,20 +167,20 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
                 <p className="truncate text-sm font-semibold leading-tight opacity-95">
                   {wallet.name}
                 </p>
-                <p className="text-caption uppercase tracking-widest opacity-60">
+                <p className="overline opacity-60">
                   {typeLabel}
                 </p>
               </div>
             </div>
             {!wallet.active ? (
-              <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider opacity-80">
+              <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 overline opacity-80">
                 Inactiva
               </span>
             ) : null}
           </div>
 
           <div className="min-w-0 space-y-1">
-            <p className="text-caption font-semibold uppercase tracking-wider opacity-70">
+            <p className="overline opacity-70">
               Saldo disponible
             </p>
             <p
@@ -307,7 +307,7 @@ export const WalletPeriodSummary = ({
           <TooltipContent side="bottom">Mes anterior</TooltipContent>
         </Tooltip>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="overline text-muted-foreground">
             {isCurrentMonth ? 'Mes actual' : 'Periodo'}
           </p>
           <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">

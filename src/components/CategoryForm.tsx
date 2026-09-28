@@ -197,7 +197,7 @@ export default function CategoryForm({
             />
             {watchedName?.trim() ? (
               <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
-                <p className="mb-1 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="mb-1 overline text-muted-foreground">
                   Vista previa
                 </p>
                 <CategoryLabel name={watchedName} icon={watchedIcon || null} />

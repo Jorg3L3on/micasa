@@ -15,6 +15,7 @@ import {
   YAxis,
 } from 'recharts';
 import { MoreVertical, Pencil, Trash2, TrendingUp } from 'lucide-react';
+import { SectionHeader } from '@/components/section-header';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import {
   buildUpcomingCreditCardPaymentSources,
@@ -199,24 +200,16 @@ export const CreditCardPaymentsChart = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
-          <TrendingUp
-            className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
-            data-icon="inline-start"
-          />
-        </span>
-        <div className="min-w-0">
-          <h4 className="text-sm font-semibold leading-none">
-            Por pagar de aquí en adelante
-          </h4>
-          <p className="mt-1 text-caption text-muted-foreground">
-            {lastLabel
-              ? `Este mes hasta ${lastLabel} · toca una barra para ver de qué se arma`
-              : 'Cuotas MSI, planes y pagos programados'}
-          </p>
-        </div>
-      </div>
+      <SectionHeader
+        level={3}
+        icon={TrendingUp}
+        title="Por pagar de aquí en adelante"
+        subtitle={
+          lastLabel
+            ? `Este mes hasta ${lastLabel} · toca una barra para ver de qué se arma`
+            : 'Cuotas MSI, planes y pagos programados'
+        }
+      />
       <div className="space-y-4">
         {!hasData ? (
           <p className="text-sm text-muted-foreground">
@@ -289,7 +282,7 @@ export const CreditCardPaymentsChart = ({
 
             {pendingMonths.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="overline text-muted-foreground">
                   Desglose de la gráfica
                 </p>
                 <div className="space-y-2">

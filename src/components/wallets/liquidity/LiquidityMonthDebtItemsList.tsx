@@ -148,7 +148,7 @@ export const LiquidityMonthDebtItemsList = ({
           mode === 'payment' ? 'border-l-violet-500/50' : 'border-l-amber-500/50',
         )}
       >
-        <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="overline text-muted-foreground">
           {resolvedTotalLabel}
         </span>
         <span className={cn(amountClass(mode), 'text-base')}>{formatCurrency(total)}</span>

@@ -12,6 +12,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
@@ -75,10 +76,7 @@ export function ExpenseTemplateForm({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-lg font-semibold leading-tight">{title}</h2>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
+      <SectionHeader title={title} subtitle={description} titleClassName="text-title" />
 
       <Card className="overflow-hidden border-border/60">
         <CardHeader className="border-b border-border/60">
@@ -212,7 +210,7 @@ export function ExpenseTemplateForm({
               </div>
 
               <div className="space-y-3 rounded-xl border border-border/60 p-4">
-                <h3 className="text-sm font-semibold">Programacion recurrente</h3>
+                <SectionHeader level={3} title="Programacion recurrente" />
                 <FormField
                   control={form.control}
                   name="isRecurring"
@@ -401,7 +399,7 @@ export function ExpenseTemplateForm({
               </Collapsible>
 
               <div className="space-y-3 rounded-xl border border-border/60 p-4">
-                <h3 className="text-sm font-semibold">Estado de la plantilla</h3>
+                <SectionHeader level={3} title="Estado de la plantilla" />
                 <FormField
                   control={form.control}
                   name="active"

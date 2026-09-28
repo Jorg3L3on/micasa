@@ -332,9 +332,9 @@ export const CreditCardRecentMovements = ({
               return (
                 <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
                   <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
-                    <h4 className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="overline text-muted-foreground">
                       {getDateGroupLabel(dateKey)}
-                    </h4>
+                    </p>
                     <span
                       className={cn(
                         'font-sans text-caption font-semibold tabular-nums',
@@ -507,7 +507,7 @@ const ActivityMetric = ({ icon, label, value, tone }: ActivityMetricProps) => (
       {icon}
     </span>
     <div className="min-w-0">
-      <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="overline text-muted-foreground">
         {label}
       </p>
       <p className="truncate font-sans text-sm font-bold tabular-nums text-foreground">
@@ -578,9 +578,9 @@ export const GroupedPurchaseFeed = ({
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <h4 className="mb-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 overline text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
-              </h4>
+              </p>
               <ul className="space-y-1">
                 {dayItems.map((purchase) => (
                   <li key={purchase.id}>
@@ -692,9 +692,9 @@ export const GroupedPaymentFeed = ({
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <h4 className="mb-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 overline text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
-              </h4>
+              </p>
               <ul className="space-y-1">
                 {dayItems.map((payment) => (
                   <li key={payment.id}>

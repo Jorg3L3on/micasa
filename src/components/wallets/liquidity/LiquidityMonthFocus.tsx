@@ -67,7 +67,7 @@ export const LiquidityMonthEvents = ({ events }: { events: LiquidityProjectionEv
 
   return (
     <section className="space-y-2" aria-label="Buenas noticias del mes">
-      <p className="flex items-center gap-1.5 px-1 text-caption font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+      <p className="flex items-center gap-1.5 px-1 overline text-emerald-600 dark:text-emerald-400">
         <Sparkles className="size-3" aria-hidden />
         Buenas noticias
       </p>

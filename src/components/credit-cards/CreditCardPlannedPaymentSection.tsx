@@ -239,7 +239,7 @@ export const CreditCardPlannedPaymentSection = ({
                       · {timingLabel}
                     </span>
                     {isStalePlan ? (
-                      <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                      <span className="ml-1.5 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 overline text-amber-700 dark:text-amber-300">
                         Plan cubierto
                       </span>
                     ) : null}

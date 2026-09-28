@@ -325,7 +325,19 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
 ## Fintech data UI
 
 - Amounts: **`<Money>`** (`src/components/money.tsx`). Sans with `tabular-nums` — never `font-mono`. Format with `formatMoney` / `formatCurrency` (`es-MX`). Negatives use that formatter’s single hyphen (`-$12.50`); do not prefix another minus or a `+`.
-- Smallest UI text is **caption**: `text-caption` (`--text-caption-size: 0.6875rem`, 11px, line-height 1.35). Do not use `text-[9px]`, `text-[10px]`, or `text-[11px]`. JOR-311 adopts this token as the bottom of the type scale. Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.
+- Type scale (both themes, `text-*` utilities). Do not use `text-[Npx]`.
+
+  | Step | Utility | Size | Use |
+  | --- | --- | --- | --- |
+  | Display | `text-display` | 30px / 700 | Rare hero words |
+  | Title | `text-title` | 18px / 600 | The page title (`PageTitle`, the only `h1`) |
+  | Section | `text-section` | 14px / 600 | `SectionHeader` (`h2`, nested `h3`) |
+  | Body | `text-body` | 14px / 1.5 | Reading copy |
+  | Caption | `text-caption` | 11px / 1.35 | Minimum size. Labels, hints |
+  | Overline | `overline` | 11px / 600 / uppercase | Eyebrows. One utility, not a copied class string |
+
+- `SectionHeader` (`src/components/section-header.tsx`) is the only section heading. `LiquidityPanelHeader` renders it. Page sections are `h2`; nested sections are `h3`. Do not add a second `h1`.
+- Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.
 - Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS`: neutral `text-foreground`, positive `text-status-income`, negative `text-status-expense`.
 - Chart axes use `formatAxisMoney` (`$`, `k` from 1,000, `M` from 1,000,000). JOR-315 keeps this helper when it themes charts.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.

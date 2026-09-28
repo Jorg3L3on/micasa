@@ -283,7 +283,7 @@ export default function MetasPage() {
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 overline text-muted-foreground">
               Estado
             </p>
             <div

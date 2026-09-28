@@ -125,7 +125,7 @@ export const LiquiditySpendingCategories = ({
               'flex items-center justify-between gap-2 border-l-[3px] border-l-violet-500/50',
             )}
           >
-            <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="overline text-muted-foreground">
               Top 5 acumulado
             </span>
             <span className="font-sans text-sm font-bold tabular-nums text-foreground">

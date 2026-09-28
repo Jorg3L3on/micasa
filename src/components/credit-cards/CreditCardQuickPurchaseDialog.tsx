@@ -564,7 +564,7 @@ const CreditCardQuickPurchaseDialog = ({
               </div>
               <p
                 className={cn(
-                  'shrink-0 font-sans text-[15px] font-semibold tabular-nums tracking-tight',
+                  'shrink-0 font-sans text-body font-semibold tabular-nums tracking-tight',
                   exceedsCreditLimit
                     ? 'text-destructive'
                     : 'text-foreground',
@@ -693,7 +693,7 @@ const CreditCardQuickPurchaseDialog = ({
           </div>
 
           <div>
-            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 overline text-muted-foreground">
               Cuotas (opcional)
             </p>
             <div className={OVERLAY_GROUPED_CARD_CLASS}>

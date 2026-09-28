@@ -215,8 +215,24 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --text-display: 1.875rem;
+  --text-display--line-height: 1.15;
+  --text-display--font-weight: 700;
+  --text-display--letter-spacing: -0.025em;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.25;
+  --text-title--font-weight: 600;
+  --text-section: 0.875rem;
+  --text-section--line-height: 1.25;
+  --text-section--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.5;
   --text-caption: var(--text-caption-size);
   --text-caption--line-height: 1.35;
+  --text-overline: var(--text-caption-size);
+  --text-overline--line-height: 1.35;
+  --text-overline--font-weight: 600;
+  --text-overline--letter-spacing: 0.05em;
   --animate-shine: shine var(--duration) infinite linear;
   @keyframes shine {
     0% {
@@ -234,6 +250,14 @@
 /* ==========================================================================
    Fintech dashboard – card depth, glass, and glow utilities
    ========================================================================== */
+
+@utility overline {
+  font-size: var(--text-caption-size);
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
 
 @layer components {
   /* Elevated panel shell: stronger separation in light, calm in dark */

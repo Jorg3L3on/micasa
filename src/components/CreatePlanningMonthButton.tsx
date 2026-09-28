@@ -101,7 +101,7 @@ export default function CreatePlanningMonthButton({
       <span className="flex min-w-0 flex-col items-start gap-0.5">
         <span
           className={cn(
-            'text-caption font-semibold uppercase tracking-wider leading-none',
+            'overline leading-none',
             variant === 'compact'
               ? 'text-muted-foreground'
               : 'text-primary-foreground/80',

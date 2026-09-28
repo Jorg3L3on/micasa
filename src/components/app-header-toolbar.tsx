@@ -333,7 +333,7 @@ export default function AppHeaderToolbar() {
         onFocus={openSearch}
       >
         <Search className="size-5 shrink-0" data-icon="inline-start" />
-        <span className="truncate text-[15px]">
+        <span className="truncate text-body">
           {search.value.trim() || search.placeholder || 'Buscar'}
         </span>
       </Button>

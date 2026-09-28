@@ -137,7 +137,7 @@ export default function LinkedLoansCard({ walletId }: LinkedLoansCardProps) {
                     <p className="font-sans text-sm font-bold tabular-nums">
                       {formatCurrency(loan.remainingAmount)}
                     </p>
-                    <p className="text-caption uppercase tracking-wider text-muted-foreground">
+                    <p className="overline text-muted-foreground">
                       pendiente
                     </p>
                   </div>

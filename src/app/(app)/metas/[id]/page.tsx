@@ -25,6 +25,7 @@ import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
 import { WalletMovementsFeed } from '@/components/wallets/WalletMovementFeed';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -413,7 +414,7 @@ export default function MetaDetailPage() {
           <StatusIcon className="h-4 w-4" strokeWidth={statusIconStroke} />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold">{wallet.name}</h2>
+          <SectionHeader title={wallet.name} titleClassName="truncate text-title" />
           <p className="text-xs text-muted-foreground">
             {wallet.goal_due_date
               ? formatDisplayDate(wallet.goal_due_date)
@@ -553,10 +554,7 @@ export default function MetaDetailPage() {
       </section>
 
       <section className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Coins className="h-4 w-4 text-muted-foreground" aria-hidden />
-          <h3 className="text-sm font-semibold">Movimientos del mes</h3>
-        </div>
+        <SectionHeader level={3} icon={Coins} title="Movimientos del mes" />
         {movements ? (
           <WalletMovementsFeed
             movements={movements.movements}

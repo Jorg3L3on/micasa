@@ -61,7 +61,7 @@ export const LiquidityDebtSummaryStrip = ({
       role="region"
       aria-label="Resumen de deudas"
     >
-      <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="overline text-muted-foreground">
         Debes
       </p>
       <p className="mt-1 font-sans text-xl font-bold tabular-nums text-amber-700 dark:text-amber-300">
@@ -80,7 +80,7 @@ export const LiquidityDebtSummaryStrip = ({
         </p>
       ) : null}
       {breakdown.topConcepts.length > 0 ? (
-        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-body leading-relaxed text-muted-foreground">
           {breakdown.topConcepts
             .map((concept) => `${concept.title} ${formatCurrency(concept.amount)}`)
             .join(' · ')}

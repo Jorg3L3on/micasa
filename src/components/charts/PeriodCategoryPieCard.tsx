@@ -3,6 +3,7 @@
 import { useId, useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { PieChart as PieChartIcon } from 'lucide-react';
+import { SectionHeader } from '@/components/section-header';
 import { cn, formatCurrency } from '@/lib/utils';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
 import {
@@ -72,22 +73,17 @@ export const PeriodCategoryPieCard = ({
       role="region"
       aria-label={`${title}, ${scopeLabel}`}
     >
-      <div className="mb-3 flex items-start gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-          <PieChartIcon
-            className="h-4 w-4 text-violet-600 dark:text-violet-400"
-            aria-hidden data-icon="inline-start" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold leading-none text-foreground sm:text-base">
-            {title}
-          </h3>
-          <p className="mt-1 text-caption text-muted-foreground">{scopeLabel}</p>
-          {subtitle ? (
-            <p className="mt-0.5 text-caption text-muted-foreground">{subtitle}</p>
-          ) : null}
-        </div>
-      </div>
+      <SectionHeader
+        className="mb-3"
+        icon={PieChartIcon}
+        title={title}
+        subtitle={
+          <>
+            {scopeLabel}
+            {subtitle ? <span className="mt-0.5 block">{subtitle}</span> : null}
+          </>
+        }
+      />
 
       {chartData.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
@@ -124,7 +120,7 @@ export const PeriodCategoryPieCard = ({
               </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pt-1">
-              <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="overline text-muted-foreground">
                 Total
               </span>
               <span className="mt-0.5 font-sans text-base font-bold tabular-nums text-foreground sm:text-lg">

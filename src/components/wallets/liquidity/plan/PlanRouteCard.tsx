@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import { SectionHeader } from '@/components/section-header';
 import { RISK_TAG_LABELS } from '@/lib/finance/cash-plan/catalog';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
@@ -33,12 +34,11 @@ export const PlanRouteCard = ({
   >
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h3 className="text-base font-semibold tracking-tight">{plan.title}</h3>
-        <p className="mt-1 text-sm text-muted-foreground">{plan.summary}</p>
+        <SectionHeader level={3} title={plan.title} subtitle={plan.summary} />
       </div>
       {plan.impact ? (
         <div className="text-right">
-          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="overline text-muted-foreground">
             {PLAN_COPY.interestSaved}
           </p>
           <p className="font-sans text-sm font-bold tabular-nums">
@@ -50,7 +50,7 @@ export const PlanRouteCard = ({
         </div>
       ) : plan.gapClosed != null && plan.actions.length > 0 ? (
         <div className="text-right">
-          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="overline text-muted-foreground">
             {PLAN_COPY.estimatedCost}
           </p>
           <p className="font-sans text-sm font-bold tabular-nums">

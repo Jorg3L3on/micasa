@@ -49,9 +49,9 @@ export const LiquidityAccountDebtWhy = ({
         return (
           <section key={block.key} aria-label={block.title}>
             <div className="flex items-baseline justify-between gap-3">
-              <h4 className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="overline text-muted-foreground">
                 {block.title}
-              </h4>
+              </p>
               <p className="font-sans text-xs font-semibold tabular-nums text-foreground">
                 {formatCurrency(block.total)}
               </p>

@@ -746,7 +746,7 @@ export default function BudgetsPage() {
       {isBudgetsView ? (
         <ToolbarFiltersPortal>
           <div>
-            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 overline text-muted-foreground">
               Orden
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Ordenar presupuestos">

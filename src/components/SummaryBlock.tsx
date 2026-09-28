@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { BouncyAccordion } from '@/components/motion/bouncy-accordion';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { Money } from '@/components/money';
+import { SectionHeader } from '@/components/section-header';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
   Wallet,
@@ -248,7 +249,7 @@ export default function SummaryBlock({
                         data-icon="inline-start"
                       />
                     </span>
-                    <span className="truncate text-caption font-bold uppercase tracking-wider text-blue-600/80 dark:text-blue-400/80">
+                    <span className="truncate overline text-blue-600/80 dark:text-blue-400/80">
                       Ingresos
                     </span>
                   </div>
@@ -296,7 +297,7 @@ export default function SummaryBlock({
                       data-icon="inline-start"
                     />
                   </span>
-                  <span className="truncate text-caption font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400/80">
+                  <span className="truncate overline text-emerald-600/80 dark:text-emerald-400/80">
                     Pagado
                   </span>
                 </div>
@@ -326,7 +327,7 @@ export default function SummaryBlock({
                       data-icon="inline-start"
                     />
                   </span>
-                  <span className="truncate text-caption font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80">
+                  <span className="truncate overline text-amber-600/80 dark:text-amber-400/80">
                     Pendiente
                   </span>
                 </div>
@@ -401,21 +402,17 @@ export default function SummaryBlock({
               <div
                 className={cn(
                   METRIC_STRIP_CLASS,
-                  'border-l-[3px] border-l-blue-500/50 px-3 py-2.5',
+                  'border-l-[3px] border-l-status-income/50 px-3 py-2.5',
                 )}
                 role="region"
                 aria-label="Desglose de ingresos"
               >
-                <h4 className="mb-2 flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-blue-700/90 dark:text-blue-400/90">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-500/15 ring-1 ring-blue-500/25">
-                    <Wallet
-                      className="h-3 w-3 text-blue-600 dark:text-blue-400"
-                      aria-hidden
-                      data-icon="inline-start"
-                    />
-                  </span>
-                  Desglose de ingresos
-                </h4>
+                <SectionHeader
+                  level={3}
+                  className="mb-2"
+                  icon={Wallet}
+                  title="Desglose de ingresos"
+                />
                 {incomeItems.length > 0 ? (
                   <div className="space-y-1">
                     {incomeItems.map((item) => {
@@ -488,21 +485,17 @@ export default function SummaryBlock({
               <div
                 className={cn(
                   METRIC_STRIP_CLASS,
-                  'border-l-[3px] border-l-emerald-500/50 px-3 py-2.5',
+                  'border-l-[3px] border-l-status-success/50 px-3 py-2.5',
                 )}
                 role="region"
                 aria-label="Desglose de liquidez actual"
               >
-                <h4 className="mb-2 flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-emerald-700/90 dark:text-emerald-400/90">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 ring-1 ring-emerald-500/25">
-                    <Banknote
-                      className="h-3 w-3 text-emerald-600 dark:text-emerald-400"
-                      aria-hidden
-                      data-icon="inline-start"
-                    />
-                  </span>
-                  Desglose de liquidez actual
-                </h4>
+                <SectionHeader
+                  level={3}
+                  className="mb-2"
+                  icon={Banknote}
+                  title="Desglose de liquidez actual"
+                />
                 {fundingWalletBreakdown.length > 0 ? (
                   <div className="space-y-1">
                     {fundingWalletBreakdown.map((w) => {

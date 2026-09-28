@@ -572,7 +572,7 @@ const WalletBalanceStrip = ({
                         <CurrencyTicker
                           value={effectiveAmount}
                           className={cn(
-                            'text-[13px] font-black sm:text-sm',
+                            'text-body font-black sm:text-sm',
                             effectiveAmount < 0
                               ? onDarkSurface
                                 ? 'text-red-100'

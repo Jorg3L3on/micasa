@@ -238,19 +238,19 @@ export default function PageTitle() {
   const pageTitle = useAppPageTitle();
   if (!pageTitle.periodPrefix) {
     return (
-      <h2 className="truncate text-lg font-semibold leading-tight">
+      <h1 className="truncate text-title">
         {pageTitle.title}
-      </h2>
+      </h1>
     );
   }
   return (
-    <h2
-      className="truncate text-lg font-semibold leading-tight"
+    <h1
+      className="truncate text-title"
       aria-label={pageTitle.title}
     >
       <span className="sm:hidden">{pageTitle.periodPrefix.short}</span>
       <span className="hidden sm:inline">{pageTitle.periodPrefix.full}</span>
       {` · ${pageTitle.baseTitle}`}
-    </h2>
+    </h1>
   );
 }

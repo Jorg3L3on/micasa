@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { SectionHeader } from '@/components/section-header';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -285,7 +286,7 @@ export default function NewIncomeTemplatePage() {
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">Aplicación por quincena</h3>
+                <SectionHeader level={3} title="Aplicación por quincena" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <FormField
                     control={form.control}

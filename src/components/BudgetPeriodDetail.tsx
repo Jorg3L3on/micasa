@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, BarChart3, ChevronDown, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -91,7 +92,7 @@ function PeriodMetric({
         accent === 'available' && 'bg-emerald-500/[0.04]',
       )}
     >
-      <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="overline text-muted-foreground">
         {label}
       </p>
       <p
@@ -665,12 +666,11 @@ export default function BudgetPeriodDetail({
         aria-labelledby={`budget-period-allocations-heading-${period.period_id}`}
       >
         <div className="flex items-baseline justify-between gap-2">
-          <h3
+          <SectionHeader
+            level={3}
             id={`budget-period-allocations-heading-${period.period_id}`}
-            className="text-sm font-semibold text-foreground"
-          >
-            Asignaciones
-          </h3>
+            title="Asignaciones"
+          />
           {!loadingExpenses && period.allocations.length > 0 ? (
             <span className="text-xs text-muted-foreground">
               {period.allocations.length}{' '}

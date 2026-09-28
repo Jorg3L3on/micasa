@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { AlertTriangle } from 'lucide-react';
+import { SectionHeader } from '@/components/section-header';
 import { getMonthlyPanelShellData } from '@/features/monthly/server/monthly.service';
 import { MonthlyPanelContentSuspense } from '@/features/monthly/server/MonthlyPanelContentSection';
 import { fortnightCalendarKey } from '@/features/monthly/server/monthly.queries';
@@ -140,9 +141,10 @@ export default async function MonthlyPage({
               <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden data-icon="inline-start" />
             </span>
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold leading-tight">
-                No se pudo cargar el panel financiero
-              </h2>
+              <SectionHeader
+                icon={AlertTriangle}
+                title="No se pudo cargar el panel financiero"
+              />
               <p className="text-sm text-muted-foreground">
                 La información financiera no se muestra con valores de respaldo para evitar lecturas incorrectas. Recarga la página o intenta de nuevo más tarde.
               </p>
@@ -252,9 +254,9 @@ export default async function MonthlyPage({
         <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-5')}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold leading-tight">
-                Falta crear la planificación de {viewedMonthLabel}
-              </h2>
+              <SectionHeader
+                title={`Falta crear la planificación de ${viewedMonthLabel}`}
+              />
               <p className="max-w-2xl text-sm text-muted-foreground">
                 Este mes no tiene las dos quincenas necesarias. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta para evitar datos incompletos.
               </p>

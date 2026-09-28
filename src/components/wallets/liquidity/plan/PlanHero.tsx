@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn, formatCurrency } from '@/lib/utils';
+import { SectionHeader } from '@/components/section-header';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
@@ -102,18 +103,19 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
-          {horizon === 'quincena' ? PLAN_COPY.fortnight : PLAN_COPY.month}
-        </p>
-        <h2 className="text-xl font-semibold tracking-tight">{titleFor(mode)}</h2>
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground">{PLAN_COPY.heroHint}</p>
+        <SectionHeader
+          eyebrow={horizon === 'quincena' ? PLAN_COPY.fortnight : PLAN_COPY.month}
+          title={titleFor(mode)}
+          titleClassName="text-title"
+          subtitle={PLAN_COPY.heroHint}
+        />
       </div>
       {mode === 'balanced' ? (
         <p className="text-sm text-muted-foreground">{PLAN_COPY.balancedBody}</p>
       ) : (
         <div className="space-y-2">
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px]', accent)}>
-            <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+            <p className="overline text-muted-foreground">{label}</p>
             <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
               <CurrencyTicker value={amount} />
             </p>

@@ -328,7 +328,7 @@ export default function TransactionsDataTable({
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 overline text-muted-foreground">
               Tipo
             </p>
             <div
@@ -361,7 +361,7 @@ export default function TransactionsDataTable({
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Mes
               </p>
               <Select
@@ -383,7 +383,7 @@ export default function TransactionsDataTable({
               </Select>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Año
               </p>
               <Select
@@ -408,7 +408,7 @@ export default function TransactionsDataTable({
 
           {month && year ? (
             <div>
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Quincena
               </p>
               <Select
@@ -430,7 +430,7 @@ export default function TransactionsDataTable({
 
           {categories.length > 0 ? (
             <div>
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Categoría
               </p>
               <Select
@@ -455,7 +455,7 @@ export default function TransactionsDataTable({
 
           {paymentMethods.length > 0 ? (
             <div>
-              <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 overline text-muted-foreground">
                 Método de pago
               </p>
               <Select

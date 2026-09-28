@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import { cn } from '@/lib/utils';
@@ -139,8 +140,7 @@ export const CashPlanTab = ({
   if (!hasMovement && !hasCash) {
     return (
       <div className="rounded-2xl border border-border/60 bg-card px-4 py-6">
-        <h2 className="text-base font-semibold">{PLAN_COPY.emptyTitle}</h2>
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground">{PLAN_COPY.emptyBody}</p>
+        <SectionHeader title={PLAN_COPY.emptyTitle} subtitle={PLAN_COPY.emptyBody} />
         <Button asChild className="mt-4">
           <Link href="/wallets">{PLAN_COPY.emptyCta}</Link>
         </Button>
