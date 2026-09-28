@@ -61,7 +61,7 @@ describe('getPendingLiquidityLineItems', () => {
     expect(
       getPendingLiquidityLineItems({
         transactions: [
-          expense({ id: 1, description: 'Transporte Carmen', amount: 400 }),
+          expense({ id: 1, description: 'Transporte Ana', amount: 400 }),
           expense({
             id: 2,
             description: 'Renta',
@@ -77,7 +77,7 @@ describe('getPendingLiquidityLineItems', () => {
         ],
       }),
     ).toEqual([
-      { id: 'expense-1', name: 'Transporte Carmen', amount: 400 },
+      { id: 'expense-1', name: 'Transporte Ana', amount: 400 },
     ]);
   });
 

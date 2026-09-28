@@ -213,7 +213,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 31,
-        name: 'Liverpool Carmen',
+        name: 'Liverpool Ana',
         type: 'DEPARTMENT_STORE_CARD',
         amount: 3884.78,
         cutoff_day: 6,
@@ -253,12 +253,12 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.second).toEqual([]);
   });
 
-  it('keeps same-day corte/pago due in the planner month (Liverpool Jorge)', async () => {
+  it('keeps same-day corte/pago due in the planner month (Liverpool Luis)', async () => {
     vi.setSystemTime(new Date(Date.UTC(2026, 8, 20, 15, 0, 0)));
     findManyWallets.mockResolvedValue([
       {
         id: 30,
-        name: 'Liverpool Jorge',
+        name: 'Liverpool Luis',
         type: 'DEPARTMENT_STORE_CARD',
         amount: 5666.01,
         cutoff_day: 13,
@@ -340,7 +340,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 31,
-        name: 'Liverpool Carmen',
+        name: 'Liverpool Ana',
         type: 'DEPARTMENT_STORE_CARD',
         amount: 0,
         cutoff_day: 6,
@@ -417,7 +417,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 36,
-        name: 'DIDI Carmen',
+        name: 'DIDI Ana',
         type: 'CREDIT_CARD',
         amount: 0,
         cutoff_day: 12,
@@ -669,7 +669,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyWallets.mockResolvedValue([
       {
         id: 30,
-        name: 'Liverpool Jorge',
+        name: 'Liverpool Luis',
         type: 'DEPARTMENT_STORE_CARD',
         amount: 5798,
         cutoff_day: 13,
@@ -692,7 +692,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         status: 'SCHEDULED',
         paid_at: null,
         credit_card_wallet: {
-          name: 'Liverpool Jorge',
+          name: 'Liverpool Luis',
           type: 'DEPARTMENT_STORE_CARD',
           cutoff_day: 13,
           due_day: 13,
@@ -710,7 +710,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         plan: {
           id: 3,
           name: 'iPad',
-          credit_card_wallet: { id: 30, name: 'Liverpool Jorge' },
+          credit_card_wallet: { id: 30, name: 'Liverpool Luis' },
         },
       },
     ]);

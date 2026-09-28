@@ -173,7 +173,7 @@ describe('buildAccountsToday', () => {
     const rows = buildAccountsToday(
       [wallet({ id: 1, name: 'Efectivo', type: 'CASH', amount: 20 })],
       [
-        loan({ id: 2, name: 'Fonacot Jorge', type: 'PAYROLL', lender: 'FONACOT' }),
+        loan({ id: 2, name: 'Fonacot Luis', type: 'PAYROLL', lender: 'FONACOT' }),
         loan({ id: 3, name: 'Viejo', status: 'PAID_OFF', remainingAmount: 0 }),
         loan({ id: 4, name: 'Pausado', status: 'PAUSED', remainingAmount: 4000 }),
         loan({ id: 5, name: 'Crédito auto Banamex' }),
@@ -183,20 +183,20 @@ describe('buildAccountsToday', () => {
     expect(rows.map((row) => row.kind === 'wallet' ? row.wallet.name : row.loan.name)).toEqual([
       'Efectivo',
       'Crédito auto Banamex',
-      'Fonacot Jorge',
+      'Fonacot Luis',
     ]);
   });
 
   it('maps loan rows to remaining debt and Fonacot identity', () => {
     const [row] = buildAccountsToday(
       [],
-      [loan({ id: 9, name: 'Fonacot Carmen', type: 'PAYROLL', lender: 'FONACOT' })],
+      [loan({ id: 9, name: 'Fonacot Ana', type: 'PAYROLL', lender: 'FONACOT' })],
     );
     expect(row).toBeDefined();
     const view = toAccountTodayView(row!);
     expect(view).toMatchObject({
       kind: 'loan',
-      name: 'Fonacot Carmen',
+      name: 'Fonacot Ana',
       typeLabel: 'Préstamo de nómina',
       isFonacot: true,
       providerIconKey: null,
@@ -209,7 +209,7 @@ describe('buildAccountsToday', () => {
     expect(
       toAccountTodayView({
         kind: 'wallet',
-        wallet: wallet({ id: 1, name: 'BBVA Jorge', type: 'CASH', amount: 10 }),
+        wallet: wallet({ id: 1, name: 'BBVA Luis', type: 'CASH', amount: 10 }),
       }).providerIconKey,
     ).toBe('BBVA');
     expect(

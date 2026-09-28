@@ -680,7 +680,7 @@ describe('getLiquidityProjection', () => {
     findManyLoan.mockResolvedValue([
       {
         id: 31,
-        name: 'Fonacot Carmen',
+        name: 'Fonacot Ana',
         lender: 'FONACOT',
         payment_amount: 1243.68,
         payment_source: 'PAYROLL_DEDUCTION',
@@ -708,7 +708,7 @@ describe('getLiquidityProjection', () => {
         expect.objectContaining({
           event_type: 'loan_payoff',
           month_key: '2026-10',
-          title: 'Terminas de pagar Fonacot Carmen',
+          title: 'Terminas de pagar Fonacot Ana',
           loan_id: 31,
         }),
       ]),
@@ -723,7 +723,7 @@ describe('getLiquidityProjection', () => {
     expect(april?.debt_items).toEqual([
       expect.objectContaining({
         kind: 'loan',
-        title: 'Fonacot Carmen',
+        title: 'Fonacot Ana',
         amount: 2487.36,
         payment_amount: 1243.68,
       }),
@@ -731,7 +731,7 @@ describe('getLiquidityProjection', () => {
     expect(september?.debt_items).toEqual([
       expect.objectContaining({
         kind: 'loan',
-        title: 'Fonacot Carmen',
+        title: 'Fonacot Ana',
         amount: 1243.68,
         payment_amount: 0,
       }),
@@ -739,7 +739,7 @@ describe('getLiquidityProjection', () => {
     expect(october?.debt_items).toEqual([
       expect.objectContaining({
         kind: 'loan',
-        title: 'Fonacot Carmen',
+        title: 'Fonacot Ana',
         amount: 1243.68,
         payment_amount: 1243.68,
       }),

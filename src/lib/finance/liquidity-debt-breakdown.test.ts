@@ -273,7 +273,7 @@ describe('composeLoanDebtAccount', () => {
 
     const account = composeLoanDebtAccount({
       loanId: 15,
-      name: 'Fonacot Jorge',
+      name: 'Fonacot Luis',
       remainingAmount: 50269,
       remainingPayments: 18,
       nextDueDate: '2026-03-01',
@@ -307,7 +307,7 @@ describe('composeLoanDebtAccount', () => {
   it('says vencidas instead of próxima when every cuota is past due', () => {
     const account = composeLoanDebtAccount({
       loanId: 4,
-      name: 'Fonacot Jorge',
+      name: 'Fonacot Luis',
       remainingAmount: 50000,
       remainingPayments: 18,
       nextDueDate: '2026-03-01',
@@ -364,7 +364,7 @@ describe('summarizeDebtBreakdown', () => {
     });
     const fonacot = composeLoanDebtAccount({
       loanId: 3,
-      name: 'Fonacot Jorge',
+      name: 'Fonacot Luis',
       remainingAmount: 50269,
       remainingPayments: 18,
       nextDueDate: '2026-03-01',
@@ -403,7 +403,7 @@ describe('summarizeDebtBreakdown', () => {
       { key: 'loans', label: 'Préstamos', amount: 10 },
     ]);
     expect(summary.topConcepts).toEqual([
-      { title: 'Fonacot Jorge', amount: 50269 },
+      { title: 'Fonacot Luis', amount: 50269 },
       { title: 'Liverpool', amount: 5705 },
       {
         title: didi.plazosTotal >= didi.restoTotal ? 'DIDI Card plazos' : 'DIDI Card',

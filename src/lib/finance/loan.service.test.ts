@@ -388,7 +388,7 @@ describe('sumPlannerLoanDueForFortnight', () => {
           payment_source: 'PAYROLL_DEDUCTION',
           linked_wallet_id: null,
           linked_wallet: null,
-          income_template: { name: 'Salario Jorge' },
+          income_template: { name: 'Salario Luis' },
         },
       },
     ]);

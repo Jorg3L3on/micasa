@@ -136,7 +136,7 @@ describe('buildMonthDebtItems', () => {
         {
           id: 'loan-31',
           kind: 'loan',
-          title: 'Fonacot Carmen',
+          title: 'Fonacot Ana',
           subtitle: 'FONACOT · 2 pagos',
           start_month_key: '2026-08',
           end_month_key: '2026-10',
@@ -153,10 +153,10 @@ describe('buildMonthDebtItems', () => {
     expect(august.map((item) => item.title)).toEqual([
       'Laptop',
       'Banamex',
-      'Fonacot Carmen',
+      'Fonacot Ana',
       'DIDI Card',
     ]);
-    expect(august.find((item) => item.title === 'Fonacot Carmen')).toMatchObject({
+    expect(august.find((item) => item.title === 'Fonacot Ana')).toMatchObject({
       amount: 2487.36,
       payment_amount: 1243.68,
     });
@@ -181,7 +181,7 @@ describe('buildMonthDebtItems', () => {
       amount: 3500,
       payment_amount: 3500,
     });
-    expect(september.find((item) => item.title === 'Fonacot Carmen')).toMatchObject({
+    expect(september.find((item) => item.title === 'Fonacot Ana')).toMatchObject({
       amount: 1243.68,
       payment_amount: 0,
     });
@@ -219,7 +219,7 @@ describe('groupDebtItemsByMonth', () => {
         month_key: '2026-03',
         kind: 'loan',
         group_id: '31',
-        title: 'Fonacot Carmen',
+        title: 'Fonacot Ana',
         subtitle: pastLoanDebtSubtitle('PAYROLL_DEDUCTION', 'FONACOT'),
         amount: 1243.68,
       },
@@ -234,7 +234,7 @@ describe('groupDebtItemsByMonth', () => {
     ]);
 
     const march = byMonth.get('2026-03') ?? [];
-    expect(march.map((item) => item.title)).toEqual(['Banamex', 'Fonacot Carmen', 'DIDI Card']);
+    expect(march.map((item) => item.title)).toEqual(['Banamex', 'Fonacot Ana', 'DIDI Card']);
     expect(march.find((item) => item.title === 'DIDI Card')?.amount).toBeCloseTo(1179.43);
     expect(monthDebtItemsTotal(march)).toBeCloseTo(3500 + 1243.68 + 1179.43);
     expect(byMonth.get('2026-04')).toEqual([

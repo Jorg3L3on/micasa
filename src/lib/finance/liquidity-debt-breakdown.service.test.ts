@@ -91,7 +91,7 @@ describe('getLiquidityDebtBreakdown', () => {
     listLoansByOwner.mockResolvedValue([
       {
         id: 15,
-        name: 'Fonacot Jorge',
+        name: 'Fonacot Luis',
         status: 'ACTIVE',
         remainingAmount: 50269,
         remainingPayments: 18,

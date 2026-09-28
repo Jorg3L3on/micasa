@@ -3,7 +3,7 @@
 Use this script before releasing owner-context changes (Phase 1.4 / #109).
 Requires a user with **personal wallets/expenses** and membership in a **house that has its own wallets/expenses**.
 
-Seed accounts (dev): Jorge / Carmen — see `AGENTS.md`.
+Seed accounts (dev): Ana Demo (`ana@example.com`) and Luis Demo (`luis@example.com`). Password comes from `SEED_PASSWORD`, or the placeholder `demo-password`.
 
 ## Setup
 

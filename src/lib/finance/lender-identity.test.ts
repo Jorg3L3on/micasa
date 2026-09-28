@@ -7,7 +7,7 @@ import {
 describe('lender-identity', () => {
   it('detects Fonacot without mapping it to a wallet provider', () => {
     expect(isFonacotLenderName('Fonacot')).toBe(true);
-    expect(isFonacotLenderName('FONACOT Carmen')).toBe(true);
+    expect(isFonacotLenderName('FONACOT Ana')).toBe(true);
     expect(inferLenderProviderIconKey('Fonacot', null)).toBeNull();
   });
 

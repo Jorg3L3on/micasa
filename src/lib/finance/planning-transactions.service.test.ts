@@ -70,7 +70,7 @@ describe('listPlanningTransactions', () => {
           linkedExpenseId: null,
           lenderPaymentId: null,
           note: null,
-          loanName: 'FONACOT Jorge',
+          loanName: 'FONACOT Luis',
           lender: 'Banco',
           lenderId: 9,
           loanType: 'PAYROLL',
