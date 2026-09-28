@@ -30,7 +30,7 @@ export function registerFortnightTools(server: McpServer) {
     {
       title: 'Detalle de quincena',
       description:
-        'Resumen de planificación de una quincena (ingresos, gastos, saldo) y transacciones de gasto, igual que la vista de quincena en la app.',
+        'Resumen de planificación de una quincena (ingresos, gastos, saldo) y movimientos de gasto, igual que la vista de quincena en la app.',
       inputSchema: z.object({
         ...ownerArgs,
         year: z.number().int().min(2000).max(2100),

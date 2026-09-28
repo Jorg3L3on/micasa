@@ -219,7 +219,7 @@ export const CreditCardRecentMovements = ({
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar movimientos..."
+                  placeholder="Buscar movimientos…"
                   className="h-9 w-full rounded-xl border-border/60 bg-background/70 pl-8 text-sm shadow-sm"
                   aria-label="Buscar movimientos"
                 />

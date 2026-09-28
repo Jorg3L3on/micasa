@@ -312,7 +312,7 @@ export default function AddTransactionDialog({
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
-      title="Agregar transacción"
+      title="Agregar movimiento"
       description="Elige gasto o ingreso. Solo se guarda la pestaña activa."
       busy={isSubmitting}
     >
@@ -813,7 +813,7 @@ function TransactionTypeSwitch({
     <div
       ref={trackRef}
       role="tablist"
-      aria-label="Tipo de transacción"
+      aria-label="Tipo de movimiento"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finishPointer}

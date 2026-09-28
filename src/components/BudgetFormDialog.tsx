@@ -286,11 +286,11 @@ export default function BudgetFormDialog({
   };
 
   const dialogTitle =
-    step === 1 ? 'Nuevo presupuesto' : 'Asignar presupuesto';
+    step === 1 ? 'Agregar presupuesto' : 'Asignar presupuesto';
   const dialogDescription =
     step === 1
       ? 'Paso 1 de 2: define el nombre, monto y frecuencia.'
-      : 'Paso 2 de 2: distribuye el presupuesto en carteras y categorías.';
+      : 'Paso 2 de 2: distribuye el presupuesto en billeteras y categorías.';
 
   const stepIndicator = (
     <div
@@ -514,7 +514,7 @@ export default function BudgetFormDialog({
 
           {hasEmptyAllocation ? (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-              Elige {ANY_WALLET_LABEL} o una cartera, una categoría y un monto
+              Elige {ANY_WALLET_LABEL} o una billetera, una categoría y un monto
               mayor a $0.00.
             </div>
           ) : null}
@@ -588,7 +588,7 @@ export default function BudgetFormDialog({
                       <FormItem
                         className="col-span-2 min-w-0 md:col-span-1"
                       >
-                        <FormLabel className="text-xs">Cartera</FormLabel>
+                        <FormLabel className="text-xs">Billetera</FormLabel>
                         <Select
                           onValueChange={(v) => f.onChange(selectValueToWalletId(v))}
                           onOpenChange={handleSelectOpenChange}
@@ -597,9 +597,9 @@ export default function BudgetFormDialog({
                           <FormControl>
                             <SelectTrigger
                               className={ALLOCATION_TRIGGER_CLASS}
-                              aria-label={`Cartera de la asignación ${index + 1}`}
+                              aria-label={`Billetera de la asignación ${index + 1}`}
                             >
-                              <SelectValue placeholder="Cartera" />
+                              <SelectValue placeholder="Billetera" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>

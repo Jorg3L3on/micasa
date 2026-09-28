@@ -488,7 +488,7 @@ export default function BudgetsPage() {
         }
       : null,
     primaryAction: {
-      label: 'Nuevo presupuesto',
+      label: 'Agregar presupuesto',
       onClick: handleOpenCreate,
       icon: primaryActionIcon,
     },

@@ -37,6 +37,15 @@ describe('DEFAULT_CATEGORY_CATALOG', () => {
     expect(childNames).toContain('Spotify');
     expect(childNames).toContain('Amazon Prime');
   });
+
+  it('names the default food category in Spanish for new homes', () => {
+    const names = DEFAULT_CATEGORY_CATALOG.flatMap((root) => [
+      root.name,
+      ...root.children.map((child) => child.name),
+    ]);
+    expect(names).toContain('Comida');
+    expect(names).not.toContain('Food');
+  });
 });
 
 describe('DEFAULT_INCOME_CATEGORY_CATALOG', () => {

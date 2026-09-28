@@ -341,8 +341,8 @@ function AllocationSummary({
         >
           <span>
             {expanded
-              ? 'Ocultar transacciones'
-              : `Ver ${expenseCount} ${expenseCount === 1 ? 'transacción' : 'transacciones'}`}
+              ? 'Ocultar movimientos'
+              : `Ver ${expenseCount} ${expenseCount === 1 ? 'movimiento' : 'movimientos'}`}
           </span>
           <ChevronDown
             className={cn(
@@ -366,7 +366,7 @@ function AllocationExpenseList({
   return (
     <ul
       className="max-h-48 divide-y divide-border/60 overflow-y-auto border-t border-border/60"
-      aria-label={`Transacciones de ${categoryName}`}
+      aria-label={`Movimientos de ${categoryName}`}
     >
       {expenses.map((expense) => (
         <li
@@ -435,7 +435,7 @@ function AllocationRow({
           {...summaryProps}
         />
         <p className="mt-3 border-t border-border/60 pt-2.5 text-xs text-muted-foreground">
-          Sin transacciones en este periodo
+          Sin movimientos en este periodo
         </p>
       </article>
     );
@@ -454,8 +454,8 @@ function AllocationRow({
             aria-expanded={expanded}
             aria-label={
               expanded
-                ? `Ocultar transacciones de ${allocation.category_name}`
-                : `Ver ${expenses.length} transacciones de ${allocation.category_name}`
+                ? `Ocultar movimientos de ${allocation.category_name}`
+                : `Ver ${expenses.length} movimientos de ${allocation.category_name}`}
             }
           >
             <AllocationSummary
@@ -587,7 +587,7 @@ export default function BudgetPeriodDetail({
         if (!cancelled) {
           setExpenseGroups([]);
           setExpensesError(
-            err instanceof Error ? err.message : 'Error al cargar transacciones',
+            err instanceof Error ? err.message : 'Error al cargar movimientos',
           );
         }
       })

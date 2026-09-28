@@ -14,6 +14,8 @@ export type DefaultCategoryRoot = {
 /**
  * Canonical default expense category tree (one level: root → children).
  * Cloned per user/house on create; not a shared DB catalog.
+ * Names are Spanish. Homes created before this catalog may still have a
+ * root named `Food`; that is a one-off data fix, not a migration.
  */
 export const DEFAULT_CATEGORY_CATALOG: readonly DefaultCategoryRoot[] = [
   {

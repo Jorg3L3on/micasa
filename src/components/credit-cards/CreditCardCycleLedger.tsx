@@ -152,7 +152,7 @@ export const CreditCardCycleLedger = ({
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar movimientos..."
+                placeholder="Buscar movimientos…"
                 className="h-9 rounded-xl border-border/60 bg-background/80 pl-9 text-sm"
                 aria-label="Buscar movimientos del ciclo"
               />

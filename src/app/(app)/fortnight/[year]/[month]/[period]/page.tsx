@@ -241,7 +241,7 @@ export default async function FortnightPage({
       {/* BOTTOM SECTION - Expense Tables */}
       <div className="space-y-6">
         {sortedDates.length === 0 ? (
-          <EmptyState message="No hay transacciones para esta quincena" />
+          <EmptyState message="No hay movimientos para esta quincena" />
         ) : (
           sortedDates.map((date) => (
             <ExpenseTable

@@ -5,7 +5,7 @@ export type AllocationOverlapInput = {
 
 /**
  * Rejects category overlaps inside one presupuesto.
- * A null wallet is "Cualquier cartera" and already rolls direct children
+ * A null wallet is "Cualquier billetera" and already rolls direct children
  * into the parent on every wallet.
  */
 export function allocationOverlapMessage(
@@ -30,10 +30,10 @@ export function allocationOverlapMessage(
 
   for (const entry of byCategory.values()) {
     if (entry.any > 1) {
-      return 'La misma categoría no puede aparecer dos veces en Cualquier cartera.';
+      return 'La misma categoría no puede aparecer dos veces en Cualquier billetera.';
     }
     if (entry.any === 1 && entry.wallets.size > 0) {
-      return 'La misma categoría no puede ser Cualquier cartera y una cartera específica a la vez.';
+      return 'La misma categoría no puede ser Cualquier billetera y una billetera específica a la vez.';
     }
   }
 
@@ -53,7 +53,7 @@ export function allocationOverlapMessage(
     const parentIsAny = nullWalletCategories.has(parentId);
     const childIsAny = row.wallet_id == null;
     if (parentIsAny || childIsAny) {
-      return 'Cualquier cartera en una categoría padre ya incluye sus subcategorías. Quita la subcategoría o elige una cartera en ambas.';
+      return 'Cualquier billetera en una categoría padre ya incluye sus subcategorías. Quita la subcategoría o elige una billetera en ambas.';
     }
   }
 

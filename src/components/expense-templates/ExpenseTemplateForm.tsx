@@ -466,7 +466,7 @@ export function ExpenseTemplateForm({
                   className="h-11 w-full sm:w-auto"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Guardando...' : submitLabel}
+                  {isSubmitting ? 'Guardando…' : submitLabel}
                 </Button>
               </div>
             </form>

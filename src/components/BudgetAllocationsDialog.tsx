@@ -231,7 +231,7 @@ export default function BudgetAllocationsDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={`Editar asignaciones: ${budget.name}`}
-      description="Modifica la distribución del presupuesto entre carteras y categorías."
+      description="Modifica la distribución del presupuesto entre billeteras y categorías."
       busy={isBusy}
       contentClassName="md:max-w-2xl"
     >
@@ -253,7 +253,7 @@ export default function BudgetAllocationsDialog({
 
             {hasEmptyAllocation ? (
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                Elige {ANY_WALLET_LABEL} o una cartera, una categoría y un monto mayor a $0.00.
+                Elige {ANY_WALLET_LABEL} o una billetera, una categoría y un monto mayor a $0.00.
               </div>
             ) : null}
 
@@ -306,7 +306,7 @@ export default function BudgetAllocationsDialog({
                       name={`allocations.${index}.wallet_id`}
                       render={({ field: f }) => (
                         <FormItem className="col-span-2 min-w-0 md:col-span-1">
-                          <FormLabel className="text-xs">Cartera</FormLabel>
+                          <FormLabel className="text-xs">Billetera</FormLabel>
                           <Select
                             onValueChange={(v) => f.onChange(selectValueToWalletId(v))}
                             onOpenChange={handleSelectOpenChange}
@@ -315,9 +315,9 @@ export default function BudgetAllocationsDialog({
                             <FormControl>
                               <SelectTrigger
                                 className="h-11 w-full text-sm md:h-8 md:text-xs"
-                                aria-label={`Cartera de la asignación ${index + 1}`}
+                                aria-label={`Billetera de la asignación ${index + 1}`}
                               >
-                                <SelectValue placeholder="Cartera" />
+                                <SelectValue placeholder="Billetera" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>

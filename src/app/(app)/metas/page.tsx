@@ -167,7 +167,7 @@ export default function MetasPage() {
       activeCount: activeFilterDimensionCount,
     },
     primaryAction: {
-      label: 'Nueva meta',
+      label: 'Agregar meta',
       onClick: openCreateDialog,
       icon: primaryActionIcon,
     },
@@ -346,7 +346,7 @@ export default function MetasPage() {
               onClick={openCreateDialog}
             >
               <Plus className="mr-1.5 h-4 w-4" aria-hidden />
-              Nueva meta
+              Agregar meta
             </Button>
           ) : null}
         </div>

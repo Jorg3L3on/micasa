@@ -34,13 +34,13 @@ describe('groupAllocationsByWallet', () => {
       alloc({
         id: 1,
         wallet_id: null,
-        wallet_name: 'Cualquier cartera',
+        wallet_name: 'Cualquier billetera',
         category_name: 'Comida',
       }),
       alloc({
         id: 2,
         wallet_id: null,
-        wallet_name: 'Cualquier cartera',
+        wallet_name: 'Cualquier billetera',
         category_name: 'Despensa',
       }),
     ]);

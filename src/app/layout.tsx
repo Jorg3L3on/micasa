@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     template: DOCUMENT_TITLE_TEMPLATE,
   },
   description:
-    'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+    'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y movimientos.',
   icons: {
     icon: [
       { url: '/icons/icon-32.png', type: 'image/png', sizes: '32x32' },
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'MiCasa',
     description:
-      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y movimientos.',
     locale: 'es_MX',
     type: 'website',
     siteName: 'MiCasa',
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'MiCasa',
     description:
-      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y transacciones.',
+      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y movimientos.',
   },
   appleWebApp: {
     capable: true,

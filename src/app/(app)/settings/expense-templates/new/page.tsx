@@ -162,7 +162,7 @@ export default function NewExpenseTemplatePage() {
 
   if (loading) {
     return (
-      <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+      <div className="py-8 text-center text-muted-foreground">Cargando…</div>
     );
   }
 
@@ -178,7 +178,7 @@ export default function NewExpenseTemplatePage() {
       ) : null}
       <ExpenseTemplateForm
         form={form}
-        title="Nueva plantilla de gastos"
+        title="Agregar plantilla de gastos"
         description="Configura una plantilla reutilizable para registrar gastos mas rapido."
         submitLabel="Crear plantilla"
         isSubmitting={isSubmitting}

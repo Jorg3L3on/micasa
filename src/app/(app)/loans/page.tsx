@@ -1173,7 +1173,7 @@ export default function LoansPage() {
     const items = [
       {
         key: 'new-lender',
-        label: 'Nuevo prestamista',
+        label: 'Agregar prestamista',
         onClick: openNewLender,
       },
     ];
@@ -1320,7 +1320,7 @@ export default function LoansPage() {
         <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}>
           <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden data-icon="inline-start" />
-            Cargando préstamos...
+            Cargando préstamos…
           </div>
         </div>
       ) : loadError ? (
@@ -1753,7 +1753,7 @@ export default function LoansPage() {
                       </div>
                       <div>
                         <dt className="font-semibold uppercase tracking-wider text-muted-foreground">
-                          Cuenta relacionada
+                          Billetera relacionada
                         </dt>
                         <dd className="mt-1 font-medium text-foreground">
                           {selectedLoan.linkedWalletName ?? 'Sin cuenta vinculada'}
@@ -1924,7 +1924,7 @@ export default function LoansPage() {
                           ) : null}
                         </div>
                         <div className="space-y-1.5">
-                          <Label>Cuenta relacionada</Label>
+                          <Label>Billetera relacionada</Label>
                           <Select
                             value={loanEditForm.linkedWalletId}
                             onOpenChange={handleSelectOpenChange}
@@ -1933,7 +1933,7 @@ export default function LoansPage() {
                             }
                           >
                             <SelectTrigger
-                              aria-label="Cuenta relacionada para seguimiento"
+                              aria-label="Billetera relacionada para seguimiento"
                               className={cn(
                                 loanEditErrors.linkedWalletId &&
                                   'border-destructive focus:ring-destructive/30',
@@ -2722,7 +2722,7 @@ export default function LoansPage() {
           setNewLenderOpen(open);
           if (!open) setNewLenderName('');
         }}
-        title="Nuevo prestamista"
+        title="Agregar prestamista"
         description="Identidad a la que le debes. Luego puedes agregar contratos debajo."
         busy={newLenderSubmitting}
       >
@@ -2772,7 +2772,7 @@ export default function LoansPage() {
         }
         error={deleteError}
         confirmLabel="Eliminar préstamo"
-        loadingLabel="Eliminando préstamo..."
+        loadingLabel="Eliminando préstamo…"
       />
     </div>
     </MobilePullToRefresh>

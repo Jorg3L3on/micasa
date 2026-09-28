@@ -153,7 +153,7 @@ export default function CreateMonthForm({
   const selectId = `${idPrefix}-select`;
 
   const getSelectPlaceholder = (): string => {
-    if (loadingMonths) return 'Cargando...';
+    if (loadingMonths) return 'Cargando…';
     if (availableOptions.length === 0) {
       return 'No hay meses por crear';
     }
@@ -226,7 +226,7 @@ export default function CreateMonthForm({
                 aria-hidden
                 data-icon="inline-start"
               />
-              Creando...
+              Creando…
             </>
           ) : (
             'Crear mes (dos quincenas)'

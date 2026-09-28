@@ -90,7 +90,7 @@ function assertNoEmptyAllocations(allocations: AllocationInput[]) {
   ) {
     throw Object.assign(
       new Error(
-        'Todas las asignaciones deben incluir una cartera o Cualquier cartera, una categoría y un monto mayor a cero',
+        'Todas las asignaciones deben incluir una billetera o Cualquier billetera, una categoría y un monto mayor a cero',
       ),
       { code: 'EMPTY_ALLOCATION' },
     );
@@ -167,7 +167,7 @@ async function assertOwnerScopedReferences(
   ]);
 
   if (walletCount !== walletIds.length) {
-    throw Object.assign(new Error('Una o más carteras no pertenecen al contexto actual'), {
+    throw Object.assign(new Error('Una o más billeteras no pertenecen al contexto actual'), {
       code: 'OWNER_MISMATCH_WALLET',
     });
   }

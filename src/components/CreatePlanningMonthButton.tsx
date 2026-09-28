@@ -107,7 +107,7 @@ export default function CreatePlanningMonthButton({
               : 'text-primary-foreground/80',
           )}
         >
-          {submitting ? 'Creando...' : 'Crear mes'}
+          {submitting ? 'Creando…' : 'Crear mes'}
         </span>
         <span
           className={cn(

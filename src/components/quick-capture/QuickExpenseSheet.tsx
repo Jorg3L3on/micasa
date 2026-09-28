@@ -373,7 +373,7 @@ export function QuickExpenseSheet({
               <ToggleField
                 layout="row"
                 className="px-3"
-                label="Descontar de la cartera"
+                label="Descontar de la billetera"
                 helper={
                   applyWalletDelta
                     ? 'Se restará del saldo. Apaga esto si el saldo ya incluye el pago.'
@@ -384,7 +384,7 @@ export function QuickExpenseSheet({
                   form.setValue('applyWalletDelta', checked)
                 }
                 disabled={loading || submitting}
-                aria-label="Descontar de la cartera"
+                aria-label="Descontar de la billetera"
               />
             ) : null}
 

@@ -352,7 +352,7 @@ export default function FortnightColumn({
     try {
       setIsRegenerating(true);
       setAddExpenseError(null);
-      toast.loading('Regenerando quincena desde plantillas...', {
+      toast.loading('Regenerando quincena desde plantillas…', {
         id: loadingToastId,
       });
 
@@ -1079,7 +1079,7 @@ export default function FortnightColumn({
                 message="Sin gastos en esta quincena"
                 description="Empieza con un gasto para ver totales y el estado del mes."
                 action={{
-                  label: 'Agregar transacción',
+                  label: 'Agregar movimiento',
                   onClick: () => setAddExpenseDialogOpen(true),
                   variant: 'default',
                 }}

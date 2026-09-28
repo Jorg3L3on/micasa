@@ -43,7 +43,7 @@ describe('loan wallet relationship copy', () => {
     expect(relationships).toEqual([
       {
         role: 'reference_account',
-        label: 'Cuenta relacionada',
+        label: 'Billetera relacionada',
         description:
           'Solo referencia para seguimiento; no ajusta el saldo automáticamente.',
       },

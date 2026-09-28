@@ -344,6 +344,27 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 
 ---
 
+## Glossary
+
+Use these names in the UI, in `PageTitle`, and in the browser tab. The document title (`documentTitle`) matches the header for that route.
+
+| Concept | Say | Do not say |
+| --- | --- | --- |
+| The section | **Operaciones** | Transacciones (as the page name) |
+| One record | **movimiento** | transacción |
+| Money container | **billetera** | cartera, or “cuenta” for a wallet |
+| Signed-in profile | **Cuenta** (only under Configuración) | — |
+| Credit-card statement | **Estado de cuenta** | — |
+| Linked wallet on a loan | **Billetera relacionada** | Cuenta relacionada |
+| Create | **Agregar** | Nueva / Nuevo on create actions |
+| Badges | Sentence case (`Gasto`, `Ingreso`, `Pagada`) | all-lowercase or ALL CAPS badges |
+| Ellipsis | **…** | `...` |
+| Analysis section | **Análisis** | Liquidez y análisis, as a nav item |
+
+**Análisis** is the section (nav, document title, header). Its two views are the tabs **Liquidez** and **Plan**. The tab list is named Análisis.
+
+Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` in Spanish (`Comida`, not `Food`). Existing rows already stored as `Food` are not migrated in code.
+
 ## Do / don’t
 
 **Do**

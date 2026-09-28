@@ -129,7 +129,7 @@ export default function StepFinish({ setCanProceed }: Props) {
 
       {onboarding.isStepLoading && (
         <p className="text-muted-foreground text-xs">
-          Preparando tu espacio financiero...
+          Preparando tu espacio financiero…
         </p>
       )}
     </div>

@@ -485,7 +485,7 @@ export default function TransactionsDataTable({
               size="sm"
               className="h-9 shrink-0 self-start text-muted-foreground"
               onClick={handleClearAllFilters}
-              aria-label="Limpiar filtros de transacciones"
+              aria-label="Limpiar filtros de movimientos"
             >
               Limpiar filtros
             </Button>
@@ -500,8 +500,8 @@ export default function TransactionsDataTable({
             columns={columns}
             emptyMessage={
               hasActiveFilters
-                ? 'No se encontraron transacciones con los filtros seleccionados.'
-                : 'No hay transacciones registradas.'
+                ? 'No se encontraron movimientos con los filtros seleccionados.'
+                : 'No hay movimientos registrados.'
             }
             columnVisibility
           />

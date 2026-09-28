@@ -633,7 +633,7 @@ const WalletBalanceStrip = ({
                                         : 'text-muted-foreground/70',
                             )}
                           >
-                            {walletAlreadyPaid ? 'pagada' : `Paga ${wallet.due_day}`}
+                            {walletAlreadyPaid ? 'Pagada' : `Paga ${wallet.due_day}`}
                           </span>
                         ) : null}
                       </div>

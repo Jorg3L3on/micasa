@@ -184,7 +184,7 @@ const LenderOrganizeForm = ({
                         {item.name}
                       </SelectItem>
                     ))}
-                    <SelectItem value="__new__">Nuevo prestamista…</SelectItem>
+                    <SelectItem value="__new__">Agregar prestamista…</SelectItem>
                   </SelectContent>
                 </Select>
               </GroupedRow>

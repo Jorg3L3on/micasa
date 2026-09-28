@@ -68,7 +68,7 @@ export function DataTable<TData>({
   data,
   columns,
   filterColumn,
-  filterPlaceholder = 'Filtrar...',
+  filterPlaceholder = 'Filtrar…',
   pagination = true,
   columnVisibility = false,
   emptyMessage = 'Sin resultados.',

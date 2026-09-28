@@ -106,7 +106,7 @@ export const WalletMovementsFeed = ({
   movements,
   ownerQueryString,
   onAddTransaction,
-  addTransactionLabel = 'Agregar transacción',
+  addTransactionLabel = 'Agregar movimiento',
   canRegister = false,
 }: WalletMovementsFeedProps) => {
   const [query, setQuery] = useState('');

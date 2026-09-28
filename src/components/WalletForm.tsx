@@ -209,7 +209,7 @@ export default function WalletForm({
 
   const dialogTitle = isGoalType
     ? mode === 'create'
-      ? 'Nueva meta'
+      ? 'Agregar meta'
       : 'Editar meta'
     : mode === 'create'
       ? 'Nueva billetera'

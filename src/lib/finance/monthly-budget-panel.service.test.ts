@@ -355,7 +355,7 @@ describe('getMonthlyBudgetPanel', () => {
     expect(panel.first.allocations[0]).toMatchObject({
       categoryName: 'Despensa',
       walletId: null,
-      walletName: 'Cualquier cartera',
+      walletName: 'Cualquier billetera',
       walletProviderIconKey: null,
       spent: 80,
       budgeted: 400,

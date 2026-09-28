@@ -210,7 +210,7 @@ export default function EditExpenseAmountDialog({
                               className={OVERLAY_ROW_TRIGGER_CLASS}
                               aria-label="Billetera"
                             >
-                              <SelectValue placeholder="Sin cartera (efectivo)">
+                              <SelectValue placeholder="Sin billetera (efectivo)">
                                 {selectedWallet ? (
                                   <WalletIdentity
                                     name={selectedWallet.name}
@@ -225,7 +225,7 @@ export default function EditExpenseAmountDialog({
                           </FormControl>
                           <SelectContent>
                             <SelectItem value={NULL_WALLET_VALUE}>
-                              Sin cartera (efectivo)
+                              Sin billetera (efectivo)
                             </SelectItem>
                             {wallets.map((w) => (
                               <SelectItem key={w.id} value={String(w.id)}>

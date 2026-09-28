@@ -166,7 +166,7 @@ export async function DELETE(request: NextRequest) {
         return NextResponse.json(
           {
             error:
-              'La cartera tiene gastos o plantillas asociadas y no puede eliminarse',
+              'La billetera tiene gastos o plantillas asociadas y no puede eliminarse',
           },
           { status: 409 },
         );

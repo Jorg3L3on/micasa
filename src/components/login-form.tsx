@@ -125,7 +125,7 @@ export function LoginForm({
             className="pointer-events-none absolute inset-y-0 -left-[60%] w-2/5 skew-x-[-20deg] bg-linear-to-r from-transparent via-white/35 to-transparent transition-[left] duration-700 group-hover:left-[130%]"
           />
           <span className="relative">
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            {isLoading ? 'Iniciando sesión…' : 'Iniciar sesión'}
           </span>
         </button>
       </form>
