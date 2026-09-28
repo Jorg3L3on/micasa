@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'MiCasa',
     short_name: 'MiCasa',
     description:
-      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y movimientos.',
+      'Gestión financiera y planificación por quincenas. Controla ingresos, gastos y operaciones.',
     // `/` redirects server-side to the current month's Panel financiero.
     start_url: '/',
     scope: '/',

@@ -6,7 +6,7 @@ Encode the UI in **tokens, recipes, and live screenshots of this codebase**. Do 
 
 | Surface | Route | Code |
 | --- | --- | --- |
-| Marketing landing | `/` | `src/components/landing/*`, Nunito in `src/app/page.tsx`, Manrope in `src/app/layout.tsx` |
+| Marketing landing | `/` | `src/components/landing/*`. Same Geist + Manrope and light/dark theme as the app. |
 | Login | `/login` | `src/components/login/*` |
 | Panel financiero | `/monthly/{year}/{month}` | `src/components/monthly/*`, `src/app/(app)/monthly/` |
 
@@ -25,29 +25,26 @@ Agent entry points:
 
 ## Visual contract
 
-Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** accents. Orange is **landing CTAs only**. Atmosphere is soft blurred orbs, not busy illustration.
+Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** accents. Primary actions use the shared `Button`. Atmosphere is soft blurred orbs, not busy illustration.
 
 | Role | Hex | CSS / class |
 | --- | --- | --- |
-| Canvas | `#060914` | `--background`, `--landing-bg` |
-| Surface / sidebar | `#090e1d` | `--secondary`, `--sidebar`, `--landing-surface` |
-| Card | `#0d1327` | `--card`, `--landing-card` |
+| Canvas | `#060914` | `--background` (dark) |
+| Surface / sidebar | `#090e1d` | `--secondary`, `--sidebar` |
+| Card | `#0d1327` | `--card` |
 | Muted chip | `#12183a` | `--muted`, `--accent` |
 | Text | `#f7f8ff` | `--foreground` |
 | Muted text | `#9ca3af` | `--muted-foreground` |
 | Electric blue (primary, brand) | `#3a37fc` | `--primary`, `--chart-1` |
 | Primary text (on canvas) | `#f7f8ff` (dark, same as text) | `--primary-text`, `text-primary-text` |
-| Violet glow / ring | `#911efe` | `--ring`, `--landing-glow-purple` |
-| Magenta | `#cf1ae6` | `--landing-glow-magenta` |
-| Pink | `#ee477a` | `--chart-2`, `--landing-glow-pink` |
-| CTA orange | `#FF5733` → `#FF2E00` | `.landing-cta` only (marketing) |
-| In-app primary button | `#3a37fc` + violet ring | `Button` `variant="default"` |
-| Featured / Pro border | `#FF4D00` → `#8A2BE2` | `.landing-pro-border` |
+| Violet glow / ring | `#911efe` | `--ring`, `--chart-4` (dark) |
+| Pink | `#ee477a` | `--chart-2` (dark) |
+| In-app and landing primary button | `#3a37fc` + violet ring | `Button` `variant="default"` |
 | Hairline | `rgb(255 255 255 / 0.08–0.1)` | `--border`, `dark:border-white/[0.08]` |
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): the official artwork in `public/brand/mark.png`. Do not redraw it. App icons place that file on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
+Brand mark (`MicasaMark`): display the optimized `public/brand/mark-160.png` through `next/image`. Do not redraw it. Icon scripts still read the source `public/brand/mark.png` and plate it on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 
@@ -57,21 +54,23 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 
 ### Marketing landing (`/`)
 
-- **Fonts:** Manrope (`--font-display`, aliased as `--font-landing-display`) + Nunito (`--font-landing-sans`). Nunito stays scoped on the landing wrapper. Manrope loads in the root layout for app headings too.
-- **Canvas:** `#060914` with `LandingAtmosphere` blue/pink orbs.
-- **Hero panel:** `.landing-hero-wash` — purple → pink gradient wash + faint grid. Headline is white; last words may use `.landing-accent-text`.
-- **Primary CTA:** pill (`rounded-full`) + `.landing-cta` orange gradient + orange glow shadow. Secondary: ghost / hairline glass, not a second orange button.
-- **Product mocks / feature cards:** `.landing-glass-card` (specular + navy). Money in `font-mono tabular-nums`.
-- **Featured pricing card:** `.landing-pro-border` (orange → purple). Featured CTA is dark glass, not a white fill.
-- **Accent headline wash:** `.landing-accent-text` (clipped gradient).
+The landing follows the signed-in theme. `ThemeProvider` (`attribute="class"`, `defaultTheme="dark"`, `enableSystem`) wraps the root layout, and the landing uses the same `--background`, `--card`, `--foreground`, type scale, `Button`, and `<Money>` as the app. Light is a working theme here, not a dark-only exception.
+
+- **Fonts:** Geist for body, Manrope for `h1`–`h3`. No Nunito and no landing-only font variables.
+- **Type scale:** `text-display`, `text-title`, `text-section`, `text-body`, `text-caption`, `overline`. Nothing smaller than caption.
+- **Canvas:** `bg-background`. `LandingAtmosphere` orbs use `color-mix` of `--primary`, `--chart-2`, and `--chart-4`. Loops run only under `prefers-reduced-motion: no-preference`. No pointer spotlight, parallax, or magnetic controls.
+- **Hero:** `.landing-hero-wash` is a marketing-only wash built from those tokens and `--shadow-panel`. One primary `Button` (`Crear cuenta`); the second action is `ghost`.
+- **Product:** real screenshots in `public/landing/` (`next/image`, webp), desktop and mobile, light and dark. There is no pricing section — the product has no paid plans; copy may say it is free to use. Statement import is described as a file the user brings, not a bank connection.
+- **Quincena block:** normal document flow below `md` and whenever reduced motion is on. From `md` up, with motion allowed, the pair sits in a 140vh sticky stage.
+- **Money** on the landing uses `<Money>` / `formatCurrency` (sans, tabular). Status chips use `src/lib/status-tone.ts`.
 
 ### Logged-in app (and login)
 
-- **Fonts:** Geist + Geist Mono for body/UI; **Manrope** (`--font-display`) for `h1`–`h3` and brand lockup. Money still `font-mono tabular-nums`.
+- **Fonts:** Geist + Geist Mono for body/UI; **Manrope** (`--font-display`) for `h1`–`h3` and brand lockup. Money uses `<Money>` (sans, tabular).
 - **Same navy tokens** as landing (`.dark` in `globals.css`).
 - **`--primary` is electric blue** — icon pills, focus rings, toggle ON, active nav, semantic “selected”.
 - **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. In dark this matches `--foreground` (`#f7f8ff`). Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
-- **Primary labeled buttons in dark** use **electric blue** (`#3a37fc`) with a violet ring (`Button` `variant="default"`). Do not invent a second primary fill. Orange stays on **landing** `.landing-cta` pills only.
+- **Primary labeled buttons** use **electric blue** (`#3a37fc` in dark) with a violet ring (`Button` `variant="default"`), including the landing. Do not invent a second primary fill.
 - **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login has its own aurora (`login-stage`).
 - **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page. Do **not** put a grid overlay on these cards.
 
@@ -149,7 +148,7 @@ Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy su
 
 ### Out of scope
 
-Marketing landing, login, admin, the tasks route, and OAuth consent keep their own surfaces. Orange pills stay on the landing page.
+Login, admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing uses the shared `Button` and the same light and dark tokens as the app.
 
 ---
 
@@ -161,7 +160,7 @@ Keep chrome **sparse**. One dominant labeled control per block; rare actions in 
 2. **Content row** — wide data (wallet chips, KPI strips) full width **below** chrome, not squeezed beside nav icons.
 3. **Primary work** — the repeated action (add expense, pay, etc.) sits next to the data it changes.
 
-Tertiary view controls: `Button variant="ghost"` at `h-8`–`h-9`. Stronger secondary: `outline` + `rounded-xl`. Marketing CTAs stay `rounded-full`; in-app default buttons stay the shared `Button` radius unless the control is a pill toggle (quincena, pricing).
+Tertiary view controls: `Button variant="ghost"` at `h-8`–`h-9`. Stronger secondary: `outline` + `rounded-xl`. Default buttons, including landing CTAs, use the shared `Button` radius (`rounded-xl`) unless the control is a pill toggle (quincena).
 
 Icon-only: always `aria-label` + usually `Tooltip` in Spanish.
 
@@ -211,8 +210,8 @@ Fix these when touching light parity (do not leave new hardcoded dark-only chrom
 
 - Settings income/expense template inputs: use `TEMPLATE_FIELD_SHELL_CLASS` (theme-aware); avoid raw `border-white/15 bg-black/35`
 - Glass / monthly shells: light uses `--shadow-card`; dark keeps Orion glass under `dark:`
-- Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`); orange is landing `.landing-cta` only
-- Landing stays always-dark (`.landing-root`) — out of light scope
+- Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`), on the landing and in the app
+- Landing follows the same light and dark theme as the app (`ThemeProvider` on the root layout)
 - Card faces that are always “dark plastic” (e.g. wallet list card art) may stay dark by design
 
 ---
@@ -315,7 +314,7 @@ Every confirm (delete, archive, "registrar sin descontar", "transferir de todos 
 
 **Exceptions**
 
-- Marketing landing, login, admin: out of scope
+- Login, admin: out of scope. The marketing landing is in scope for light and dark.
 - Existing Dialog-only forms: migrate onto `ResponsiveOverlay` + the kit (one flow per change is fine)
 - Do not extract a mega form wrapper that owns fields/validation; the kit stays presentational
 
@@ -423,15 +422,15 @@ Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` i
 **Do**
 
 - Reuse CSS variables and the shared glass / CTA classes.
-- Put **electric blue** on the in-app primary action; keep `--primary` for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy — in dark that is `#f7f8ff`, same as body text. Orange is landing `.landing-cta` only.
-- Match landing mocks and Panel financiero before inventing a new card language.
+- Put **electric blue** on the primary action (app and landing); keep `--primary` for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy — in dark that is `#f7f8ff`, same as body text.
+- Match Panel financiero before inventing a new card language. Landing product shots are captures of that UI.
 - Capture README screenshots from **this** app (see below).
 
 **Don’t**
 
 - Commit Orion/Oriton (or any vendor) mockup PNGs, or chat-attached reference frames.
 - Paint whole panels with `bg-blue-500/5` / `bg-violet-500/5` for “identity.”
-- Mix Nunito into the logged-in app (Manrope is for headings/display only).
+- Load a second marketing typeface. The landing uses Geist + Manrope, same as the app.
 - Add a second orange button beside the primary CTA.
 - Use `toISOString().split('T')[0]` for business dates (see `src/lib/calendar-dates.ts`).
 
@@ -455,8 +454,7 @@ Replace files under `docs/images/` with captures of localhost (or production) �
 
 | File | What to capture |
 | --- | --- |
-| `docs/images/landing-hero.jpg` | `/` hero (headline + glass dashboard mock) |
-| `docs/images/landing-pricing.jpg` | `/` pricing section |
+| `docs/images/landing-hero.jpg` | `/` hero (headline + Panel screenshot) |
 | `docs/images/login.jpg` | `/login` |
 | `docs/images/panel-financiero.jpg` | Panel financiero with a seeded month |
 

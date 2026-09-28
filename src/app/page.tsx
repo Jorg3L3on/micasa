@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Nunito } from 'next/font/google';
 import { redirect } from 'next/navigation';
 
 import { LandingPage } from '@/components/landing/landing-page';
@@ -7,15 +6,9 @@ import { auth } from '@/lib/auth';
 import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import prisma from '@/lib/prisma';
 
-const landingSans = Nunito({
-  subsets: ['latin'],
-  variable: '--font-landing-sans',
-  display: 'swap',
-});
-
 const SITE_TITLE = 'MiCasa | Planifica tu dinero por quincenas';
 const SITE_DESCRIPTION =
-  'Gestión financiera para México: organiza ingresos, gastos, billeteras y obligaciones por quincenas. Personal o casa compartida.';
+  'Gestión financiera para México: organiza ingresos, gastos, billeteras y operaciones por quincenas. Personal o casa compartida.';
 
 export const metadata: Metadata = {
   title: { absolute: SITE_TITLE },
@@ -63,9 +56,5 @@ export default async function Home({
     redirect(getAppHomeHref(query));
   }
 
-  return (
-    <div className={landingSans.variable}>
-      <LandingPage />
-    </div>
-  );
+  return <LandingPage />;
 }

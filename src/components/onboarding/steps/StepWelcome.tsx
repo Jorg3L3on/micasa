@@ -29,7 +29,7 @@ export default function StepWelcome() {
 
   return (
     <div className="space-y-8">
-      <MicasaMark className="h-12 w-12" title="MiCasa" />
+      <MicasaMark className="size-12" title="MiCasa" />
       <p className="text-muted-foreground text-base leading-relaxed">
         MiCasa te ayuda a organizar tu dinero de forma clara y sencilla. En
         pocos pasos lo dejamos listo.

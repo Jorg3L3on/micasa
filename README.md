@@ -22,15 +22,13 @@ Most budgeting apps treat the month as one block. MiCasa uses **quincenas** as t
 | --- | --- |
 | ![Panel financiero](docs/images/panel-financiero.jpg) | ![Login](docs/images/login.jpg) |
 
-![Pricing — Personal, Casa, Completo](docs/images/landing-pricing.jpg)
-
 ## Design system
 
-The default UI is **Orion dark**: navy canvas (`#060914`), glass cards, orange pill CTAs, blue→magenta accents. Canonical write-up for humans and agents: **[`DESIGN.md`](./DESIGN.md)**.
+The default UI is **Orion dark**: navy canvas (`#060914`), glass cards, electric-blue primary buttons, blue→magenta accents. Light mode is supported, including the marketing landing. Canonical write-up for humans and agents: **[`DESIGN.md`](./DESIGN.md)**.
 
-- Tokens: `src/app/globals.css` (`.dark` + `.landing-root`)
+- Tokens: `src/app/globals.css` (`.dark` and `:root`)
 - Palette swatch: [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg)
-- Do **not** add third-party mockup PNGs to the repo — encode the look in tokens, shared classes (`MONTHLY_PANEL_SHELL_CLASS`, `.landing-cta`), and screenshots of **this** app.
+- Do **not** add third-party mockup PNGs to the repo — encode the look in tokens, shared classes (`MONTHLY_PANEL_SHELL_CLASS`, `Button`), and screenshots of **this** app.
 
 ## Core features
 
