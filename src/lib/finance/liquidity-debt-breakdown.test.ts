@@ -65,8 +65,8 @@ describe('composeCardDebtAccount', () => {
   it('splits MSI and plans into plazos and cycle plus prior into resto', () => {
     const account = composeCardDebtAccount({
       walletId: 7,
-      name: 'DIDI Card',
-      outstanding: 5844,
+      name: 'Tarjeta digital',
+      outstanding: 6000,
       msi: [
         {
           id: 11,
@@ -90,17 +90,17 @@ describe('composeCardDebtAccount', () => {
         {
           id: 21,
           title: 'Uber',
-          amount: 344,
+          amount: 400,
           date: '2026-03-18',
         },
       ],
     });
 
     expect(account.plazosTotal).toBe(2200);
-    expect(account.restoTotal).toBe(3644);
-    expect(account.debt).toBe(5844);
+    expect(account.restoTotal).toBe(3800);
+    expect(account.debt).toBe(6000);
     expect(account.plazosTotal + account.restoTotal).toBe(account.debt);
-    expect(account.preview).toBe(formatCardDebtPreview(2, 3644));
+    expect(account.preview).toBe(formatCardDebtPreview(2, 3800));
     expect(account.blocks.map((block) => block.key)).toEqual(['plazos', 'resto']);
     expect(account.blocks[0]?.lines.map((line) => line.id)).toEqual([
       'msi-11',
@@ -114,19 +114,19 @@ describe('composeCardDebtAccount', () => {
       'Uber',
       'Saldo anterior',
     ]);
-    expect(account.blocks[1]?.lines[1]?.amount).toBe(3300);
+    expect(account.blocks[1]?.lines[1]?.amount).toBe(3400);
   });
 
   it('does not treat remaining plazos as today debt when they exceed the saldo', () => {
     const account = composeCardDebtAccount({
       walletId: 7,
-      name: 'DIDI Card',
+      name: 'Tarjeta digital',
       outstanding: 1100,
       msi: [
         { id: 1, title: 'Laptop a 12 meses', current: 2, total: 12, monthlyAmount: 900 },
         {
           id: 2,
-          title: 'Televisor Liverpool 6 meses',
+          title: 'Televisor a 6 meses',
           current: 3,
           total: 6,
           monthlyAmount: 1300,
@@ -184,8 +184,8 @@ describe('composeCardDebtAccount', () => {
   it('keeps cycle charges and a saldo anterior line in resto', () => {
     const account = composeCardDebtAccount({
       walletId: 2,
-      name: 'Liverpool',
-      outstanding: 5705,
+      name: 'Tienda departamental',
+      outstanding: 6000,
       msi: [],
       plans: [],
       cycle: [
@@ -195,16 +195,16 @@ describe('composeCardDebtAccount', () => {
     });
 
     expect(account.plazosTotal).toBe(0);
-    expect(account.restoTotal).toBe(5705);
-    expect(account.preview).toBe(`resto ${formatCurrency(5705)}`);
+    expect(account.restoTotal).toBe(6000);
+    expect(account.preview).toBe(`resto ${formatCurrency(6000)}`);
     expect(account.blocks).toHaveLength(1);
-    expect(account.blocks[0]).toMatchObject({ key: 'resto', total: 5705 });
+    expect(account.blocks[0]).toMatchObject({ key: 'resto', total: 6000 });
     expect(account.blocks[0]?.lines.map((line) => line.title)).toEqual([
       'Zara',
       'Comida',
       'Saldo anterior',
     ]);
-    expect(account.blocks[0]?.lines[2]?.amount).toBe(4005);
+    expect(account.blocks[0]?.lines[2]?.amount).toBe(4300);
   });
 
   it('caps plazo lines and reports the hidden remainder', () => {
@@ -344,20 +344,20 @@ describe('composeLoanDebtAccount', () => {
 
 describe('summarizeDebtBreakdown', () => {
   it('builds Debes from plazos, resto and loans and keeps the top 3 concepts', () => {
-    const didi = composeCardDebtAccount({
+    const tarjetaDigital = composeCardDebtAccount({
       walletId: 1,
-      name: 'DIDI Card',
-      outstanding: 5844,
+      name: 'Tarjeta digital',
+      outstanding: 6000,
       msi: [
         { id: 1, title: 'Auriculares', current: 1, total: 3, monthlyAmount: 800 },
       ],
       plans: [],
-      cycle: [{ id: 9, title: 'Restaurante', amount: 3444, date: '2026-03-08' }],
+      cycle: [{ id: 9, title: 'Restaurante', amount: 3400, date: '2026-03-08' }],
     });
-    const liverpool = composeCardDebtAccount({
+    const tiendaDepartamental = composeCardDebtAccount({
       walletId: 2,
-      name: 'Liverpool',
-      outstanding: 5705,
+      name: 'Tienda departamental',
+      outstanding: 6000,
       msi: [],
       plans: [],
       cycle: [],
@@ -383,11 +383,11 @@ describe('summarizeDebtBreakdown', () => {
       cycle: [],
     });
 
-    const summary = summarizeDebtBreakdown([didi, liverpool, fonacot, paidCard]);
+    const summary = summarizeDebtBreakdown([tarjetaDigital, tiendaDepartamental, fonacot, paidCard]);
 
-    expect(didi.plazosTotal + didi.restoTotal).toBe(didi.debt);
-    expect(summary.plazosTotal).toBe(didi.plazosTotal);
-    expect(summary.restoTotal).toBe(didi.restoTotal + liverpool.restoTotal);
+    expect(tarjetaDigital.plazosTotal + tarjetaDigital.restoTotal).toBe(tarjetaDigital.debt);
+    expect(summary.plazosTotal).toBe(tarjetaDigital.plazosTotal);
+    expect(summary.restoTotal).toBe(tarjetaDigital.restoTotal + tiendaDepartamental.restoTotal);
     expect(summary.loansTotal).toBe(50400);
     expect(summary.debtTotal).toBe(
       summary.plazosTotal + summary.restoTotal + summary.loansTotal,
@@ -404,10 +404,10 @@ describe('summarizeDebtBreakdown', () => {
     ]);
     expect(summary.topConcepts).toEqual([
       { title: 'Préstamo nómina B', amount: 50400 },
-      { title: 'Liverpool', amount: 5705 },
+      { title: 'Tienda departamental', amount: 6000 },
       {
-        title: didi.plazosTotal >= didi.restoTotal ? 'DIDI Card plazos' : 'DIDI Card',
-        amount: Math.max(didi.plazosTotal, didi.restoTotal),
+        title: tarjetaDigital.plazosTotal >= tarjetaDigital.restoTotal ? 'Tarjeta digital plazos' : 'Tarjeta digital',
+        amount: Math.max(tarjetaDigital.plazosTotal, tarjetaDigital.restoTotal),
       },
     ]);
     expect(accountHasDebtWhy(paidCard)).toBe(false);

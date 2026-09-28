@@ -23,7 +23,7 @@ describe('createCreditCardPaymentSchema', () => {
     const parsed = createCreditCardPaymentSchema.parse({
       mode: 'wallet',
       source_wallet_id: 1,
-      amount: 944.33,
+      amount: 950,
       paid_at: '2026-11-13',
       create_fortnight_expense: true,
     });

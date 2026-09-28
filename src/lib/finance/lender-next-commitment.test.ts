@@ -13,7 +13,7 @@ const emptyWindow: LenderPayWindowView = {
 };
 
 const walletWindow: LenderPayWindowView = {
-  amount: 4759.61,
+  amount: 4800,
   commitmentDate: '2026-10-01',
   commitmentDateEnd: '2026-10-01',
   isRange: false,
@@ -56,7 +56,7 @@ describe('lenderNextCommitment', () => {
 
     expect(result).toEqual({
       kind: 'wallet',
-      amount: 4759.61,
+      amount: 4800,
       date: '2026-10-01',
       dateEnd: '2026-10-01',
       isRange: false,

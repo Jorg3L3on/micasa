@@ -181,7 +181,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         id: 99,
         name: 'Crédito B',
         type: 'CREDIT_CARD',
-        amount: 4494.74,
+        amount: 4500,
         cutoff_day: 7,
         due_day: 17,
       },
@@ -189,13 +189,13 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyStatementImports.mockResolvedValue([
       {
         wallet_id: 99,
-        total_due: 3941.76,
+        total_due: 3900,
         period_end: new Date(Date.UTC(2026, 2, 7)),
         created_at: new Date(Date.UTC(2026, 2, 10, 12, 0, 0)),
       },
       {
         wallet_id: 99,
-        total_due: 4494.74,
+        total_due: 4500,
         period_end: new Date(Date.UTC(2026, 2, 7)),
         created_at: new Date(Date.UTC(2026, 2, 15, 12, 0, 0)),
       },
@@ -205,7 +205,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     const result = await getDuePaymentsForCurrentFortnight(userOwner);
 
     expect(result).toHaveLength(1);
-    expect(result[0]?.nextDuePayment).toBe(4494.74);
+    expect(result[0]?.nextDuePayment).toBe(4500);
   });
 
   it('uses fortnight payments for planner status on custom plans', async () => {
@@ -215,7 +215,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         id: 31,
         name: 'Tienda departamental',
         type: 'DEPARTMENT_STORE_CARD',
-        amount: 3884.78,
+        amount: 3900,
         cutoff_day: 6,
         due_day: 5,
       },
@@ -225,7 +225,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ credit_card_wallet_id: 31, total: 694.76 }])
+      .mockResolvedValueOnce([{ credit_card_wallet_id: 31, total: 700 }])
       .mockResolvedValueOnce([]);
     findFirstFortnight
       .mockResolvedValueOnce({ id: 35 })
@@ -234,7 +234,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       .mockResolvedValueOnce([
         {
           credit_card_wallet_id: 31,
-          planned_amount: 694.76,
+          planned_amount: 700,
         },
       ])
       .mockResolvedValueOnce([]);
@@ -245,8 +245,8 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     expect(result.first[0]).toMatchObject({
       walletId: 31,
       statementDueDate: '2026-06-05',
-      paymentsAppliedToFortnight: 694.76,
-      plannedPayment: 694.76,
+      paymentsAppliedToFortnight: 700,
+      plannedPayment: 700,
       effectiveAmount: 0,
       plannerStatus: 'pagado',
     });
@@ -260,7 +260,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         id: 30,
         name: 'Tienda del hogar',
         type: 'DEPARTMENT_STORE_CARD',
-        amount: 5666.01,
+        amount: 5600,
         cutoff_day: 13,
         due_day: 13,
       },
@@ -302,12 +302,12 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     ]);
     queryRaw
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ credit_card_wallet_id: 26, total: 2519.99 }])
+      .mockResolvedValueOnce([{ credit_card_wallet_id: 26, total: 2500 }])
       .mockResolvedValueOnce([]);
     findManyStatementImports.mockResolvedValue([
       {
         wallet_id: 26,
-        total_due: 2519.99,
+        total_due: 2500,
         period_end: null,
         payment_due_date: new Date(Date.UTC(2026, 5, 18, 12, 0, 0)),
         created_at: new Date(Date.UTC(2026, 5, 6, 12, 0, 0)),
@@ -328,7 +328,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       walletName: 'Tarjeta digital',
       statementDueDate: '2026-06-18',
       nextDuePayment: 0,
-      paymentsAppliedToStatement: 2519.99,
+      paymentsAppliedToStatement: 2500,
       effectiveAmount: 0,
       plannerStatus: 'pagado',
     });
@@ -354,7 +354,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       // Planner layer fortnight payments
-      .mockResolvedValueOnce([{ credit_card_wallet_id: 31, total: 3190.02 }])
+      .mockResolvedValueOnce([{ credit_card_wallet_id: 31, total: 3200 }])
       .mockResolvedValueOnce([]);
     findManyStatementImports.mockResolvedValue([]);
     findManyExpenses.mockResolvedValue([]);
@@ -371,7 +371,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
       outstandingBalance: 0,
       nextDuePayment: 0,
       paymentsAppliedToStatement: 0,
-      paymentsAppliedToFortnight: 3190.02,
+      paymentsAppliedToFortnight: 3200,
       plannerStatus: 'pagado',
     });
     expect(result.second).toEqual([]);
@@ -393,7 +393,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
     findManyStatementImports.mockResolvedValue([
       {
         wallet_id: 29,
-        total_due: 7646.7,
+        total_due: 7600,
         period_end: new Date(Date.UTC(2026, 6, 7, 12, 0, 0)),
         payment_due_date: null,
         created_at: new Date(Date.UTC(2026, 6, 14, 12, 0, 0)),
@@ -687,7 +687,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         id: 1,
         credit_card_wallet_id: 30,
         due_date: due,
-        amount: 132,
+        amount: 150,
         label: 'PIF sin intereses',
         status: 'SCHEDULED',
         paid_at: null,
@@ -704,7 +704,7 @@ describe('getDuePaymentsForCurrentFortnight', () => {
         id: 9,
         sequence: 4,
         due_date: due,
-        amount: 944.33,
+        amount: 950,
         status: 'SCHEDULED',
         paid_at: null,
         plan: {
@@ -719,8 +719,8 @@ describe('getDuePaymentsForCurrentFortnight', () => {
 
     expect(result.first[0]).toMatchObject({
       walletId: 30,
-      nextDuePayment: 1076.33,
-      effectiveAmount: 1076.33,
+      nextDuePayment: 1100,
+      effectiveAmount: 1100,
       plannerStatus: 'por_pagar',
     });
     expect(result.second).toEqual([]);

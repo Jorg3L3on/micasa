@@ -41,8 +41,8 @@ describe('getLiquidityDebtBreakdown', () => {
     findManyWallet.mockResolvedValue([
       {
         id: 7,
-        name: 'DIDI Card',
-        amount: 5844,
+        name: 'Tarjeta digital',
+        amount: 6000,
         cutoff_day: 15,
         due_day: 20,
       },
@@ -69,7 +69,7 @@ describe('getLiquidityDebtBreakdown', () => {
         id: 21,
         wallet_id: 7,
         description: 'Uber',
-        amount: 344,
+        amount: 400,
         payment_date: new Date('2026-03-16T12:00:00.000Z'),
         created_at: new Date('2026-03-16T12:00:00.000Z'),
         credit_installment_current: null,
@@ -127,12 +127,12 @@ describe('getLiquidityDebtBreakdown', () => {
       'loan-15',
     ]);
 
-    const didi = breakdown.accounts.find((account) => account.id === 'wallet-7');
-    expect(didi?.plazosTotal).toBe(2200);
-    expect(didi?.restoTotal).toBe(3644);
-    expect((didi?.plazosTotal ?? 0) + (didi?.restoTotal ?? 0)).toBe(didi?.debt);
-    expect(didi?.blocks.map((block) => block.key)).toEqual(['plazos', 'resto']);
-    expect(didi?.preview).toContain('2 plazos');
+    const tarjetaDigital = breakdown.accounts.find((account) => account.id === 'wallet-7');
+    expect(tarjetaDigital?.plazosTotal).toBe(2200);
+    expect(tarjetaDigital?.restoTotal).toBe(3800);
+    expect((tarjetaDigital?.plazosTotal ?? 0) + (tarjetaDigital?.restoTotal ?? 0)).toBe(tarjetaDigital?.debt);
+    expect(tarjetaDigital?.blocks.map((block) => block.key)).toEqual(['plazos', 'resto']);
+    expect(tarjetaDigital?.preview).toContain('2 plazos');
 
     const paid = breakdown.accounts.find((account) => account.id === 'wallet-8');
     expect(paid).toMatchObject({ debt: 0, preview: '', blocks: [] });

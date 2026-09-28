@@ -20,7 +20,7 @@ const baseObligationInput = {
   cutoffDay: 15,
   dueDay: 17,
   window,
-  lastStatementBalance: 3884.78,
+  lastStatementBalance: 3900,
   paymentsAppliedToStatement: 0,
   importedTotalDue: null as number | null,
   outstandingBalance: 5000,
@@ -49,7 +49,7 @@ describe('credit card payment plan view parity with planner due items', () => {
   });
 
   it('marks pagado when fortnight payments cover custom plan', () => {
-    const plannedGross = 694.76;
+    const plannedGross = 700;
     const statement = buildCardStatementObligation({
       ...baseObligationInput,
       paymentsAppliedToStatement: 0,
@@ -59,23 +59,23 @@ describe('credit card payment plan view parity with planner due items', () => {
       fortnightId: 10,
       statement,
       plannedGrossAmount: plannedGross,
-      paymentsAppliedToFortnight: 694.76,
+      paymentsAppliedToFortnight: 700,
       todayYmd: '2026-04-10',
     });
 
     expect(planner.remainingPlannerAmount).toBe(0);
     expect(planner.plannerStatus).toBe('pagado');
     expect(planner.paymentsAppliedToStatement).toBe(0);
-    expect(planner.paymentsAppliedToFortnight).toBe(694.76);
+    expect(planner.paymentsAppliedToFortnight).toBe(700);
   });
 });
 
 describe('statement vs planner divergence (documented)', () => {
   it('statement path can show pagado via paymentsAppliedToStatement while planner uses fortnight', () => {
-    const plannedGross = 694.76;
+    const plannedGross = 700;
     const statementObligation = buildCardStatementObligation({
       ...baseObligationInput,
-      paymentsAppliedToStatement: 694.76,
+      paymentsAppliedToStatement: 700,
       plannedGrossAmount: plannedGross,
     });
     const fromStatement = toDuePaymentItemFields(statementObligation);
@@ -88,13 +88,13 @@ describe('statement vs planner divergence (documented)', () => {
         plannedGrossAmount: plannedGross,
       }),
       plannedGrossAmount: plannedGross,
-      paymentsAppliedToFortnight: 694.76,
+      paymentsAppliedToFortnight: 700,
       todayYmd: '2026-04-10',
     });
 
     expect(fromStatement.plannerStatus).toBe('pagado');
     expect(fromPlanner.plannerStatus).toBe('pagado');
-    expect(fromStatement.paymentsAppliedToStatement).toBe(694.76);
+    expect(fromStatement.paymentsAppliedToStatement).toBe(700);
     expect(fromPlanner.paymentsAppliedToStatement).toBe(0);
   });
 });

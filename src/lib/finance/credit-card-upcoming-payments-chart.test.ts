@@ -9,7 +9,7 @@ describe('buildUpcomingCreditCardPaymentsChart', () => {
     const points = buildUpcomingCreditCardPaymentsChart({
       paymentHistory: [
         { paid_at: '2026-05-10', amount: 4_500 },
-        { paid_at: '2026-09-16', amount: 2_665.92 },
+        { paid_at: '2026-09-16', amount: 2_700 },
       ],
       installmentActivePurchases: [],
       statementEnd: '2026-10-07',
@@ -19,7 +19,7 @@ describe('buildUpcomingCreditCardPaymentsChart', () => {
     });
 
     expect(points.map((p) => p.monthKey)).toEqual(['2026-09']);
-    expect(points[0]?.paid).toBeCloseTo(2_665.92);
+    expect(points[0]?.paid).toBeCloseTo(2_700);
     expect(points[0]?.pending).toBe(0);
   });
 

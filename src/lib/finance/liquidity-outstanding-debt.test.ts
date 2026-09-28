@@ -49,7 +49,7 @@ describe('buildMonthOutstandingSnapshot', () => {
       todayYmd: '2026-08-22',
       wallets: [
         { id: 1, name: 'Visa', type: 'CREDIT_CARD', amount: 5000 },
-        { id: 2, name: 'Liverpool', type: 'DEPARTMENT_STORE_CARD', amount: 2000 },
+        { id: 2, name: 'Tienda departamental', type: 'DEPARTMENT_STORE_CARD', amount: 2000 },
       ],
       movementsByWalletId: new Map([
         [1, [{ id: 1, kind: 'expense', date: '2026-07-01', direction: 'out', amount: 500, description: 'x', category: null, categoryIcon: null, fortnightYear: null, fortnightMonth: null, fortnightPeriod: null }]],
