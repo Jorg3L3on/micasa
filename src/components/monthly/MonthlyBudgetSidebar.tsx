@@ -39,7 +39,7 @@ type MonthlyBudgetSidebarProps = {
 const budgetPanelShellClass = cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-4');
 const budgetEmbeddedShellClass = cn(
   METRIC_STRIP_CLASS,
-  'border-l-[3px] border-l-violet-500/50 px-3 py-3',
+  'border-l-[3px] border-l-status-info/50 px-3 py-3',
 );
 
 const BudgetSidebarHeader = ({
@@ -251,7 +251,7 @@ function BudgetAllocationRow({
             'font-sans font-semibold tabular-nums',
             overspent
               ? 'text-destructive'
-              : 'text-emerald-600 dark:text-emerald-300',
+              : 'text-status-income',
           )}
         >
           {remainingLabel}

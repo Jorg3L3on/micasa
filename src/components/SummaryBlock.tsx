@@ -239,18 +239,18 @@ export default function SummaryBlock({
               <div
                 className={cn(
                   METRIC_STRIP_CLASS,
-                  'border-l-[3px] border-l-blue-500/50 px-2 py-2 sm:px-3 sm:py-3',
+                  'border-l-[3px] border-l-status-success/50 px-2 py-2 sm:px-3 sm:py-3',
                 )}
               >
                 <div className="mb-1.5 flex items-center justify-between gap-1 sm:mb-2">
                   <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/25 dark:bg-blue-500/20 sm:h-6 sm:w-6">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-status-income-soft ring-1 ring-status-income-border sm:h-6 sm:w-6">
                       <Wallet
-                        className="h-3 w-3 text-blue-600 dark:text-blue-400 sm:h-3.5 sm:w-3.5"
+                        className="h-3 w-3 text-status-income sm:h-3.5 sm:w-3.5"
                         data-icon="inline-start"
                       />
                     </span>
-                    <span className="truncate eyebrow text-blue-600/80 dark:text-blue-400/80">
+                    <span className="truncate eyebrow text-status-income">
                       Ingresos
                     </span>
                   </div>
@@ -258,7 +258,7 @@ export default function SummaryBlock({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-5 w-5 shrink-0 opacity-50 hover:opacity-100 hover:text-blue-500"
+                      className="h-5 w-5 shrink-0 opacity-50 hover:opacity-100 hover:text-status-income"
                       onClick={onEditIncome}
                       aria-label="Modificar ingresos de la quincena"
                       tabIndex={0}
@@ -288,17 +288,17 @@ export default function SummaryBlock({
               <div
                 className={cn(
                   METRIC_STRIP_CLASS,
-                  'border-l-[3px] border-l-emerald-500/50 px-2 py-2 sm:px-3 sm:py-3',
+                  'border-l-[3px] border-l-status-income/50 px-2 py-2 sm:px-3 sm:py-3',
                 )}
               >
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/25 dark:bg-emerald-500/20 sm:h-6 sm:w-6">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-status-success-soft ring-1 ring-status-success-border sm:h-6 sm:w-6">
                     <CheckCircle2
-                      className="h-3 w-3 text-emerald-600 dark:text-emerald-400 sm:h-3.5 sm:w-3.5"
+                      className="h-3 w-3 text-status-success sm:h-3.5 sm:w-3.5"
                       data-icon="inline-start"
                     />
                   </span>
-                  <span className="truncate eyebrow text-emerald-600/80 dark:text-emerald-400/80">
+                  <span className="truncate eyebrow text-status-success">
                     Pagado
                   </span>
                 </div>
@@ -318,17 +318,17 @@ export default function SummaryBlock({
               <div
                 className={cn(
                   METRIC_STRIP_CLASS,
-                  'border-l-[3px] border-l-amber-500/50 px-2 py-2 sm:px-3 sm:py-3',
+                  'border-l-[3px] border-l-status-pending/50 px-2 py-2 sm:px-3 sm:py-3',
                 )}
               >
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-amber-500/25 dark:bg-amber-500/20 sm:h-6 sm:w-6">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-status-pending-soft ring-1 ring-status-pending-border sm:h-6 sm:w-6">
                     <Clock
-                      className="h-3 w-3 text-amber-600 dark:text-amber-400 sm:h-3.5 sm:w-3.5"
+                      className="h-3 w-3 text-status-pending sm:h-3.5 sm:w-3.5"
                       data-icon="inline-start"
                     />
                   </span>
-                  <span className="truncate eyebrow text-amber-600/80 dark:text-amber-400/80">
+                  <span className="truncate eyebrow text-status-pending">
                     Pendiente
                   </span>
                 </div>
@@ -345,14 +345,14 @@ export default function SummaryBlock({
                 </p>
                 {planningCardStatementDue != null &&
                 planningCardStatementDue.total > 0 ? (
-                  <p className="mt-1 border-t border-amber-500/20 pt-1 text-caption leading-snug text-muted-foreground">
+                  <p className="mt-1 border-t border-status-pending/20 pt-1 text-caption leading-snug text-muted-foreground">
                     De eso, {formatCurrency(planningCardStatementDue.total)} son
                     pagos al estado de cuenta (tarjeta).
                   </p>
                 ) : null}
                 {planningWalletLoanDue != null &&
                 planningWalletLoanDue.total > 0 ? (
-                  <p className="mt-1 border-t border-amber-500/20 pt-1 text-caption leading-snug text-muted-foreground">
+                  <p className="mt-1 border-t border-status-pending/20 pt-1 text-caption leading-snug text-muted-foreground">
                     De eso, {formatCurrency(planningWalletLoanDue.total)} son
                     cuotas de préstamo desde billetera.
                   </p>
@@ -558,7 +558,7 @@ export default function SummaryBlock({
                     className="py-4"
                   />
                 )}
-                <Separator className="my-2 bg-emerald-500/15" />
+                <Separator className="my-2 bg-status-income/15" />
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">
@@ -614,8 +614,8 @@ export default function SummaryBlock({
                       <Money value={-displayBudgetFundingRow} size="caption" />
                     </div>
                   ) : null}
-                  <div className="flex items-center justify-between gap-2 border-t border-emerald-500/20 pt-2 text-xs font-semibold">
-                    <span className="text-emerald-800 dark:text-emerald-300">
+                  <div className="flex items-center justify-between gap-2 border-t border-status-income/20 pt-2 text-xs font-semibold">
+                    <span className={displayFundingNet >= 0 ? 'text-status-income' : 'text-status-expense'}>
                       = Liquidez actual
                     </span>
                     <CurrencyTicker
@@ -623,8 +623,8 @@ export default function SummaryBlock({
                       className={cn(
                         'text-xs font-semibold',
                         displayFundingNet >= 0
-                          ? 'text-emerald-700 dark:text-emerald-300'
-                          : 'text-destructive',
+                          ? 'text-status-income'
+                          : 'text-status-expense',
                       )}
                     />
                   </div>

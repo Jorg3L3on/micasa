@@ -32,9 +32,9 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
             : 'Sin pagos de deudas'
         }
         auraTone="violet"
-        pillClassName="bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400"
+        pillClassName="bg-status-expense-soft text-status-expense"
         icon={CalendarClock}
-        amountClassName="text-foreground"
+        amountClassName="text-status-expense"
       />
       <AccountMetric
         label="Adeudo al cierre"
@@ -47,14 +47,12 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
         auraTone={outstandingTotal > 0 ? 'amber' : 'emerald'}
         pillClassName={
           outstandingTotal > 0
-            ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
-            : 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+            ? 'bg-status-expense-soft text-status-expense'
+            : 'bg-status-success-soft text-status-success'
         }
         icon={Landmark}
         amountClassName={
-          outstandingTotal > 0
-            ? 'text-amber-700 dark:text-amber-300'
-            : 'text-emerald-700 dark:text-emerald-300'
+          outstandingTotal > 0 ? 'text-status-expense' : 'text-status-success'
         }
       />
     </div>
@@ -67,7 +65,7 @@ export const LiquidityMonthEvents = ({ events }: { events: LiquidityProjectionEv
 
   return (
     <section className="space-y-2" aria-label="Buenas noticias del mes">
-      <p className="flex items-center gap-1.5 px-1 eyebrow text-emerald-600 dark:text-emerald-400">
+      <p className="flex items-center gap-1.5 px-1 eyebrow text-status-success">
         <Sparkles className="size-3" aria-hidden />
         Buenas noticias
       </p>

@@ -22,7 +22,7 @@ export function InsufficientWalletExpenseNotice({
   return (
     <p
       role="status"
-      className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-snug text-amber-800 dark:text-amber-300"
+      className="rounded-lg border border-status-pending/30 bg-status-pending/10 px-3 py-2 text-xs leading-snug text-status-pending"
     >
       {walletName} tiene {formatCurrency(balance)}. Este gasto supera el saldo,
       así que no se descontará de esa billetera.

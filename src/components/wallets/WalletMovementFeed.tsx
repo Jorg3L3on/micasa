@@ -240,8 +240,8 @@ export const WalletMovementsFeed = ({
                         className={cn(
                           'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
                           isIn
-                            ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-rose-500/12 text-rose-600 dark:text-rose-400',
+                            ? 'bg-status-income/12 text-status-income'
+                            : 'bg-status-expense/12 text-status-expense',
                         )}
                         aria-hidden
                       >
@@ -284,7 +284,7 @@ export const WalletMovementsFeed = ({
                       <span
                         className={cn(
                           'shrink-0 font-sans text-sm font-bold tabular-nums',
-                          isIn && 'text-emerald-600 dark:text-emerald-400',
+                          isIn && 'text-status-income',
                         )}
                       >
                         {isIn ? '+' : '−'} {formatCurrency(m.amount)}

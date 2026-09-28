@@ -327,7 +327,7 @@ export default function StepIncomeTemplates() {
         + Agregar ingreso
       </Button>
       {!canContinue ? (
-        <p className="text-sm text-amber-700 dark:text-amber-400">
+        <p className="text-sm text-status-pending">
           Para continuar, agrega al menos un ingreso con nombre, monto mayor a 0
           y billetera de deposito.
         </p>

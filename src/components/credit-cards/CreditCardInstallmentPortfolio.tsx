@@ -94,7 +94,7 @@ export const CreditCardInstallmentPortfolio = ({
                       className="text-caption text-muted-foreground"
                     />
                   </div>
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-status-info/10 text-status-info">
                     <CreditCard className="h-4 w-4" aria-hidden data-icon="inline-start" />
                   </span>
                 </div>
@@ -111,7 +111,7 @@ export const CreditCardInstallmentPortfolio = ({
                   </div>
                   <div className="text-right">
                     <p className="text-caption text-muted-foreground">Saldo del plan</p>
-                    <p className="font-sans text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                    <p className="font-sans text-sm font-bold tabular-nums text-status-pending">
                       {formatCurrency(item.remainingAmount)}
                     </p>
                   </div>
@@ -119,7 +119,7 @@ export const CreditCardInstallmentPortfolio = ({
 
                 <div className="mb-2 flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
                   <div
-                    className="h-full rounded-full bg-violet-500 dark:bg-violet-400"
+                    className="h-full rounded-full bg-status-info"
                     style={{ width: `${Math.max(item.progressPct, 2)}%` }}
                   />
                 </div>

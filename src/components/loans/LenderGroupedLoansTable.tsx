@@ -170,8 +170,8 @@ const loanIconClass = (isPayroll: boolean) =>
   cn(
     'flex h-5 w-5 shrink-0 items-center justify-center rounded-md ring-1',
     isPayroll
-      ? 'bg-blue-500/15 text-blue-700 ring-blue-500/25 dark:text-blue-300'
-      : 'bg-violet-500/15 text-violet-700 ring-violet-500/25 dark:text-violet-300',
+      ? 'bg-status-info/15 text-status-info ring-status-info/25 dark:text-status-info'
+      : 'bg-status-info/15 text-status-info ring-status-info/25 dark:text-status-info',
   );
 
 const InstitutionActions = ({
@@ -347,7 +347,7 @@ const InstitutionCard = ({
             <HeaderMetric
               label="Pendiente"
               amount={formatCurrency(remaining)}
-              accentClassName="border-l-emerald-500/50"
+              accentClassName="border-l-status-expense"
             />
             <div className="flex min-w-0 flex-col gap-2">
               {cues.overdue ? (
@@ -367,14 +367,14 @@ const InstitutionCard = ({
                       ? payrollCommitmentHint(formatDate(cues.next.date))
                       : cueHint(cues.next)
                   }
-                  accentClassName="border-l-amber-500/50"
+                  accentClassName="border-l-status-pending/50"
                 />
               ) : null}
               {!cues.overdue && !cues.next ? (
                 <HeaderMetric
                   label="Próximo"
                   amount="—"
-                  accentClassName="border-l-amber-500/50"
+                  accentClassName="border-l-status-pending/50"
                 />
               ) : null}
             </div>
@@ -526,7 +526,7 @@ export const LenderGroupedLoansTable = ({
             <div className="w-[4.75rem]">
               <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
                 <div
-                  className="h-full rounded-full bg-emerald-500 dark:bg-emerald-400"
+                  className="h-full rounded-full bg-status-income"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>

@@ -103,7 +103,7 @@ export function LoginForm({
         </div>
 
         {error ? (
-          <div className="mb-3 text-sm text-red-400" role="alert">
+          <div className="mb-3 text-sm text-status-expense" role="alert">
             {error}
           </div>
         ) : null}

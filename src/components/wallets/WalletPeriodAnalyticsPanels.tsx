@@ -65,8 +65,8 @@ const InsightStat = ({
       <Icon
         className={cn(
           'h-3.5 w-3.5',
-          tone === 'good' && 'text-emerald-600 dark:text-emerald-400',
-          tone === 'warn' && 'text-amber-600 dark:text-amber-400',
+          tone === 'good' && 'text-status-income',
+          tone === 'warn' && 'text-status-pending',
         )}
         aria-hidden data-icon="inline-start" />
       {label}
@@ -125,7 +125,7 @@ export const WalletPeriodAnalyticsPanels = ({
                   Ingresos, egresos y neto acumulado de {rangeLabel}
                 </p>
               </div>
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-status-info/10 text-status-info dark:bg-status-info/15 dark:text-status-info">
                 <TrendingUp className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </span>
             </div>
@@ -208,7 +208,7 @@ export const WalletPeriodAnalyticsPanels = ({
                     Top categorías por egreso
                   </p>
                 </div>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-status-info/10 text-status-info dark:bg-status-info/15 dark:text-status-info">
                   <BarChart3 className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
               </div>
@@ -260,7 +260,7 @@ export const WalletPeriodAnalyticsPanels = ({
                     Ingresos, egresos y pagos a tarjeta
                   </p>
                 </div>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-status-income/10 text-status-income dark:bg-status-income/15 dark:text-status-income">
                   <PieChartIcon className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
               </div>
@@ -317,7 +317,7 @@ export const WalletPeriodAnalyticsPanels = ({
         <Card className="overflow-hidden border-border/60">
           <CardContent className="space-y-3 px-4 py-4">
             <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-status-info/10 text-status-info dark:bg-status-info/15 dark:text-status-info">
                 <Gauge className="h-4 w-4" aria-hidden data-icon="inline-start" />
               </span>
               <div>
@@ -373,13 +373,13 @@ export const WalletPeriodAnalyticsPanels = ({
               {analytics.largestOutflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
                   <p className="mb-1 flex items-center gap-1.5 eyebrow text-muted-foreground">
-                    <ArrowUpRight className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" data-icon="inline-start" />
+                    <ArrowUpRight className="h-3.5 w-3.5 text-status-expense" data-icon="inline-start" />
                     Mayor egreso
                   </p>
                   <p className="truncate text-sm font-medium">
                     {analytics.largestOutflow.description}
                   </p>
-                  <p className="font-sans text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                  <p className="font-sans text-sm font-bold tabular-nums text-status-expense">
                     {formatCurrency(analytics.largestOutflow.amount)}
                   </p>
                 </div>
@@ -387,13 +387,13 @@ export const WalletPeriodAnalyticsPanels = ({
               {analytics.largestInflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
                   <p className="mb-1 flex items-center gap-1.5 eyebrow text-muted-foreground">
-                    <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
+                    <ArrowDownLeft className="h-3.5 w-3.5 text-status-income" data-icon="inline-start" />
                     Mayor ingreso
                   </p>
                   <p className="truncate text-sm font-medium">
                     {analytics.largestInflow.description}
                   </p>
-                  <p className="font-sans text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <p className="font-sans text-sm font-bold tabular-nums text-status-income">
                     {formatCurrency(analytics.largestInflow.amount)}
                   </p>
                 </div>

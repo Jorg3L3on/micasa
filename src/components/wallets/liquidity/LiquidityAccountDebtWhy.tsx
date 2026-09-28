@@ -84,7 +84,7 @@ export const LiquidityAccountDebtWhy = ({
                     <p
                       className={cn(
                         'text-caption text-muted-foreground',
-                        line.status === 'overdue' && 'text-amber-300',
+                        line.status === 'overdue' && 'text-status-pending',
                       )}
                     >
                       <MoneyInText text={line.subtitle} />

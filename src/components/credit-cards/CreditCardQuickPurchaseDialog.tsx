@@ -626,7 +626,7 @@ const CreditCardQuickPurchaseDialog = ({
                     onPickPeriod={handlePickPeriod}
                   />
                   {fortnightMismatchesDate ? (
-                    <p className="text-caption leading-snug text-amber-700 dark:text-amber-400">
+                    <p className="text-caption leading-snug text-status-pending">
                       No coincide con la fecha
                       {dateMatchedFortnight
                         ? ` (${dateMatchedFortnight.name})`

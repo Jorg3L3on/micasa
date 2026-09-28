@@ -359,7 +359,7 @@ export const WalletListCard = ({
               'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
               'active:scale-[0.985]',
               WALLET_LIST_CARD_SHELL_CLASS,
-              hasAlert && 'ring-2 ring-inset ring-rose-400/70',
+              hasAlert && 'ring-2 ring-inset ring-status-expense/70',
             )}
             style={cardStyle}
             data-wallet-vt={viewTransitionName}
@@ -418,7 +418,7 @@ export const WalletListCard = ({
                     <p
                       className={cn(
                         'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-rose-200',
+                        hasAlert && 'text-status-expense',
                       )}
                     >
                       {formatCurrency(amountNumber)}
@@ -433,7 +433,7 @@ export const WalletListCard = ({
                       <p
                         className={cn(
                           'font-sans text-sm font-semibold tabular-nums leading-snug',
-                          (availableCredit ?? 0) < 0 && 'text-red-200',
+                          (availableCredit ?? 0) < 0 && 'text-status-expense',
                         )}
                       >
                         {availableCredit == null
@@ -460,7 +460,7 @@ export const WalletListCard = ({
                         <span
                           className={cn(
                             'font-sans tabular-nums',
-                            isOverLimit && 'text-rose-200',
+                            isOverLimit && 'text-status-expense',
                           )}
                         >
                           {isOverLimit ? 'Excedido' : `${usagePercent}%`}
@@ -477,7 +477,7 @@ export const WalletListCard = ({
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
-                            isOverLimit ? 'bg-rose-300' : 'bg-white/85',
+                            isOverLimit ? 'bg-status-expense' : 'bg-white/85',
                           )}
                           style={{ width: `${Math.min(usagePercent, 100)}%` }}
                         />
@@ -549,7 +549,7 @@ export const WalletListCard = ({
                     <p
                       className={cn(
                         'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-rose-200',
+                        hasAlert && 'text-status-expense',
                       )}
                     >
                       {formatCurrency(amountNumber)}

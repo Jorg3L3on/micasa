@@ -242,28 +242,28 @@ export default function FortnightLoanPaymentsPanel({
                   className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1',
                     visual === 'paid'
-                      ? 'bg-gradient-to-br from-emerald-500/25 to-emerald-600/10 ring-emerald-500/30 dark:from-emerald-400/25 dark:to-emerald-500/10'
+                      ? 'bg-gradient-to-br from-status-income/25 to-status-income/10 ring-status-income/30 dark:from-status-income/25 dark:to-status-income/10'
                       : visual === 'overdue'
                         ? 'bg-gradient-to-br from-destructive/25 to-destructive/10 ring-destructive/30'
                         : visual === 'muted'
                           ? 'bg-muted/40 ring-border/40'
                           : isDueSoon
-                            ? 'bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-amber-500/30 dark:from-amber-400/25 dark:to-amber-500/10'
-                            : 'bg-gradient-to-br from-blue-500/25 to-blue-600/10 ring-blue-500/30 dark:from-blue-400/25 dark:to-blue-500/10',
+                            ? 'bg-gradient-to-br from-status-pending/25 to-status-pending/10 ring-status-pending/30 dark:from-status-pending/25 dark:to-status-pending/10'
+                            : 'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                   )}
                 >
                   <Icon
                     className={cn(
                       'h-4 w-4',
                       visual === 'paid'
-                        ? 'text-emerald-600 dark:text-emerald-300'
+                        ? 'text-status-income'
                         : visual === 'overdue'
                           ? 'text-destructive'
                           : visual === 'muted'
                             ? 'text-muted-foreground'
                             : isDueSoon
-                              ? 'text-amber-600 dark:text-amber-300'
-                              : 'text-blue-600 dark:text-blue-300',
+                              ? 'text-status-pending'
+                              : 'text-status-info',
                     )}
                     aria-hidden
                   />

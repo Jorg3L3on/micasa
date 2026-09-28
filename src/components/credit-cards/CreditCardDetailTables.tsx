@@ -367,7 +367,7 @@ export const PaymentTableBlock = ({
                       {payment.note ? ` · ${payment.note}` : ''}
                     </p>
                   </div>
-                  <span className="shrink-0 font-sans text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <span className="shrink-0 font-sans text-sm font-bold tabular-nums text-status-income">
                     {formatCurrency(payment.amount)}
                   </span>
                 </div>

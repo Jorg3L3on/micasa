@@ -88,7 +88,7 @@ export function CategoryTreeRow({
               <Power
                 className={cn(
                   'h-4 w-4',
-                  active ? 'text-muted-foreground' : 'text-emerald-600',
+                  active ? 'text-muted-foreground' : 'text-status-income',
                 )}
                 data-icon="inline-start"
               />

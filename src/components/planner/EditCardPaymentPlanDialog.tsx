@@ -169,7 +169,7 @@ export const EditCardPaymentPlanDialog = ({
                 </span>
               </>
             ) : (
-              <span className="font-medium text-amber-700 dark:text-amber-300">
+              <span className="font-medium text-status-pending">
                 Falta el pago del corte
               </span>
             )}
@@ -272,7 +272,7 @@ export const EditCardPaymentPlanDialog = ({
               variant="ghost"
               className={cn(
                 OVERLAY_SECONDARY_BUTTON_CLASS,
-                'text-amber-700 dark:text-amber-300',
+                'text-status-pending',
               )}
               disabled={form.formState.isSubmitting}
               onClick={() => void handleDeclareZero()}

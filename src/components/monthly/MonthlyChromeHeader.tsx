@@ -95,7 +95,7 @@ export const statusGlyphClass = (tone: ProgressTone) => {
   if (tone === 'complete') {
     return cn(
       'flex size-8 shrink-0 items-center justify-center rounded-xl',
-      'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300',
+      'bg-status-income/15 text-status-income',
     );
   }
   return cn(

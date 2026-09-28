@@ -123,7 +123,8 @@
   --accent: #12183a;
   --accent-foreground: #f7f8ff;
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
+  /* #1a0508 on #ff6467 is 6.80:1. The hover fill on navy stays 5.64:1. #fafafa was 2.77:1. */
+  --destructive-foreground: #1a0508;
   --border: rgb(255 255 255 / 0.1);
   --input: rgb(255 255 255 / 0.1);
   --ring: #3a37fc;

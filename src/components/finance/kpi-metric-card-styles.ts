@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
 
 /** Calm KPI tile. Tone is a left border, not a gradient fill. */
-export type KpiMetricTone = 'blue' | 'emerald' | 'destructive' | 'neutral';
+export type KpiMetricTone = 'blue' | 'emerald' | 'income' | 'destructive' | 'neutral';
 
 const shellByTone: Record<KpiMetricTone, string> = {
   blue: 'border-border/60 border-l-[3px] border-l-status-info bg-card',
   emerald: 'border-border/60 border-l-[3px] border-l-status-success bg-card',
+  income: 'border-border/60 border-l-[3px] border-l-status-income bg-card',
   destructive: 'border-border/60 border-l-[3px] border-l-status-expense bg-card',
   neutral: 'border-border/60 bg-card',
 };
@@ -13,6 +14,7 @@ const shellByTone: Record<KpiMetricTone, string> = {
 const labelByTone: Record<KpiMetricTone, string> = {
   blue: 'text-status-info',
   emerald: 'text-status-success',
+  income: 'text-status-income',
   destructive: 'text-status-expense',
   neutral: 'text-muted-foreground',
 };
@@ -25,6 +27,7 @@ export const kpiMetricLabelClass = (tone: KpiMetricTone) =>
 
 export const kpiMetricValueClass = (tone: KpiMetricTone) => {
   if (tone === 'destructive') return 'text-status-expense';
+  if (tone === 'income') return 'text-status-income';
   if (tone === 'emerald') return 'text-status-success';
   if (tone === 'neutral') return 'text-muted-foreground';
   return 'text-foreground';

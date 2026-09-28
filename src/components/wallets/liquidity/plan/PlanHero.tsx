@@ -29,7 +29,13 @@ const loanCountLabel = (count: number): string =>
   count === 1 ? '1 préstamo' : `${count} préstamos`;
 
 const Amount = ({ amount }: { amount: number }) => (
-  <span className={cn('shrink-0 font-sans tabular-nums', amount < 0 && 'text-emerald-600 dark:text-emerald-400')}>
+  <span
+    className={cn(
+      'shrink-0 font-sans tabular-nums',
+      amount > 0 && 'text-status-expense',
+      amount < 0 && 'text-status-income',
+    )}
+  >
     {formatCurrency(amount)}
   </span>
 );
@@ -97,7 +103,7 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
   const panelId = useId();
   const amount = Math.abs(gapAmount);
   const label = mode === 'surplus' ? PLAN_COPY.extraLabel : mode === 'shortfall' ? PLAN_COPY.gapLabel : PLAN_COPY.month;
-  const accent = mode === 'shortfall' ? 'border-l-amber-500/50' : mode === 'surplus' ? 'border-l-emerald-500/50' : 'border-l-primary/40';
+  const accent = mode === 'shortfall' ? 'border-l-status-expense' : mode === 'surplus' ? 'border-l-status-income' : 'border-l-primary/40';
   const showBreakdown = mode !== 'balanced' && lines.length > 0;
 
   return (

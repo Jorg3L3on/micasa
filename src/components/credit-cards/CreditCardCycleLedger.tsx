@@ -235,7 +235,7 @@ export const CreditCardCycleLedger = ({
                           href={getFortnightHref(purchase, ownerQueryString)}
                           className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/40"
                         >
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-status-info/10 text-status-info">
                             <ArrowUpRight className="h-4 w-4" aria-hidden data-icon="inline-start" />
                           </span>
                           <div className="min-w-0 flex-1">
@@ -282,7 +282,7 @@ export const CreditCardCycleLedger = ({
                         key={entry.id}
                         className="flex items-center gap-3 rounded-xl px-2 py-2.5"
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-status-income/10 text-status-income">
                           <ArrowDownLeft className="h-4 w-4" aria-hidden data-icon="inline-start" />
                         </span>
                         <div className="min-w-0 flex-1">
@@ -313,7 +313,7 @@ export const CreditCardCycleLedger = ({
                       key={entry.id}
                       className="flex items-center gap-3 rounded-xl px-2 py-2.5"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-status-info/10 text-status-info">
                         <FileText className="h-4 w-4" aria-hidden data-icon="inline-start" />
                       </span>
                       <div className="min-w-0 flex-1">

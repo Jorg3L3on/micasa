@@ -374,7 +374,7 @@ const CreditCardStatementImportDialog = ({
                     className={cn(
                       'flex w-full items-center gap-3 rounded-xl border border-dashed px-3 py-3 text-left transition-colors',
                       importFile
-                        ? 'border-sky-500/40 bg-sky-500/5'
+                        ? 'border-status-info/40 bg-status-info/5'
                         : 'border-border/60 bg-muted/20 hover:bg-muted/40',
                     )}
                     aria-label={
@@ -387,7 +387,7 @@ const CreditCardStatementImportDialog = ({
                       className={cn(
                         'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
                         importFile
-                          ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                          ? 'bg-status-info/15 text-status-info'
                           : 'bg-muted text-muted-foreground',
                       )}
                     >
@@ -418,7 +418,7 @@ const CreditCardStatementImportDialog = ({
                     <span className="flex items-center gap-2">
                       Opciones
                       {advancedOptionsActive ? (
-                        <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-caption font-semibold text-sky-600 dark:text-sky-400">
+                        <span className="rounded-full bg-status-info/15 px-1.5 py-0.5 text-caption font-semibold text-status-info">
                           Activas
                         </span>
                       ) : null}

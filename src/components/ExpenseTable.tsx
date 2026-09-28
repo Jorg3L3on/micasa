@@ -674,11 +674,11 @@ export default function ExpenseTable({
           <div
             className={cn(
               METRIC_STRIP_CLASS,
-              'flex items-center justify-between gap-2 border-l-[3px] border-l-slate-500/50',
+              'flex items-center justify-between gap-2 border-l-[3px] border-l-status-expense',
             )}
           >
             <div className="flex min-w-0 flex-col">
-              <span className="eyebrow text-slate-700 dark:text-slate-300">
+              <span className="eyebrow text-status-expense">
                 Cargos a tarjeta
               </span>
               <span className="text-caption text-muted-foreground">
@@ -687,7 +687,7 @@ export default function ExpenseTable({
             </div>
             <span
               className={cn(
-                'font-sans font-bold tabular-nums text-slate-700 dark:text-slate-300',
+                'font-sans font-bold tabular-nums text-status-expense',
                 isCompact ? 'text-xs' : 'text-sm',
               )}
             >
@@ -1073,18 +1073,18 @@ export default function ExpenseTable({
                     <li
                       className={cn(
                         METRIC_STRIP_CLASS,
-                        'flex list-none items-center justify-between gap-2 border-l-[3px] border-l-slate-500/50',
+                        'flex list-none items-center justify-between gap-2 border-l-[3px] border-l-status-expense',
                       )}
                     >
                       <div className="flex min-w-0 flex-col">
-                        <span className="eyebrow text-slate-700 dark:text-slate-300">
+                        <span className="eyebrow text-status-expense">
                           Cargos a tarjeta
                         </span>
                         <span className="text-caption text-muted-foreground">
                           No suman hasta pagar el estado de cuenta
                         </span>
                       </div>
-                      <span className="font-sans text-sm font-bold tabular-nums text-slate-700 dark:text-slate-300">
+                      <span className="font-sans text-sm font-bold tabular-nums text-status-expense">
                         {formatCurrency(cardGrandTotal)}
                       </span>
                     </li>

@@ -55,9 +55,9 @@ const badgeToneClass = (tone: AccountTodayBadge['tone']): string =>
     'rounded-full px-2 py-0.5 text-caption font-semibold ring-1',
     tone === 'destructive' && 'bg-destructive/10 text-destructive ring-destructive/20',
     tone === 'amber' &&
-      'bg-amber-500/10 text-amber-800 ring-amber-500/20 dark:text-amber-300',
+      'bg-status-pending/10 text-status-pending ring-status-pending/20 dark:text-status-pending',
     tone === 'emerald' &&
-      'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300',
+      'bg-status-income/10 text-status-income ring-status-income/20 dark:text-status-income',
     tone === 'muted' && 'bg-muted text-muted-foreground ring-border/40',
   );
 
@@ -67,15 +67,15 @@ const utilizationBarClass = (utilizationPct: number): string =>
     utilizationPct > 80
       ? 'bg-destructive/80'
       : utilizationPct > 50
-        ? 'bg-amber-500/80'
-        : 'bg-emerald-500/80',
+        ? 'bg-status-pending/80'
+        : 'bg-status-income/80',
   );
 
 const AccountIcon = ({ view }: { view: AccountTodayView }) => {
   if (view.isFonacot && !view.providerIconKey) {
     return (
       <span
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500/15 text-caption font-bold tracking-wide text-teal-800 ring-1 ring-teal-500/30 dark:text-teal-200"
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 text-caption font-bold tracking-wide text-status-info ring-1 ring-status-info/30 dark:text-status-info"
         aria-label="Fonacot"
         title="Fonacot"
       >
@@ -109,11 +109,9 @@ const UtilizationBar = ({
 );
 
 const debtToneClass = (view: AccountTodayView): string =>
-  view.kind === 'loan'
-    ? 'text-amber-700 dark:text-amber-300'
-    : view.figures.isCredit
-      ? 'text-violet-700 dark:text-violet-300'
-      : 'text-muted-foreground';
+  view.kind === 'loan' || view.figures.isCredit
+    ? 'text-status-expense'
+    : 'text-muted-foreground';
 
 const breakdownKeyForRow = (row: AccountTodayRow): string =>
   row.kind === 'wallet' ? `wallet-${row.wallet.id}` : `loan-${row.loan.id}`;
@@ -226,7 +224,7 @@ const AccountCard = ({
             <p
               className={cn(
                 'font-sans text-sm font-bold tabular-nums',
-                free == null ? 'text-muted-foreground' : 'text-emerald-700 dark:text-emerald-300',
+                free == null ? 'text-muted-foreground' : 'text-status-income',
               )}
             >
               {free == null ? '—' : formatCurrency(free)}
@@ -409,7 +407,7 @@ export const LiquidityAccountsToday = ({
   const subtitle =
     fundingTotal != null ? (
       <>
-        <span className="font-sans font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+        <span className="font-sans font-semibold tabular-nums text-status-income">
           {formatCurrency(fundingTotal)}
         </span>{' '}
         en efectivo y débito · {countLabel}

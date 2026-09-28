@@ -17,12 +17,12 @@ export const DataGapCallout = ({ gaps, lowConfidence }: DataGapCalloutProps) => 
 
   return (
     <div
-      className="rounded-xl border border-border/60 border-l-[3px] border-l-amber-500/50 bg-card px-4 py-3"
+      className="rounded-xl border border-border/60 border-l-[3px] border-l-status-pending/50 bg-card px-4 py-3"
       role="status"
     >
       {lowConfidence ? (
         <p className="flex items-start gap-2 text-sm">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-status-pending" aria-hidden />
           <span>{PLAN_COPY.lowConfidence}</span>
         </p>
       ) : null}

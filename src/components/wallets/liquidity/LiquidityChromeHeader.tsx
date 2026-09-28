@@ -157,7 +157,7 @@ const LiquidityMonthPicker = ({
             {isCurrent ? (
               <span className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 eyebrow text-foreground">
                 <span
-                  className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                  className="size-1.5 rounded-full bg-status-income"
                   aria-hidden
                 />
                 Actual
@@ -185,7 +185,7 @@ const LiquidityMonthPicker = ({
                     'bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground',
                   !isSelected &&
                     isCalendarCurrent &&
-                    'border border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
+                    'border border-status-income/40 text-status-income',
                 )}
                 onSelect={(event) => {
                   event.preventDefault();
