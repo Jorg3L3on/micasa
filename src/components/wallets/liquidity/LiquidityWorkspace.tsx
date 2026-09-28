@@ -16,8 +16,6 @@ import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { useLiquidityProjection } from '@/components/wallets/liquidity/use-liquidity-projection';
 import { cn } from '@/lib/utils';
 
-const WORKSPACE_TAB_TRIGGER_CLASS =
-  'min-h-9 px-2 py-1.5 text-xs font-semibold sm:min-h-8 sm:text-sm';
 const WORKSPACE_TAB_LABEL_CLASS = 'inline-flex items-center justify-center gap-1.5';
 
 export const LiquidityWorkspace = () => {
@@ -53,8 +51,6 @@ export const LiquidityWorkspace = () => {
           'flex w-full min-w-0 items-center p-1 sm:max-w-sm sm:p-1.5',
         )}
         wrapperClassName="min-w-0 flex-1"
-        listClassName="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
-        triggerClassName={WORKSPACE_TAB_TRIGGER_CLASS}
         indicatorClassName={AURA_TAB_INDICATOR_CLASS}
         activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
         options={[

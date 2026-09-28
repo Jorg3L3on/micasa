@@ -167,7 +167,7 @@ export const CreditCardPlannedPaymentSection = ({
   return (
     <>
       <div
-        className="rounded-xl border border-border/60 bg-card p-4"
+        className="rounded-xl bg-card p-4"
         role="region"
         aria-label="Pagos planeados por quincena"
       >

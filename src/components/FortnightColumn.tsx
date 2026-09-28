@@ -855,10 +855,6 @@ export default function FortnightColumn({
   );
 
   const compactTabs = dualColumnLayout;
-  const plannerTabTriggerClass = cn(
-    '@container min-h-9 px-1.5 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2 sm:py-1.5 xl:px-2.5 xl:py-2 xl:text-sm',
-    compactTabs && 'min-h-8 px-1 py-1 text-xs xl:px-1.5 xl:py-1 xl:text-xs',
-  );
   const plannerTabLabelClass = cn(
     'inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5',
     compactTabs && 'gap-1',
@@ -934,8 +930,6 @@ export default function FortnightColumn({
             'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
           )}
           wrapperClassName="min-w-0 flex-1"
-          listClassName="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
-          triggerClassName={plannerTabTriggerClass}
           indicatorClassName={AURA_TAB_INDICATOR_CLASS}
           activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
           options={[

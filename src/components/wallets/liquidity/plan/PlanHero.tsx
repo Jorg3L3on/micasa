@@ -5,7 +5,7 @@ import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn, formatCurrency } from '@/lib/utils';
 import { SectionHeader } from '@/components/section-header';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { kpiMetricCardShellClass } from '@/components/finance/kpi-metric-card-styles';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { groupGapBreakdownLines } from '@/components/wallets/liquidity/plan/group-gap-lines';
@@ -103,7 +103,7 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
   const panelId = useId();
   const amount = Math.abs(gapAmount);
   const label = mode === 'surplus' ? PLAN_COPY.extraLabel : mode === 'shortfall' ? PLAN_COPY.gapLabel : PLAN_COPY.month;
-  const accent = mode === 'shortfall' ? 'border-l-status-expense' : mode === 'surplus' ? 'border-l-status-income' : 'border-l-primary/40';
+  const kpiTone = mode === 'shortfall' ? 'destructive' : mode === 'surplus' ? 'income' : 'neutral';
   const showBreakdown = mode !== 'balanced' && lines.length > 0;
 
   return (
@@ -120,7 +120,7 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
         <p className="text-sm text-muted-foreground">{PLAN_COPY.balancedBody}</p>
       ) : (
         <div className="space-y-2">
-          <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px]', accent)}>
+          <div className={kpiMetricCardShellClass(kpiTone)}>
             <p className="eyebrow text-muted-foreground">{label}</p>
             <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
               <CurrencyTicker value={amount} />

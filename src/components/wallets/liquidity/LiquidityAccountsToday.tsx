@@ -176,7 +176,7 @@ const AccountCard = ({
     <div
       className={cn(
         MONTHLY_PANEL_SHELL_CLASS,
-        'isolate flex w-full flex-col gap-3 overflow-hidden rounded-xl p-3 text-left',
+        'isolate flex w-full flex-col gap-3 overflow-hidden rounded-xl border-0 p-3 text-left dark:border-0',
       )}
     >
       <AuraRowBloom color={accountAuraColor(view)} />

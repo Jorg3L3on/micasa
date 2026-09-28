@@ -175,7 +175,6 @@ export const CashPlanTab = ({
             value={strategy}
             onValueChange={(next) => handleStrategyChange(next as 'avalanche' | 'snowball')}
             ariaLabel={PLAN_COPY.strategyLabel}
-            listClassName="rounded-full border border-border/60 bg-muted/40 p-0.5"
             options={[
               { value: 'avalanche', label: PLAN_COPY.avalanche },
               { value: 'snowball', label: PLAN_COPY.snowball },

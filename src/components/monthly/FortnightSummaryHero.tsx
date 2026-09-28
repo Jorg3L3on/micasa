@@ -5,6 +5,7 @@ import {
   type DueToPayCompositionRow,
 } from '@/components/monthly/fortnight-summary-header';
 import { getFortnightCommitmentBar } from '@/components/monthly/fortnight-income-commitment';
+import { kpiMetricCardShellClass, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { AuraSurface } from '@/components/aura/aura-surface';
 import { AURA_TONE_HEX, type AuraTone } from '@/lib/ui/aura-palette';
@@ -231,27 +232,23 @@ type AccountMetricProps = {
   label: string;
   amount: number;
   subtitle: string;
-  auraTone: AuraTone;
+  auraTone?: AuraTone;
+  /** When set, the tile uses the shared KPI shell instead of an aura surface. */
+  kpiTone?: KpiMetricTone;
   pillClassName: string;
   icon: typeof Banknote;
   amountClassName: string;
 };
 
-/** Aura hero tile (Balance actual / Liquidez actual); reused by Liquidez month metrics. */
-export const AccountMetric = ({
+const AccountMetricBody = ({
   label,
   amount,
   subtitle,
-  auraTone,
   pillClassName,
   icon: Icon,
   amountClassName,
 }: AccountMetricProps) => (
-  <AuraSurface
-    color={AURA_TONE_HEX[auraTone]}
-    animated
-    className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
-  >
+  <>
     <div className="mb-1.5 flex items-center gap-1.5">
       <span
         className={cn(
@@ -274,8 +271,29 @@ export const AccountMetric = ({
     <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
       {subtitle}
     </p>
-  </AuraSurface>
+  </>
 );
+
+/** Aura hero tile (Balance actual / Liquidez actual); reused by Liquidez month metrics. */
+export const AccountMetric = (props: AccountMetricProps) => {
+  if (props.kpiTone) {
+    return (
+      <div className={kpiMetricCardShellClass(props.kpiTone)} role="region" aria-label={props.label}>
+        <AccountMetricBody {...props} />
+      </div>
+    );
+  }
+
+  return (
+    <AuraSurface
+      color={AURA_TONE_HEX[props.auraTone ?? 'primary']}
+      animated
+      className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
+    >
+      <AccountMetricBody {...props} />
+    </AuraSurface>
+  );
+};
 
 type LegendItemProps = {
   label: string;

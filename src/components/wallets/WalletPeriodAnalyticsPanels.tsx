@@ -371,7 +371,7 @@ export const WalletPeriodAnalyticsPanels = ({
             </p>
             <div className="space-y-2">
               {analytics.largestOutflow ? (
-                <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
+                <div className="rounded-xl bg-muted/10 px-3 py-2">
                   <p className="mb-1 flex items-center gap-1.5 eyebrow text-muted-foreground">
                     <ArrowUpRight className="h-3.5 w-3.5 text-status-expense" data-icon="inline-start" />
                     Mayor egreso
@@ -385,7 +385,7 @@ export const WalletPeriodAnalyticsPanels = ({
                 </div>
               ) : null}
               {analytics.largestInflow ? (
-                <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
+                <div className="rounded-xl bg-muted/10 px-3 py-2">
                   <p className="mb-1 flex items-center gap-1.5 eyebrow text-muted-foreground">
                     <ArrowDownLeft className="h-3.5 w-3.5 text-status-income" data-icon="inline-start" />
                     Mayor ingreso

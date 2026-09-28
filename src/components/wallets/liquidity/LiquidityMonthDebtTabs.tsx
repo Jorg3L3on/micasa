@@ -23,8 +23,6 @@ type LiquidityMonthDebtTabsProps = {
   outstandingTotal?: number;
 };
 
-const TAB_TRIGGER_CLASS =
-  'min-h-9 px-1.5 py-1.5 text-xs font-semibold sm:min-h-8 sm:px-2 sm:py-1.5 xl:px-2.5 xl:py-2 xl:text-sm';
 const TAB_LABEL_CLASS = 'inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5';
 const TAB_ICON_CLASS = 'h-3.5 w-3.5 shrink-0';
 const TAB_BADGE_CLASS =
@@ -56,8 +54,6 @@ export const LiquidityMonthDebtTabs = ({
         'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
       )}
       wrapperClassName="min-w-0 flex-1"
-      listClassName="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
-      triggerClassName={TAB_TRIGGER_CLASS}
       indicatorClassName={AURA_TAB_INDICATOR_CLASS}
       activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
       options={[

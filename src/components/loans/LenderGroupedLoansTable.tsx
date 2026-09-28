@@ -23,7 +23,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import {
+  kpiMetricCardShellClass,
+  type KpiMetricTone,
+} from '@/components/finance/kpi-metric-card-styles';
 import { SwipeDeleteRow } from '@/components/ui/swipe-delete-row';
 import {
   Table,
@@ -140,18 +143,17 @@ const HeaderMetric = ({
   label,
   amount,
   hint,
-  accentClassName,
+  tone,
 }: {
   label: string;
   amount: string;
   hint?: string;
-  accentClassName: string;
+  tone: KpiMetricTone;
 }) => (
   <div
     className={cn(
-      METRIC_STRIP_CLASS,
-      'flex h-full min-w-0 flex-col justify-between border-l-[3px] px-2.5 py-2',
-      accentClassName,
+      kpiMetricCardShellClass(tone),
+      'flex h-full min-w-0 flex-col justify-between',
     )}
   >
     <p className="eyebrow text-muted-foreground">
@@ -347,7 +349,7 @@ const InstitutionCard = ({
             <HeaderMetric
               label="Pendiente"
               amount={formatCurrency(remaining)}
-              accentClassName="border-l-status-expense"
+              tone="destructive"
             />
             <div className="flex min-w-0 flex-col gap-2">
               {cues.overdue ? (
@@ -355,7 +357,7 @@ const InstitutionCard = ({
                   label="Vencida"
                   amount={formatCurrency(cues.overdue.amount)}
                   hint={cueHint(cues.overdue)}
-                  accentClassName="border-l-destructive/70"
+                  tone="destructive"
                 />
               ) : null}
               {cues.next ? (
@@ -367,14 +369,14 @@ const InstitutionCard = ({
                       ? payrollCommitmentHint(formatDate(cues.next.date))
                       : cueHint(cues.next)
                   }
-                  accentClassName="border-l-status-pending/50"
+                  tone="blue"
                 />
               ) : null}
               {!cues.overdue && !cues.next ? (
                 <HeaderMetric
                   label="Próximo"
                   amount="—"
-                  accentClassName="border-l-status-pending/50"
+                  tone="blue"
                 />
               ) : null}
             </div>

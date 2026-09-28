@@ -13,7 +13,7 @@ import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items
 const countLabel = (count: number, singular: string, plural: string): string =>
   `${count} ${count === 1 ? singular : plural}`;
 
-/** Pagos del mes + Adeudo al cierre as Panel financiero aura tiles. */
+/** Pagos del mes + Adeudo al cierre as shared KPI tiles. */
 export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeriesItem }) => {
   const debtItems = month.debt_items ?? [];
   const paymentsDue = monthDebtPaymentsTotal(debtItems);
@@ -31,7 +31,7 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
             ? countLabel(paymentCount, 'pago programado', 'pagos programados')
             : 'Sin pagos de deudas'
         }
-        auraTone="violet"
+        kpiTone="destructive"
         pillClassName="bg-status-expense-soft text-status-expense"
         icon={CalendarClock}
         amountClassName="text-status-expense"
@@ -44,7 +44,7 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
             ? countLabel(outstandingCount, 'cuenta con saldo', 'cuentas con saldo')
             : 'Sin deudas al cierre'
         }
-        auraTone={outstandingTotal > 0 ? 'amber' : 'emerald'}
+        kpiTone={outstandingTotal > 0 ? 'destructive' : 'emerald'}
         pillClassName={
           outstandingTotal > 0
             ? 'bg-status-expense-soft text-status-expense'
