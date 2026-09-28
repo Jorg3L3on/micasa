@@ -5,6 +5,8 @@ import {
   formatDayMonthLabel,
   formatFortnightDateRangeCompact,
   formatFortnightDateRangeLabel,
+  formatFortnightPeriodTitle,
+  formatFortnightToolbarTitle,
   getAppHomeHref,
   getCalendarFortnightRefForYmd,
   getCurrentCalendarFortnightRef,
@@ -342,6 +344,40 @@ describe('formatDayMonthLabel / formatFortnightDateRangeLabel', () => {
   it('formats SECOND through the penultimate day', () => {
     expect(formatFortnightDateRangeLabel(2026, 6, 'SECOND')).toBe(
       '15 de junio al 29 de junio',
+    );
+  });
+});
+
+describe('formatFortnightPeriodTitle / formatFortnightToolbarTitle', () => {
+  const now = new Date('2026-09-28T18:00:00Z');
+
+  it('drops the current year and uses a middle dot', () => {
+    expect(formatFortnightPeriodTitle('FIRST', 10, 2026, now)).toBe(
+      'Primera quincena · Octubre',
+    );
+    expect(formatFortnightPeriodTitle('SECOND', 10, 2026, now)).toBe(
+      'Segunda quincena · Octubre',
+    );
+  });
+
+  it('keeps a year that is not the current calendar year', () => {
+    expect(formatFortnightPeriodTitle('FIRST', 10, 2025, now)).toBe(
+      'Primera quincena · Octubre 2025',
+    );
+  });
+
+  it('omits · year from the toolbar title in the current year', () => {
+    expect(formatFortnightToolbarTitle(2026, 10, 'FIRST', now)).toBe(
+      '30 de septiembre al 14 de octubre',
+    );
+    expect(formatFortnightToolbarTitle(2026, 10, 'FIRST', now)).not.toContain(
+      '2026',
+    );
+  });
+
+  it('appends · year on the toolbar title for another year', () => {
+    expect(formatFortnightToolbarTitle(2025, 10, 'FIRST', now)).toBe(
+      '30 de septiembre al 14 de octubre · 2025',
     );
   });
 });
