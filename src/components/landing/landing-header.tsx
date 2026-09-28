@@ -35,7 +35,7 @@ export const LandingHeader = () => {
           aria-label="MiCasa inicio"
           onClick={handleCloseMenu}
         >
-          <MicasaMark className="size-8" />
+          <MicasaMark className="size-8" priority />
           <span className="truncate text-section">MiCasa</span>
         </Link>
 
