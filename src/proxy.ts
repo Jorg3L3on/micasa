@@ -26,6 +26,11 @@ const proxy = auth((req) => {
 
   // Landing, auth forms, and legal pages are always public for guests.
   if (!isLoggedIn && PUBLIC_PATHS.has(pathname)) {
+    if (pathname === '/') {
+      const requestHeaders = new Headers(req.headers);
+      requestHeaders.set('x-micasa-pathname', pathname);
+      return NextResponse.next({ request: { headers: requestHeaders } });
+    }
     return NextResponse.next();
   }
 

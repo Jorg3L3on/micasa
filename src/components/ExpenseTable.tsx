@@ -249,7 +249,7 @@ type ExpenseTableProps = {
   period?: 'FIRST' | 'SECOND';
   density?: ExpenseTableDensity;
   wallets?: WalletListItem[];
-  /** When true (planificación por quincena), totals follow the full list in page flow. */
+  /** When true (planeación por quincena), totals follow the full list in page flow. */
   pinTotalsToBottom?: boolean;
   /** How to order rows when syncing from props (default: mayor monto). */
   sortMode?: PlannerListSortMode;
@@ -831,7 +831,7 @@ export default function ExpenseTable({
                       className={swipeEnabled ? 'bg-transparent' : undefined}
                       surfaceClassName={cn(
                         MONTHLY_PANEL_SHELL_CLASS,
-                        'group/row isolate flex items-center gap-2.5 overflow-hidden rounded-xl px-3',
+                        'group/row isolate flex flex-nowrap items-center gap-2.5 overflow-hidden rounded-xl px-3',
                         isCompact ? 'py-2.5' : 'py-3',
                       )}
                     >

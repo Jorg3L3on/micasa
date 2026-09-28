@@ -23,6 +23,11 @@ type SegmentedControlProps = {
   indicatorClassName?: string;
   activeLabelClassName?: string;
   stretch?: boolean;
+  /**
+   * Render only the pill list. The parent must already be motion `Tabs`
+   * so the triggers share that context (detail pages nest the list in a hero).
+   */
+  embedded?: boolean;
   /** Rendered beside the list inside `frameClassName` (sort menu, etc.). */
   accessory?: ReactNode;
   children?: ReactNode;
@@ -46,6 +51,7 @@ export const SegmentedControl = ({
   indicatorClassName,
   activeLabelClassName,
   stretch = false,
+  embedded = false,
   accessory,
   children,
 }: SegmentedControlProps) => {
@@ -72,6 +78,24 @@ export const SegmentedControl = ({
     </TabsList>
   );
 
+  const framed = frameClassName ? (
+    <div className={frameClassName}>
+      {list}
+      {accessory}
+    </div>
+  ) : (
+    list
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {framed}
+        {children}
+      </>
+    );
+  }
+
   return (
     <Tabs
       value={value}
@@ -80,14 +104,7 @@ export const SegmentedControl = ({
       variant="pill"
       className={className}
     >
-      {frameClassName ? (
-        <div className={frameClassName}>
-          {list}
-          {accessory}
-        </div>
-      ) : (
-        list
-      )}
+      {framed}
       {children}
     </Tabs>
   );

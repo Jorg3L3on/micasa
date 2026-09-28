@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { currentCalendarYear } from '@/lib/calendar-dates';
-import { formatFortnightToolbarTitle } from '@/lib/fortnight-calendar';
+import { formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
 import { getPageTitle, pageTitleTooltip } from '@/components/PageTitle';
 
 describe('pageTitleTooltip', () => {
@@ -13,16 +13,18 @@ describe('pageTitleTooltip', () => {
 });
 
 describe('getPageTitle fortnight titles', () => {
-  it('drops the current year from the fortnight toolbar title', () => {
+  it('uses the ordinal quincena title and drops the current year', () => {
     const year = currentCalendarYear();
     const title = getPageTitle(`/fortnight/${year}/10/FIRST`).title;
-    expect(title).toBe(formatFortnightToolbarTitle(year, 10, 'FIRST'));
+    expect(title).toBe(formatFortnightOrdinalTitle('FIRST', 10, year));
+    expect(title).toBe('1ª quincena · Octubre');
     expect(title).not.toContain(String(year));
+    expect(getPageTitle(`/fortnight/${year}/10/FIRST`).suppressHeading).toBe(true);
   });
 
   it('keeps another year on the fortnight toolbar title', () => {
     expect(getPageTitle('/fortnight/2020/10/FIRST').title).toBe(
-      '30 de septiembre al 14 de octubre · 2020',
+      '1ª quincena · Octubre 2020',
     );
   });
 });

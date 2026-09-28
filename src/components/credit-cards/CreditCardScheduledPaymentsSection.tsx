@@ -158,7 +158,7 @@ export const CreditCardScheduledPaymentsSection = ({
             <p className="text-sm font-medium">Sin pagos programados</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Agrega MSI o mensualidades conocidas para ver el pago próximo y la
-              planificación del mes.
+              planeación del mes.
             </p>
             <Button
               type="button"

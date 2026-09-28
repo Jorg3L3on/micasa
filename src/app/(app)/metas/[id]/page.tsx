@@ -560,7 +560,7 @@ export default function MetaDetailPage() {
             movements={movements.movements}
             ownerQueryString={ownerQs}
             onAddTransaction={() => setIncomeOpen(true)}
-            addTransactionLabel="Registrar ingreso"
+            addTransactionLabel="Agregar ingreso"
             canRegister={canSaveAndArchive}
           />
         ) : null}

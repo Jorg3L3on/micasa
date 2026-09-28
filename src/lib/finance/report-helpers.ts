@@ -3,6 +3,15 @@ import { FortnightPeriod } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 
+/** Present but not FIRST/SECOND (or 1/2) is a client error. Blank means all periods. */
+export const fortnightPeriodParamError = (
+  period: string | null | undefined,
+): string | null => {
+  if (period == null || period.trim() === '') return null;
+  if (parseFortnightPeriod(period)) return null;
+  return 'period must be FIRST or SECOND';
+};
+
 export const parseFortnightPeriod = (
   value: string | null | undefined,
 ): FortnightPeriod | undefined => {

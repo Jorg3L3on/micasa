@@ -533,7 +533,6 @@ export default function FortnightColumn({
       const message =
         err instanceof Error ? err.message : 'Error al guardar el monto';
       setOverrideError(message);
-      toast.error(message);
       throw err;
     }
   };
@@ -927,9 +926,9 @@ export default function FortnightColumn({
           stretch
           frameClassName={cn(
             MONTHLY_LIQUID_PANEL_CLASS,
-            'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
+            'mb-1.5 flex min-w-0 flex-wrap items-center gap-1 p-1 sm:mb-3.5 sm:flex-nowrap sm:gap-1.5 sm:p-1.5',
           )}
-          wrapperClassName="min-w-0 flex-1"
+          wrapperClassName="min-w-0 w-full flex-1 sm:w-auto"
           indicatorClassName={AURA_TAB_INDICATOR_CLASS}
           activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
           options={[

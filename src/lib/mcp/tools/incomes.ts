@@ -113,7 +113,7 @@ export function registerIncomeTools(server: McpServer) {
   server.registerTool(
     'add_income',
     {
-      title: 'Registrar ingreso',
+      title: 'Agregar ingreso',
       description:
         'Registra un ingreso en una billetera de activo (efectivo/débito/meta). Sube el saldo. No aplica a tarjetas.',
       inputSchema: z.object({

@@ -727,7 +727,7 @@ const CreditCardQuickPurchaseDialog = ({
             </div>
             <p className="mt-1.5 text-caption text-muted-foreground">
               Si rellenas ambos, la compra se trata como pago en cuotas y no
-              aparece en la planificación por quincena (sí en el estado de cuenta
+              aparece en la planeación por quincena (sí en el estado de cuenta
               de la tarjeta).
             </p>
           </div>

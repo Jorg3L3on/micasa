@@ -6,6 +6,7 @@ import { wherePlanningCashFlowExpenses } from '@/lib/finance/expense-planning-sc
 import {
   buildExpenseWhereForFortnightScope,
   fortnightIdsForRollingCalendarMonths,
+  fortnightPeriodParamError,
 } from '@/lib/finance/report-helpers';
 import { getReportSummary } from '@/lib/finance/report-summary.service';
 
@@ -20,6 +21,10 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month');
     const year = searchParams.get('year');
     const period = searchParams.get('period');
+    const periodError = fortnightPeriodParamError(period);
+    if (periodError) {
+      return NextResponse.json({ error: periodError }, { status: 400 });
+    }
     const windowMonthsRaw = searchParams.get('windowMonths');
     const planningCashFlow = searchParams.get('planningCashFlow') === 'true';
     const excludeCreditInstallment =

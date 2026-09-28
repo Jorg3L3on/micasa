@@ -26,7 +26,7 @@ export const MONEY_TONE_CLASS: Record<ResolvedMoneyTone, string> = {
 /** Weight and size. Sans + tabular figures — never the mono face. */
 export const MONEY_SIZE_CLASS: Record<MoneySize, string> = {
   hero: 'font-sans text-2xl font-bold tabular-nums tracking-tight sm:text-3xl',
-  row: 'font-sans text-sm font-semibold tabular-nums',
+  row: 'shrink-0 whitespace-nowrap font-sans text-sm font-semibold tabular-nums',
   caption: 'font-sans text-caption font-medium tabular-nums',
 };
 

@@ -62,7 +62,7 @@ export function CreateHouseDialog({
     <ResponsiveOverlay
       open={open}
       onOpenChange={onOpenChange}
-      title="Crear casa"
+      title="Agregar casa"
       description="Crea un hogar compartido para planear gastos con otras personas."
       busy={loading}
     >
@@ -98,7 +98,7 @@ export function CreateHouseDialog({
           aria-busy={loading}
           className={OVERLAY_PRIMARY_BUTTON_CLASS}
         >
-          {loading ? 'Creando…' : 'Crear'}
+          {loading ? 'Agregando…' : 'Agregar casa'}
         </Button>
       </form>
     </ResponsiveOverlay>

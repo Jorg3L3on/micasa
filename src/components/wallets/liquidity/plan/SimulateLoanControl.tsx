@@ -27,8 +27,9 @@ export const SimulateLoanControl = ({
   onFeeChange,
   active,
 }: SimulateLoanControlProps) => (
-  <fieldset className="space-y-3 rounded-xl border border-border/60 bg-card px-4 py-4">
-    <legend className="px-1 text-sm font-medium">{title}</legend>
+  <fieldset className="rounded-xl border border-border/60 bg-card px-4 pb-4">
+    <legend className="ml-1 w-auto bg-card px-1.5 text-sm font-medium">{title}</legend>
+    <div className="space-y-3">
     <p className="text-sm text-muted-foreground">{PLAN_COPY.simDisclaimer}</p>
     <div className="grid gap-3 sm:grid-cols-3">
       <div className="space-y-1.5">
@@ -69,5 +70,6 @@ export const SimulateLoanControl = ({
       </div>
     </div>
     {active ? null : <p className="text-sm text-muted-foreground">{PLAN_COPY.simPending}</p>}
+    </div>
   </fieldset>
 );

@@ -22,7 +22,7 @@ export function registerReportTools(server: McpServer) {
     {
       title: 'Resumen del periodo',
       description:
-        'Totales de ingresos, gastos, pagado/pendiente, saldos de billeteras de fondo y resto de presupuesto. Misma lógica que GET /api/reports?type=summary y el panel de planificación.',
+        'Totales de ingresos, gastos, pagado/pendiente, saldos de billeteras de fondo y resto de presupuesto. Misma lógica que GET /api/reports?type=summary y el panel de planeación.',
       inputSchema: z.object({
         ...ownerArgs,
         year: z.number().int().min(2000).max(2100),
@@ -35,7 +35,7 @@ export function registerReportTools(server: McpServer) {
           .optional()
           .default(true)
           .describe(
-            'true (default): vista de planificación sin cuotas MSI de tarjeta; incluye KPIs de tarjetas/préstamos del planner.',
+            'true (default): vista de planeación sin cuotas MSI de tarjeta; incluye KPIs de tarjetas/préstamos del planner.',
           ),
       }),
       annotations: { readOnlyHint: true },

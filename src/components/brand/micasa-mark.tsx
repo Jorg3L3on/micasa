@@ -1,23 +1,35 @@
+import Image from 'next/image';
+
 import { cn } from '@/lib/utils';
 
 type MicasaMarkProps = {
   className?: string;
   /** Accessible name when the mark stands alone. Omit when adjacent text labels it. */
   title?: string;
+  /** Header mark. Preloads so the first paint is not an empty box. */
+  priority?: boolean;
 };
 
-/** Brand isotipo. Artwork is `public/brand/mark.png` — do not redraw it. */
-export const MicasaMark = ({ className, title }: MicasaMarkProps) => {
+/**
+ * Brand isotipo. Display asset is the 160px `public/brand/mark-160.png`.
+ * Icon generation still reads the source `public/brand/mark.png`.
+ */
+export const MicasaMark = ({ className, title, priority = false }: MicasaMarkProps) => {
   const isDecorative = !title;
 
   return (
-    // Sized by the caller (h-7, size-10, …). next/image's width style would override that.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/brand/mark.png"
-      alt={isDecorative ? '' : title}
+    <span
+      className={cn('relative inline-block shrink-0', className)}
       aria-hidden={isDecorative ? true : undefined}
-      className={cn('shrink-0 object-contain', className)}
-    />
+    >
+      <Image
+        src="/brand/mark-160.png"
+        alt={isDecorative ? '' : title}
+        fill
+        sizes="48px"
+        priority={priority}
+        className="object-contain"
+      />
+    </span>
   );
 };

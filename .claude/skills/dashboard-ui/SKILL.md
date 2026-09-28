@@ -112,7 +112,7 @@ Stable semantic mapping — re-use these gradients across pages so users learn t
 | Color | Gradient | Used for |
 |---|---|---|
 | Electric blue CTA | `#3a37fc` + violet ring | Primary buttons in-app (use `<Button>`, do not duplicate) |
-| Orange CTA | `135deg, #FF5733 → #FF2E00` | Landing `.landing-cta` only |
+| Primary CTA | `Button` `variant="default"` | App and landing. Electric blue in dark. |
 | Electric blue | `135deg, #3a37fc → #911efe` | Brand, debit, selected, icon pills |
 | Pink / magenta | `135deg, #ee477a → #cf1ae6` | Accent, mark gradient end |
 | Emerald | `135deg, #10b981 → #34d399` | Income, success |
@@ -224,7 +224,7 @@ Use `STATUS_*_CLASS` from `src/lib/status-tone.ts` (`success`, `pending`, `overd
 - Tall primary on a form: add `h-11`
 - Icon-only: `<Button variant="ghost" size="icon">` with `aria-label`
 - Page primary action: register it in the app header (`primaryAction`), not as an in-page button or FAB
-- Landing-only pills: `.landing-cta` + `rounded-full` — do not use on app routes
+- Landing CTAs use the same `<Button>` as the app (`rounded-xl`). Do not add a second primary fill.
 
 ### Layouts
 

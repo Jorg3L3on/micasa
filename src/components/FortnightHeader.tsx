@@ -14,7 +14,10 @@ import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_PANEL_SHELL_CLASS,
 } from '@/components/monthly/monthly-panel-shell'
-import { formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar'
+import {
+  formatFortnightDateRangeLabel,
+  formatFortnightOrdinalTitle,
+} from '@/lib/fortnight-calendar'
 import { cn } from '@/lib/utils'
 
 type FortnightPeriod = 'FIRST' | 'SECOND'
@@ -107,13 +110,13 @@ export default function FortnightHeader({
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center justify-between gap-2',
+        'flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2',
         MONTHLY_PANEL_SHELL_CLASS,
         MONTHLY_CHROME_PADDING_CLASS,
       )}
     >
       <div
-        className="flex items-center gap-1"
+        className="flex min-w-0 items-center gap-1"
         role="group"
         aria-label="Selector de quincena"
       >
@@ -127,9 +130,17 @@ export default function FortnightHeader({
           label={nextLabel}
           direction="next"
         />
+        <div className="min-w-0">
+          <h1 className="text-balance text-title sm:truncate">
+            {formatFortnightOrdinalTitle(period, month, year)}
+          </h1>
+          <p className="text-balance text-caption text-muted-foreground sm:truncate">
+            {formatFortnightDateRangeLabel(year, month, period)}
+          </p>
+        </div>
       </div>
       {actions ? (
-        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+        <div className="flex items-center gap-2 sm:shrink-0">{actions}</div>
       ) : null}
     </div>
   )

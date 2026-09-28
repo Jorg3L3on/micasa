@@ -1,5 +1,5 @@
 /**
- * Pagos a TC / tienda sin fila de Expense vinculada: deben sumar a la planificación
+ * Pagos a TC / tienda sin fila de Expense vinculada: deben sumar a la planeación
  * (salida de efectivo) por fecha de pago. Si hay expense_id, el gasto ya entra en el agregado normal.
  */
 

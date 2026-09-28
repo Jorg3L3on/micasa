@@ -109,7 +109,7 @@ export const MonthlyMonthPicker = ({
           </span>
           <span className="flex min-w-0 flex-col items-center gap-0.5 @min-[42rem]:items-start">
             <span className="flex min-w-0 items-center gap-1">
-              <span className="truncate text-base font-semibold leading-tight tracking-tight sm:text-lg">
+              <span className="truncate text-base font-semibold leading-normal tracking-tight sm:text-lg">
                 {monthName}
                 {year !== currentYear ? (
                   <span className="font-medium text-muted-foreground"> {year}</span>
@@ -176,8 +176,8 @@ export const MonthlyMonthPicker = ({
                 aria-selected={isViewed}
                 title={
                   hasFortnights
-                    ? `${label} ${pickerYear}: con planificación`
-                    : `${label} ${pickerYear}: sin planificación`
+                    ? `${label} ${pickerYear}: con planeación`
+                    : `${label} ${pickerYear}: sin planeación`
                 }
                 className={cn(
                   'relative justify-center rounded-md px-2 py-2 text-xs font-semibold',
@@ -206,8 +206,8 @@ export const MonthlyMonthPicker = ({
                 ) : null}
                 <span className="sr-only">
                   {hasFortnights
-                    ? ', con planificación'
-                    : ', sin planificación'}
+                    ? ', con planeación'
+                    : ', sin planeación'}
                 </span>
               </DropdownMenuItem>
             );

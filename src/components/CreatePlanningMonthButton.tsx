@@ -67,7 +67,7 @@ export default function CreatePlanningMonthButton({
       onClick={handleCreate}
       disabled={submitting}
       aria-busy={submitting}
-      aria-label={`Crear planificación para ${monthLabel}`}
+      aria-label={`Crear planeación para ${monthLabel}`}
       className={cn(
         'h-auto min-h-9 shrink-0 justify-start gap-2.5 whitespace-normal',
         variant === 'compact'

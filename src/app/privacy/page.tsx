@@ -99,7 +99,7 @@ export default function PrivacyPage() {
       <ul>
         <li>Crear y administrar tu cuenta, autenticarte y mantener tu sesión.</li>
         <li>
-          Prestarte la planificación financiera por quincenas y los módulos
+          Prestarte la planeación financiera por quincenas y los módulos
           relacionados (gastos, ingresos, billeteras, tarjetas, préstamos,
           etc.).
         </li>

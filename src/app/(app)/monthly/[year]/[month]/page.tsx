@@ -39,7 +39,7 @@ export async function generateMetadata({
   if (!parsedParams.ok) {
     return {
       title: 'Panel financiero',
-      description: 'Planifica ingresos y gastos por quincena.',
+      description: 'Planea ingresos y gastos por quincena.',
     };
   }
   const { year, month } = parsedParams.value;
@@ -215,7 +215,7 @@ export default async function MonthlyPage({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <SectionHeader
-                title={`Falta crear la planificación de ${viewedMonthLabel}`}
+                title={`Falta crear la planeación de ${viewedMonthLabel}`}
               />
               <p className="max-w-2xl text-sm text-muted-foreground">
                 Este mes no tiene las dos quincenas necesarias. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta para evitar datos incompletos.

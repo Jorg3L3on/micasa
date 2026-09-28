@@ -7,7 +7,9 @@ import EmptyState from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/error-banner';
 import { ReceivePayrollTrigger } from '@/components/ReceivePayrollButton';
 import type { Metadata } from 'next';
-import { formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
+import { notFound, redirect } from 'next/navigation';
+import { formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
+import { parseFortnightPeriod } from '@/lib/finance/report-helpers';
 import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
@@ -143,9 +145,8 @@ export async function generateMetadata({
     return { title: 'Quincena' };
   }
 
-  const ordinal = period === 'FIRST' ? '1ª' : '2ª';
   return {
-    title: `${ordinal} quincena · ${formatFortnightDateRangeLabel(year, month, period)}`,
+    title: formatFortnightOrdinalTitle(period, month, year),
   };
 }
 
@@ -172,7 +173,23 @@ export default async function FortnightPage({
 
   const year = parseInt(yearParam, 10);
   const month = parseInt(monthParam, 10);
-  const period = periodParam.toUpperCase() as 'FIRST' | 'SECOND';
+  const period = parseFortnightPeriod(periodParam);
+  if (!period || !Number.isFinite(year) || !Number.isFinite(month)) {
+    notFound();
+  }
+  if (periodParam !== period) {
+    const qs = new URLSearchParams();
+    if (resolvedSearchParams.ownerType) {
+      qs.set('ownerType', resolvedSearchParams.ownerType);
+    }
+    if (resolvedSearchParams.ownerId) {
+      qs.set('ownerId', resolvedSearchParams.ownerId);
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    redirect(
+      `/fortnight/${yearParam}/${monthParam}/${period}${suffix}`,
+    );
+  }
 
   const [fortnightInfo, transactionResult, summaryResult, wallets] = await Promise.all([
     getFortnightInfo(yearParam, monthParam, periodParam, ownerContext),

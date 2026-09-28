@@ -250,7 +250,7 @@ const parseStoredFilters = (): StoredWalletListFilters | null => {
 const ScrollFadeChipRow = ({
   ariaLabel,
   children,
-  mode = 'tablist',
+  mode = 'group',
 }: {
   ariaLabel: string;
   children: ReactNode;
@@ -1310,7 +1310,21 @@ export default function WalletsPage() {
 
       <div className="relative z-0">
       {error && !deleteDialogOpen ? (
-        <ErrorBanner className="mb-4">{error}</ErrorBanner>
+        <ErrorBanner className="mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>{error}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 shrink-0 text-status-overdue hover:text-status-overdue"
+              onClick={() => {
+                void fetchWallets();
+              }}
+            >
+              Reintentar
+            </Button>
+          </div>
+        </ErrorBanner>
       ) : null}
 
       <div className="min-w-0">

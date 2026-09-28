@@ -5,6 +5,7 @@ import {
   formatDayMonthLabel,
   formatFortnightDateRangeCompact,
   formatFortnightDateRangeLabel,
+  formatFortnightOrdinalTitle,
   formatFortnightPeriodTitle,
   formatFortnightToolbarTitle,
   getAppHomeHref,
@@ -357,6 +358,12 @@ describe('formatFortnightPeriodTitle / formatFortnightToolbarTitle', () => {
     );
     expect(formatFortnightPeriodTitle('SECOND', 10, 2026, now)).toBe(
       'Segunda quincena · Octubre',
+    );
+    expect(formatFortnightOrdinalTitle('FIRST', 10, 2026, now)).toBe(
+      '1ª quincena · Octubre',
+    );
+    expect(formatFortnightOrdinalTitle('SECOND', 9, 2026, now)).toBe(
+      '2ª quincena · Septiembre',
     );
   });
 

@@ -8,8 +8,14 @@ import {
   HouseRole,
 } from '@/generated/prisma/client';
 import { hash } from 'bcryptjs';
-import { parseCalendarDate } from '@/lib/calendar-dates';
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  parseCalendarDate,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
+import { getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
 import { generateLoanPaymentSchedule } from '@/lib/finance/loan-schedule';
 import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 
@@ -73,7 +79,7 @@ async function main() {
   // HOUSES
   // ─────────────────────────────────────────────
   const casaDemo = await prisma.house.create({
-    data: { name: 'Casa Demo', owner_id: ana.id },
+    data: { name: 'Hogar', owner_id: ana.id },
   });
   const casaNorte = await prisma.house.create({
     data: { name: 'Casa Norte', owner_id: luis.id },
@@ -110,7 +116,7 @@ async function main() {
   // ─────────────────────────────────────────────
   // WALLETS
   // Five cards with invented cut/pay days, split across people and both houses.
-  // Ana holds one card, Luis holds one, Casa Demo holds three. Casa Norte is cash-only.
+  // Ana holds one card, Luis holds one, Hogar holds three. Casa Norte is cash-only.
   // ─────────────────────────────────────────────
   const walletAnaEfectivo = await prisma.wallet.create({
     data: { name: 'Efectivo', type: PaymentMethodType.CASH, amount: 800, user_id: ana.id },
@@ -153,12 +159,15 @@ async function main() {
   });
   const walletCasaCredito = await prisma.wallet.create({
     data: {
-      name: 'Crédito B',
+      name: 'Tarjeta del hogar',
       type: PaymentMethodType.CREDIT_CARD,
-      amount: 3400,
-      cutoff_day: 2,
-      due_day: 24,
-      credit_limit: 15000,
+      amount: 4800,
+      cutoff_day: 12,
+      due_day: 27,
+      credit_limit: 20000,
+      minimum_payment: 850,
+      apr_annual: 0.36,
+      cat_annual: 0.48,
       house_id: casaDemo.id,
     },
   });
@@ -168,8 +177,11 @@ async function main() {
       type: PaymentMethodType.CREDIT_CARD,
       amount: 600,
       cutoff_day: 11,
-      due_day: 28,
+      due_day: 26,
       credit_limit: 4000,
+      minimum_payment: 180,
+      apr_annual: 0.42,
+      cat_annual: 0.55,
       house_id: casaDemo.id,
     },
   });
@@ -181,6 +193,9 @@ async function main() {
       cutoff_day: 27,
       due_day: 14,
       credit_limit: 7000,
+      minimum_payment: 300,
+      apr_annual: 0.48,
+      cat_annual: 0.62,
       house_id: casaDemo.id,
     },
   });
@@ -222,7 +237,7 @@ async function main() {
   const itAportacion = await prisma.incomeTemplate.create({
     data: {
       name: 'Aportación',
-      suggested_amount: 11000,
+      suggested_amount: 18500,
       source: 'Salario',
       applies_first_fortnight: true,
       applies_second_fortnight: true,
@@ -390,8 +405,8 @@ async function main() {
       name: 'Despensa',
       total_amount: 2500,
       frequency: 'BIWEEKLY',
-      recurrent: true,
-      active: true,
+      recurrent: false,
+      active: false,
       start_date: fHouseJulFirst.start_date,
       end_date: fHouseJulSecond.end_date,
       house_id: casaDemo.id,
@@ -438,12 +453,12 @@ async function main() {
       { fortnight_id: fAnaAugFirst.id, user_id: ana.id, amount: 8500, source: 'Salario', received_at: parseCalendarDate('2026-08-01'), income_template_id: itNominaAna.id, wallet_id: walletAnaDebito.id, category_id: catAnaSalario.id },
       { fortnight_id: fAnaAugSecond.id, user_id: ana.id, amount: 8500, source: 'Salario', received_at: parseCalendarDate('2026-08-16'), income_template_id: itNominaAna.id, wallet_id: walletAnaDebito.id, category_id: catAnaSalario.id },
       { fortnight_id: fLuisJunFirst.id, user_id: luis.id, amount: 4000, source: 'Otro ingreso', received_at: parseCalendarDate('2026-06-01'), income_template_id: itHonorariosLuis.id, wallet_id: walletLuisDebito.id, category_id: catLuisIngreso.id },
-      { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-05-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-05-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseJunFirst.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-06-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseJunSecond.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-06-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseJulFirst.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-07-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-07-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-05-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-05-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJunFirst.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-06-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJunSecond.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-06-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJulFirst.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-07-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-07-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
     ],
   });
 
@@ -460,14 +475,14 @@ async function main() {
       { fortnight_id: fLuisJunFirst.id, user_id: luis.id, description: 'Transporte', amount: 350, is_paid: true, payment_date: parseCalendarDate('2026-06-04'), category_id: catLuisTransporte.id, wallet_id: walletLuisDebito.id, expense_template_id: etLuisTransporte.id },
       { fortnight_id: fLuisJunSecond.id, user_id: luis.id, description: 'Transporte', amount: 350, is_paid: false, due_day: 18, category_id: catLuisTransporte.id, wallet_id: walletLuisDebito.id, expense_template_id: etLuisTransporte.id },
       { fortnight_id: fLuisJunSecond.id, user_id: luis.id, description: 'Compra en tienda', amount: 250, is_paid: true, payment_date: parseCalendarDate('2026-06-20'), category_id: catLuisTransporte.id, wallet_id: walletLuisTienda.id },
-      { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, description: 'Supermercado', amount: 1600, is_paid: false, due_day: 12, category_id: catComidaHouse.id, wallet_id: walletCasaDebito.id, expense_template_id: etSuper.id },
+      { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, description: 'Supermercado', amount: 1600, is_paid: true, payment_date: parseCalendarDate('2026-05-12'), category_id: catComidaHouse.id, wallet_id: walletCasaDebito.id, expense_template_id: etSuper.id },
       { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, description: 'Teléfono', amount: 290, is_paid: true, payment_date: parseCalendarDate('2026-05-09'), category_id: catServiciosHouse.id, wallet_id: walletCasaEfectivo.id, expense_template_id: etTelefono.id },
-      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, description: 'Supermercado', amount: 1600, is_paid: false, due_day: 26, category_id: catComidaHouse.id, wallet_id: walletCasaDebito.id, expense_template_id: etSuper.id },
-      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, description: 'Luz', amount: 380, is_paid: false, due_day: 20, category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etLuz.id },
-      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, description: 'Renta', amount: 6800, is_paid: false, due_day: 16, category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etRentaCasa.id },
+      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, description: 'Supermercado', amount: 1600, is_paid: true, payment_date: parseCalendarDate('2026-05-26'), category_id: catComidaHouse.id, wallet_id: walletCasaDebito.id, expense_template_id: etSuper.id },
+      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, description: 'Luz', amount: 380, is_paid: true, payment_date: parseCalendarDate('2026-05-20'), category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etLuz.id },
+      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, description: 'Renta', amount: 6800, is_paid: true, payment_date: parseCalendarDate('2026-05-16'), category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etRentaCasa.id },
       { fortnight_id: fHouseJunFirst.id, house_id: casaDemo.id, description: 'Supermercado', amount: 1600, is_paid: true, payment_date: parseCalendarDate('2026-06-12'), category_id: catComidaHouse.id, wallet_id: walletCasaDebito.id, expense_template_id: etSuper.id },
-      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, description: 'Renta', amount: 6800, is_paid: false, due_day: 16, category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etRentaCasa.id },
-      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, description: 'Luz', amount: 380, is_paid: false, due_day: 20, category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etLuz.id },
+      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, description: 'Renta', amount: 6800, is_paid: true, payment_date: parseCalendarDate('2026-07-16'), category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etRentaCasa.id },
+      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, description: 'Luz', amount: 380, is_paid: true, payment_date: parseCalendarDate('2026-07-20'), category_id: catCasa.id, wallet_id: walletCasaDebito.id, expense_template_id: etLuz.id },
     ],
   });
 
@@ -482,7 +497,7 @@ async function main() {
     data: { name: 'Patronal', user_id: luis.id },
   });
   const lenderCasa = await prisma.lender.create({
-    data: { name: 'Caja demo', house_id: casaDemo.id },
+    data: { name: 'Caja del barrio', house_id: casaDemo.id },
   });
 
   const createScheduledLoan = async (input: {
@@ -563,9 +578,15 @@ async function main() {
     incomeTemplateId: itHonorariosLuis.id,
     notes: 'Diez descuentos quincenales demo sobre honorarios',
   });
+  const lenderFondo = await prisma.lender.create({
+    data: { name: 'Fondo vecinal', house_id: casaDemo.id },
+  });
+  const lenderTaller = await prisma.lender.create({
+    data: { name: 'Taller Norte', house_id: casaDemo.id },
+  });
   await createScheduledLoan({
     name: 'Préstamo del hogar',
-    lenderName: 'Caja demo',
+    lenderName: 'Caja del barrio',
     lenderId: lenderCasa.id,
     type: 'PERSONAL',
     paymentAmount: 1800,
@@ -576,6 +597,34 @@ async function main() {
     owner: { house_id: casaDemo.id },
     sourceWalletId: walletCasaDebito.id,
     notes: 'Doce mensualidades demo de la casa',
+  });
+  await createScheduledLoan({
+    name: 'Refrigerador',
+    lenderName: 'Fondo vecinal',
+    lenderId: lenderFondo.id,
+    type: 'PERSONAL',
+    paymentAmount: 950,
+    paymentCount: 8,
+    frequency: 'MONTHLY',
+    startDate: '2026-06-10',
+    paymentSource: 'WALLET',
+    owner: { house_id: casaDemo.id },
+    sourceWalletId: walletCasaDebito.id,
+    notes: 'Ocho mensualidades demo del refrigerador',
+  });
+  await createScheduledLoan({
+    name: 'Bicicleta',
+    lenderName: 'Taller Norte',
+    lenderId: lenderTaller.id,
+    type: 'PERSONAL',
+    paymentAmount: 640,
+    paymentCount: 6,
+    frequency: 'MONTHLY',
+    startDate: '2026-07-12',
+    paymentSource: 'WALLET',
+    owner: { house_id: casaDemo.id },
+    sourceWalletId: walletCasaDebito.id,
+    notes: 'Seis mensualidades demo de la bicicleta',
   });
 
   // ─────────────────────────────────────────────
@@ -606,6 +655,304 @@ async function main() {
         wallet_id: walletCasaDigital.id,
         credit_installment_current: 1,
         credit_installment_total: 4,
+      },
+    ],
+  });
+
+  const today = todayCalendarDate();
+  const [todayYear, todayMonth, todayDay] = today.split('-').map(Number);
+  const monthEnd = (year: number, month: number) => {
+    const nextYear = month === 12 ? year + 1 : year;
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const firstNext = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+    return addCalendarDays(firstNext, -1);
+  };
+  const endDay = Number(monthEnd(todayYear, todayMonth).slice(8, 10));
+  const dueDay = todayDay < endDay ? todayDay + 1 : todayDay;
+  await prisma.wallet.update({
+    where: { id: walletCasaCredito.id },
+    data: { due_day: dueDay, cutoff_day: Math.max(1, dueDay - 15) },
+  });
+
+  const houseLoanIds = (
+    await prisma.loan.findMany({
+      where: { house_id: casaDemo.id },
+      select: { id: true },
+    })
+  ).map((loan) => loan.id);
+  const pastHousePayments = await prisma.loanPayment.findMany({
+    where: {
+      status: 'SCHEDULED',
+      due_date: { lt: parseCalendarDate(today) },
+      loan_id: { in: houseLoanIds },
+    },
+    select: { id: true, due_date: true },
+  });
+  for (const payment of pastHousePayments) {
+    await prisma.loanPayment.update({
+      where: { id: payment.id },
+      data: { status: 'PAID', paid_at: payment.due_date },
+    });
+  }
+
+  const shiftMonth = (year: number, month: number, delta: number) => {
+    const index = year * 12 + (month - 1) + delta;
+    return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+  };
+
+  const ensureHouseFortnight = async (year: number, month: number, period: FortnightPeriod) => {
+    const found = await prisma.fortnight.findFirst({
+      where: { year, month, period, house_id: casaDemo.id },
+    });
+    if (found) return found;
+    const label = period === FortnightPeriod.FIRST ? 'Primera quincena' : 'Segunda quincena';
+    return createFortnight(year, month, period, `${label} ${month}/${year}`, { house_id: casaDemo.id });
+  };
+
+  for (const delta of [-1, 0, 1]) {
+    const { year, month } = shiftMonth(todayYear, todayMonth, delta);
+    await ensureHouseFortnight(year, month, FortnightPeriod.FIRST);
+    await ensureHouseFortnight(year, month, FortnightPeriod.SECOND);
+  }
+
+  const current = getCurrentCalendarFortnightRef();
+  const otherPeriod =
+    current.period === 'FIRST' ? FortnightPeriod.SECOND : FortnightPeriod.FIRST;
+  const currentFortnight = await ensureHouseFortnight(
+    current.year,
+    current.month,
+    current.period === 'FIRST' ? FortnightPeriod.FIRST : FortnightPeriod.SECOND,
+  );
+  const otherFortnight = await ensureHouseFortnight(current.year, current.month, otherPeriod);
+
+  const ymdIn = (fortnight: { start_date: Date }, offset: number) =>
+    parseCalendarDate(addCalendarDays(formatCalendarDate(fortnight.start_date), offset));
+
+  const previousMonth = shiftMonth(todayYear, todayMonth, -1);
+  const previousFirst = await ensureHouseFortnight(
+    previousMonth.year,
+    previousMonth.month,
+    FortnightPeriod.FIRST,
+  );
+  const previousSecond = await ensureHouseFortnight(
+    previousMonth.year,
+    previousMonth.month,
+    FortnightPeriod.SECOND,
+  );
+  const houseSalary = {
+    house_id: casaDemo.id,
+    amount: 18500,
+    source: 'Salario',
+    income_template_id: itAportacion.id,
+    wallet_id: walletCasaDebito.id,
+    category_id: catSalarioHouse.id,
+  };
+  await prisma.income.createMany({
+    data: [
+      {
+        ...houseSalary,
+        fortnight_id: previousFirst.id,
+        received_at: ymdIn(previousFirst, 0),
+      },
+      {
+        ...houseSalary,
+        fortnight_id: previousSecond.id,
+        received_at: ymdIn(previousSecond, 0),
+      },
+      {
+        ...houseSalary,
+        fortnight_id: currentFortnight.id,
+        received_at: ymdIn(currentFortnight, 0),
+      },
+      {
+        ...houseSalary,
+        fortnight_id: otherFortnight.id,
+        received_at: ymdIn(otherFortnight, 0),
+      },
+    ],
+  });
+  await prisma.expense.createMany({
+    data: [
+      {
+        fortnight_id: previousFirst.id,
+        house_id: casaDemo.id,
+        description: 'Despensa',
+        amount: 1180,
+        is_paid: true,
+        payment_date: ymdIn(previousFirst, 2),
+        category_id: catComidaHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: previousSecond.id,
+        house_id: casaDemo.id,
+        description: 'Luz',
+        amount: 410,
+        is_paid: true,
+        payment_date: ymdIn(previousSecond, 3),
+        category_id: catCasa.id,
+        wallet_id: walletCasaDebito.id,
+        expense_template_id: etLuz.id,
+      },
+    ],
+  });
+
+  await prisma.expense.createMany({
+    data: [
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Despensa',
+        amount: 1240,
+        is_paid: true,
+        payment_date: ymdIn(currentFortnight, 1),
+        category_id: catComidaHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Luz',
+        amount: 430,
+        is_paid: true,
+        payment_date: ymdIn(currentFortnight, 2),
+        category_id: catCasa.id,
+        wallet_id: walletCasaDebito.id,
+        expense_template_id: etLuz.id,
+      },
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Transporte',
+        amount: 210,
+        is_paid: true,
+        payment_date: ymdIn(currentFortnight, 3),
+        category_id: catServiciosHouse.id,
+        wallet_id: walletCasaEfectivo.id,
+      },
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Farmacia',
+        amount: 320,
+        is_paid: false,
+        due_day: dueDay,
+        category_id: catServiciosHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: currentFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Agua',
+        amount: 190,
+        is_paid: false,
+        due_day: dueDay,
+        category_id: catCasa.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: otherFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Renta',
+        amount: 6800,
+        is_paid: false,
+        due_day: 6,
+        category_id: catCasa.id,
+        wallet_id: walletCasaDebito.id,
+        expense_template_id: etRentaCasa.id,
+      },
+      {
+        fortnight_id: otherFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Pago de tarjeta',
+        amount: 2100,
+        is_paid: false,
+        due_day: dueDay,
+        category_id: catServiciosHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: otherFortnight.id,
+        house_id: casaDemo.id,
+        description: 'Internet',
+        amount: 549,
+        is_paid: false,
+        due_day: 8,
+        category_id: catServiciosHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+    ],
+  });
+
+  const budgetMes = await prisma.budget.create({
+    data: {
+      name: 'Gasto del mes',
+      total_amount: 8500,
+      frequency: 'BIWEEKLY',
+      recurrent: true,
+      active: true,
+      start_date:
+        currentFortnight.start_date < otherFortnight.start_date
+          ? currentFortnight.start_date
+          : otherFortnight.start_date,
+      end_date:
+        currentFortnight.end_date > otherFortnight.end_date
+          ? currentFortnight.end_date
+          : otherFortnight.end_date,
+      house_id: casaDemo.id,
+    },
+  });
+  await prisma.budgetAllocation.create({
+    data: {
+      budget_id: budgetMes.id,
+      wallet_id: walletCasaDebito.id,
+      category_id: catComidaHouse.id,
+      amount: 8500,
+    },
+  });
+  await prisma.budgetPeriod.createMany({
+    data: [
+      {
+        budget_id: budgetMes.id,
+        start_date: currentFortnight.start_date,
+        end_date: currentFortnight.end_date,
+      },
+      {
+        budget_id: budgetMes.id,
+        start_date: otherFortnight.start_date,
+        end_date: otherFortnight.end_date,
+      },
+    ],
+  });
+
+  await prisma.wallet.createMany({
+    data: [
+      {
+        name: 'Reserva',
+        type: PaymentMethodType.GOAL,
+        amount: 6400,
+        goal_amount: 20000,
+        goal_due_date: parseCalendarDate(addCalendarDays(today, 270)),
+        include_in_liquidity: false,
+        house_id: casaDemo.id,
+      },
+      {
+        name: 'Viaje',
+        type: PaymentMethodType.GOAL,
+        amount: 2800,
+        goal_amount: 12000,
+        goal_due_date: parseCalendarDate(addCalendarDays(today, 180)),
+        include_in_liquidity: false,
+        house_id: casaDemo.id,
+      },
+      {
+        name: 'Colchón',
+        type: PaymentMethodType.GOAL,
+        amount: 4100,
+        goal_amount: 15000,
+        goal_due_date: parseCalendarDate(addCalendarDays(today, 400)),
+        include_in_liquidity: false,
+        house_id: casaDemo.id,
       },
     ],
   });

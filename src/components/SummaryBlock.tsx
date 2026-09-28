@@ -239,7 +239,7 @@ export default function SummaryBlock({
               <div
                 className={cn(
                   METRIC_STRIP_CLASS,
-                  'border-l-[3px] border-l-status-success/50 px-2 py-2 sm:px-3 sm:py-3',
+                  'border-l-[3px] border-l-status-income/50 px-2 py-2 sm:px-3 sm:py-3',
                 )}
               >
                 <div className="mb-1.5 flex items-center justify-between gap-1 sm:mb-2">
@@ -288,7 +288,7 @@ export default function SummaryBlock({
               <div
                 className={cn(
                   METRIC_STRIP_CLASS,
-                  'border-l-[3px] border-l-status-income/50 px-2 py-2 sm:px-3 sm:py-3',
+                  'border-l-[3px] border-l-status-success/50 px-2 py-2 sm:px-3 sm:py-3',
                 )}
               >
                 <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">

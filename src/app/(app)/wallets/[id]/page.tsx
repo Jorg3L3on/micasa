@@ -32,7 +32,7 @@ import type {
 } from '@/schemas/transaction.schema';
 import type { WalletFormValues } from '@/schemas/wallet.schema';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/motion/tabs';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
@@ -72,7 +72,6 @@ import type { CreditCardPaymentPlanView, PaymentMethodOption } from '@/types/cat
 import type { PaymentMethodType } from '@/domain/payment-method';
 import {
   WalletDetailTabsList,
-  WalletDetailTabTrigger,
   WalletHeroZone,
   WalletPeriodWorkspaceShell,
   WalletPeriodSummary,
@@ -628,7 +627,7 @@ export default function WalletDetailPage() {
     primaryAction:
       wallet && canImport
         ? {
-            label: 'Registrar',
+            label: 'Agregar movimiento',
             onClick: handleOpenExpense,
             icon: registrarIcon,
           }
@@ -704,17 +703,13 @@ export default function WalletDetailPage() {
                 onResetToToday={handleResetToToday}
               />
               <div className="mt-4">
-                <WalletDetailTabsList>
-                  <WalletDetailTabTrigger value="resumen">
-                    Resumen
-                  </WalletDetailTabTrigger>
-                  <WalletDetailTabTrigger value="movimientos">
-                    Movimientos
-                  </WalletDetailTabTrigger>
-                  <WalletDetailTabTrigger value="compromisos">
-                    Compromisos
-                  </WalletDetailTabTrigger>
-                </WalletDetailTabsList>
+                <WalletDetailTabsList
+                  options={[
+                    { value: 'resumen', label: 'Resumen' },
+                    { value: 'movimientos', label: 'Movimientos' },
+                    { value: 'compromisos', label: 'Compromisos' },
+                  ]}
+                />
               </div>
             </>
           }

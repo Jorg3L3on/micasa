@@ -3,8 +3,10 @@
  * Mobile browsers abort a view transition when the address bar changes the
  * viewport. React leaves `finished.finally()` and `updateCallbackDone`
  * rejections unhandled, which opens the Next.js error overlay.
- * This wraps `document.startViewTransition` so those aborts stay silent,
- * and skips starting a transition while the viewport is resizing.
+ * This wraps `document.startViewTransition` so those aborts stay silent
+ * on the transition promises only. Fetch AbortError and other rejections
+ * are left alone. It also skips starting a transition while the viewport
+ * is resizing.
  * Reduced motion still uses the native transition so the CSS recipes apply.
  */
 export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
@@ -16,18 +18,34 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
   var timer = 0;
   var width = window.innerWidth;
   var height = window.innerHeight;
-  var armed = typeof WeakMap === 'function' ? new WeakMap() : null;
 
-  function isIgnorable(error) {
+  function isViewTransitionError(error) {
     if (!error || typeof error !== 'object') return false;
     var name = error.name;
     if (name !== 'InvalidStateError' && name !== 'AbortError') return false;
     var message = String(error.message || '');
-    return (
-      message.indexOf('invalid state') !== -1 ||
-      message.indexOf('viewport size') !== -1 ||
-      message.indexOf('Viewport size') !== -1 ||
-      message.indexOf('visibility') !== -1
+    return /view transition|viewport|visibility state|invalid state/i.test(message);
+  }
+
+  function quietError() {
+    var error = new Error('Skipping view transition because viewport size changed.');
+    error.name = 'InvalidStateError';
+    return error;
+  }
+
+  function shouldSkip() {
+    return resizing || document.visibilityState === 'hidden';
+  }
+
+  function calm(promise, mode) {
+    if (!promise || typeof promise.then !== 'function') return promise;
+    return promise.then(
+      function (value) { return value; },
+      function (error) {
+        if (!isViewTransitionError(error)) throw error;
+        if (mode === 'ready') throw quietError();
+        return undefined;
+      }
     );
   }
 
@@ -44,55 +62,14 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
     }, 350);
   }, { passive: true });
 
-  window.addEventListener('unhandledrejection', function (event) {
-    if (!isIgnorable(event.reason)) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  }, true);
-
-  function arm(promise) {
-    if (!promise || typeof promise.then !== 'function') return promise;
-    promise.catch(function (error) {
-      if (isIgnorable(error)) return;
-      window.setTimeout(function () { throw error; }, 0);
-    });
-    return new Proxy(promise, {
-      get: function (target, prop, receiver) {
-        if (prop === 'finally') {
-          return function (onFinally) {
-            var next = target.finally(onFinally);
-            next.catch(function (error) {
-              if (isIgnorable(error)) return;
-              window.setTimeout(function () { throw error; }, 0);
-            });
-            return next;
-          };
-        }
-        if (prop === 'then') {
-          return function (onFulfilled, onRejected) {
-            return target.then(onFulfilled, onRejected);
-          };
-        }
-        if (prop === 'catch') {
-          return function (onRejected) {
-            return target.catch(onRejected);
-          };
-        }
-        var value = Reflect.get(target, prop, receiver);
-        return typeof value === 'function' ? value.bind(target) : value;
-      }
-    });
-  }
-
-  function armProp(transition, prop) {
-    if (!armed) return arm(transition[prop]);
-    var cache = armed.get(transition);
-    if (!cache) {
-      cache = {};
-      armed.set(transition, cache);
-    }
-    if (!cache[prop]) cache[prop] = arm(transition[prop]);
-    return cache[prop];
+  if (window.visualViewport && typeof window.visualViewport.addEventListener === 'function') {
+    window.visualViewport.addEventListener('resize', function () {
+      resizing = true;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(function () {
+        resizing = false;
+      }, 350);
+    }, { passive: true });
   }
 
   function immediate(callback) {
@@ -112,7 +89,7 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
     }
     var done = result && typeof result.then === 'function' ? result : Promise.resolve(result);
     var settled = done.then(function (value) { return value; }, function (error) {
-      if (isIgnorable(error)) return undefined;
+      if (isViewTransitionError(error)) return undefined;
       throw error;
     });
     settled.catch(function () {});
@@ -125,13 +102,16 @@ export const VIEW_TRANSITION_GUARD_SCRIPT = `(function(){
   }
 
   function guarded(callback) {
-    if (resizing) return immediate(callback);
+    if (shouldSkip()) return immediate(callback);
     var transition = native(callback);
+    var finished = calm(transition.finished, 'settle');
+    var ready = calm(transition.ready, 'ready');
+    var updateCallbackDone = calm(transition.updateCallbackDone, 'settle');
     return new Proxy(transition, {
       get: function (target, prop, receiver) {
-        if (prop === 'finished' || prop === 'ready' || prop === 'updateCallbackDone') {
-          return armProp(target, prop);
-        }
+        if (prop === 'finished') return finished;
+        if (prop === 'ready') return ready;
+        if (prop === 'updateCallbackDone') return updateCallbackDone;
         var value = Reflect.get(target, prop, receiver);
         return typeof value === 'function' ? value.bind(target) : value;
       }

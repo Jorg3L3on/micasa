@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useFinanceContext } from '@/context/finance-context';
 import { formatMonthHeading } from '@/lib/calendar-dates';
-import { getAppHomeHref, formatFortnightToolbarTitle } from '@/lib/fortnight-calendar';
+import { getAppHomeHref, formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
 import {
   monthlyHeaderPeriodLabel,
@@ -75,6 +75,8 @@ export function getPageTitle(pathname: string): {
   isHome: boolean;
   /** Toolbar Back — false on home and module index hubs. */
   showBack: boolean;
+  /** The page body already renders the h1 (fortnight header). */
+  suppressHeading?: boolean;
 } {
   const segments = pathname.split('/').filter(Boolean);
   const showBack = shouldShowToolbarBack(pathname);
@@ -150,11 +152,21 @@ export function getPageTitle(pathname: string): {
   ) {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
-    const period = segments[3].toUpperCase() as 'FIRST' | 'SECOND';
+    const periodRaw = segments[3].toUpperCase();
+    const period =
+      periodRaw === 'FIRST' || periodRaw === '1'
+        ? 'FIRST'
+        : periodRaw === 'SECOND' || periodRaw === '2'
+          ? 'SECOND'
+          : null;
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !period) {
+      return { title: 'Quincena', isHome: false, showBack, suppressHeading: true };
+    }
     return {
-      title: formatFortnightToolbarTitle(year, month, period),
+      title: formatFortnightOrdinalTitle(period, month, year),
       isHome: false,
       showBack,
+      suppressHeading: true,
     };
   }
 
@@ -252,6 +264,13 @@ export default function PageTitle() {
   const title = pageTitleTooltip(isTruncated, pageTitle.title);
 
   if (!pageTitle.periodPrefix) {
+    if (pageTitle.suppressHeading) {
+      return (
+        <p className="truncate text-title" title={title}>
+          {pageTitle.title}
+        </p>
+      );
+    }
     return (
       <h1 ref={headingRef} className="truncate text-title" title={title}>
         {pageTitle.title}

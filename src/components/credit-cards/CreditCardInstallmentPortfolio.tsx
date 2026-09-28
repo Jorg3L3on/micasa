@@ -48,7 +48,7 @@ export const CreditCardInstallmentPortfolio = ({
         action={
           !embedded && onCreateInstallmentPlan
             ? {
-                label: 'Registrar compra a meses',
+                label: 'Agregar compra a meses',
                 onClick: onCreateInstallmentPlan,
               }
             : undefined
@@ -144,7 +144,7 @@ export const CreditCardInstallmentPortfolio = ({
           className="h-10 w-full rounded-xl"
           onClick={onCreateInstallmentPlan}
         >
-          Registrar compra a meses
+          Agregar compra a meses
         </Button>
       ) : null}
     </div>

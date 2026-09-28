@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -369,6 +370,8 @@ export default function LoansPage() {
   const { context } = useFinanceContext();
   const todayYmd = useHydrationSafeTodayYmd();
   const [loans, setLoans] = useState<LoanListItem[]>([]);
+  const loansRef = useRef(loans);
+  loansRef.current = loans;
   const [lenders, setLenders] = useState<LenderListItem[]>([]);
   const [wallets, setWallets] = useState<PaymentMethodOption[]>([]);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateListItem[]>(
@@ -470,8 +473,12 @@ export default function LoansPage() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudieron cargar préstamos';
-      if (!options?.silent) setLoadError(message);
-      toast.error(message);
+      const hasLoans = loansRef.current.length > 0;
+      if (hasLoans) {
+        setLoadError(null);
+      } else {
+        setLoadError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -649,7 +656,6 @@ export default function LoansPage() {
       const message =
         error instanceof Error ? error.message : 'No se pudo crear el préstamo';
       setFormErrors({ general: message });
-      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -865,7 +871,6 @@ export default function LoansPage() {
           ? error.message
           : 'No se pudo actualizar el préstamo';
       setLoanEditErrors(mapLoanEditError(message));
-      toast.error(message);
     } finally {
       setLoanEditSubmitting(false);
     }
@@ -887,7 +892,6 @@ export default function LoansPage() {
           ? error.message
           : 'No se pudo actualizar el estado del préstamo';
       setLoanEditErrors({ general: message });
-      toast.error(message);
     } finally {
       setLifecycleSubmitting(false);
     }
@@ -916,7 +920,6 @@ export default function LoansPage() {
       const message =
         error instanceof Error ? error.message : 'No se pudo eliminar el préstamo';
       setDeleteError(message);
-      toast.error(message);
     }
   };
 
@@ -1010,7 +1013,6 @@ export default function LoansPage() {
           ? error.message
           : 'No se pudo actualizar el pago del préstamo';
       setPaymentActionErrors(mapPaymentActionError(message));
-      toast.error(message);
     } finally {
       setPaymentActionSubmitting(false);
     }
@@ -1193,7 +1195,6 @@ export default function LoansPage() {
       const message =
         error instanceof Error ? error.message : 'No se pudo completar el lote';
       setBatchError(message);
-      toast.error(message);
     } finally {
       setBatchSubmitting(false);
     }

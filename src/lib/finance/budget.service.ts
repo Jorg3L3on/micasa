@@ -37,7 +37,7 @@ async function resolveBudgetDateRange(
   if (frequency === 'BIWEEKLY' && !currentFortnight) {
     throw Object.assign(
       new Error(
-        'No hay una quincena creada para este contexto. Crea el mes en Planificación antes de configurar un presupuesto quincenal.',
+        'No hay una quincena creada para este contexto. Crea el mes en Planeación antes de configurar un presupuesto quincenal.',
       ),
       { code: 'CURRENT_FORTNIGHT_NOT_FOUND' },
     );

@@ -48,7 +48,7 @@ export const WALLET_PROVIDER_ICON_OPTIONS: readonly WalletProviderIconOption[] =
     label: 'Banamex',
     shortLabel: 'BX',
     logoPath: '/wallet-providers/banamex.png',
-    brandClassName: 'bg-red-500/15 text-red-700 dark:text-red-300',
+    brandClassName: 'bg-red-500/15 text-red-700 dark:text-status-expense',
   },
   {
     key: 'BBVA',
@@ -62,7 +62,7 @@ export const WALLET_PROVIDER_ICON_OPTIONS: readonly WalletProviderIconOption[] =
     label: 'Santander',
     shortLabel: 'ST',
     logoPath: '/wallet-providers/santander.png',
-    brandClassName: 'bg-red-500/15 text-red-700 dark:text-red-300',
+    brandClassName: 'bg-red-500/15 text-red-700 dark:text-status-expense',
   },
   {
     key: 'CA',
@@ -76,7 +76,7 @@ export const WALLET_PROVIDER_ICON_OPTIONS: readonly WalletProviderIconOption[] =
     label: 'DiDi',
     shortLabel: 'DD',
     logoPath: '/wallet-providers/didi.png',
-    brandClassName: 'bg-orange-500/15 text-orange-700 dark:text-orange-300',
+    brandClassName: 'bg-orange-500/15 text-orange-800 dark:text-orange-300',
   },
   {
     key: 'LIVERPOOL',
@@ -97,7 +97,7 @@ export const WALLET_PROVIDER_ICON_OPTIONS: readonly WalletProviderIconOption[] =
     label: 'Mercado Libre',
     shortLabel: 'ML',
     logoPath: '/wallet-providers/mercadolibre.png',
-    brandClassName: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300',
+    brandClassName: 'bg-yellow-500/20 text-yellow-800 dark:text-yellow-300',
   },
   {
     key: 'NU_BANK',

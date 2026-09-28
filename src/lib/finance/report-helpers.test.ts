@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { FortnightPeriod } from '@/generated/prisma/client';
 import { buildFortnightWhereForReport } from '@/lib/finance/planning-credit-card-payments';
-import { parseFortnightPeriod } from '@/lib/finance/report-helpers';
+import {
+  fortnightPeriodParamError,
+  parseFortnightPeriod,
+} from '@/lib/finance/report-helpers';
 
 describe('parseFortnightPeriod', () => {
   it('parses FIRST and SECOND', () => {
@@ -19,6 +22,12 @@ describe('parseFortnightPeriod', () => {
     expect(parseFortnightPeriod('1')).toBe(FortnightPeriod.FIRST);
     expect(parseFortnightPeriod('2')).toBe(FortnightPeriod.SECOND);
     expect(parseFortnightPeriod(' first ')).toBe(FortnightPeriod.FIRST);
+    expect(fortnightPeriodParamError(null)).toBeNull();
+    expect(fortnightPeriodParamError('FIRST')).toBeNull();
+    expect(fortnightPeriodParamError('1')).toBeNull();
+    expect(fortnightPeriodParamError('THIRD')).toBe(
+      'period must be FIRST or SECOND',
+    );
   });
 
   it('does not pass numeric period strings through to Prisma', () => {
