@@ -88,22 +88,22 @@ export const WalletPeriodAnalyticsPanels = ({
     {
       name: 'Ingresos',
       value: analytics.movementMix.income,
-      color: chartSliceColor(0),
+      color: CHART_COLOR.income,
     },
     {
       name: 'Egresos',
       value: analytics.movementMix.expense,
-      color: chartSliceColor(1),
+      color: CHART_COLOR.expense,
     },
     {
       name: 'Abonos TC',
       value: analytics.movementMix.cardPaymentIn,
-      color: chartSliceColor(2),
+      color: CHART_COLOR.income,
     },
     {
       name: 'Pagos TC',
       value: analytics.movementMix.cardPaymentOut,
-      color: chartSliceColor(3),
+      color: CHART_COLOR.expense,
     },
   ].filter((row) => row.value > 0);
 

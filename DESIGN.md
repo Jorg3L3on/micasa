@@ -352,6 +352,7 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
 - Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
 - Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.
+- Brand badges (`WalletProviderIcon`, catalog in `src/lib/wallet-provider-icons.ts`) are a valid exception to that palette. The mark keeps the issuer hue so a billetera stays recognizable. That color is not income, expense, or paid. The short label or fallback glyph must stay at least 4.5:1 against the badge fill in both themes. Do not reuse those classes for status.
   - An expense row uses **expense** for the icon, the amount, and the type badge. A due or paid chip may use **overdue**, **pending**, or **success** — that is the time status, not a second type color.
   - Income rows use **income** the same way.
   - Overdue shares the destructive hue; it is its own token so Préstamos and the rest of the app match.
