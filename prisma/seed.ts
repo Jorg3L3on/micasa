@@ -237,7 +237,7 @@ async function main() {
   const itAportacion = await prisma.incomeTemplate.create({
     data: {
       name: 'Aportación',
-      suggested_amount: 11000,
+      suggested_amount: 18500,
       source: 'Salario',
       applies_first_fortnight: true,
       applies_second_fortnight: true,
@@ -453,12 +453,12 @@ async function main() {
       { fortnight_id: fAnaAugFirst.id, user_id: ana.id, amount: 8500, source: 'Salario', received_at: parseCalendarDate('2026-08-01'), income_template_id: itNominaAna.id, wallet_id: walletAnaDebito.id, category_id: catAnaSalario.id },
       { fortnight_id: fAnaAugSecond.id, user_id: ana.id, amount: 8500, source: 'Salario', received_at: parseCalendarDate('2026-08-16'), income_template_id: itNominaAna.id, wallet_id: walletAnaDebito.id, category_id: catAnaSalario.id },
       { fortnight_id: fLuisJunFirst.id, user_id: luis.id, amount: 4000, source: 'Otro ingreso', received_at: parseCalendarDate('2026-06-01'), income_template_id: itHonorariosLuis.id, wallet_id: walletLuisDebito.id, category_id: catLuisIngreso.id },
-      { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-05-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-05-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseJunFirst.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-06-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseJunSecond.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-06-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseJulFirst.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-07-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
-      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, amount: 11000, source: 'Salario', received_at: parseCalendarDate('2026-07-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseMayFirst.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-05-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseMaySecond.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-05-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJunFirst.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-06-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJunSecond.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-06-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJulFirst.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-07-01'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
+      { fortnight_id: fHouseJulSecond.id, house_id: casaDemo.id, amount: 18500, source: 'Salario', received_at: parseCalendarDate('2026-07-16'), income_template_id: itAportacion.id, wallet_id: walletCasaDebito.id, category_id: catSalarioHouse.id },
     ],
   });
 
@@ -578,6 +578,12 @@ async function main() {
     incomeTemplateId: itHonorariosLuis.id,
     notes: 'Diez descuentos quincenales demo sobre honorarios',
   });
+  const lenderFondo = await prisma.lender.create({
+    data: { name: 'Fondo vecinal', house_id: casaDemo.id },
+  });
+  const lenderTaller = await prisma.lender.create({
+    data: { name: 'Taller Norte', house_id: casaDemo.id },
+  });
   await createScheduledLoan({
     name: 'Préstamo del hogar',
     lenderName: 'Caja del barrio',
@@ -591,6 +597,34 @@ async function main() {
     owner: { house_id: casaDemo.id },
     sourceWalletId: walletCasaDebito.id,
     notes: 'Doce mensualidades demo de la casa',
+  });
+  await createScheduledLoan({
+    name: 'Refrigerador',
+    lenderName: 'Fondo vecinal',
+    lenderId: lenderFondo.id,
+    type: 'PERSONAL',
+    paymentAmount: 950,
+    paymentCount: 8,
+    frequency: 'MONTHLY',
+    startDate: '2026-06-10',
+    paymentSource: 'WALLET',
+    owner: { house_id: casaDemo.id },
+    sourceWalletId: walletCasaDebito.id,
+    notes: 'Ocho mensualidades demo del refrigerador',
+  });
+  await createScheduledLoan({
+    name: 'Bicicleta',
+    lenderName: 'Taller Norte',
+    lenderId: lenderTaller.id,
+    type: 'PERSONAL',
+    paymentAmount: 640,
+    paymentCount: 6,
+    frequency: 'MONTHLY',
+    startDate: '2026-07-12',
+    paymentSource: 'WALLET',
+    owner: { house_id: casaDemo.id },
+    sourceWalletId: walletCasaDebito.id,
+    notes: 'Seis mensualidades demo de la bicicleta',
   });
 
   // ─────────────────────────────────────────────
@@ -694,17 +728,73 @@ async function main() {
   const ymdIn = (fortnight: { start_date: Date }, offset: number) =>
     parseCalendarDate(addCalendarDays(formatCalendarDate(fortnight.start_date), offset));
 
-  await prisma.income.create({
-    data: {
-      fortnight_id: currentFortnight.id,
-      house_id: casaDemo.id,
-      amount: 18500,
-      source: 'Salario',
-      received_at: ymdIn(currentFortnight, 0),
-      income_template_id: itAportacion.id,
-      wallet_id: walletCasaDebito.id,
-      category_id: catSalarioHouse.id,
-    },
+  const previousMonth = shiftMonth(todayYear, todayMonth, -1);
+  const previousFirst = await ensureHouseFortnight(
+    previousMonth.year,
+    previousMonth.month,
+    FortnightPeriod.FIRST,
+  );
+  const previousSecond = await ensureHouseFortnight(
+    previousMonth.year,
+    previousMonth.month,
+    FortnightPeriod.SECOND,
+  );
+  const houseSalary = {
+    house_id: casaDemo.id,
+    amount: 18500,
+    source: 'Salario',
+    income_template_id: itAportacion.id,
+    wallet_id: walletCasaDebito.id,
+    category_id: catSalarioHouse.id,
+  };
+  await prisma.income.createMany({
+    data: [
+      {
+        ...houseSalary,
+        fortnight_id: previousFirst.id,
+        received_at: ymdIn(previousFirst, 0),
+      },
+      {
+        ...houseSalary,
+        fortnight_id: previousSecond.id,
+        received_at: ymdIn(previousSecond, 0),
+      },
+      {
+        ...houseSalary,
+        fortnight_id: currentFortnight.id,
+        received_at: ymdIn(currentFortnight, 0),
+      },
+      {
+        ...houseSalary,
+        fortnight_id: otherFortnight.id,
+        received_at: ymdIn(otherFortnight, 0),
+      },
+    ],
+  });
+  await prisma.expense.createMany({
+    data: [
+      {
+        fortnight_id: previousFirst.id,
+        house_id: casaDemo.id,
+        description: 'Despensa',
+        amount: 1180,
+        is_paid: true,
+        payment_date: ymdIn(previousFirst, 2),
+        category_id: catComidaHouse.id,
+        wallet_id: walletCasaDebito.id,
+      },
+      {
+        fortnight_id: previousSecond.id,
+        house_id: casaDemo.id,
+        description: 'Luz',
+        amount: 410,
+        is_paid: true,
+        payment_date: ymdIn(previousSecond, 3),
+        category_id: catCasa.id,
+        wallet_id: walletCasaDebito.id,
+        expense_template_id: etLuz.id,
+      },
+    ],
   });
 
   await prisma.expense.createMany({
@@ -835,16 +925,36 @@ async function main() {
     ],
   });
 
-  await prisma.wallet.create({
-    data: {
-      name: 'Reserva',
-      type: PaymentMethodType.GOAL,
-      amount: 6400,
-      goal_amount: 20000,
-      goal_due_date: parseCalendarDate(addCalendarDays(today, 270)),
-      include_in_liquidity: false,
-      house_id: casaDemo.id,
-    },
+  await prisma.wallet.createMany({
+    data: [
+      {
+        name: 'Reserva',
+        type: PaymentMethodType.GOAL,
+        amount: 6400,
+        goal_amount: 20000,
+        goal_due_date: parseCalendarDate(addCalendarDays(today, 270)),
+        include_in_liquidity: false,
+        house_id: casaDemo.id,
+      },
+      {
+        name: 'Viaje',
+        type: PaymentMethodType.GOAL,
+        amount: 2800,
+        goal_amount: 12000,
+        goal_due_date: parseCalendarDate(addCalendarDays(today, 180)),
+        include_in_liquidity: false,
+        house_id: casaDemo.id,
+      },
+      {
+        name: 'Colchón',
+        type: PaymentMethodType.GOAL,
+        amount: 4100,
+        goal_amount: 15000,
+        goal_due_date: parseCalendarDate(addCalendarDays(today, 400)),
+        include_in_liquidity: false,
+        house_id: casaDemo.id,
+      },
+    ],
   });
 
   console.log('✅ Database seeded with demo data');
