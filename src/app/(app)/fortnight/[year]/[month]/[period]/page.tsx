@@ -7,7 +7,7 @@ import EmptyState from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/error-banner';
 import { ReceivePayrollTrigger } from '@/components/ReceivePayrollButton';
 import type { Metadata } from 'next';
-import { formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
+import { formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
 import type {
   PlannerCardChargesSummary,
   PlannerCardStatementDueSummary,
@@ -143,9 +143,8 @@ export async function generateMetadata({
     return { title: 'Quincena' };
   }
 
-  const ordinal = period === 'FIRST' ? '1ª' : '2ª';
   return {
-    title: `${ordinal} quincena · ${formatFortnightDateRangeLabel(year, month, period)}`,
+    title: formatFortnightOrdinalTitle(period, month, year),
   };
 }
 

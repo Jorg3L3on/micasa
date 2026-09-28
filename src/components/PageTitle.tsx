@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useFinanceContext } from '@/context/finance-context';
 import { formatMonthHeading } from '@/lib/calendar-dates';
-import { getAppHomeHref, formatFortnightToolbarTitle } from '@/lib/fortnight-calendar';
+import { getAppHomeHref, formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
 import {
   monthlyHeaderPeriodLabel,
@@ -150,11 +150,21 @@ export function getPageTitle(pathname: string): {
   ) {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
-    const period = segments[3].toUpperCase() as 'FIRST' | 'SECOND';
+    const periodRaw = segments[3].toUpperCase();
+    const period =
+      periodRaw === 'FIRST' || periodRaw === '1'
+        ? 'FIRST'
+        : periodRaw === 'SECOND' || periodRaw === '2'
+          ? 'SECOND'
+          : null;
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !period) {
+      return { title: 'Quincena', isHome: false, showBack, suppressHeading: true };
+    }
     return {
-      title: formatFortnightToolbarTitle(year, month, period),
+      title: formatFortnightOrdinalTitle(period, month, year),
       isHome: false,
       showBack,
+      suppressHeading: true,
     };
   }
 
@@ -232,7 +242,7 @@ export const pageTitleTooltip = (
 /** Centered toolbar title (Apple-style principal). */
 export default function PageTitle() {
   const pageTitle = useAppPageTitle();
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const headingRef = useRef<HTMLElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
   useEffect(() => {
@@ -252,10 +262,11 @@ export default function PageTitle() {
   const title = pageTitleTooltip(isTruncated, pageTitle.title);
 
   if (!pageTitle.periodPrefix) {
+    const HeadingTag = pageTitle.suppressHeading ? 'p' : 'h1';
     return (
-      <h1 ref={headingRef} className="truncate text-title" title={title}>
+      <HeadingTag ref={headingRef} className="truncate text-title" title={title}>
         {pageTitle.title}
-      </h1>
+      </HeadingTag>
     );
   }
   return (

@@ -369,6 +369,17 @@ export function formatFortnightPeriodTitle(
   return `${name} · ${formatMonthHeading(month, year, now)}`;
 }
 
+/** Short quincena title: `1ª quincena · Octubre`. Year only when it is not current. */
+export function formatFortnightOrdinalTitle(
+  period: CalendarFortnightPeriod,
+  month: number,
+  year: number,
+  now: Date = new Date(),
+): string {
+  const ordinal = period === 'FIRST' ? '1ª' : '2ª';
+  return `${ordinal} quincena · ${formatMonthHeading(month, year, now)}`;
+}
+
 /**
  * Toolbar range for a quincena. Appends ` · {year}` only when that year is
  * not the current Mexico City year.

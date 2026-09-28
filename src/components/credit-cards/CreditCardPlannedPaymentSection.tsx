@@ -16,6 +16,7 @@ import {
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
+import { formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
 import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
 import { formatCardObligationAmountSourceHint } from '@/lib/finance/card-statement-obligation';
 import { todayCalendarDate } from '@/lib/calendar-dates';
@@ -234,7 +235,7 @@ export const CreditCardPlannedPaymentSection = ({
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-foreground">
-                    {item.fortnightLabel}
+                    {formatFortnightOrdinalTitle(item.period, item.month, item.year)}
                     <span className="ml-1.5 text-caption font-normal text-muted-foreground">
                       · {timingLabel}
                     </span>
