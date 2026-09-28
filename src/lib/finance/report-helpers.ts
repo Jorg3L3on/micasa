@@ -6,8 +6,13 @@ import type { OwnerFilter } from '@/lib/server/get-owner-context';
 export const parseFortnightPeriod = (
   value: string | null | undefined,
 ): FortnightPeriod | undefined => {
-  if (value === FortnightPeriod.FIRST) return FortnightPeriod.FIRST;
-  if (value === FortnightPeriod.SECOND) return FortnightPeriod.SECOND;
+  const normalized = value?.trim().toUpperCase();
+  if (normalized === FortnightPeriod.FIRST || normalized === '1') {
+    return FortnightPeriod.FIRST;
+  }
+  if (normalized === FortnightPeriod.SECOND || normalized === '2') {
+    return FortnightPeriod.SECOND;
+  }
   return undefined;
 };
 
