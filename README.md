@@ -18,9 +18,11 @@ Most budgeting apps treat the month as one block. MiCasa uses **quincenas** as t
 - **Liquidity projection** (~180 days) across funding wallets, card cycles, and loan schedules
 - **Card reality** — statement imports, payment plans per fortnight, reconciliation tooling
 
-| Panel financiero | Login |
-| --- | --- |
-| ![Panel financiero](docs/images/panel-financiero.jpg) | ![Login](docs/images/login.jpg) |
+| Login |
+| --- |
+| ![Login](docs/images/login.jpg) |
+
+TODO: add a Panel financiero screenshot captured from fictional data.
 
 ![Pricing — Personal, Casa, Completo](docs/images/landing-pricing.jpg)
 
@@ -71,12 +73,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Seed accounts (after `db seed`):
-
-| Name | Email | Password |
-| --- | --- | --- |
-| Jorge | `jorgeleon983@gmail.com` | `temp1234` |
-| Carmen | `Consepcionsolorzano39@gmail.com` | `temp1234` |
+Seed a local database with `npx prisma db seed`. The command replaces existing data. Seeded credentials are defined in the seed script (`prisma/seed.ts`) or in environment variables, and are not listed here.
 
 > Calendar dates (expense payment days, “today”, etc.) use **`America/Mexico_City`** via `src/lib/calendar-dates.ts` — not UTC date slicing.
 
