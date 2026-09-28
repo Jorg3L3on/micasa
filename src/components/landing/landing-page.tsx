@@ -126,13 +126,17 @@ export const LandingPage = () => {
           ))}
         </div>
 
-        <section id="importar" className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
+        <section id="estado-de-cuenta" className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
           <div className="max-w-2xl">
-            <p className="eyebrow text-muted-foreground">Estados de cuenta</p>
-            <h2 className="mt-2 text-title">Importa el estado de cuenta. No hay conexión al banco.</h2>
+            <p className="eyebrow text-muted-foreground">Estado de cuenta</p>
+            <h2 className="mt-2 text-title">Importa el estado de cuenta.</h2>
             <p className="mt-3 text-body text-muted-foreground">
-              Subes el estado de cuenta y MiCasa propone los movimientos. No hay enlace directo
-              con el banco ni logos de emisores: el archivo lo traes tú.
+              En la tarjeta, Más → Estado de cuenta abre Importar estado de cuenta. Subes el PDF,
+              revisas los movimientos y confirmas. No hay conexión al banco: el archivo lo traes tú.
+            </p>
+            <p className="mt-3 text-caption text-muted-foreground">
+              Opcional: en Configuración → Conexiones puedes dar acceso a un agente. La app sola
+              basta para planear la quincena.
             </p>
           </div>
         </section>
@@ -150,19 +154,6 @@ export const LandingPage = () => {
           </div>
           <div className="mt-6">
             <FortnightScrub />
-          </div>
-        </section>
-
-        <section className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6" aria-labelledby="conexiones-titulo">
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card sm:p-6">
-            <p className="eyebrow text-muted-foreground">Opcional</p>
-            <h2 id="conexiones-titulo" className="mt-2 text-title">
-              Un conector, si lo quieres
-            </h2>
-            <p className="mt-3 max-w-2xl text-body text-muted-foreground">
-              En Configuración → Conexiones puedes activar un acceso para que un asistente lea
-              tu información. La app planea la quincena igual sin eso.
-            </p>
           </div>
         </section>
 
