@@ -586,7 +586,7 @@ export default function ConnectionsPanel({
           onValueChange={setExpiryOption}
           disabled={creating}
         />
-        <p className="text-[10px] leading-snug text-muted-foreground">
+        <p className="text-caption leading-snug text-muted-foreground">
           Al expirar, el token deja de funcionar automáticamente.
         </p>
       </div>
@@ -700,27 +700,27 @@ export default function ConnectionsPanel({
                         <span className="truncate text-sm font-medium text-foreground">
                           {key.name}
                         </span>
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-caption">
                           {scopesLabel(key.scopes)}
                         </Badge>
                         {revoked ? (
                           <Badge
                             variant="outline"
-                            className="border-red-500/40 text-[10px] text-red-500"
+                            className="border-red-500/40 text-caption text-red-500"
                           >
                             Revocada
                           </Badge>
                         ) : expired ? (
                           <Badge
                             variant="outline"
-                            className="border-amber-500/40 text-[10px] text-amber-500"
+                            className="border-amber-500/40 text-caption text-amber-500"
                           >
                             Expirada
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-emerald-500/40 text-[10px] text-emerald-500"
+                            className="border-emerald-500/40 text-caption text-emerald-500"
                           >
                             Activa
                           </Badge>
@@ -835,30 +835,30 @@ export default function ConnectionsPanel({
                         <span className="truncate text-sm font-medium text-foreground">
                           {grant.client_name}
                         </span>
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-caption">
                           OAuth
                         </Badge>
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-caption">
                           {scopesLabel(grant.scopes)}
                         </Badge>
                         {revoked ? (
                           <Badge
                             variant="outline"
-                            className="border-red-500/40 text-[10px] text-red-500"
+                            className="border-red-500/40 text-caption text-red-500"
                           >
                             Revocada
                           </Badge>
                         ) : expired ? (
                           <Badge
                             variant="outline"
-                            className="border-amber-500/40 text-[10px] text-amber-500"
+                            className="border-amber-500/40 text-caption text-amber-500"
                           >
                             Expirada
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-emerald-500/40 text-[10px] text-emerald-500"
+                            className="border-emerald-500/40 text-caption text-emerald-500"
                           >
                             Activa
                           </Badge>
@@ -975,7 +975,7 @@ export default function ConnectionsPanel({
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   {client.description}
                 </p>
-                <pre className="overflow-x-auto rounded-lg bg-muted/50 p-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                <pre className="overflow-x-auto rounded-lg bg-muted/50 p-2 font-mono text-caption leading-relaxed text-muted-foreground">
                   {client.snippet(mcpUrl)}
                 </pre>
               </div>

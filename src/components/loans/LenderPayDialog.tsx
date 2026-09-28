@@ -152,7 +152,7 @@ const LenderPayForm = ({
       ) : null}
 
       <div className="rounded-xl border border-border/60 bg-card px-3 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
           Compromiso del periodo
         </p>
         <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
@@ -190,7 +190,7 @@ const LenderPayForm = ({
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{item.loanName}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-caption text-muted-foreground">
                   Cuota {item.sequence} · {formatDate(item.dueDate)}
                 </p>
               </div>
@@ -210,7 +210,7 @@ const LenderPayForm = ({
           ariaLabel="Monto del pago al prestamista"
         />
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-caption text-muted-foreground">
         Un monto menor deja el resto de la cuota pendiente. Un monto mayor
         abona al final del calendario.
       </p>

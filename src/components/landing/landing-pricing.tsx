@@ -86,7 +86,7 @@ export const LandingPricing = () => {
                   )}
                 >
                   {plan.featured ? (
-                    <span className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-[#090e1d] px-3 py-1 text-[11px] font-medium text-white">
+                    <span className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-[#090e1d] px-3 py-1 text-caption font-medium text-white">
                       Más popular
                     </span>
                   ) : null}

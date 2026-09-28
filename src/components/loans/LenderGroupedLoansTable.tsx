@@ -154,13 +154,13 @@ const HeaderMetric = ({
       accentClassName,
     )}
   >
-    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
       {label}
     </p>
     <p className="mt-1 font-sans text-sm font-bold tabular-nums leading-none text-foreground">
       {amount}
     </p>
-    <p className="mt-1 min-h-[1rem] truncate text-[10px] leading-tight text-muted-foreground">
+    <p className="mt-1 min-h-[1rem] truncate text-caption leading-tight text-muted-foreground">
       {hint || '\u00a0'}
     </p>
   </div>
@@ -315,7 +315,7 @@ const InstitutionCard = ({
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="min-w-0 flex-1 truncate text-left text-[11px] leading-tight text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                className="min-w-0 flex-1 truncate text-left text-caption leading-tight text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 {nextLine(cues, payroll)}
               </button>
@@ -462,7 +462,7 @@ export const LenderGroupedLoansTable = ({
                   <span className="line-clamp-2 block text-sm font-medium leading-snug text-foreground">
                     {loan.name}
                   </span>
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  <span className="mt-0.5 block text-caption text-muted-foreground">
                     {loanOriginShort(loan)} · {loan.paidPayments}/{loan.paymentCount}
                   </span>
                 </span>
@@ -470,7 +470,7 @@ export const LenderGroupedLoansTable = ({
                   <span className="block font-sans text-sm font-semibold tabular-nums">
                     {formatCurrency(loan.remainingAmount)}
                   </span>
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  <span className="mt-0.5 block text-caption text-muted-foreground">
                     {loanDueCueLabel(loan)}
                   </span>
                 </span>
@@ -506,7 +506,7 @@ export const LenderGroupedLoansTable = ({
                 <span className="line-clamp-2 block font-medium leading-snug text-foreground">
                   {loan.name}
                 </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                <span className="mt-0.5 block text-caption text-muted-foreground">
                   {loanOriginShort(loan)}
                 </span>
               </span>
@@ -515,7 +515,7 @@ export const LenderGroupedLoansTable = ({
           <TableCell>
             <Badge
               variant={loan.status === 'ACTIVE' ? 'default' : 'secondary'}
-              className="h-5 text-[10px]"
+              className="h-5 text-caption"
             >
               {statusLabel(loan.status)}
             </Badge>
@@ -528,7 +528,7 @@ export const LenderGroupedLoansTable = ({
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <p className="mt-1 font-sans text-[10px] tabular-nums text-muted-foreground">
+              <p className="mt-1 font-sans text-caption tabular-nums text-muted-foreground">
                 {loan.paidPayments}/{loan.paymentCount}
               </p>
             </div>
@@ -547,7 +547,7 @@ export const LenderGroupedLoansTable = ({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-[11px]"
+                className="h-7 px-2 text-caption"
                 onClick={() => onOpenLoan(loan.id)}
                 aria-label={`Ver detalle de ${loan.name}`}
               >
@@ -593,7 +593,7 @@ export const LenderGroupedLoansTable = ({
         </p>
       )}
       {lastPayment && onUndo ? (
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-caption text-muted-foreground">
           <span>
             Último {formatDate(lastPayment.paidAt)} ·{' '}
             {formatCurrency(lastPayment.amount)}
@@ -602,7 +602,7 @@ export const LenderGroupedLoansTable = ({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 px-2 text-[11px]"
+            className="h-8 px-2 text-caption"
             onClick={onUndo}
           >
             Deshacer

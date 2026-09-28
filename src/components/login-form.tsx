@@ -144,7 +144,7 @@ export function LoginForm({
         </Link>
       </p>
 
-      <div className="mt-auto flex justify-center gap-2 pt-6 text-[11px] text-[#55535f]">
+      <div className="mt-auto flex justify-center gap-2 pt-6 text-caption text-[#55535f]">
         <Link href="/privacy" className="text-[#55535f] no-underline hover:text-[#8b899a]">
           Aviso de privacidad
         </Link>

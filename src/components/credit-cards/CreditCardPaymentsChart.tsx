@@ -210,7 +210,7 @@ export const CreditCardPaymentsChart = ({
           <h4 className="text-sm font-semibold leading-none">
             Por pagar de aquí en adelante
           </h4>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <p className="mt-1 text-caption text-muted-foreground">
             {lastLabel
               ? `Este mes hasta ${lastLabel} · toca una barra para ver de qué se arma`
               : 'Cuotas MSI, planes y pagos programados'}
@@ -289,7 +289,7 @@ export const CreditCardPaymentsChart = ({
 
             {pendingMonths.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                   Desglose de la gráfica
                 </p>
                 <div className="space-y-2">
@@ -334,7 +334,7 @@ export const CreditCardPaymentsChart = ({
                                   <p className="truncate text-sm font-medium">
                                     {row.title}
                                   </p>
-                                  <p className="text-[11px] text-muted-foreground">
+                                  <p className="text-caption text-muted-foreground">
                                     <span className="font-semibold uppercase tracking-wider">
                                       {sourceKindLabel[row.kind]}
                                     </span>

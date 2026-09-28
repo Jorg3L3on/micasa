@@ -248,7 +248,7 @@ export const CreditCardRecentMovements = ({
                   <span>{label}</span>
                   <span
                     className={cn(
-                      'font-sans text-[10px] tabular-nums',
+                      'font-sans text-caption tabular-nums',
                       filter === value
                         ? 'text-primary-foreground/75'
                         : 'text-muted-foreground/75',
@@ -332,12 +332,12 @@ export const CreditCardRecentMovements = ({
               return (
                 <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
                   <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
-                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <h4 className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                       {getDateGroupLabel(dateKey)}
                     </h4>
                     <span
                       className={cn(
-                        'font-sans text-[11px] font-semibold tabular-nums',
+                        'font-sans text-caption font-semibold tabular-nums',
                         dayNet >= 0
                           ? 'text-emerald-600 dark:text-emerald-400'
                           : 'text-rose-600 dark:text-rose-400',
@@ -364,11 +364,11 @@ export const CreditCardRecentMovements = ({
                                 <p className="truncate text-sm font-semibold leading-tight">
                                   {row.purchase.description}
                                 </p>
-                                <span className="hidden shrink-0 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400 sm:inline-flex">
+                                <span className="hidden shrink-0 rounded-full bg-violet-500/10 px-2 py-0.5 text-caption font-semibold text-violet-600 dark:text-violet-400 sm:inline-flex">
                                   Compra
                                 </span>
                               </div>
-                              <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[10px] text-muted-foreground">
+                              <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-caption text-muted-foreground">
                                 <CategoryLabel
                                   name={row.purchase.category}
                                   icon={row.purchase.categoryIcon}
@@ -388,7 +388,7 @@ export const CreditCardRecentMovements = ({
                               </p>
                               <Link
                                 href={getFortnightHref(row.purchase, ownerQueryString)}
-                                className="mt-0.5 inline-block text-[10px] font-medium text-primary-text underline-offset-2 hover:underline"
+                                className="mt-0.5 inline-block text-caption font-medium text-primary-text underline-offset-2 hover:underline"
                               >
                                 Ver quincena
                               </Link>
@@ -417,11 +417,11 @@ export const CreditCardRecentMovements = ({
                                   className="truncate text-sm font-semibold"
                                   iconClassName="hidden"
                                 />
-                                <span className="hidden shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 sm:inline-flex">
+                                <span className="hidden shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-caption font-semibold text-emerald-600 dark:text-emerald-400 sm:inline-flex">
                                   Pago
                                 </span>
                               </div>
-                              <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                              <p className="mt-0.5 truncate text-caption text-muted-foreground">
                                 Pago a tarjeta · {formatDate(row.payment.paid_at)}
                                 {row.payment.note ? ` · ${row.payment.note}` : ''}
                               </p>
@@ -507,7 +507,7 @@ const ActivityMetric = ({ icon, label, value, tone }: ActivityMetricProps) => (
       {icon}
     </span>
     <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p className="truncate font-sans text-sm font-bold tabular-nums text-foreground">
@@ -578,7 +578,7 @@ export const GroupedPurchaseFeed = ({
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <h4 className="mb-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
               </h4>
               <ul className="space-y-1">
@@ -595,7 +595,7 @@ export const GroupedPurchaseFeed = ({
                         <p className="truncate text-sm font-semibold leading-tight">
                           {purchase.description}
                         </p>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[10px] text-muted-foreground">
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-caption text-muted-foreground">
                           <CategoryLabel
                             name={purchase.category}
                             icon={purchase.categoryIcon}
@@ -613,7 +613,7 @@ export const GroupedPurchaseFeed = ({
                         </p>
                         <Link
                           href={getFortnightHref(purchase, ownerQueryString)}
-                          className="mt-0.5 inline-block text-[10px] font-medium text-primary-text underline-offset-2 hover:underline"
+                          className="mt-0.5 inline-block text-caption font-medium text-primary-text underline-offset-2 hover:underline"
                         >
                           Ver quincena
                         </Link>
@@ -692,7 +692,7 @@ export const GroupedPaymentFeed = ({
         <div className="space-y-5">
           {grouped.map(([dateKey, dayItems]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <h4 className="mb-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                 {getDateGroupLabel(dateKey)}
               </h4>
               <ul className="space-y-1">
@@ -709,7 +709,7 @@ export const GroupedPaymentFeed = ({
                         <p className="truncate text-sm font-semibold leading-tight">
                           {payment.source_wallet_name}
                         </p>
-                        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                        <p className="mt-0.5 truncate text-caption text-muted-foreground">
                           Pago a tarjeta
                           {payment.note ? ` · ${payment.note}` : ''}
                         </p>

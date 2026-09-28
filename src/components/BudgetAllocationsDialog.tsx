@@ -336,7 +336,7 @@ export default function BudgetAllocationsDialog({
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormMessage className="text-[10px]" />
+                          <FormMessage className="text-caption" />
                         </FormItem>
                       )}
                     />
@@ -359,7 +359,7 @@ export default function BudgetAllocationsDialog({
                             placeholder="Categoría"
                             ariaLabel={`Categoría de la asignación ${index + 1}`}
                           />
-                          <FormMessage className="text-[10px]" />
+                          <FormMessage className="text-caption" />
                         </FormItem>
                       )}
                     />
@@ -378,7 +378,7 @@ export default function BudgetAllocationsDialog({
                               placeholder="0"
                               aria-label={`Monto de la asignación ${index + 1}`} data-icon="inline-start" />
                           </FormControl>
-                          <FormMessage className="text-[10px]" />
+                          <FormMessage className="text-caption" />
                         </FormItem>
                       )}
                     />

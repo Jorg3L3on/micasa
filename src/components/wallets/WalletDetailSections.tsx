@@ -167,7 +167,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
                 <p className="truncate text-sm font-semibold leading-tight opacity-95">
                   {wallet.name}
                 </p>
-                <p className="text-[10px] uppercase tracking-widest opacity-60">
+                <p className="text-caption uppercase tracking-widest opacity-60">
                   {typeLabel}
                 </p>
               </div>
@@ -180,7 +180,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
           </div>
 
           <div className="min-w-0 space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+            <p className="text-caption font-semibold uppercase tracking-wider opacity-70">
               Saldo disponible
             </p>
             <p
@@ -333,7 +333,7 @@ export const WalletPeriodSummary = ({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 shrink-0 rounded-full px-2.5 text-[10px]"
+            className="h-9 shrink-0 rounded-full px-2.5 text-caption"
             onClick={onResetToToday}
             aria-label="Volver al mes actual"
           >
@@ -347,7 +347,7 @@ export const WalletPeriodSummary = ({
         ) : null}
       </div>
       <WalletPeriodMetrics metrics={metrics} />
-      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+      <div className="flex flex-wrap gap-2 text-caption text-muted-foreground">
         <Badge variant="secondary" className="h-6 rounded-full px-2 font-sans tabular-nums">
           {movementCount} mov.
         </Badge>

@@ -160,7 +160,7 @@ const CommitmentBar = ({
           ) : null}
         </div>
       </div>
-      <p className={cn('text-[11px]', commitmentCaptionClass[tone])}>
+      <p className={cn('text-caption', commitmentCaptionClass[tone])}>
         <span className="font-sans font-semibold tabular-nums">
           {totalCommittedPercent}%
         </span>{' '}
@@ -203,7 +203,7 @@ const DueToPayLabel = ({ compositionRows }: DueToPayLabelProps) => {
           sideOffset={6}
           className="max-w-[16rem] space-y-1.5 px-3 py-2 text-left"
         >
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-background/70">
+          <p className="text-caption font-semibold uppercase tracking-wider text-background/70">
             Qué incluye
           </p>
           <ul className="space-y-1">
@@ -259,7 +259,7 @@ export const AccountMetric = ({
       >
         <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
       </span>
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
     </div>
@@ -269,7 +269,7 @@ export const AccountMetric = ({
         className={cn('text-lg font-bold sm:text-xl', amountClassName)}
       />
     </p>
-    <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+    <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
       {subtitle}
     </p>
   </AuraSurface>
@@ -295,7 +295,7 @@ const LegendItem = ({
           className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClassName)}
           aria-hidden
         />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
       </span>
@@ -304,7 +304,7 @@ const LegendItem = ({
         className="shrink-0 text-xs font-semibold text-foreground"
       />
     </div>
-    <p className="mt-0.5 pl-3 text-[10px] text-muted-foreground">{subtitle}</p>
+    <p className="mt-0.5 pl-3 text-caption text-muted-foreground">{subtitle}</p>
   </div>
 );
 
@@ -508,7 +508,7 @@ export const FortnightSummaryHero = ({
             <div className="flex items-baseline justify-between gap-3">
               <span
                 className={cn(
-                  'text-[10px] font-semibold uppercase tracking-wider',
+                  'text-caption font-semibold uppercase tracking-wider',
                   remainderClass,
                 )}
               >
@@ -520,7 +520,7 @@ export const FortnightSummaryHero = ({
               />
             </div>
             {copy.gapNote ? (
-              <p className="mt-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+              <p className="mt-1 text-caption font-medium text-amber-700 dark:text-amber-300">
                 {copy.gapNote}
               </p>
             ) : null}

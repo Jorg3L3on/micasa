@@ -299,7 +299,7 @@ export default function BudgetFormDialog({
     >
       <span
         className={cn(
-          'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium',
+          'flex h-5 w-5 items-center justify-center rounded-full text-caption font-medium',
           step === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted',
         )}
       >
@@ -308,7 +308,7 @@ export default function BudgetFormDialog({
       <div className="h-px flex-1 bg-border" />
       <span
         className={cn(
-          'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium',
+          'flex h-5 w-5 items-center justify-center rounded-full text-caption font-medium',
           step === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted',
         )}
       >
@@ -618,7 +618,7 @@ export default function BudgetFormDialog({
                             ))}
                           </SelectContent>
                         </Select>
-                        <FormMessage className="text-[10px]" />
+                        <FormMessage className="text-caption" />
                       </FormItem>
                     )}
                   />
@@ -643,7 +643,7 @@ export default function BudgetFormDialog({
                           placeholder="Categoría"
                           ariaLabel={`Categoría de la asignación ${index + 1}`}
                         />
-                        <FormMessage className="text-[10px]" />
+                        <FormMessage className="text-caption" />
                       </FormItem>
                     )}
                   />
@@ -665,7 +665,7 @@ export default function BudgetFormDialog({
                             data-icon="inline-start"
                           />
                         </FormControl>
-                        <FormMessage className="text-[10px]" />
+                        <FormMessage className="text-caption" />
                       </FormItem>
                     )}
                   />

@@ -114,7 +114,7 @@ export function CreditCardInstallmentProjectionBlock() {
             Proyección de cuotas
           </CardTitle>
           {!expanded && (
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
+            <p className="mt-0.5 text-caption text-muted-foreground">
               {data.length} mes{data.length !== 1 ? 'es' : ''} con cuotas pendientes ·{' '}
               próximo {formatCurrency(data[0].total)}
             </p>
@@ -190,7 +190,7 @@ export function CreditCardInstallmentProjectionBlock() {
                 return (
                   <span
                     key={cardId}
-                    className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
+                    className="flex items-center gap-1.5 text-caption text-muted-foreground"
                   >
                     <span
                       className="inline-block h-2 w-2 shrink-0 rounded-sm"

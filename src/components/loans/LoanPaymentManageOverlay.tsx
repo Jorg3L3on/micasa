@@ -493,7 +493,7 @@ export const LoanPaymentManageOverlay = ({
                             <p className="truncate font-medium">
                               {item.loanName}
                             </p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-caption text-muted-foreground">
                               Cuota {item.sequence} · {formatDate(item.dueDate)}
                             </p>
                           </div>

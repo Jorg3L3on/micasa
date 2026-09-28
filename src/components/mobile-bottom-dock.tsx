@@ -102,7 +102,7 @@ const DockTabLink = ({
         aria-current={active ? 'page' : undefined}
         aria-label={title}
         className={cn(
-          'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors',
+          'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-caption font-medium transition-colors',
           active ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
         )}
       >
@@ -117,7 +117,7 @@ const DockTabLink = ({
         <Icon className="h-5 w-5 shrink-0" aria-hidden />
         <span
           className={cn(
-            'max-w-full truncate transition-opacity',
+            'max-w-full text-center leading-none tracking-tight transition-opacity',
             active ? 'opacity-100' : 'opacity-60',
           )}
         >
@@ -356,7 +356,7 @@ function MobileBottomDockInner() {
               onClick={handleOpenMore}
               onKeyDown={handleMoreKeyDown}
               className={cn(
-                'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors',
+                'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-caption font-medium transition-colors',
                 moreActive ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
               )}
             >
@@ -371,7 +371,7 @@ function MobileBottomDockInner() {
               <MoreHorizontal className="h-5 w-5 shrink-0" aria-hidden />
               <span
                 className={cn(
-                  'max-w-full truncate transition-opacity',
+                  'max-w-full text-center leading-none tracking-tight transition-opacity',
                   moreActive ? 'opacity-100' : 'opacity-60',
                 )}
               >

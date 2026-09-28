@@ -135,7 +135,7 @@ export const CreditCardScheduledPaymentsSection = ({
               <h3 className="text-sm font-semibold leading-none">
                 Calendario de pagos
               </h3>
-              <p className="mt-1 text-[10px] text-muted-foreground">
+              <p className="mt-1 text-caption text-muted-foreground">
                 Cuotas futuras sin registrar compra ni mover deuda
               </p>
             </div>

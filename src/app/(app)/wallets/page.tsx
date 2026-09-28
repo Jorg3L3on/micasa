@@ -1067,7 +1067,7 @@ export default function WalletsPage() {
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     Atajos
                   </p>
                   <ScrollFadeChipRow
@@ -1111,14 +1111,14 @@ export default function WalletsPage() {
                       Cupo en rojo
                     </Button>
                   </ScrollFadeChipRow>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     Combinan varios filtros de una vez; no borran tu búsqueda por
                     nombre.
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     Ámbito
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por efectivo o tarjetas">
@@ -1152,13 +1152,13 @@ export default function WalletsPage() {
                       );
                     })}
                   </ScrollFadeChipRow>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     Si eliges un tipo concreto abajo, el ámbito vuelve a «Todas».
                   </p>
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     Estado
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por estado">
@@ -1196,7 +1196,7 @@ export default function WalletsPage() {
 
                 {isHouseContext ? (
                   <div>
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                       Asignado a
                     </p>
                     <ScrollFadeChipRow ariaLabel="Filtrar por asignación">
@@ -1259,7 +1259,7 @@ export default function WalletsPage() {
                         );
                       })}
                     </ScrollFadeChipRow>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
+                    <p className="mt-1 text-caption text-muted-foreground">
                       Solo en contexto casa: billeteras compartidas o asignadas a
                       un miembro.
                     </p>
@@ -1267,7 +1267,7 @@ export default function WalletsPage() {
                 ) : null}
 
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     Tipo
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por tipo de billetera">
@@ -1305,7 +1305,7 @@ export default function WalletsPage() {
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                       Monto registrado
                     </p>
                     <ScrollFadeChipRow ariaLabel="Filtrar por monto en libros">
@@ -1355,7 +1355,7 @@ export default function WalletsPage() {
                           {creditLineFilter !== 'all' ? (
                             <Badge
                               variant="secondary"
-                              className="h-5 min-w-5 justify-center rounded-full px-1.5 text-[10px]"
+                              className="h-5 min-w-5 justify-center rounded-full px-1.5 text-caption"
                             >
                               1
                             </Badge>

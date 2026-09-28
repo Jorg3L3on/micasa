@@ -220,7 +220,7 @@ const CreditCardMercadoPagoImportDialog = ({
                 role="region"
                 aria-label="Importaciones recientes"
               >
-                <p className="border-b border-border/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="border-b border-border/60 px-3 py-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                   Importaciones recientes
                 </p>
                 <ul className={cn('divide-y divide-border/60', IMPORT_LIST_SCROLL_CLASS)}>
@@ -235,7 +235,7 @@ const CreditCardMercadoPagoImportDialog = ({
                             ? `${formatDate(row.period_start.slice(0, 10))} – ${formatDate(row.period_end.slice(0, 10))}`
                             : 'Periodo no detectado'}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-caption text-muted-foreground">
                           {row.expense_count} gasto(s)
                           {row.account_number
                             ? ` · Cuenta ${row.account_number}`

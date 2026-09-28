@@ -217,7 +217,7 @@ export const CreditCardCycleLedger = ({
         <div className="divide-y divide-border/40">
           {grouped.map(([dateKey, rows]) => (
             <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
-              <p className="sticky top-0 z-[1] bg-card/95 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur-sm">
+              <p className="sticky top-0 z-[1] bg-card/95 px-4 py-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur-sm">
                 {getDateGroupLabel(dateKey)}
               </p>
               <ul className="px-2 pb-2">
@@ -245,7 +245,7 @@ export const CreditCardCycleLedger = ({
                               {msi ? (
                                 <Badge
                                   variant="secondary"
-                                  className="h-5 shrink-0 px-1.5 text-[10px] font-sans"
+                                  className="h-5 shrink-0 px-1.5 text-caption font-sans"
                                 >
                                   {purchase.credit_installment_current}/{purchase.credit_installment_total}
                                 </Badge>
@@ -254,7 +254,7 @@ export const CreditCardCycleLedger = ({
                             <CategoryLabel
                               name={purchase.category}
                               icon={purchase.categoryIcon}
-                              className="text-[11px] text-muted-foreground"
+                              className="text-caption text-muted-foreground"
                             />
                           </div>
                           <div className="shrink-0 text-right">
@@ -264,7 +264,7 @@ export const CreditCardCycleLedger = ({
                         {msi && onGoToCuotas ? (
                           <button
                             type="button"
-                            className="shrink-0 self-center px-2 text-[10px] text-primary-text hover:underline"
+                            className="shrink-0 self-center px-2 text-caption text-primary-text hover:underline"
                             onClick={() => {
                               onGoToCuotas();
                             }}
@@ -291,11 +291,11 @@ export const CreditCardCycleLedger = ({
                             Pago desde {payment.source_wallet_name}
                           </p>
                           {payment.note ? (
-                            <p className="truncate text-[11px] text-muted-foreground">
+                            <p className="truncate text-caption text-muted-foreground">
                               {payment.note}
                             </p>
                           ) : (
-                            <p className="text-[11px] text-muted-foreground">Pago registrado</p>
+                            <p className="text-caption text-muted-foreground">Pago registrado</p>
                           )}
                         </div>
                         <Money
@@ -319,7 +319,7 @@ export const CreditCardCycleLedger = ({
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">Importación de estado de cuenta</p>
-                        <p className="truncate text-[11px] text-muted-foreground">
+                        <p className="truncate text-caption text-muted-foreground">
                           {importRecord.file_name ?? importRecord.provider} ·{' '}
                           {importRecord.expense_count} gasto
                           {importRecord.expense_count === 1 ? '' : 's'}

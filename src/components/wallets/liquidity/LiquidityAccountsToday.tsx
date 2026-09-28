@@ -50,7 +50,7 @@ const ACCOUNTS_PREVIEW_COUNT = 6;
 
 const badgeToneClass = (tone: AccountTodayBadge['tone']): string =>
   cn(
-    'rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
+    'rounded-full px-2 py-0.5 text-caption font-semibold ring-1',
     tone === 'destructive' && 'bg-destructive/10 text-destructive ring-destructive/20',
     tone === 'amber' &&
       'bg-amber-500/10 text-amber-800 ring-amber-500/20 dark:text-amber-300',
@@ -73,7 +73,7 @@ const AccountIcon = ({ view }: { view: AccountTodayView }) => {
   if (view.isFonacot && !view.providerIconKey) {
     return (
       <span
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500/15 text-[10px] font-bold tracking-wide text-teal-800 ring-1 ring-teal-500/30 dark:text-teal-200"
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500/15 text-caption font-bold tracking-wide text-teal-800 ring-1 ring-teal-500/30 dark:text-teal-200"
         aria-label="Fonacot"
         title="Fonacot"
       >
@@ -199,16 +199,16 @@ const AccountCard = ({
               <p className="truncate text-sm font-semibold">{view.name}</p>
               {badge ? <span className={badgeToneClass(badge.tone)}>{badge.label}</span> : null}
             </div>
-            <p className="text-[10px] text-muted-foreground">{view.typeLabel}</p>
+            <p className="text-caption text-muted-foreground">{view.typeLabel}</p>
             {preview ? (
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{preview}</p>
+              <p className="mt-1 text-caption leading-snug text-muted-foreground">{preview}</p>
             ) : null}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               Deuda
             </p>
             <p className={cn('font-sans text-sm font-bold tabular-nums', debtToneClass(view))}>
@@ -216,7 +216,7 @@ const AccountCard = ({
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               Libre
             </p>
             <p
@@ -447,7 +447,7 @@ export const LiquidityAccountsToday = ({
                 void load();
               }}
             />
-            <p className="px-1 text-[10px] text-muted-foreground">
+            <p className="px-1 text-caption text-muted-foreground">
               Toca una deuda para ver de qué está hecha.
             </p>
             <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1" role="list">

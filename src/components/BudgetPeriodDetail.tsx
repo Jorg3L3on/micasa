@@ -91,7 +91,7 @@ function PeriodMetric({
         accent === 'available' && 'bg-emerald-500/[0.04]',
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p
@@ -197,7 +197,7 @@ function WalletPoolHeader({ pool }: { pool: WalletPool }) {
           </p>
           <p
             className={cn(
-              'text-[10px] text-muted-foreground',
+              'text-caption text-muted-foreground',
               overspent && 'text-destructive',
             )}
           >
@@ -311,11 +311,11 @@ function AllocationSummary({
               >
                 {formatCurrency(remaining)}
               </p>
-              <p className="text-[10px] text-muted-foreground">{disponibleLabel}</p>
+              <p className="text-caption text-muted-foreground">{disponibleLabel}</p>
             </div>
           </div>
         ) : allocationOverspent ? (
-          <Badge variant="destructive" className="shrink-0 text-[10px]">
+          <Badge variant="destructive" className="shrink-0 text-caption">
             Excedido
           </Badge>
         ) : null}

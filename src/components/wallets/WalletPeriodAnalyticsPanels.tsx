@@ -69,7 +69,7 @@ const InsightStat = ({
   tone?: 'neutral' | 'good' | 'warn';
 }) => (
   <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
-    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="mb-1 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
       <Icon
         className={cn(
           'h-3.5 w-3.5',
@@ -129,7 +129,7 @@ export const WalletPeriodAnalyticsPanels = ({
                 <p className="text-sm font-semibold leading-none">
                   Flujo diario
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">
+                <p className="mt-1 text-caption text-muted-foreground">
                   Ingresos, egresos y neto acumulado de {rangeLabel}
                 </p>
               </div>
@@ -205,7 +205,7 @@ export const WalletPeriodAnalyticsPanels = ({
                   <p className="text-sm font-semibold leading-none">
                     Gasto por categoría
                   </p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     Top categorías por egreso
                   </p>
                 </div>
@@ -227,7 +227,7 @@ export const WalletPeriodAnalyticsPanels = ({
                           <p className="font-sans text-xs font-bold tabular-nums">
                             {formatCurrency(row.amount)}
                           </p>
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-caption text-muted-foreground">
                             {row.pct}%
                           </p>
                         </div>
@@ -254,7 +254,7 @@ export const WalletPeriodAnalyticsPanels = ({
                   <p className="text-sm font-semibold leading-none">
                     Mezcla de movimientos
                   </p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     Ingresos, egresos y pagos a tarjeta
                   </p>
                 </div>
@@ -322,7 +322,7 @@ export const WalletPeriodAnalyticsPanels = ({
                 <p className="text-sm font-semibold leading-none">
                   Salud de la billetera
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">
+                <p className="mt-1 text-caption text-muted-foreground">
                   Ritmo del periodo y cobertura estimada
                 </p>
               </div>
@@ -370,7 +370,7 @@ export const WalletPeriodAnalyticsPanels = ({
             <div className="space-y-2">
               {analytics.largestOutflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
-                  <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     <ArrowUpRight className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" data-icon="inline-start" />
                     Mayor egreso
                   </p>
@@ -384,7 +384,7 @@ export const WalletPeriodAnalyticsPanels = ({
               ) : null}
               {analytics.largestInflow ? (
                 <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2">
-                  <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" data-icon="inline-start" />
                     Mayor ingreso
                   </p>

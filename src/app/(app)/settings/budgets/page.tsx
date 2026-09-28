@@ -227,7 +227,7 @@ function ProgressBar({ spent, total }: { spent: number; total: number }) {
           style={{ width: `${clamped}%` }}
         />
       </div>
-      <p className="text-right text-[10px] text-muted-foreground">{percent}% usado</p>
+      <p className="text-right text-caption text-muted-foreground">{percent}% usado</p>
     </div>
   );
 }
@@ -745,7 +745,7 @@ export default function BudgetsPage() {
       {isBudgetsView ? (
         <ToolbarFiltersPortal>
           <div>
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-1.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               Orden
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Ordenar presupuestos">

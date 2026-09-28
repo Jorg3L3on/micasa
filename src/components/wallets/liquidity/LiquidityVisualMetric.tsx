@@ -56,13 +56,13 @@ export const LiquidityVisualMetric = ({
           {icon}
           <div>
             <p className="text-sm font-medium text-foreground">{label}</p>
-            <p className="text-[11px] text-muted-foreground">{hint}</p>
+            <p className="text-caption text-muted-foreground">{hint}</p>
           </div>
         </div>
         {statusLabel ? (
           <span
             className={cn(
-              'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
+              'shrink-0 rounded-full px-2 py-0.5 text-caption font-semibold ring-1',
               statusToneClass[statusTone],
             )}
           >

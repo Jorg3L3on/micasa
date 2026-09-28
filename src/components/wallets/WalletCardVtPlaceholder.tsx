@@ -87,22 +87,25 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
                 </span>
               )}
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold leading-tight opacity-95">
+                <p
+                  className="truncate text-sm font-semibold leading-tight opacity-95"
+                  title={snapshot.name}
+                >
                   {snapshot.name}
                 </p>
-                <p className="text-[10px] uppercase tracking-widest opacity-60">
+                <p className="text-caption uppercase tracking-widest opacity-60">
                   {snapshot.cycleLabel ?? snapshot.typeLabel}
                 </p>
               </div>
             </div>
-            <span className="font-mono text-[11px] tracking-[0.2em] opacity-50">
+            <span className="font-mono text-caption tracking-[0.2em] opacity-50">
               •••• ••••
             </span>
           </div>
 
           <div className="space-y-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+              <p className="text-caption font-semibold uppercase tracking-wider opacity-70">
                 Deuda total
               </p>
               <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
@@ -112,7 +115,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
 
             <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
               <div>
-                <p className="text-[9px] uppercase tracking-wider opacity-70">
+                <p className="text-caption uppercase tracking-wider opacity-70">
                   Disponible
                 </p>
                 <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -123,7 +126,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
               </div>
               {snapshot.creditLimit != null && snapshot.creditLimit > 0 ? (
                 <div className="text-right">
-                  <p className="text-[9px] uppercase tracking-wider opacity-70">
+                  <p className="text-caption uppercase tracking-wider opacity-70">
                     Límite
                   </p>
                   <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -137,8 +140,8 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             snapshot.creditLimit != null &&
             snapshot.creditLimit > 0 ? (
               <div className="space-y-1">
-                <div className="flex justify-between text-[9px] opacity-70">
-                  <span>Utilización</span>
+                <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
+                  <span className="shrink-0 whitespace-normal">Utilización</span>
                   <span className="font-sans tabular-nums">
                     {snapshot.utilizationPct}%
                   </span>
@@ -182,10 +185,13 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             </span>
           )}
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight opacity-95">
+            <p
+              className="truncate text-sm font-semibold leading-tight opacity-95"
+              title={snapshot.name}
+            >
               {snapshot.name}
             </p>
-            <p className="text-[10px] uppercase tracking-widest opacity-60">
+            <p className="text-caption uppercase tracking-widest opacity-60">
               {snapshot.typeLabel}
             </p>
           </div>
@@ -193,7 +199,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
 
         <div className="space-y-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+            <p className="text-caption font-semibold uppercase tracking-wider opacity-70">
               Saldo disponible
             </p>
             <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
@@ -206,13 +212,13 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             aria-hidden
           >
             <div>
-              <p className="text-[9px] uppercase tracking-wider">Disponible</p>
+              <p className="text-caption uppercase tracking-wider">Disponible</p>
               <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                 $0.00
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[9px] uppercase tracking-wider">Límite</p>
+              <p className="text-caption uppercase tracking-wider">Límite</p>
               <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                 $0.00
               </p>
@@ -220,8 +226,8 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
           </div>
 
           <div className="invisible space-y-1" aria-hidden>
-            <div className="flex justify-between text-[9px]">
-              <span>Utilización</span>
+            <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug">
+              <span className="shrink-0 whitespace-normal">Utilización</span>
               <span className="font-sans tabular-nums">0%</span>
             </div>
             <div className="h-1.5 w-full rounded-full" />

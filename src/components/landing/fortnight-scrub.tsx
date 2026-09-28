@@ -164,7 +164,7 @@ export const FortnightScrub = () => {
                 {activeLabel}
               </motion.span>
               <div className="text-right">
-                <p className="text-[10px] uppercase tracking-wider text-white/40">
+                <p className="text-caption uppercase tracking-wider text-white/40">
                   Pagado
                 </p>
                 <motion.p
@@ -178,7 +178,7 @@ export const FortnightScrub = () => {
 
             <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
               <div className="border-b border-white/10 p-4 sm:p-7 lg:border-b-0 lg:border-r">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/40">
+                <p className="text-caption font-semibold uppercase tracking-[0.18em] text-white/40">
                   Balance quincena
                 </p>
                 <motion.p
@@ -233,7 +233,7 @@ const PeriodLists = ({
     className={cn('grid gap-4 sm:grid-cols-2', className)}
   >
     <div className="space-y-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-300/80">
+      <p className="text-caption font-semibold uppercase tracking-wider text-sky-300/80">
         Ingresos
       </p>
       {period.income.map((row) => (
@@ -249,7 +249,7 @@ const PeriodLists = ({
       ))}
     </div>
     <div className="space-y-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+      <p className="text-caption font-semibold uppercase tracking-wider text-white/45">
         Gastos
       </p>
       {period.expenses.map((row) => (

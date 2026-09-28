@@ -38,7 +38,7 @@ export const PlanRouteCard = ({
       </div>
       {plan.impact ? (
         <div className="text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
             {PLAN_COPY.interestSaved}
           </p>
           <p className="font-sans text-sm font-bold tabular-nums">
@@ -50,7 +50,7 @@ export const PlanRouteCard = ({
         </div>
       ) : plan.gapClosed != null && plan.actions.length > 0 ? (
         <div className="text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
             {PLAN_COPY.estimatedCost}
           </p>
           <p className="font-sans text-sm font-bold tabular-nums">

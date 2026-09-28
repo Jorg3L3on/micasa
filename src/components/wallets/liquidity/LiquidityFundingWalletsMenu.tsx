@@ -108,7 +108,7 @@ export const LiquidityFundingWalletsMenu = ({
             >
               <Settings2 className="size-3.5 shrink-0" aria-hidden />
               {wallets.length > 0 ? (
-                <span className="font-sans text-[10px] tabular-nums">
+                <span className="font-sans text-caption tabular-nums">
                   {includedCount}/{wallets.length}
                 </span>
               ) : null}
@@ -139,7 +139,7 @@ export const LiquidityFundingWalletsMenu = ({
               className="gap-2"
             >
               <span className="min-w-0 flex-1 truncate">{wallet.name}</span>
-              <span className="shrink-0 font-sans text-[10px] tabular-nums text-muted-foreground">
+              <span className="shrink-0 font-sans text-caption tabular-nums text-muted-foreground">
                 {formatCurrency(Number(wallet.amount))}
               </span>
             </DropdownMenuCheckboxItem>

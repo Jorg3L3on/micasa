@@ -102,7 +102,7 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
           {horizon === 'quincena' ? PLAN_COPY.fortnight : PLAN_COPY.month}
         </p>
         <h2 className="text-xl font-semibold tracking-tight">{titleFor(mode)}</h2>
@@ -113,7 +113,7 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
       ) : (
         <div className="space-y-2">
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px]', accent)}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+            <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
             <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
               <CurrencyTicker value={amount} />
             </p>

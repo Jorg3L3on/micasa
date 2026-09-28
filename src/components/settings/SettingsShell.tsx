@@ -86,7 +86,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
 
               return (
                 <div key={section.id} className="space-y-1">
-                  <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="px-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                     {section.label}
                   </p>
                   <ul className="space-y-0.5">

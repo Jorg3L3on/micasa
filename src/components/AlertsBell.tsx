@@ -241,7 +241,7 @@ export function AlertsBell() {
           <Bell className="size-5" aria-hidden data-icon="inline-start" />
           {unseenCount > 0 && (
             <span
-              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground"
+              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-caption font-medium text-destructive-foreground"
               aria-label={`${unseenCount} alertas sin ver`}
             >
               {unseenCount > 99 ? '99+' : unseenCount}

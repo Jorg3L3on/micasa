@@ -106,7 +106,7 @@ const PurchaseSortButton = ({
     type="button"
     variant="ghost"
     size="sm"
-    className="h-7 px-1.5 text-[10px] font-semibold uppercase tracking-wider"
+    className="h-7 px-1.5 text-caption font-semibold uppercase tracking-wider"
     onClick={() => onSort(sortKey)}
     aria-label={`Ordenar por ${label}${
       activeKey === sortKey ? (dir === 'desc' ? ', descendente' : ', ascendente') : ''
@@ -139,7 +139,7 @@ const PaymentSortButton = ({
     type="button"
     variant="ghost"
     size="sm"
-    className="h-7 px-1.5 text-[10px] font-semibold uppercase tracking-wider"
+    className="h-7 px-1.5 text-caption font-semibold uppercase tracking-wider"
     onClick={() => onSort(sortKey)}
     aria-label={`Ordenar pagos por ${label}`}
   >
@@ -243,7 +243,7 @@ export const PurchaseTableBlock = ({
                       {purchase.credit_installment_current != null &&
                       purchase.credit_installment_total != null ? (
                         <span
-                          className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground"
+                          className="ml-1.5 inline-flex align-middle items-center rounded-md border border-border/60 px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wider text-muted-foreground"
                           title="Compra en cuotas"
                         >
                           {purchase.credit_installment_current}/
@@ -251,7 +251,7 @@ export const PurchaseTableBlock = ({
                         </span>
                       ) : null}
                     </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] text-muted-foreground">
+                    <p className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-caption text-muted-foreground">
                       <CategoryLabel
                         name={purchase.category}
                         icon={purchase.categoryIcon}
@@ -261,7 +261,7 @@ export const PurchaseTableBlock = ({
                     </p>
                     <Link
                       href={getFortnightHref(purchase, ownerQueryString)}
-                      className="mt-1 inline-block text-[10px] font-medium text-primary-text underline-offset-2 hover:underline"
+                      className="mt-1 inline-block text-caption font-medium text-primary-text underline-offset-2 hover:underline"
                     >
                       Ver quincena
                     </Link>
@@ -363,7 +363,7 @@ export const PaymentTableBlock = ({
                       className="truncate text-sm font-medium"
                       iconClassName="h-5 w-5 rounded-md"
                     />
-                    <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                    <p className="mt-1 truncate text-caption text-muted-foreground">
                       {formatDate(payment.paid_at)}
                       {payment.note ? ` · ${payment.note}` : ''}
                     </p>

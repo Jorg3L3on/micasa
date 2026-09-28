@@ -90,7 +90,7 @@ export function ExpenseTemplateForm({
               <CardTitle className="text-sm font-semibold leading-none">
                 Datos de la plantilla
               </CardTitle>
-              <CardDescription className="text-[10px] text-muted-foreground">
+              <CardDescription className="text-caption text-muted-foreground">
                 Define la base para crear gastos rapido y consistente.
               </CardDescription>
             </div>

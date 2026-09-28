@@ -167,7 +167,7 @@ export const LoanCalendarPaymentOverlay = ({
             aria-busy={submitting}
           >
             <div className="rounded-xl border border-border/60 bg-card px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                 Pago #{payment.sequence}
               </p>
               <p className="mt-1 font-sans text-2xl font-bold tabular-nums">

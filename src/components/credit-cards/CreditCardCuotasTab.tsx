@@ -150,7 +150,7 @@ export const CreditCardCuotasTab = ({
             <h3 className="text-sm font-semibold leading-none">
               Cuotas y pagos futuros
             </h3>
-            <p className="mt-1 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-caption text-muted-foreground">
               MSI en tarjeta, planes manuales y calendario
             </p>
           </div>
@@ -206,7 +206,7 @@ export const CreditCardCuotasTab = ({
           aria-label="Saldo del plan, informativo"
         >
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               Saldo MSI
             </p>
             <p className="font-sans text-base font-bold tabular-nums sm:text-lg">
@@ -214,14 +214,14 @@ export const CreditCardCuotasTab = ({
             </p>
           </div>
           <div className="min-w-0 border-l border-border/50 pl-2 sm:pl-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               Saldo del plan
             </p>
             <p className="font-sans text-base font-bold tabular-nums sm:text-lg">
               {formatCurrency(plansExposure)}
             </p>
             {planCount > 0 ? (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-caption text-muted-foreground">
                 {planCount} plan{planCount === 1 ? '' : 'es'}
               </p>
             ) : null}
@@ -229,7 +229,7 @@ export const CreditCardCuotasTab = ({
         </div>
       ) : null}
       {showSummary ? (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Saldo restante informativo. Este corte solo incluye la mensualidad.
         </p>
       ) : null}

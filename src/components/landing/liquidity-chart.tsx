@@ -77,7 +77,7 @@ export const LiquidityChart = () => {
         </motion.g>
       </svg>
 
-      <div className="pointer-events-none absolute bottom-2 left-3 right-3 flex justify-between text-[9px] font-medium uppercase tracking-wider text-white/35">
+      <div className="pointer-events-none absolute bottom-2 left-3 right-3 flex justify-between text-caption font-medium uppercase tracking-wider text-white/35">
         <span>Hoy</span>
         <span>90d</span>
         <span>180d</span>

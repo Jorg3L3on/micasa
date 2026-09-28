@@ -344,7 +344,7 @@ const FortnightCardPaymentsPanel = ({
                   >
                     {item.walletName}
                   </Link>
-                  <div className="flex flex-wrap items-baseline gap-1 text-[10px]">
+                  <div className="flex flex-wrap items-baseline gap-1 text-caption">
                     <span
                       className={cn('font-medium tabular-nums', dateColor)}
                     >
@@ -423,7 +423,7 @@ const FortnightCardPaymentsPanel = ({
                     </span>
                     {status === 'pagado' && fortnightPaid > 0 ? (
                       <span
-                        className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/80"
+                        className="text-caption font-medium uppercase tracking-wide text-muted-foreground/80"
                         aria-hidden
                       >
                         Pagado esta quincena
@@ -433,7 +433,7 @@ const FortnightCardPaymentsPanel = ({
                     fortnightPaid <= 0 &&
                     (item.paymentsAppliedToStatement ?? 0) > 0 ? (
                       <span
-                        className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/80"
+                        className="text-caption font-medium uppercase tracking-wide text-muted-foreground/80"
                         aria-hidden
                       >
                         Cubierto al corte
@@ -517,7 +517,7 @@ const FortnightCardPaymentsPanel = ({
                         ) : (
                           <>
                             <span className="font-medium">Pagar</span>
-                            <span className="mt-0.5 block text-[11px] font-normal opacity-90">
+                            <span className="mt-0.5 block text-caption font-normal opacity-90">
                               Desde efectivo o débito (igual que en Billeteras).
                             </span>
                           </>

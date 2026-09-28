@@ -121,7 +121,7 @@ export default function AccountProfile({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 space-y-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                 Correo electrónico
               </p>
               <p className="truncate text-sm">{email || '—'}</p>

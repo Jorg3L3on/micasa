@@ -325,6 +325,7 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
 ## Fintech data UI
 
 - Amounts: **`<Money>`** (`src/components/money.tsx`). Sans with `tabular-nums` — never `font-mono`. Format with `formatMoney` / `formatCurrency` (`es-MX`). Negatives use that formatter’s single hyphen (`-$12.50`); do not prefix another minus or a `+`.
+- Smallest UI text is **caption**: `text-caption` (`--text-caption-size: 0.6875rem`, 11px, line-height 1.35). Do not use `text-[9px]`, `text-[10px]`, or `text-[11px]`. JOR-311 adopts this token as the bottom of the type scale. Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.
 - Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS` (neutral foreground, positive emerald, negative `text-destructive`). JOR-310 swaps that one map for semantic status tokens.
 - Chart axes use `formatAxisMoney` (`$`, `k` from 1,000, `M` from 1,000,000). JOR-315 keeps this helper when it themes charts.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
