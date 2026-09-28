@@ -7,7 +7,7 @@ import { auth } from '@/lib/auth';
 import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import prisma from '@/lib/prisma';
 
-const SITE_TITLE = 'MiCasa | Planifica tu dinero por quincenas';
+const SITE_TITLE = 'MiCasa | Planea tu dinero por quincenas';
 const SITE_DESCRIPTION =
   'Gestión financiera para México: organiza ingresos, gastos, billeteras y operaciones por quincenas. Personal o casa compartida.';
 

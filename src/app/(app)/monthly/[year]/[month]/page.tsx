@@ -39,7 +39,7 @@ export async function generateMetadata({
   if (!parsedParams.ok) {
     return {
       title: 'Panel financiero',
-      description: 'Planifica ingresos y gastos por quincena.',
+      description: 'Planea ingresos y gastos por quincena.',
     };
   }
   const { year, month } = parsedParams.value;

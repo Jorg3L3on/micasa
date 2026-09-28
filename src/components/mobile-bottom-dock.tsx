@@ -263,7 +263,7 @@ function MobileBottomDockInner() {
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">Gasto</span>
                   <span className="block text-xs text-muted-foreground">
-                    Planificar o marcar como pagado
+                    Planear o marcar como pagado
                   </span>
                 </span>
               </button>
