@@ -214,12 +214,13 @@ Cuando miras una quincena que no es la de hoy, el panel marca lo que toca pagar.
 - **Análisis.** Nav, título y pestaña del navegador dicen Análisis. Dentro hay dos vistas: **Liquidez** y **Plan**.
 - **Préstamos.** Calendario de cuotas, ligado a la quincena. Una cuota pagada con billetera puede quedar registrada como gasto.
 - **Metas.** Billetera con monto objetivo y avance.
-- **Operaciones.** Nombre de la sección. Cada fila es un **movimiento**. No se llama Transacciones.
+- **Operaciones.** Así se llama la sección, el título y la pestaña. Cada registro es un movimiento.
 - **Toca pagar.** En una quincena que no es la de hoy, el panel señala lo que sigue.
 - **Casa compartida.** Cada recurso es de una persona o de una casa. En la casa los roles son `OWNER`, `ADMIN` y `MEMBER`.
-- **PWA.** Manifiesto instalable (`src/app/manifest.ts`), iconos y, en producción, service worker (`public/sw.js`). Atajos para agregar gasto o ingreso.
-- **MCP, si lo quieres.** En Configuración → Conexiones se crea un acceso para un cliente MCP (`POST /api/mcp`, `@modelcontextprotocol/server` y `mcp-handler`). Sin esa conexión la app planea igual. Detalle en [`docs/mcp-connector.md`](docs/mcp-connector.md).
-- **Estados de cuenta.** Subes el archivo y MiCasa propone los movimientos. No hay conexión al banco. La importación se puede revertir.
+- **PWA.** Manifiesto instalable (`src/app/manifest.ts`), iconos y, en producción, service worker (`public/sw.js`). Atajos para Agregar gasto o Agregar ingreso.
+- **Estado de cuenta.** En la tarjeta (`/credit-cards/[id]`), Más → Estado de cuenta abre Importar estado de cuenta. Subes el PDF, revisas los movimientos y confirmas. No hay conexión al banco: el archivo lo traes tú.
+
+La app sola basta para planear la quincena. Un agente es opcional y entra al mismo registro desde Configuración → Conexiones (`/settings/connections`, `POST /api/mcp`). Detalle en [`docs/mcp-connector.md`](docs/mcp-connector.md).
 
 ## Sistema de diseño
 
@@ -307,9 +308,10 @@ Lo que puede moverse: ticker de montos en héroes, pestañas con indicador, pull
 | Auth | NextAuth v5 (JWT, credenciales) |
 | UI | Tailwind CSS v4, Radix UI, TanStack Table, Recharts, framer-motion, next-themes |
 | Validación | Zod v4, react-hook-form |
-| Agentes | `@modelcontextprotocol/server`, `mcp-handler` (opt-in) |
 | Instalación | PWA: manifiesto, iconos y service worker |
 | Calidad | Vitest 4, ESLint 9 |
+
+`@modelcontextprotocol/server` y `mcp-handler` están en el proyecto solo para el acceso opcional de Conexiones. No hacen falta para usar la app.
 
 ## Arquitectura
 
@@ -367,7 +369,7 @@ CI en GitHub (push a `main` y pull requests) corre el mismo pipeline que `npm ru
 
 ## Contribuir
 
-Lee [CONTRIBUTING.md](CONTRIBUTING.md) y el flujo de agentes en [`docs/agents/workflow.md`](docs/agents/workflow.md). El despliegue está en [`docs/agents/deployment.md`](docs/agents/deployment.md): el trabajo de feature entra por `feat/<slug>` y producción es `main`.
+Lee [CONTRIBUTING.md](CONTRIBUTING.md) y el flujo de contribución en [`docs/agents/workflow.md`](docs/agents/workflow.md). El despliegue está en [`docs/agents/deployment.md`](docs/agents/deployment.md): el trabajo de feature entra por `feat/<slug>` y producción es `main`.
 
 Antes de abrir un PR, corre `npm run ci`.
 
@@ -381,4 +383,4 @@ MIT. Ver [`LICENSE`](./LICENSE).
 
 [Live demo](https://micasa-three.vercel.app) · [Design system](./DESIGN.md) · [Changelog](./CHANGELOG.md)
 
-The screenshots above are the fictional house **Hogar** (desktop and mobile, dark and light). Sections follow the product glossary: Panel, Billeteras, Análisis (Liquidez / Plan), Préstamos, Metas, and Operaciones — a record there is a movimiento. Also included: “toca pagar” on a fortnight that is not today, shared houses, an installable PWA, optional MCP access, and statement-file import with no bank connection. Setup, stack, and license are in the Spanish sections above.
+The screenshots above are the fictional house **Hogar** (desktop and mobile, dark and light). Sections follow the glossary: Panel, Billeteras, Análisis (Liquidez / Plan), Préstamos, Metas, and Operaciones. A record in Operaciones is a movimiento. Also included: “toca pagar” on a fortnight that is not today, shared houses, and an installable PWA. On a card, Más → Estado de cuenta opens Importar estado de cuenta: upload a PDF, review the movimientos, and confirm. There is no bank connection. The app on its own is enough. An agent is optional and, from Configuración → Conexiones (`/settings/connections`), reads the same records. Setup, stack, and license are in the Spanish sections above.
