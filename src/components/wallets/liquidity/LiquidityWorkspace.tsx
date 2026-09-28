@@ -3,7 +3,8 @@
 import { useCallback, useState } from 'react';
 import { LineChart, Route } from 'lucide-react';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
+import { TabsContent } from '@/components/motion/tabs';
+import { SegmentedControl } from '@/components/segmented-control';
 import {
   AURA_TAB_INDICATOR_CLASS,
   GLASS_TAB_ACTIVE_LABEL_CLASS,
@@ -42,44 +43,41 @@ export const LiquidityWorkspace = () => {
       ariaLabel="Análisis"
       errorMessage="No se pudo actualizar tu panorama. Intenta de nuevo."
     >
-      <Tabs defaultValue="liquidez" variant="pill" className="flex flex-col gap-4 sm:gap-5">
-        <div
-          className={cn(
-            MONTHLY_LIQUID_PANEL_CLASS,
-            'flex w-full min-w-0 items-center p-1 sm:max-w-sm sm:p-1.5',
-          )}
-        >
-          <TabsList
-            aria-label={PLAN_COPY.tabListLabel}
-            wrapperClassName="min-w-0 flex-1"
-            className="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
-          >
-            <TabsTrigger
-              value="liquidez"
-              stretch
-              className={WORKSPACE_TAB_TRIGGER_CLASS}
-              indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-              activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-            >
+      <SegmentedControl
+        defaultValue="liquidez"
+        ariaLabel={PLAN_COPY.tabListLabel}
+        className="flex flex-col gap-4 sm:gap-5"
+        stretch
+        frameClassName={cn(
+          MONTHLY_LIQUID_PANEL_CLASS,
+          'flex w-full min-w-0 items-center p-1 sm:max-w-sm sm:p-1.5',
+        )}
+        wrapperClassName="min-w-0 flex-1"
+        listClassName="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
+        triggerClassName={WORKSPACE_TAB_TRIGGER_CLASS}
+        indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+        activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+        options={[
+          {
+            value: 'liquidez',
+            label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
                 <LineChart className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 {PLAN_COPY.tabLiquidity}
               </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="plan"
-              stretch
-              className={WORKSPACE_TAB_TRIGGER_CLASS}
-              indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-              activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-            >
+            ),
+          },
+          {
+            value: 'plan',
+            label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
                 <Route className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 {PLAN_COPY.tabPlan}
               </span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
+            ),
+          },
+        ]}
+      >
         <TabsContent value="liquidez" className="mt-0 outline-none">
           <LiquidityProjectionTab
             data={data}
@@ -100,7 +98,7 @@ export const LiquidityWorkspace = () => {
             selectedMonthKey={selectedMonthKey}
           />
         </TabsContent>
-      </Tabs>
+      </SegmentedControl>
     </MobilePullToRefresh>
   );
 };

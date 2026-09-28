@@ -356,6 +356,11 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 
 ---
 
+## Filters
+
+- `FilterChip` (`src/components/filter-chip.tsx`) is a single on/off filter: Billeteras, Metas, Operaciones, and the Configuración mobile nav. It sets `aria-pressed` (or `aria-current="page"` when it is a link), can show a count, and uses a 44px target on mobile (`min-h-11`, `sm:min-h-9`) with a visible focus ring.
+- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Plan horizon and strategy, Presupuestos, and Análisis (Liquidez / Plan).
+
 ## Surfaces
 
 Three surfaces. Radius does not change with the theme.

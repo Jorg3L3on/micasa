@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { FilterChip } from '@/components/filter-chip';
 import { useFinanceContext } from '@/context/finance-context';
-import { buttonVariants } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import {
@@ -33,21 +33,15 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
         >
           {items.map((item) => {
             const active = isSettingsNavItemActive(pathname, item);
-            const className = cn(
-              buttonVariants({
-                variant: active ? 'default' : 'outline',
-                size: 'sm',
-              }),
-              'shrink-0 rounded-full',
-              item.disabled && 'opacity-60 pointer-events-none',
-            );
 
             if (item.disabled) {
               return (
                 <Tooltip key={item.label}>
                   <TooltipTrigger asChild>
-                    <span className={className} aria-disabled>
-                      {item.label}
+                    <span className="inline-flex">
+                      <FilterChip selected={false} className="pointer-events-none opacity-60">
+                        {item.label}
+                      </FilterChip>
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -58,14 +52,13 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
             }
 
             return (
-              <Link
+              <FilterChip
                 key={item.href}
                 href={withSettingsOwnerQuery(item.href!, context)}
-                className={className}
-                aria-current={active ? 'page' : undefined}
+                selected={active}
               >
                 {item.label}
-              </Link>
+              </FilterChip>
             );
           })}
         </div>

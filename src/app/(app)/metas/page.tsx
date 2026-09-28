@@ -1,5 +1,6 @@
 'use client';
 
+import { FilterChip } from '@/components/filter-chip';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Target } from 'lucide-react';
 import { toast } from 'sonner';
@@ -296,22 +297,9 @@ export default function MetasPage() {
                 const selected = statusFilter === value;
                 const count = statusChipCounts[value];
                 return (
-                  <button
-                    key={value}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    onClick={() => setStatusFilter(value)}
-                    className={cn(
-                      'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors',
-                      selected
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {label}{' '}
-                    <span className="tabular-nums opacity-80">({count})</span>
-                  </button>
+                  <FilterChip key={value} selected={selected} count={count} onClick={() => setStatusFilter(value)}>
+                          {label}
+                        </FilterChip>
                 );
               })}
             </div>

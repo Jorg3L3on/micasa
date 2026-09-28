@@ -1,5 +1,7 @@
 'use client';
 
+import { FilterChip } from '@/components/filter-chip';
+
 import { useMemo, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -51,8 +53,6 @@ const TYPE_FILTER_CHIPS = [
 
 const TRANSACTION_SERVER_FILTER_KEYS = ['month', 'year', 'period', 'type'] as const;
 
-const FILTER_CHIP_CLASS =
-  'h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors';
 
 type TransactionsDataTableProps = {
   transactions: TransactionRow[];
@@ -339,21 +339,13 @@ export default function TransactionsDataTable({
               {TYPE_FILTER_CHIPS.map(({ value, label }) => {
                 const selected = (type || ALL_VALUE) === value;
                 return (
-                  <button
+                  <FilterChip
                     key={value}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
+                    selected={selected}
                     onClick={() => handleServerFilter('type', value)}
-                    className={cn(
-                      FILTER_CHIP_CLASS,
-                      selected
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
-                    )}
                   >
                     {label}
-                  </button>
+                  </FilterChip>
                 );
               })}
             </div>

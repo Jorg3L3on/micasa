@@ -4,6 +4,7 @@ import { ErrorBanner } from '@/components/error-banner';
 import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState } from 'react';
+import { SegmentedControl } from '@/components/segmented-control';
 import { Button } from '@/components/ui/button';
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import { cn } from '@/lib/utils';
@@ -176,29 +177,16 @@ export const CashPlanTab = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <HorizonToggle value={horizon} onChange={handleHorizonChange} />
         {plan.mode === 'surplus' ? (
-          <div role="radiogroup" aria-label={PLAN_COPY.strategyLabel} className="inline-flex rounded-full border border-border/60 bg-muted/40 p-0.5">
-            {([
-              ['avalanche', PLAN_COPY.avalanche],
-              ['snowball', PLAN_COPY.snowball],
-            ] as const).map(([id, label]) => {
-              const selected = strategy === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  className={cn(
-                    'min-h-11 rounded-full px-4 text-sm font-medium',
-                    selected ? 'bg-background text-foreground shadow-sm dark:bg-input/40' : 'text-muted-foreground',
-                  )}
-                  onClick={() => handleStrategyChange(id)}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl
+            value={strategy}
+            onValueChange={(next) => handleStrategyChange(next as 'avalanche' | 'snowball')}
+            ariaLabel={PLAN_COPY.strategyLabel}
+            listClassName="rounded-full border border-border/60 bg-muted/40 p-0.5"
+            options={[
+              { value: 'avalanche', label: PLAN_COPY.avalanche },
+              { value: 'snowball', label: PLAN_COPY.snowball },
+            ]}
+          />
         ) : null}
       </div>
 

@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { CalendarClock, CheckCircle2, Goal, Hourglass } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/motion/tabs';
+import { SegmentedControl } from '@/components/segmented-control';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -296,46 +296,37 @@ export const MonthlyChromeHeader = ({
       aria-hidden
     />
   ) : (
-    <Tabs
+    <SegmentedControl
       value={period}
       onValueChange={(next) => {
         if (next === 'FIRST' || next === 'SECOND') handlePeriodChange(next);
       }}
-      variant="pill"
+      ariaLabel="Quincena"
+      stretch
       className="w-full @min-[42rem]:w-auto"
-    >
-      <TabsList
-        aria-label="Quincena"
-        wrapperClassName="w-full @min-[42rem]:w-auto"
-        className={cn(
-          'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:w-max',
-          GLASS_TAB_TRACK_CLASS,
-        )}
-      >
-        <TabsTrigger
-          value="FIRST"
-          stretch
-          aria-label={`Primera quincena: ${firstLabel}`}
-          title={firstLabel}
-          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-          className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
-        >
-          1ª Quincena
-        </TabsTrigger>
-        <TabsTrigger
-          value="SECOND"
-          stretch
-          aria-label={`Segunda quincena: ${secondLabel}`}
-          title={secondLabel}
-          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-          className="min-h-8 px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
-        >
-          2ª Quincena
-        </TabsTrigger>
-      </TabsList>
-    </Tabs>
+      wrapperClassName="w-full @min-[42rem]:w-auto"
+      listClassName={cn(
+        'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:w-max',
+        GLASS_TAB_TRACK_CLASS,
+      )}
+      indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+      activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+      triggerClassName="px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
+      options={[
+        {
+          value: 'FIRST',
+          label: '1ª Quincena',
+          ariaLabel: `Primera quincena: ${firstLabel}`,
+          title: firstLabel,
+        },
+        {
+          value: 'SECOND',
+          label: '2ª Quincena',
+          ariaLabel: `Segunda quincena: ${secondLabel}`,
+          title: secondLabel,
+        },
+      ]}
+    />
   );
 
   const jumpToCurrent = !isCurrentMonth ? (

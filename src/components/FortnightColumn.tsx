@@ -13,7 +13,8 @@ import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/motion/tabs';
+import { TabsContent } from '@/components/motion/tabs';
+import { SegmentedControl } from '@/components/segmented-control';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
@@ -922,91 +923,64 @@ export default function FortnightColumn({
           budgetOwnerQuery={budgetOwnerQuery || ownerQueryString}
         />
 
-        <Tabs
+        <SegmentedControl
           value={columnTab}
           onValueChange={handleColumnTabChange}
-          variant="pill"
+          ariaLabel="Secciones de la quincena"
           className="w-full min-w-0"
-        >
-          <div
-            className={cn(
-              MONTHLY_LIQUID_PANEL_CLASS,
-              'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
-            )}
-          >
-            <TabsList
-              aria-label="Secciones de la quincena"
-              wrapperClassName="min-w-0 flex-1"
-              className="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
-            >
-              <TabsTrigger
-                value="expenses"
-                stretch
-                className={plannerTabTriggerClass}
-                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-                activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-                aria-label={`Gastos, ${unpaidExpenseCount} sin pagar`}
-              >
+          stretch
+          frameClassName={cn(
+            MONTHLY_LIQUID_PANEL_CLASS,
+            'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
+          )}
+          wrapperClassName="min-w-0 flex-1"
+          listClassName="w-full gap-0.5 bg-transparent p-0 sm:gap-1"
+          triggerClassName={plannerTabTriggerClass}
+          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+          options={[
+            {
+              value: 'expenses',
+              ariaLabel: `Gastos, ${unpaidExpenseCount} sin pagar`,
+              label: (
                 <span className={plannerTabLabelClass}>
                   <Receipt className={plannerTabIconClass} aria-hidden />
                   Gastos
-                  <Badge
-                    variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'}
-                    className={plannerTabBadgeClass}
-                    aria-hidden
-                  >
+                  <Badge variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
                     {unpaidExpenseCount}
                   </Badge>
                 </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="cards"
-                stretch
-                className={plannerTabTriggerClass}
-                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-                activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-                aria-label={`Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`}
-              >
+              ),
+            },
+            {
+              value: 'cards',
+              ariaLabel: `Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`,
+              label: (
                 <span className={plannerTabLabelClass}>
                   <CreditCard className={plannerTabIconClass} aria-hidden />
                   Tarjetas
-                  <Badge
-                    variant={
-                      pendingCardPaymentsCount > 0 ? 'default' : 'secondary'
-                    }
-                    className={plannerTabBadgeClass}
-                    aria-hidden
-                  >
+                  <Badge variant={pendingCardPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
                     {pendingCardPaymentsCount}
                   </Badge>
                 </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="loans"
-                stretch
-                className={plannerTabTriggerClass}
-                indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-                activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-                aria-label={`Préstamos, ${pendingLoanPaymentsCount} pendientes`}
-              >
+              ),
+            },
+            {
+              value: 'loans',
+              ariaLabel: `Préstamos, ${pendingLoanPaymentsCount} pendientes`,
+              label: (
                 <span className={plannerTabLabelClass}>
                   <HandCoins className={plannerTabIconClass} aria-hidden />
                   <span className="@min-[6.25rem]:hidden">Prest.</span>
-                  <span className="hidden @min-[6.25rem]:inline">
-                    Préstamos
-                  </span>
-                  <Badge
-                    variant={
-                      pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'
-                    }
-                    className={plannerTabBadgeClass}
-                    aria-hidden
-                  >
+                  <span className="hidden @min-[6.25rem]:inline">Préstamos</span>
+                  <Badge variant={pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
                     {pendingLoanPaymentsCount}
                   </Badge>
                 </span>
-              </TabsTrigger>
-            </TabsList>
+              ),
+            },
+          ]}
+          accessory={(
             <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 sm:pl-0.5">
               <DropdownMenu>
                 <Tooltip>
@@ -1071,7 +1045,8 @@ export default function FortnightColumn({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          </div>
+          )}
+        >
 
           <TabsContent value="expenses" className="mt-0 outline-none">
             {sortedTransactions.length === 0 ? (
@@ -1131,7 +1106,7 @@ export default function FortnightColumn({
               onUpdated={refreshData}
             />
           </TabsContent>
-        </Tabs>
+        </SegmentedControl>
       </div>
 
       {/* Receive Payroll Dialog */}
