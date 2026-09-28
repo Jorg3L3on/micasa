@@ -168,7 +168,7 @@ export const FortnightScrub = () => {
                   Pagado
                 </p>
                 <motion.p
-                  className="font-mono text-sm font-semibold tabular-nums text-white"
+                  className="font-sans text-sm font-semibold tabular-nums text-white"
                   data-scrub-paid
                 >
                   {paidText}
@@ -182,7 +182,7 @@ export const FortnightScrub = () => {
                   Balance quincena
                 </p>
                 <motion.p
-                  className="mt-2 font-mono text-3xl font-bold tabular-nums tracking-tight text-emerald-400 sm:text-4xl"
+                  className="mt-2 font-sans text-3xl font-bold tabular-nums tracking-tight text-emerald-400 sm:text-4xl"
                   data-scrub-balance
                 >
                   {balanceText}
@@ -242,7 +242,7 @@ const PeriodLists = ({
           className="flex items-center justify-between border border-white/[0.06] bg-white/[0.03] px-3 py-2"
         >
           <span className="text-xs text-white/75">{row.name}</span>
-          <span className="font-mono text-xs font-semibold tabular-nums text-emerald-400">
+          <span className="font-sans text-xs font-semibold tabular-nums text-emerald-400">
             {row.amount}
           </span>
         </div>
@@ -261,7 +261,7 @@ const PeriodLists = ({
           )}
         >
           <span className="text-xs text-white/75">{row.name}</span>
-          <span className="font-mono text-xs font-semibold tabular-nums text-white/85">
+          <span className="font-sans text-xs font-semibold tabular-nums text-white/85">
             {row.amount}
           </span>
         </div>

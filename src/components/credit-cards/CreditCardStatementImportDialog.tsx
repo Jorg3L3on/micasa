@@ -475,7 +475,7 @@ const CreditCardStatementImportDialog = ({
                     {preview.total_due != null ? (
                       <span>
                         Total:{' '}
-                        <span className="font-mono font-medium text-foreground">
+                        <span className="font-sans font-medium text-foreground">
                           {formatCurrency(preview.total_due)}
                         </span>
                       </span>
@@ -483,7 +483,7 @@ const CreditCardStatementImportDialog = ({
                     {preview.minimum_payment != null ? (
                       <span>
                         Mínimo:{' '}
-                        <span className="font-mono font-medium text-foreground">
+                        <span className="font-sans font-medium text-foreground">
                           {formatCurrency(preview.minimum_payment)}
                         </span>
                       </span>
@@ -597,7 +597,7 @@ const CreditCardStatementImportDialog = ({
                               : ''}
                           </p>
                         </div>
-                        <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                        <span className="shrink-0 font-sans text-sm font-semibold tabular-nums">
                           {formatCurrency(row.amount)}
                         </span>
                       </li>

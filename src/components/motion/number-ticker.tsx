@@ -189,6 +189,6 @@ export const CurrencyTicker = ({ value, className }: CurrencyTickerProps) => (
     startOnView={false}
     duration={0.4}
     stagger={0}
-    className={cn('font-mono tabular-nums', className)}
+    className={cn('font-sans tabular-nums', className)}
   />
 );

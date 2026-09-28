@@ -157,7 +157,7 @@ const HeaderMetric = ({
     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
       {label}
     </p>
-    <p className="mt-1 font-mono text-sm font-bold tabular-nums leading-none text-foreground">
+    <p className="mt-1 font-sans text-sm font-bold tabular-nums leading-none text-foreground">
       {amount}
     </p>
     <p className="mt-1 min-h-[1rem] truncate text-[10px] leading-tight text-muted-foreground">
@@ -305,7 +305,7 @@ const InstitutionCard = ({
                   iconClassName="h-9 w-9 rounded-xl"
                   iconInnerClassName="h-4 w-4"
                 />
-                <span className="shrink-0 pt-1 font-mono text-sm font-bold tabular-nums leading-none">
+                <span className="shrink-0 pt-1 font-sans text-sm font-bold tabular-nums leading-none">
                   {formatCurrency(remaining)}
                 </span>
               </button>
@@ -467,7 +467,7 @@ export const LenderGroupedLoansTable = ({
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="block font-mono text-sm font-semibold tabular-nums">
+                  <span className="block font-sans text-sm font-semibold tabular-nums">
                     {formatCurrency(loan.remainingAmount)}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-muted-foreground">
@@ -528,13 +528,13 @@ export const LenderGroupedLoansTable = ({
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <p className="mt-1 font-mono text-[10px] tabular-nums text-muted-foreground">
+              <p className="mt-1 font-sans text-[10px] tabular-nums text-muted-foreground">
                 {loan.paidPayments}/{loan.paymentCount}
               </p>
             </div>
           </TableCell>
           <TableCell className="text-right">
-            <span className="font-mono text-sm font-semibold tabular-nums">
+            <span className="font-sans text-sm font-semibold tabular-nums">
               {formatCurrency(loan.remainingAmount)}
             </span>
           </TableCell>

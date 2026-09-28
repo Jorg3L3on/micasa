@@ -32,7 +32,7 @@ const PieTooltip = ({ active, payload }: PieTooltipProps) => {
         className="font-medium text-foreground"
         iconClassName="h-3.5 w-3.5"
       />
-      <p className="font-mono tabular-nums text-foreground">
+      <p className="font-sans tabular-nums text-foreground">
         {formatCurrency(row.value)}
       </p>
       <p className="text-[10px] text-muted-foreground">{row.pct.toFixed(1)}%</p>
@@ -127,7 +127,7 @@ export const PeriodCategoryPieCard = ({
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Total
               </span>
-              <span className="mt-0.5 font-mono text-base font-bold tabular-nums text-foreground sm:text-lg">
+              <span className="mt-0.5 font-sans text-base font-bold tabular-nums text-foreground sm:text-lg">
                 {formatCurrency(totalExpense)}
               </span>
             </div>
@@ -151,10 +151,10 @@ export const PeriodCategoryPieCard = ({
                   className="min-w-0 flex-1 text-muted-foreground"
                   iconClassName="h-3.5 w-3.5"
                 />
-                <span className="shrink-0 font-mono tabular-nums text-foreground">
+                <span className="shrink-0 font-sans tabular-nums text-foreground">
                   {formatCurrency(row.value)}
                 </span>
-                <span className="w-8 shrink-0 text-right font-mono tabular-nums text-muted-foreground">
+                <span className="w-8 shrink-0 text-right font-sans tabular-nums text-muted-foreground">
                   {row.pct.toFixed(0)}%
                 </span>
               </li>

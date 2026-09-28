@@ -157,7 +157,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                   />
                   <span className="truncate text-[11px] text-white/75">{wallet.name}</span>
                 </span>
-                <span className="font-mono text-[10px] tabular-nums text-white/55">
+                <span className="font-sans text-[10px] tabular-nums text-white/55">
                   {wallet.amount}
                 </span>
               </li>
@@ -184,7 +184,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
                       Balance quincena
                     </p>
-                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums tracking-tight text-white sm:text-3xl">
+                    <p className="mt-1 font-sans text-2xl font-bold tabular-nums tracking-tight text-white sm:text-3xl">
                       <AnimatedAmount value={3370} />
                     </p>
                   </div>
@@ -193,7 +193,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                       <div className="h-full w-[58%] rounded-l-full bg-emerald-400" />
                       <div className="h-full w-[42%] bg-amber-400" />
                     </div>
-                    <p className="mt-1 text-right font-mono text-[10px] tabular-nums text-white/45">
+                    <p className="mt-1 text-right font-sans text-[10px] tabular-nums text-white/45">
                       58% listo
                     </p>
                   </div>
@@ -227,7 +227,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                         </td>
                         <td
                           className={cn(
-                            'px-3 py-2 text-right font-mono tabular-nums',
+                            'px-3 py-2 text-right font-sans tabular-nums',
                             row.tone === 'emerald' && 'text-emerald-300',
                             row.tone === 'amber' && 'text-amber-200',
                             row.tone === 'slate' && 'text-white/70'
@@ -253,7 +253,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                   </div>
                   <QrCode className="size-8 text-white/70" aria-hidden />
                 </div>
-                <p className="mt-4 font-mono text-2xl font-bold tabular-nums text-white">
+                <p className="mt-4 font-sans text-2xl font-bold tabular-nums text-white">
                   <AnimatedAmount value={18450} durationMs={1600} />
                 </p>
                 <p className="mt-1 text-[11px] text-emerald-300">+$43,384 disponible</p>
@@ -263,7 +263,7 @@ export const HeroDashboardMock = ({ className }: HeroDashboardMockProps) => {
                 <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
                   <p className="text-[10px] uppercase tracking-wider text-white/40">Earnings</p>
                   <EarningsGauge gradientId={gaugeGradientId} />
-                  <p className="mt-1 text-center font-mono text-sm font-bold tabular-nums text-white">
+                  <p className="mt-1 text-center font-sans text-sm font-bold tabular-nums text-white">
                     $3,370
                   </p>
                 </div>

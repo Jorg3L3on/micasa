@@ -564,7 +564,7 @@ const CreditCardQuickPurchaseDialog = ({
               </div>
               <p
                 className={cn(
-                  'shrink-0 font-mono text-[15px] font-semibold tabular-nums tracking-tight',
+                  'shrink-0 font-sans text-[15px] font-semibold tabular-nums tracking-tight',
                   exceedsCreditLimit
                     ? 'text-destructive'
                     : 'text-foreground',

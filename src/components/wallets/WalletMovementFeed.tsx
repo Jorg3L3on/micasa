@@ -280,7 +280,7 @@ export const WalletMovementsFeed = ({
                       </div>
                       <span
                         className={cn(
-                          'shrink-0 font-mono text-sm font-bold tabular-nums',
+                          'shrink-0 font-sans text-sm font-bold tabular-nums',
                           isIn && 'text-emerald-600 dark:text-emerald-400',
                         )}
                       >

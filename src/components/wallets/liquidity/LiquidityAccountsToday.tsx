@@ -211,7 +211,7 @@ const AccountCard = ({
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Deuda
             </p>
-            <p className={cn('font-mono text-sm font-bold tabular-nums', debtToneClass(view))}>
+            <p className={cn('font-sans text-sm font-bold tabular-nums', debtToneClass(view))}>
               {debt == null ? '—' : formatCurrency(debt)}
             </p>
           </div>
@@ -221,7 +221,7 @@ const AccountCard = ({
             </p>
             <p
               className={cn(
-                'font-mono text-sm font-bold tabular-nums',
+                'font-sans text-sm font-bold tabular-nums',
                 free == null ? 'text-muted-foreground' : 'text-emerald-700 dark:text-emerald-300',
               )}
             >
@@ -405,7 +405,7 @@ export const LiquidityAccountsToday = ({
   const subtitle =
     fundingTotal != null ? (
       <>
-        <span className="font-mono font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+        <span className="font-sans font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
           {formatCurrency(fundingTotal)}
         </span>{' '}
         en efectivo y débito · {countLabel}

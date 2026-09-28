@@ -63,7 +63,7 @@ export default function StatCard({
       <div className="flex flex-col gap-1">
         <span
           className={cn(
-            'text-2xl font-bold font-mono tabular-nums tracking-tight',
+            'text-2xl font-bold font-sans tabular-nums tracking-tight',
             amount < 0 ? 'text-destructive' : 'text-foreground',
           )}
         >

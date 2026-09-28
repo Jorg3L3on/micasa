@@ -73,7 +73,7 @@ export const LiquidityVisualMetric = ({
 
       <p
         className={cn(
-          'mt-3 font-mono text-2xl font-bold tabular-nums tracking-tight',
+          'mt-3 font-sans text-2xl font-bold tabular-nums tracking-tight',
           amountClassName,
         )}
       >

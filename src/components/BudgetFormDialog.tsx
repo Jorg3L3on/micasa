@@ -95,13 +95,13 @@ function AllocationSummary({
     >
       <div className="flex flex-col gap-0.5">
         <span className="text-xs text-muted-foreground">Total presupuesto</span>
-        <span className="font-mono font-semibold tabular-nums">
+        <span className="font-sans font-semibold tabular-nums">
           {formatCurrency(totalAmount)}
         </span>
       </div>
       <div className="flex flex-col gap-0.5 text-center">
         <span className="text-xs text-muted-foreground">Asignado</span>
-        <span className="font-mono font-semibold tabular-nums">
+        <span className="font-sans font-semibold tabular-nums">
           {formatCurrency(allocated)}
         </span>
       </div>
@@ -109,7 +109,7 @@ function AllocationSummary({
         <span className="text-xs text-muted-foreground">Restante</span>
         <span
           className={cn(
-            'font-mono font-semibold tabular-nums',
+            'font-sans font-semibold tabular-nums',
             isOver && 'text-destructive',
             !isOver && !isExact && 'text-amber-600 dark:text-amber-400',
             isExact && 'text-emerald-600 dark:text-emerald-400',
@@ -363,7 +363,7 @@ export default function BudgetFormDialog({
                   value={field.value}
                   onChange={field.onChange}
                   placeholder="0"
-                  className={cn(FIELD_HEIGHT_CLASS, 'font-mono tabular-nums')}
+                  className={cn(FIELD_HEIGHT_CLASS, 'font-sans tabular-nums')}
                   enterKeyHint="next"
                 />
               </FormControl>

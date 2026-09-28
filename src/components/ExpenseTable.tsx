@@ -660,7 +660,7 @@ export default function ExpenseTable({
           </span>
           <span
             className={cn(
-              'font-mono font-bold tabular-nums text-foreground',
+              'font-sans font-bold tabular-nums text-foreground',
               isCompact ? 'text-sm' : 'text-base',
             )}
           >
@@ -684,7 +684,7 @@ export default function ExpenseTable({
             </div>
             <span
               className={cn(
-                'font-mono font-bold tabular-nums text-slate-700 dark:text-slate-300',
+                'font-sans font-bold tabular-nums text-slate-700 dark:text-slate-300',
                 isCompact ? 'text-xs' : 'text-sm',
               )}
             >
@@ -974,7 +974,7 @@ export default function ExpenseTable({
                     {/* Amount — vertically centered with the card */}
                     <span
                       className={cn(
-                        'shrink-0 font-mono tabular-nums leading-tight',
+                        'shrink-0 font-sans tabular-nums leading-tight',
                         isCompact ? 'text-xs' : 'text-sm',
                         e.is_paid
                           ? 'text-muted-foreground/60'
@@ -1071,7 +1071,7 @@ export default function ExpenseTable({
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Total efectivo/débito
                     </span>
-                    <span className="font-mono text-base font-bold tabular-nums text-foreground">
+                    <span className="font-sans text-base font-bold tabular-nums text-foreground">
                       {formatCurrency(total)}
                     </span>
                   </li>
@@ -1090,7 +1090,7 @@ export default function ExpenseTable({
                           No suman hasta pagar el estado de cuenta
                         </span>
                       </div>
-                      <span className="font-mono text-sm font-bold tabular-nums text-slate-700 dark:text-slate-300">
+                      <span className="font-sans text-sm font-bold tabular-nums text-slate-700 dark:text-slate-300">
                         {formatCurrency(cardGrandTotal)}
                       </span>
                     </li>

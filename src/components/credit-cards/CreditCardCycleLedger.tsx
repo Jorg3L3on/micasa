@@ -38,6 +38,7 @@ import {
   todayCalendarDate,
   yesterdayCalendarDate,
 } from '@/lib/calendar-dates';
+import { Money } from '@/components/money';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
 const getDateGroupLabel = (dateStr: string): string => {
@@ -244,7 +245,7 @@ export const CreditCardCycleLedger = ({
                               {msi ? (
                                 <Badge
                                   variant="secondary"
-                                  className="h-5 shrink-0 px-1.5 text-[10px] font-mono"
+                                  className="h-5 shrink-0 px-1.5 text-[10px] font-sans"
                                 >
                                   {purchase.credit_installment_current}/{purchase.credit_installment_total}
                                 </Badge>
@@ -257,9 +258,7 @@ export const CreditCardCycleLedger = ({
                             />
                           </div>
                           <div className="shrink-0 text-right">
-                            <p className="font-mono text-sm font-semibold tabular-nums text-destructive">
-                              −{formatCurrency(purchase.amount)}
-                            </p>
+                            <Money value={-purchase.amount} size="row" />
                           </div>
                         </Link>
                         {msi && onGoToCuotas ? (
@@ -299,9 +298,12 @@ export const CreditCardCycleLedger = ({
                             <p className="text-[11px] text-muted-foreground">Pago registrado</p>
                           )}
                         </div>
-                        <p className="shrink-0 font-mono text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-                          +{formatCurrency(payment.amount)}
-                        </p>
+                        <Money
+                          value={payment.amount}
+                          size="row"
+                          tone="positive"
+                          className="shrink-0"
+                        />
                       </li>
                     );
                   }
@@ -324,7 +326,7 @@ export const CreditCardCycleLedger = ({
                         </p>
                       </div>
                       {importRecord.total_due != null ? (
-                        <p className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                        <p className="shrink-0 font-sans text-sm font-semibold tabular-nums">
                           {formatCurrency(importRecord.total_due)}
                         </p>
                       ) : null}

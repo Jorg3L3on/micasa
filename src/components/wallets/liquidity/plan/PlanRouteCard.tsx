@@ -41,7 +41,7 @@ export const PlanRouteCard = ({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {PLAN_COPY.interestSaved}
           </p>
-          <p className="font-mono text-sm font-bold tabular-nums">
+          <p className="font-sans text-sm font-bold tabular-nums">
             {formatCurrency(plan.impact.interestDelta)}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -53,7 +53,7 @@ export const PlanRouteCard = ({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {PLAN_COPY.estimatedCost}
           </p>
-          <p className="font-mono text-sm font-bold tabular-nums">
+          <p className="font-sans text-sm font-bold tabular-nums">
             {formatCurrency(plan.estimatedCost)}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -87,7 +87,7 @@ export const PlanRouteCard = ({
           <li key={`${plan.id}-${item.type}-${item.obligationId ?? index}`} className="text-sm">
             <span className="font-medium">{item.label}</span>
             {item.amount != null ? (
-              <span className="ml-2 font-mono tabular-nums text-muted-foreground">
+              <span className="ml-2 font-sans tabular-nums text-muted-foreground">
                 {formatCurrency(item.amount)}
               </span>
             ) : null}

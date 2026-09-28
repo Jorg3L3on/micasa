@@ -266,7 +266,7 @@ export const PurchaseTableBlock = ({
                       Ver quincena
                     </Link>
                   </div>
-                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                  <span className="shrink-0 font-sans text-sm font-bold tabular-nums">
                     {formatCurrency(purchase.amount)}
                   </span>
                 </div>
@@ -368,7 +368,7 @@ export const PaymentTableBlock = ({
                       {payment.note ? ` · ${payment.note}` : ''}
                     </p>
                   </div>
-                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <span className="shrink-0 font-sans text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                     {formatCurrency(payment.amount)}
                   </span>
                 </div>

@@ -128,7 +128,7 @@ export const LiquiditySpendingCategories = ({
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Top 5 acumulado
             </span>
-            <span className="font-mono text-sm font-bold tabular-nums text-foreground">
+            <span className="font-sans text-sm font-bold tabular-nums text-foreground">
               {formatCurrency(totalTopFive)}
             </span>
           </div>
@@ -159,7 +159,7 @@ export const LiquiditySpendingCategories = ({
                     <span className="text-[10px] tabular-nums text-muted-foreground">
                       {sharePercent}%
                     </span>
-                    <span className="money-negative font-mono text-sm font-bold tabular-nums">
+                    <span className="money-negative font-sans text-sm font-bold tabular-nums">
                       {formatCurrency(row.total)}
                     </span>
                   </div>

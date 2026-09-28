@@ -125,7 +125,7 @@ export default function EditExpenseAmountDialog({
           >
             <OverlayHint role="status">
               Monto actual:{' '}
-              <span className="font-mono font-semibold tabular-nums text-foreground">
+              <span className="font-sans font-semibold tabular-nums text-foreground">
                 {formatCurrency(initialAmount)}
               </span>
             </OverlayHint>
@@ -235,7 +235,7 @@ export default function EditExpenseAmountDialog({
                                     providerIconKey={w.provider_icon_key}
                                     iconClassName="h-5 w-5 rounded-md"
                                   />
-                                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                  <span className="font-sans text-xs tabular-nums text-muted-foreground">
                                     {formatCurrency(w.amount ?? 0)}
                                   </span>
                                 </span>

@@ -23,7 +23,8 @@ import {
   useRegisterToolbarActions,
   useToolbarFiltersSelectOpenChange,
 } from '@/context/toolbar-actions-context';
-import { formatDate, formatCurrencySigned, cn } from '@/lib/utils';
+import { Money } from '@/components/money';
+import { formatDate, cn } from '@/lib/utils';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
@@ -261,19 +262,12 @@ export default function TransactionsDataTable({
         cell: ({ row }) => {
           const t = row.original;
           return (
-            <span
-              className={cn(
-                'font-mono tabular-nums font-medium text-right block',
-                t.type === 'expense'
-                  ? 'text-destructive'
-                  : 'text-emerald-600 dark:text-emerald-400',
-              )}
-            >
-              {formatCurrencySigned(
-                t.amount,
-                t.type === 'income' ? 'income' : 'expense',
-              )}
-            </span>
+            <Money
+              value={t.type === 'expense' ? -Math.abs(Number(t.amount)) : Math.abs(Number(t.amount))}
+              size="row"
+              tone={t.type === 'expense' ? 'negative' : 'positive'}
+              className="block text-right"
+            />
           );
         },
       },

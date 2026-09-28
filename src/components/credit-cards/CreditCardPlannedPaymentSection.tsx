@@ -300,7 +300,7 @@ export const CreditCardPlannedPaymentSection = ({
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span
                     className={cn(
-                      'font-mono text-sm font-bold tabular-nums',
+                      'font-sans text-sm font-bold tabular-nums',
                       statusAmountClass(item.plannerStatus, hasCustomPlan),
                     )}
                     aria-label={

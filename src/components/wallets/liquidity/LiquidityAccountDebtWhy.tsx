@@ -52,7 +52,7 @@ export const LiquidityAccountDebtWhy = ({
               <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {block.title}
               </h4>
-              <p className="font-mono text-xs font-semibold tabular-nums text-foreground">
+              <p className="font-sans text-xs font-semibold tabular-nums text-foreground">
                 {formatCurrency(block.total)}
               </p>
             </div>
@@ -78,7 +78,7 @@ export const LiquidityAccountDebtWhy = ({
                       </p>
                     ) : null}
                   </div>
-                  <p className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                  <p className="shrink-0 font-sans text-sm font-semibold tabular-nums">
                     {lineRightLabel(line)}
                   </p>
                 </li>

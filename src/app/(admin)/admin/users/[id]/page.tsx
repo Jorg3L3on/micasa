@@ -139,7 +139,7 @@ export default async function AdminUserDetailPage({
                     {w.active ? '' : ' · inactiva'}
                   </p>
                 </div>
-                <span className="font-mono text-sm font-bold tabular-nums">
+                <span className="font-sans text-sm font-bold tabular-nums">
                   {formatCurrency(w.amount)}
                 </span>
               </li>
@@ -213,7 +213,7 @@ export default async function AdminUserDetailPage({
                     {l.lender} · {l.status}
                   </p>
                 </div>
-                <span className="font-mono text-sm font-bold tabular-nums">
+                <span className="font-sans text-sm font-bold tabular-nums">
                   {formatCurrency(l.principal_amount)}
                 </span>
               </li>
@@ -263,7 +263,7 @@ export default async function AdminUserDetailPage({
                   </p>
                 </div>
                 {event.amount != null ? (
-                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                  <span className="shrink-0 font-sans text-sm font-bold tabular-nums">
                     {formatCurrency(event.amount)}
                   </span>
                 ) : null}

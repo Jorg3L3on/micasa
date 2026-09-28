@@ -1679,7 +1679,7 @@ export default function LoansPage() {
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Saldo pendiente
                         </p>
-                        <p className="mt-1 font-mono text-xl font-bold tabular-nums text-foreground">
+                        <p className="mt-1 font-sans text-xl font-bold tabular-nums text-foreground">
                           <CurrencyTicker value={selectedLoan.remainingAmount} />
                         </p>
                       </div>
@@ -1691,7 +1691,7 @@ export default function LoansPage() {
                     <div className="mt-4 space-y-2">
                       <div className="flex items-center justify-between gap-2 text-xs">
                         <span className="text-muted-foreground">Progreso</span>
-                        <span className="font-mono font-semibold tabular-nums text-foreground">
+                        <span className="font-sans font-semibold tabular-nums text-foreground">
                           {selectedLoanProgress}%
                         </span>
                       </div>
@@ -1712,7 +1712,7 @@ export default function LoansPage() {
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Pagado
                         </p>
-                        <p className="mt-1 font-mono text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                        <p className="mt-1 font-sans text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
                           <CurrencyTicker value={selectedLoan.paidAmount} />
                         </p>
                       </div>
@@ -1720,7 +1720,7 @@ export default function LoansPage() {
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Total
                         </p>
-                        <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">
+                        <p className="mt-1 font-sans text-sm font-bold tabular-nums text-foreground">
                           {formatCurrency(selectedLoan.totalPayable)}
                         </p>
                       </div>
@@ -1728,7 +1728,7 @@ export default function LoansPage() {
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Pago
                         </p>
-                        <p className="mt-1 font-mono text-sm font-bold tabular-nums text-foreground">
+                        <p className="mt-1 font-sans text-sm font-bold tabular-nums text-foreground">
                           {formatCurrency(selectedLoan.paymentAmount)}
                         </p>
                       </div>
@@ -2144,7 +2144,7 @@ export default function LoansPage() {
                             className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground"
                           >
                             {label}
-                            <span className="font-mono font-semibold tabular-nums text-foreground">
+                            <span className="font-sans font-semibold tabular-nums text-foreground">
                               {selectedScheduleCounts[status]}
                             </span>
                           </span>
@@ -2206,7 +2206,7 @@ export default function LoansPage() {
                                   </p>
                                 </div>
                                 <div className="flex shrink-0 flex-col items-end gap-1">
-                                  <span className="font-mono text-sm font-semibold tabular-nums leading-none">
+                                  <span className="font-sans text-sm font-semibold tabular-nums leading-none">
                                     {formatCurrency(payment.amount)}
                                   </span>
                                   {payment.status === 'SCHEDULED' ? (
@@ -2395,7 +2395,7 @@ export default function LoansPage() {
                                     {originShort}
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <span className="font-mono text-sm font-semibold tabular-nums">
+                                    <span className="font-sans text-sm font-semibold tabular-nums">
                                       {formatCurrency(payment.amount)}
                                     </span>
                                   </TableCell>
@@ -2612,7 +2612,7 @@ export default function LoansPage() {
               })}
             </ul>
 
-            <p className="font-mono text-sm font-semibold tabular-nums">
+            <p className="font-sans text-sm font-semibold tabular-nums">
               Total {formatCurrency(batchSelectedTotal)}
             </p>
 

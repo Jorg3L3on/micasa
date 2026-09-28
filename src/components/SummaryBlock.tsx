@@ -6,7 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { BouncyAccordion } from '@/components/motion/bouncy-accordion';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
-import { formatCurrency, cn } from '@/lib/utils';
+import { Money } from '@/components/money';
+import { cn, formatCurrency } from '@/lib/utils';
 import {
   Wallet,
   CheckCircle2,
@@ -434,7 +435,7 @@ export default function SummaryBlock({
                             {displayLabel}
                           </span>
                           <div className="flex shrink-0 items-center gap-1">
-                            <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                            <span className="font-sans text-sm font-semibold tabular-nums text-foreground">
                               {formatCurrency(item.amount)}
                             </span>
                             {onEditIncomeSource && item.incomeTemplateId != null ? (
@@ -471,7 +472,7 @@ export default function SummaryBlock({
                             <span className="truncate text-sm text-foreground/90">
                               {userInc.userName}
                             </span>
-                            <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground">
+                            <span className="shrink-0 font-sans text-sm font-semibold tabular-nums text-foreground">
                               {formatCurrency(userInc.income)}
                             </span>
                           </div>
@@ -550,7 +551,7 @@ export default function SummaryBlock({
                               </span>
                             </span>
                           </span>
-                          <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-foreground">
+                          <span className="shrink-0 font-sans text-xs font-semibold tabular-nums text-foreground">
                             {formatCurrency(w.amount)}
                           </span>
                         </div>
@@ -578,9 +579,7 @@ export default function SummaryBlock({
                       <span className="text-muted-foreground">
                         Menos pendiente de la quincena (no pagado)
                       </span>
-                      <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                        −{formatCurrency(displayPendienteFundingRow)}
-                      </span>
+                      <Money value={-displayPendienteFundingRow} size="caption" />
                     </div>
                     {displayPendienteFundingRow > 0 &&
                     pendingExpenseItems.length > 0 ? (
@@ -594,9 +593,11 @@ export default function SummaryBlock({
                             className="flex items-center justify-between gap-2 text-[10px] leading-snug text-muted-foreground"
                           >
                             <span className="min-w-0 truncate">{item.name}</span>
-                            <span className="shrink-0 font-mono tabular-nums text-amber-700/90 dark:text-amber-400/90">
-                              −{formatCurrency(item.amount)}
-                            </span>
+                            <Money
+                              value={-item.amount}
+                              size="caption"
+                              className="shrink-0"
+                            />
                           </li>
                         ))}
                       </ul>
@@ -607,9 +608,7 @@ export default function SummaryBlock({
                       <span className="text-muted-foreground">
                         Menos deducciones de nómina (préstamos)
                       </span>
-                      <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                        −{formatCurrency(payrollLoanDeduction)}
-                      </span>
+                      <Money value={-payrollLoanDeduction} size="caption" />
                     </div>
                   ) : null}
                   {displayBudgetFundingRow > 0 ? (
@@ -617,9 +616,7 @@ export default function SummaryBlock({
                       <span className="text-muted-foreground">
                         Menos del presupuesto de la quincena
                       </span>
-                      <span className="font-mono font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                        −{formatCurrency(displayBudgetFundingRow)}
-                      </span>
+                      <Money value={-displayBudgetFundingRow} size="caption" />
                     </div>
                   ) : null}
                   <div className="flex items-center justify-between gap-2 border-t border-emerald-500/20 pt-2 text-xs font-semibold">

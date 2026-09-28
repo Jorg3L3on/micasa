@@ -44,9 +44,9 @@ Color mapping (left border + text/icon colors):
 
 ## Typography for Financial Data
 
-- Amounts: `font-mono tabular-nums` always
-- Large hero amounts: `text-2xl font-bold font-mono tabular-nums`
-- Card metric amounts: `text-sm font-bold font-mono tabular-nums`
+- Amounts: `<Money>` — `font-sans tabular-nums`, never `font-mono`
+- Large hero amounts: `Money` `size="hero"` (`text-2xl font-bold`)
+- Card metric amounts: `Money` `size="row"` (`text-sm font-semibold`)
 - Labels: `text-[10px] font-semibold uppercase tracking-wider text-muted-foreground`
 - Sub-info: `text-[9px] text-muted-foreground`
 

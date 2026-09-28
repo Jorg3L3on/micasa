@@ -64,7 +64,7 @@ export const CreditCardInstallmentPortfolio = ({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Saldo del plan
           </p>
-          <p className="font-mono text-2xl font-bold tabular-nums tracking-tight">
+          <p className="font-sans text-2xl font-bold tabular-nums tracking-tight">
             {formatCurrency(totalExposure)}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -104,14 +104,14 @@ export const CreditCardInstallmentPortfolio = ({
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Cuota {item.currentInstallment} de {item.totalInstallments}
                     </p>
-                    <p className="font-mono text-lg font-bold tabular-nums">
+                    <p className="font-sans text-lg font-bold tabular-nums">
                       {formatCurrency(item.purchase.amount)}
                       <span className="text-xs font-normal text-muted-foreground"> / mes</span>
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] text-muted-foreground">Saldo del plan</p>
-                    <p className="font-mono text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                    <p className="font-sans text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
                       {formatCurrency(item.remainingAmount)}
                     </p>
                   </div>

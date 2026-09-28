@@ -393,7 +393,7 @@ const FortnightCardPaymentsPanel = ({
                   >
                     <span
                       className={cn(
-                        'font-mono font-bold tabular-nums',
+                        'font-sans font-bold tabular-nums',
                         isCompact ? 'text-xs' : 'text-sm',
                         status === 'pagado'
                           ? 'text-emerald-600 dark:text-emerald-400'

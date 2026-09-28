@@ -324,7 +324,10 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
 
 ## Fintech data UI
 
-- Amounts: **`font-mono tabular-nums`**. Format with `formatCurrency` from `@/lib/utils`.
+- Amounts: **`<Money>`** (`src/components/money.tsx`). Sans with `tabular-nums` — never `font-mono`. Format with `formatMoney` / `formatCurrency` (`es-MX`). Negatives use that formatter’s single hyphen (`-$12.50`); do not prefix another minus or a `+`.
+- Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS` (neutral foreground, positive emerald, negative `text-destructive`). JOR-310 swaps that one map for semantic status tokens.
+- Chart axes use `formatAxisMoney` (`$`, `k` from 1,000, `M` from 1,000,000). JOR-315 keeps this helper when it themes charts.
+- Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
 - Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
 - Semantic left-border / icon-pill colors:
   - Income / bank — blue
@@ -334,7 +337,7 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
   - Expenses — violet
   - Overdue / negative — destructive
 - Icon pills: small tinted square (`bg-*-500/10 dark:bg-*-500/15`), not a full card wash.
-- Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in mono.
+- Tables: footer row `border-t-2 border-border/60 bg-muted/30`, totals in `<Money size="row">`.
 - Horizontal chips (wallets): `overflow-x-auto`, `shrink-0`, edge fades `from-background`.
 
 Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmosphere`, sticky header, `container`). Page rhythm: `space-y-5`. Title, search, filters, and the primary action live in the app header — no in-page sticky action bar (see **Chrome**).

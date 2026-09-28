@@ -752,7 +752,7 @@ export default function CreditCardDetailPage() {
             ) : (
               <p className="rounded-2xl border border-border/50 bg-muted/15 px-4 py-2 text-center text-xs text-muted-foreground">
                 Viendo ciclo {cycleRangeLabel} —{' '}
-                <span className="font-mono font-semibold tabular-nums text-foreground">
+                <span className="font-sans font-semibold tabular-nums text-foreground">
                   {formatCurrency(statement.current_cycle_purchases)}
                 </span>{' '}
                 en compras. El desglose por categoría corresponde al ciclo
@@ -786,7 +786,7 @@ export default function CreditCardDetailPage() {
             statement.installment_active_purchases.length > 0 ? (
               <Badge
                 variant="default"
-                className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-mono font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-[11px]"
+                className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-[10px] font-sans font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-[11px]"
                 aria-hidden
               >
                 {statement.installment_active_purchases.length}

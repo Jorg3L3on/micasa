@@ -34,16 +34,6 @@ export function formatCurrency(amount: number | string): string {
   }).format(Number.isFinite(numAmount) ? numAmount : 0);
 }
 
-export function formatCurrencySigned(
-  amount: number | string,
-  type: 'income' | 'expense',
-): string {
-  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  const signedAmount =
-    type === 'expense' ? -Math.abs(numAmount) : Math.abs(numAmount);
-  return formatCurrency(signedAmount);
-}
-
 export function formatMonth(month: number): string {
   return new Date(0, month - 1).toLocaleString('es-MX', { month: 'long' });
 }

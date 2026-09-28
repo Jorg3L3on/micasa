@@ -285,7 +285,7 @@ export const WalletListCard = ({
                     </p>
                     <p
                       className={cn(
-                        'font-mono text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
+                        'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
                         hasAlert && 'text-rose-200',
                       )}
                     >
@@ -300,7 +300,7 @@ export const WalletListCard = ({
                       </p>
                       <p
                         className={cn(
-                          'font-mono text-sm font-semibold tabular-nums leading-snug',
+                          'font-sans text-sm font-semibold tabular-nums leading-snug',
                           (availableCredit ?? 0) < 0 && 'text-red-200',
                         )}
                       >
@@ -314,7 +314,7 @@ export const WalletListCard = ({
                         <p className="text-[9px] uppercase tracking-wider opacity-70">
                           Límite
                         </p>
-                        <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                        <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                           {formatCurrency(effectiveLimit)}
                         </p>
                       </div>
@@ -327,7 +327,7 @@ export const WalletListCard = ({
                         <span>Utilización</span>
                         <span
                           className={cn(
-                            'font-mono tabular-nums',
+                            'font-sans tabular-nums',
                             isOverLimit && 'text-rose-200',
                           )}
                         >
@@ -413,7 +413,7 @@ export const WalletListCard = ({
                     </p>
                     <p
                       className={cn(
-                        'font-mono text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
+                        'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
                         hasAlert && 'text-rose-200',
                       )}
                     >
@@ -429,13 +429,13 @@ export const WalletListCard = ({
                       <p className="text-[9px] uppercase tracking-wider">
                         Disponible
                       </p>
-                      <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                      <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         $0.00
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-[9px] uppercase tracking-wider">Límite</p>
-                      <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                      <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         $0.00
                       </p>
                     </div>
@@ -444,7 +444,7 @@ export const WalletListCard = ({
                   <div className="invisible space-y-1" aria-hidden>
                     <div className="flex justify-between text-[9px]">
                       <span>Utilización</span>
-                      <span className="font-mono tabular-nums">0%</span>
+                      <span className="font-sans tabular-nums">0%</span>
                     </div>
                     <div className="h-1.5 w-full rounded-full" />
                   </div>

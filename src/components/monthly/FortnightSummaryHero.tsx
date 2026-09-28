@@ -161,7 +161,7 @@ const CommitmentBar = ({
         </div>
       </div>
       <p className={cn('text-[11px]', commitmentCaptionClass[tone])}>
-        <span className="font-mono font-semibold tabular-nums">
+        <span className="font-sans font-semibold tabular-nums">
           {totalCommittedPercent}%
         </span>{' '}
         comprometido
@@ -213,7 +213,7 @@ const DueToPayLabel = ({ compositionRows }: DueToPayLabelProps) => {
                 className="flex items-baseline justify-between gap-3 text-xs"
               >
                 <span className="text-background/85">{row.label}</span>
-                <span className="font-mono tabular-nums">
+                <span className="font-sans tabular-nums">
                   {formatCurrency(row.amount)}
                 </span>
               </li>

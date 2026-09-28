@@ -248,7 +248,7 @@ export const CreditCardRecentMovements = ({
                   <span>{label}</span>
                   <span
                     className={cn(
-                      'font-mono text-[10px] tabular-nums',
+                      'font-sans text-[10px] tabular-nums',
                       filter === value
                         ? 'text-primary-foreground/75'
                         : 'text-muted-foreground/75',
@@ -337,7 +337,7 @@ export const CreditCardRecentMovements = ({
                     </h4>
                     <span
                       className={cn(
-                        'font-mono text-[11px] font-semibold tabular-nums',
+                        'font-sans text-[11px] font-semibold tabular-nums',
                         dayNet >= 0
                           ? 'text-emerald-600 dark:text-emerald-400'
                           : 'text-rose-600 dark:text-rose-400',
@@ -393,7 +393,7 @@ export const CreditCardRecentMovements = ({
                                 Ver quincena
                               </Link>
                             </div>
-                            <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                            <span className="shrink-0 font-sans text-sm font-bold tabular-nums">
                               {formatCurrency(row.purchase.amount)}
                             </span>
                           </div>
@@ -426,7 +426,7 @@ export const CreditCardRecentMovements = ({
                                 {row.payment.note ? ` · ${row.payment.note}` : ''}
                               </p>
                             </div>
-                            <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                            <span className="shrink-0 font-sans text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                               {formatCurrency(row.payment.amount)}
                             </span>
                           </div>
@@ -510,7 +510,7 @@ const ActivityMetric = ({ icon, label, value, tone }: ActivityMetricProps) => (
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
-      <p className="truncate font-mono text-sm font-bold tabular-nums text-foreground">
+      <p className="truncate font-sans text-sm font-bold tabular-nums text-foreground">
         {value}
       </p>
     </div>
@@ -618,7 +618,7 @@ export const GroupedPurchaseFeed = ({
                           Ver quincena
                         </Link>
                       </div>
-                      <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                      <span className="shrink-0 font-sans text-sm font-bold tabular-nums">
                         {formatCurrency(purchase.amount)}
                       </span>
                     </div>
@@ -716,7 +716,7 @@ export const GroupedPaymentFeed = ({
                       </div>
                       <span
                         className={cn(
-                          'shrink-0 font-mono text-sm font-bold tabular-nums',
+                          'shrink-0 font-sans text-sm font-bold tabular-nums',
                           'text-emerald-600 dark:text-emerald-400',
                         )}
                       >

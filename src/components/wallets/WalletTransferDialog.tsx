@@ -294,7 +294,7 @@ const WalletTransferDialog = ({
           {fromIsGoal && fromWallet ? (
             <OverlayHint>
               Máximo ahorrado:{' '}
-              <span className="font-mono tabular-nums text-foreground">
+              <span className="font-sans tabular-nums text-foreground">
                 {formatCurrency(fromWallet.amount)}
               </span>
             </OverlayHint>
@@ -328,11 +328,11 @@ const WalletTransferDialog = ({
               {parsedAmount > 0 ? (
                 <OverlayHint>
                   Origen descuenta{' '}
-                  <span className="font-mono tabular-nums text-foreground">
+                  <span className="font-sans tabular-nums text-foreground">
                     {formatCurrency(sourceDebit)}
                   </span>
                   ; destino recibe{' '}
-                  <span className="font-mono tabular-nums text-foreground">
+                  <span className="font-sans tabular-nums text-foreground">
                     {formatCurrency(parsedAmount)}
                   </span>
                   .

@@ -27,7 +27,7 @@ const TAB_TRIGGER_CLASS =
 const TAB_LABEL_CLASS = 'inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5';
 const TAB_ICON_CLASS = 'h-3.5 w-3.5 shrink-0';
 const TAB_BADGE_CLASS =
-  'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5';
+  'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-sans font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5';
 
 const countPayments = (items: readonly MonthDebtItem[]): number =>
   items.filter((item) => (item.payment_amount ?? 0) > 0).length;

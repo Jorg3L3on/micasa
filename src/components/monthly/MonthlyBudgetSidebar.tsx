@@ -238,7 +238,7 @@ function BudgetAllocationRow({
         </span>
         <span
           className={cn(
-            'font-mono font-semibold tabular-nums',
+            'font-sans font-semibold tabular-nums',
             overspent
               ? 'text-destructive'
               : 'text-emerald-600 dark:text-emerald-300',

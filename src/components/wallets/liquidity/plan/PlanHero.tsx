@@ -28,7 +28,7 @@ const loanCountLabel = (count: number): string =>
   count === 1 ? '1 préstamo' : `${count} préstamos`;
 
 const Amount = ({ amount }: { amount: number }) => (
-  <span className={cn('shrink-0 font-mono tabular-nums', amount < 0 && 'text-emerald-600 dark:text-emerald-400')}>
+  <span className={cn('shrink-0 font-sans tabular-nums', amount < 0 && 'text-emerald-600 dark:text-emerald-400')}>
     {formatCurrency(amount)}
   </span>
 );
@@ -114,7 +114,7 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
         <div className="space-y-2">
           <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px]', accent)}>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-            <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+            <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
               <CurrencyTicker value={amount} />
             </p>
           </div>

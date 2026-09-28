@@ -155,7 +155,7 @@ const LenderPayForm = ({
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Compromiso del periodo
         </p>
-        <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+        <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
           {formatCurrency(amount)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -194,7 +194,7 @@ const LenderPayForm = ({
                   Cuota {item.sequence} · {formatDate(item.dueDate)}
                 </p>
               </div>
-              <span className="font-mono text-sm font-semibold tabular-nums">
+              <span className="font-sans text-sm font-semibold tabular-nums">
                 {formatCurrency(item.amount)}
               </span>
             </li>

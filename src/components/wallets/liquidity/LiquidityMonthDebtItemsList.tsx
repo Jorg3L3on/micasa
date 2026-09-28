@@ -54,7 +54,7 @@ const rowAuraColor = (item: MonthDebtItem): string =>
 
 const amountClass = (mode: MonthDebtListMode): string =>
   cn(
-    'shrink-0 font-mono text-sm font-bold tabular-nums',
+    'shrink-0 font-sans text-sm font-bold tabular-nums',
     mode === 'payment' ? 'text-foreground' : 'text-amber-700 dark:text-amber-300',
   );
 

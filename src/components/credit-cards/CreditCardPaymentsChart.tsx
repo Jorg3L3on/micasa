@@ -35,6 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { formatAxisMoney } from '@/lib/money';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 
 type TooltipProps = {
@@ -56,27 +57,27 @@ const PaymentsTooltip = ({ active, payload, label }: TooltipProps) => {
     <div className="rounded-md border border-border/60 bg-popover px-3 py-2 text-xs shadow-md">
       <p className="mb-1 font-medium text-foreground">{label}</p>
       {point.paid > 0 ? (
-        <p className="font-mono tabular-nums text-blue-500">
+        <p className="font-sans tabular-nums text-blue-500">
           Pagos realizados: {formatCurrency(point.paid)}
         </p>
       ) : null}
       {point.msi > 0 ? (
-        <p className="font-mono tabular-nums text-violet-600 dark:text-violet-400">
+        <p className="font-sans tabular-nums text-violet-600 dark:text-violet-400">
           Compras a meses: {formatCurrency(point.msi)}
         </p>
       ) : null}
       {point.plans > 0 ? (
-        <p className="font-mono tabular-nums text-amber-700 dark:text-amber-400">
+        <p className="font-sans tabular-nums text-amber-700 dark:text-amber-400">
           Planes a meses: {formatCurrency(point.plans)}
         </p>
       ) : null}
       {point.scheduled > 0 ? (
-        <p className="font-mono tabular-nums text-amber-600 dark:text-amber-300">
+        <p className="font-sans tabular-nums text-amber-600 dark:text-amber-300">
           Pagos programados: {formatCurrency(point.scheduled)}
         </p>
       ) : null}
       {point.pending > 0 ? (
-        <p className="mt-1 font-mono tabular-nums text-muted-foreground">
+        <p className="mt-1 font-sans tabular-nums text-muted-foreground">
           Por pagar: {formatCurrency(point.pending)}
         </p>
       ) : null}
@@ -84,11 +85,6 @@ const PaymentsTooltip = ({ active, payload, label }: TooltipProps) => {
   );
 };
 
-const shortAxisMoney = (n: number): string => {
-  if (!Number.isFinite(n)) return '';
-  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
-  return String(Math.round(n));
-};
 
 const sourceKindLabel: Record<UpcomingPaymentSourceRow['kind'], string> = {
   scheduled: 'Programado',
@@ -250,7 +246,7 @@ export const CreditCardPaymentsChart = ({
                     tickLine={false}
                     axisLine={false}
                     width={44}
-                    tickFormatter={shortAxisMoney}
+                    tickFormatter={formatAxisMoney}
                   />
                   <Tooltip
                     content={<PaymentsTooltip />}
@@ -322,7 +318,7 @@ export const CreditCardPaymentsChart = ({
                           <span className="text-xs font-semibold capitalize text-foreground">
                             {month.label}
                           </span>
-                          <span className="font-mono text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                          <span className="font-sans text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">
                             {formatCurrency(month.pending)}
                           </span>
                         </button>
@@ -346,7 +342,7 @@ export const CreditCardPaymentsChart = ({
                                     {handleSourceSubtitle(row)}
                                   </p>
                                 </div>
-                                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                                <span className="shrink-0 font-sans text-sm font-semibold tabular-nums">
                                   {formatCurrency(row.amount)}
                                 </span>
                               </div>
@@ -427,7 +423,7 @@ export const CreditCardPaymentsChart = ({
                         {item.label ?? 'Pago programado'} ·{' '}
                         {formatDate(item.dueDate)}
                       </span>
-                      <span className="font-mono tabular-nums">
+                      <span className="font-sans tabular-nums">
                         {formatCurrency(item.amount)}
                       </span>
                     </li>

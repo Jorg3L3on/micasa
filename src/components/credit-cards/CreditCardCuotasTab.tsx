@@ -209,7 +209,7 @@ export const CreditCardCuotasTab = ({
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Saldo MSI
             </p>
-            <p className="font-mono text-base font-bold tabular-nums sm:text-lg">
+            <p className="font-sans text-base font-bold tabular-nums sm:text-lg">
               {formatCurrency(msiExposure)}
             </p>
           </div>
@@ -217,7 +217,7 @@ export const CreditCardCuotasTab = ({
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Saldo del plan
             </p>
-            <p className="font-mono text-base font-bold tabular-nums sm:text-lg">
+            <p className="font-sans text-base font-bold tabular-nums sm:text-lg">
               {formatCurrency(plansExposure)}
             </p>
             {planCount > 0 ? (

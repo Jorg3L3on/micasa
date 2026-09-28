@@ -308,7 +308,7 @@ export function QuickExpenseSheet({
                                   providerIconKey={pm.provider_icon_key}
                                   iconClassName="h-5 w-5 rounded-md"
                                 />
-                                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                <span className="font-sans text-xs tabular-nums text-muted-foreground">
                                   {formatCurrency(pm.amount ?? 0)}
                                 </span>
                               </span>

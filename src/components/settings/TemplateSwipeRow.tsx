@@ -60,7 +60,7 @@ export const TemplateSwipeRow = ({
               </span>
             ) : null}
           </span>
-          <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+          <span className="shrink-0 font-sans text-sm font-semibold tabular-nums">
             {amount != null ? formatCurrency(amount) : '—'}
           </span>
           <Pencil

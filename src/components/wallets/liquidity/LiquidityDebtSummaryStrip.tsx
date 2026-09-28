@@ -64,7 +64,7 @@ export const LiquidityDebtSummaryStrip = ({
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         Debes
       </p>
-      <p className="mt-1 font-mono text-xl font-bold tabular-nums text-amber-700 dark:text-amber-300">
+      <p className="mt-1 font-sans text-xl font-bold tabular-nums text-amber-700 dark:text-amber-300">
         {formatCurrency(breakdown.debtTotal)}
       </p>
       {composition.length > 0 ? (
@@ -72,7 +72,7 @@ export const LiquidityDebtSummaryStrip = ({
           {composition.map((item) => (
             <span key={item.key}>
               {item.label}{' '}
-              <span className="font-mono tabular-nums text-foreground">
+              <span className="font-sans tabular-nums text-foreground">
                 {formatCurrency(item.amount)}
               </span>
             </span>

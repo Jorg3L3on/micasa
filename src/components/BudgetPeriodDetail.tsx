@@ -96,7 +96,7 @@ function PeriodMetric({
       </p>
       <p
         className={cn(
-          'mt-1 font-mono text-sm font-bold tabular-nums',
+          'mt-1 font-sans text-sm font-bold tabular-nums',
           accent === 'spent' && !toneClass && 'text-violet-600 dark:text-violet-400',
           accent === 'neutral' && 'text-foreground',
           !accent && 'text-foreground',
@@ -154,7 +154,7 @@ function SpendProgressBar({
         >
           {displayPct}% usado
         </span>
-        <span className="shrink-0 font-mono tabular-nums">
+        <span className="shrink-0 font-sans tabular-nums">
           {formatCurrency(spent)} / {formatCurrency(total)}
         </span>
       </div>
@@ -189,7 +189,7 @@ function WalletPoolHeader({ pool }: { pool: WalletPool }) {
         <div className="shrink-0 text-right">
           <p
             className={cn(
-              'font-mono text-sm font-bold tabular-nums',
+              'font-sans text-sm font-bold tabular-nums',
               remainingToneClass(pool.remaining, pool.allocated),
             )}
           >
@@ -248,7 +248,7 @@ function SharedWalletCategoryContext({
   return (
     <div className="space-y-1.5 rounded-md border border-border/60 bg-card px-2.5 py-2">
       <p className="text-xs">
-        <span className="font-mono tabular-nums text-foreground">
+        <span className="font-sans tabular-nums text-foreground">
           {formatCurrency(display.categoryHeadroom)}
         </span>{' '}
         <span className="text-muted-foreground">del límite de categoría</span>
@@ -305,7 +305,7 @@ function AllocationSummary({
             <div className="text-right">
               <p
                 className={cn(
-                  'font-mono text-sm font-bold tabular-nums',
+                  'font-sans text-sm font-bold tabular-nums',
                   remainingToneClass(remaining, allocation.amount),
                 )}
               >
@@ -379,7 +379,7 @@ function AllocationExpenseList({
               {formatDisplayDate(expense.date)}
             </p>
           </div>
-          <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+          <span className="shrink-0 font-sans text-xs font-semibold tabular-nums text-violet-600 dark:text-violet-400">
             {formatCurrency(expense.amount)}
           </span>
         </li>

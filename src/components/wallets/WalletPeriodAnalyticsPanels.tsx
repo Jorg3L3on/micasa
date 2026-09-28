@@ -79,7 +79,7 @@ const InsightStat = ({
         aria-hidden data-icon="inline-start" />
       {label}
     </div>
-    <p className="font-mono text-sm font-bold tabular-nums text-foreground">
+    <p className="font-sans text-sm font-bold tabular-nums text-foreground">
       {value}
     </p>
   </div>
@@ -224,7 +224,7 @@ export const WalletPeriodAnalyticsPanels = ({
                           className="min-w-0 text-xs"
                         />
                         <div className="shrink-0 text-right">
-                          <p className="font-mono text-xs font-bold tabular-nums">
+                          <p className="font-sans text-xs font-bold tabular-nums">
                             {formatCurrency(row.amount)}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
@@ -296,7 +296,7 @@ export const WalletPeriodAnalyticsPanels = ({
                           />
                           <span className="truncate">{row.name}</span>
                         </span>
-                        <span className="font-mono font-semibold tabular-nums">
+                        <span className="font-sans font-semibold tabular-nums">
                           {formatCurrency(row.value)}
                         </span>
                       </li>
@@ -377,7 +377,7 @@ export const WalletPeriodAnalyticsPanels = ({
                   <p className="truncate text-sm font-medium">
                     {analytics.largestOutflow.description}
                   </p>
-                  <p className="font-mono text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                  <p className="font-sans text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
                     {formatCurrency(analytics.largestOutflow.amount)}
                   </p>
                 </div>
@@ -391,7 +391,7 @@ export const WalletPeriodAnalyticsPanels = ({
                   <p className="truncate text-sm font-medium">
                     {analytics.largestInflow.description}
                   </p>
-                  <p className="font-mono text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <p className="font-sans text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                     {formatCurrency(analytics.largestInflow.amount)}
                   </p>
                 </div>

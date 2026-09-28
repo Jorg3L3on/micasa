@@ -110,7 +110,7 @@ export const CreditCardCycleSpendingBar = ({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {cycleLabel}
           </p>
-          <p className="font-mono text-xl font-bold tabular-nums tracking-tight">
+          <p className="font-sans text-xl font-bold tabular-nums tracking-tight">
             {formatCurrency(total)}
           </p>
         </div>
@@ -141,7 +141,7 @@ export const CreditCardCycleSpendingBar = ({
               >
                 <span className={cn('inline-block h-1.5 w-1.5 rounded-full', color)} />
                 <span className="max-w-[5.5rem] truncate">{category}</span>
-                <span className="font-mono tabular-nums text-foreground/80">
+                <span className="font-sans tabular-nums text-foreground/80">
                   {formatCurrency(amount)}
                 </span>
               </li>
@@ -247,7 +247,7 @@ export const CreditCardVisualHero = ({
               <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
                 Deuda total
               </p>
-              <p className="text-3xl font-bold font-mono tabular-nums leading-snug tracking-tight sm:text-4xl">
+              <p className="text-3xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-4xl">
                 {formatCurrency(outstandingBalance)}
               </p>
             </div>
@@ -259,7 +259,7 @@ export const CreditCardVisualHero = ({
                 </p>
                 <p
                   className={cn(
-                    'font-mono text-sm font-semibold tabular-nums leading-snug',
+                    'font-sans text-sm font-semibold tabular-nums leading-snug',
                     (availableCredit ?? 0) < 0 && 'text-red-200',
                   )}
                 >
@@ -273,7 +273,7 @@ export const CreditCardVisualHero = ({
                   <p className="text-[9px] uppercase tracking-wider opacity-70">
                     Límite
                   </p>
-                  <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                  <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                     {formatCurrency(limit)}
                   </p>
                 </div>
@@ -284,7 +284,7 @@ export const CreditCardVisualHero = ({
               <div className="space-y-1">
                 <div className="flex justify-between text-[9px] opacity-70">
                   <span>Utilización</span>
-                  <span className="font-mono tabular-nums">{utilizationPct}%</span>
+                  <span className="font-sans tabular-nums">{utilizationPct}%</span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                   <div
@@ -354,7 +354,7 @@ export const CreditCardDuePaymentStrip = ({
         <p className="text-[10px] text-muted-foreground">
           No es la deuda total ni el saldo del plan.
         </p>
-        <p className="font-mono text-lg font-bold tabular-nums leading-tight">
+        <p className="font-sans text-lg font-bold tabular-nums leading-tight">
           {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
         </p>
       </div>
@@ -524,7 +524,7 @@ export const CreditCardStatementSummaryCard = ({
               ? 'Total importado'
               : 'Saldo del corte'}
           </span>
-          <span className="font-mono tabular-nums font-medium">
+          <span className="font-sans tabular-nums font-medium">
             {formatCurrency(
               statement.imported_statement_total ?? statement.last_statement_balance,
             )}
@@ -532,13 +532,13 @@ export const CreditCardStatementSummaryCard = ({
         </div>
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="text-muted-foreground">Pagos desde corte</span>
-          <span className="font-mono tabular-nums font-medium">
+          <span className="font-sans tabular-nums font-medium">
             {formatCurrency(statement.payments_since_last_cutoff)}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="text-muted-foreground">Pagos aplicados</span>
-          <span className="font-mono tabular-nums font-medium">
+          <span className="font-sans tabular-nums font-medium">
             {formatCurrency(statement.payments_applied_to_statement)}
           </span>
         </div>
@@ -557,7 +557,7 @@ export const CreditCardStatementSummaryCard = ({
           )}
         >
           <span>Toca pagar este corte</span>
-          <span className="font-mono tabular-nums">
+          <span className="font-sans tabular-nums">
             {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
           </span>
         </div>

@@ -105,7 +105,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
               <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
                 Deuda total
               </p>
-              <p className="font-mono text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
+              <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
                 {formatCurrency(snapshot.amount)}
               </p>
             </div>
@@ -115,7 +115,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
                 <p className="text-[9px] uppercase tracking-wider opacity-70">
                   Disponible
                 </p>
-                <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                   {snapshot.availableCredit == null
                     ? 'Sin línea'
                     : formatCurrency(snapshot.availableCredit)}
@@ -126,7 +126,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
                   <p className="text-[9px] uppercase tracking-wider opacity-70">
                     Límite
                   </p>
-                  <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+                  <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                     {formatCurrency(snapshot.creditLimit)}
                   </p>
                 </div>
@@ -139,7 +139,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
               <div className="space-y-1">
                 <div className="flex justify-between text-[9px] opacity-70">
                   <span>Utilización</span>
-                  <span className="font-mono tabular-nums">
+                  <span className="font-sans tabular-nums">
                     {snapshot.utilizationPct}%
                   </span>
                 </div>
@@ -196,7 +196,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
               Saldo disponible
             </p>
-            <p className="font-mono text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
+            <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
               {formatCurrency(snapshot.amount)}
             </p>
           </div>
@@ -207,13 +207,13 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
           >
             <div>
               <p className="text-[9px] uppercase tracking-wider">Disponible</p>
-              <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+              <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                 $0.00
               </p>
             </div>
             <div className="text-right">
               <p className="text-[9px] uppercase tracking-wider">Límite</p>
-              <p className="font-mono text-sm font-semibold tabular-nums leading-snug">
+              <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                 $0.00
               </p>
             </div>
@@ -222,7 +222,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
           <div className="invisible space-y-1" aria-hidden>
             <div className="flex justify-between text-[9px]">
               <span>Utilización</span>
-              <span className="font-mono tabular-nums">0%</span>
+              <span className="font-sans tabular-nums">0%</span>
             </div>
             <div className="h-1.5 w-full rounded-full" />
           </div>

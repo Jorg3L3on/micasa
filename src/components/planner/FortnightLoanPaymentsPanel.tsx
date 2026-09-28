@@ -310,7 +310,7 @@ export default function FortnightLoanPaymentsPanel({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="font-mono text-sm font-bold tabular-nums">
+                  <span className="font-sans text-sm font-bold tabular-nums">
                     {formatCurrency(group.amount)}
                   </span>
                   {canPay ? (
@@ -377,7 +377,7 @@ export default function FortnightLoanPaymentsPanel({
                         {item.loanName}
                       </button>
                       <span className="flex shrink-0 items-center gap-2">
-                        <span className="font-mono tabular-nums">
+                        <span className="font-sans tabular-nums">
                           {formatCurrency(item.amount)}
                         </span>
                         {item.status === 'SCHEDULED' ? (

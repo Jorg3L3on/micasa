@@ -864,7 +864,7 @@ export default function FortnightColumn({
   );
   const plannerTabIconClass = 'h-3.5 w-3.5 shrink-0';
   const plannerTabBadgeClass = cn(
-    'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-mono font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5',
+    'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-sans font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5',
     compactTabs && 'h-4 min-w-4 px-1 xl:h-4 xl:min-w-4 xl:px-1',
   );
 
