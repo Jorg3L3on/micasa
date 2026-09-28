@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { getImageProps } from 'next/image';
 
 import { cn } from '@/lib/utils';
@@ -28,16 +29,48 @@ const MOBILE = { width: 780, height: 1688 } as const;
 
 type ShotTheme = 'light' | 'dark';
 
+const shotImageProps = (id: ProductShotId, theme: ShotTheme, mobile: boolean) =>
+  getImageProps({
+    alt: '',
+    src: `/landing/${id}-${mobile ? 'mobile' : 'desktop'}-${theme}.webp`,
+    width: mobile ? MOBILE.width : DESKTOP.width,
+    height: mobile ? MOBILE.height : DESKTOP.height,
+    sizes: mobile ? '100vw' : '(min-width: 768px) 42rem, 100vw',
+  });
+
 /**
- * Both themes are in the first HTML. `.dark` on `<html>` (next-themes, class
- * strategy) shows one picture and hides the other. Nothing swaps `src` after
- * paint. Every img is `loading="lazy"`, so a `display: none` picture is not
- * fetched. The hero preloads only the picture that is visible for this class.
- * It uses that picture's srcset: the <source> from 768px, otherwise the <img>.
- * next/image sets `src` to the 3840w candidate. Preloading that URL fetches the
- * wrong file and leaves the mobile frame empty until the real srcset entry arrives.
+ * Server preload for the hero. `media` picks theme and breakpoint, and
+ * `imageSrcSet` matches the picture the browser will paint. No inline script.
  */
-const HERO_PRELOAD_SCRIPT = `(function(){var s=document.currentScript;if(!s||!s.parentElement)return;var dark=document.documentElement.classList.contains("dark");var picture=s.parentElement.querySelector(dark?".landing-shot-dark":".landing-shot-light");if(!picture)return;var source=Array.prototype.find.call(picture.querySelectorAll("source"),function(node){return node.media&&window.matchMedia(node.media).matches;});var img=picture.querySelector("img");var srcset=source?source.getAttribute("srcset"):img&&img.getAttribute("srcset");var sizes=source?source.getAttribute("sizes"):img&&img.getAttribute("sizes");var link=document.createElement("link");link.rel="preload";link.as="image";link.setAttribute("fetchpriority","high");if(srcset){link.setAttribute("imagesrcset",srcset);if(sizes)link.setAttribute("imagesizes",sizes);}else if(img&&img.getAttribute("src")){link.href=img.getAttribute("src");}else{return;}document.head.appendChild(link);})();`;
+const HeroPreload = ({ id }: { id: ProductShotId }) => (
+  <>
+    {(['light', 'dark'] as const).map((theme) => {
+      const scheme = theme === 'dark' ? 'dark' : 'light';
+      const desktop = shotImageProps(id, theme, false);
+      const mobile = shotImageProps(id, theme, true);
+      return (
+        <Fragment key={theme}>
+          <link
+            rel="preload"
+            as="image"
+            imageSrcSet={desktop.props.srcSet}
+            imageSizes={desktop.props.sizes}
+            media={`(prefers-color-scheme: ${scheme}) and (min-width: 768px)`}
+            fetchPriority="high"
+          />
+          <link
+            rel="preload"
+            as="image"
+            imageSrcSet={mobile.props.srcSet}
+            imageSizes={mobile.props.sizes}
+            media={`(prefers-color-scheme: ${scheme}) and (max-width: 767px)`}
+            fetchPriority="high"
+          />
+        </Fragment>
+      );
+    })}
+  </>
+);
 
 const ThemePicture = ({
   id,
@@ -50,21 +83,8 @@ const ThemePicture = ({
   alt: string;
   className: string;
 }) => {
-  const desktop = getImageProps({
-    alt: '',
-    src: `/landing/${id}-desktop-${theme}.webp`,
-    width: DESKTOP.width,
-    height: DESKTOP.height,
-    sizes: '(min-width: 768px) 42rem, 100vw',
-  });
-
-  const mobile = getImageProps({
-    alt,
-    src: `/landing/${id}-mobile-${theme}.webp`,
-    width: MOBILE.width,
-    height: MOBILE.height,
-    sizes: '100vw',
-  });
+  const desktop = shotImageProps(id, theme, false);
+  const mobile = shotImageProps(id, theme, true);
 
   const { src, srcSet, width, height, sizes, decoding } = mobile.props;
 
@@ -107,7 +127,7 @@ export const ProductShot = ({
       <div className="relative aspect-[9/16] max-h-[32rem] md:aspect-video md:max-h-none">
         <ThemePicture id={id} theme="light" alt={alt} className="landing-shot-light" />
         <ThemePicture id={id} theme="dark" alt={alt} className="landing-shot-dark" />
-        {priority ? <script dangerouslySetInnerHTML={{ __html: HERO_PRELOAD_SCRIPT }} /> : null}
+        {priority ? <HeroPreload id={id} /> : null}
       </div>
     </figure>
   );
