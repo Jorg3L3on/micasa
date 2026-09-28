@@ -110,7 +110,7 @@ export default function FortnightHeader({
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center justify-between gap-2',
+        'flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2',
         MONTHLY_PANEL_SHELL_CLASS,
         MONTHLY_CHROME_PADDING_CLASS,
       )}
@@ -131,16 +131,16 @@ export default function FortnightHeader({
           direction="next"
         />
         <div className="min-w-0">
-          <h1 className="truncate text-title">
+          <h1 className="text-balance text-title sm:truncate">
             {formatFortnightOrdinalTitle(period, month, year)}
           </h1>
-          <p className="truncate text-caption text-muted-foreground">
+          <p className="text-balance text-caption text-muted-foreground sm:truncate">
             {formatFortnightDateRangeLabel(year, month, period)}
           </p>
         </div>
       </div>
       {actions ? (
-        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+        <div className="flex items-center gap-2 sm:shrink-0">{actions}</div>
       ) : null}
     </div>
   )
