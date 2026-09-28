@@ -279,7 +279,7 @@ export default function MetasPage() {
 
   return (
     <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Metas">
-    <div className="space-y-5 pb-8 md:pb-4">
+    <div className="space-y-5">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>

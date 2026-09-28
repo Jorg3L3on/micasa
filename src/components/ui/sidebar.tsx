@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeftIcon } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { DOCK_CLEARANCE_PADDING_CLASS } from "@/lib/ui/dock-clearance"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -164,7 +165,12 @@ function MobileSidebarSheetBody({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {children}
       </div>
-      <div className="border-sidebar-border shrink-0 border-t px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div
+        className={cn(
+          "border-sidebar-border shrink-0 border-t px-2 pt-2",
+          DOCK_CLEARANCE_PADDING_CLASS,
+        )}
+      >
         <Button
           type="button"
           variant="ghost"

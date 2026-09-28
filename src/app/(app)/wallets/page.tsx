@@ -1052,7 +1052,7 @@ export default function WalletsPage() {
   return (
     <DirectionalTransition>
     <MobilePullToRefresh onRefresh={handlePullRefresh} ariaLabel="Billeteras">
-    <div className="space-y-4 pb-8 md:pb-4">
+    <div className="space-y-4">
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">

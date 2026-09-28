@@ -22,6 +22,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { DOCK_CLEARANCE_PADDING_CLASS } from '@/lib/ui/dock-clearance';
 import { cn } from '@/lib/utils';
 
 type OverlaySelectApi = {
@@ -169,7 +170,12 @@ export const ResponsiveOverlay = ({
           onInteractOutside={preventDismissWhileSelectOpen}
         >
           <div className="border-b border-border/50 px-4 py-3">{sheetHeader}</div>
-          <div className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div
+            className={cn(
+              'flex-1 overflow-y-auto p-4',
+              DOCK_CLEARANCE_PADDING_CLASS,
+            )}
+          >
             {body}
           </div>
         </SheetContent>
