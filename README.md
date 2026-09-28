@@ -20,7 +20,7 @@ El isotipo es `public/brand/mark-160.png`, el mismo archivo que muestra `MicasaM
 
 ## Producto
 
-Capturas de la casa ficticia **Hogar**: escritorio (1440×900) y móvil (780×1688). Plan, Liquidez y Toca pagar en móvil se recortan arriba del dock (780×1528). Claro y oscuro. Están en `public/landing/` y este README las referencia ahí, sin una segunda copia.
+Capturas de la casa ficticia **Hogar**: escritorio (1440 de ancho) y móvil (780×1536, recortadas arriba del dock). Claro y oscuro. Están en `public/landing/` y este README las referencia ahí, sin una segunda copia.
 
 ### Panel
 
