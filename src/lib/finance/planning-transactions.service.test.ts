@@ -5,11 +5,13 @@ const {
   findManyFortnight,
   findManyIncome,
   listLoanPaymentsForPlannerMonth,
+  getDuePaymentsForPlannerMonth,
 } = vi.hoisted(() => ({
   findManyExpense: vi.fn(),
   findManyFortnight: vi.fn(),
   findManyIncome: vi.fn(),
   listLoanPaymentsForPlannerMonth: vi.fn(),
+  getDuePaymentsForPlannerMonth: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -30,6 +32,10 @@ vi.mock('@/lib/finance/planning-credit-card-payments', () => ({
 
 vi.mock('@/lib/finance/loan.service', () => ({
   listLoanPaymentsForPlannerMonth,
+}));
+
+vi.mock('@/lib/finance/credit-card-statement.service', () => ({
+  getDuePaymentsForPlannerMonth,
 }));
 
 import { listPlanningTransactions } from '@/lib/finance/planning-transactions.service';
@@ -55,6 +61,7 @@ describe('listPlanningTransactions', () => {
         due_day: null,
       },
     ]);
+    getDuePaymentsForPlannerMonth.mockResolvedValue({ first: [], second: [] });
     listLoanPaymentsForPlannerMonth.mockResolvedValue({
       first: [
         {
@@ -184,5 +191,61 @@ describe('listPlanningTransactions', () => {
       paid_at: '2026-09-04',
       due_day: 30,
     });
+  });
+
+  it('lists a planned card payment and leaves gaps out of the expense rows', async () => {
+    getDuePaymentsForPlannerMonth.mockResolvedValue({
+      first: [],
+      second: [
+        {
+          walletId: 8,
+          walletName: 'Tarjeta del hogar',
+          walletType: 'CREDIT_CARD',
+          dueDay: 29,
+          cutoff_day: 14,
+          nextDuePayment: 2100,
+          paymentsAppliedToStatement: 0,
+          statementDueDate: '2026-09-29',
+          outstandingBalance: 4800,
+          remainingPlannerAmount: 2100,
+          plannerStatus: 'por_pagar',
+          statementPayoff: 2100,
+        },
+        {
+          walletId: 3,
+          walletName: 'Tarjeta digital',
+          walletType: 'CREDIT_CARD',
+          dueDay: 26,
+          cutoff_day: 11,
+          nextDuePayment: 0,
+          paymentsAppliedToStatement: 0,
+          statementDueDate: '2026-09-26',
+          outstandingBalance: 600,
+          remainingPlannerAmount: 0,
+          plannerStatus: 'falta_dato',
+          statementPayoff: null,
+        },
+      ],
+    });
+
+    const rows = await listPlanningTransactions({
+      ownerFilter,
+      year: '2026',
+      month: '09',
+      period: 'SECOND',
+      type: 'expense',
+      excludeCreditInstallment: true,
+      resolvedFortnightIds: [1],
+    });
+
+    const cardRows = rows.filter((row) => row.planning_row_kind === 'card_payment');
+    expect(cardRows).toEqual([
+      expect.objectContaining({
+        id: -8,
+        description: 'Pago tarjeta: Tarjeta del hogar',
+        amount: 2100,
+        is_paid: false,
+      }),
+    ]);
   });
 });

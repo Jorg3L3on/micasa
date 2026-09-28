@@ -12,7 +12,9 @@ import {
   mapCreditCardPaymentToTransactionRow,
   unionPaidAtRangeFromFortnights,
 } from '@/lib/finance/planning-credit-card-payments';
+import { getDuePaymentsForPlannerMonth } from '@/lib/finance/credit-card-statement.service';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
+import { mapPendingCardDuesToTransactionRows } from '@/lib/finance/planning-pending-card-payments';
 import {
   linkedLoanPaymentExpenseIds,
   mapScheduledLoanPaymentsToTransactionRows,
@@ -110,6 +112,7 @@ export const listPlanningTransactions = async (
     ReturnType<typeof listLoanPaymentsForPlannerMonth>
   >['first'] = [];
   let linkedLoanPaymentExpenses = new Set<number>();
+  let pendingCardDueRows: TransactionRow[] = [];
   if (excludeCreditInstallment && type !== 'income') {
     const fnWhere = buildFortnightWhereForReport(
       ownerFilter,
@@ -153,6 +156,21 @@ export const listPlanningTransactions = async (
       linkedLoanPaymentExpenses = linkedLoanPaymentExpenseIds(
         loanPaymentsForPlanning,
       );
+
+      if (isPaid !== true) {
+        const cardDues = await getDuePaymentsForPlannerMonth(
+          ownerFilter,
+          plannerYear,
+          plannerMonth,
+        );
+        const dueItems =
+          resolvedPeriod === 'FIRST'
+            ? cardDues.first
+            : resolvedPeriod === 'SECOND'
+              ? cardDues.second
+              : [...cardDues.first, ...cardDues.second];
+        pendingCardDueRows = mapPendingCardDuesToTransactionRows(dueItems);
+      }
     }
   }
 
@@ -254,6 +272,7 @@ export const listPlanningTransactions = async (
   let combined: TransactionRow[] = [
     ...expenseTransactions,
     ...cardPaymentTransactions,
+    ...pendingCardDueRows,
     ...loanPaymentTransactions,
     ...incomeTransactions,
   ];
