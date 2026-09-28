@@ -486,6 +486,29 @@ html:has(.landing-root) {
   }
 }
 
+/* Theme is the .dark class, so both captures stay in the first HTML. */
+.landing-shot-light,
+.landing-shot-dark {
+  position: absolute;
+  inset: 0;
+}
+
+.landing-shot-light {
+  display: block;
+}
+
+.dark .landing-shot-light {
+  display: none;
+}
+
+.landing-shot-dark {
+  display: none;
+}
+
+.dark .landing-shot-dark {
+  display: block;
+}
+
 .landing-hero-wash {
   isolation: isolate;
   border: 1px solid var(--border);

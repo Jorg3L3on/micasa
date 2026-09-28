@@ -12,7 +12,7 @@ const NAV = [
   { href: '#inicio', label: 'Inicio' },
   { href: '#producto', label: 'Producto' },
   { href: '#quincena', label: 'Quincena' },
-  { href: '#importar', label: 'Importar' },
+  { href: '#estado-de-cuenta', label: 'Estado de cuenta' },
 ] as const;
 
 export const LandingHeader = () => {

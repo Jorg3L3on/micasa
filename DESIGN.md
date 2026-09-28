@@ -60,7 +60,7 @@ The landing follows the signed-in theme. `ThemeProvider` (`attribute="class"`, `
 - **Type scale:** `text-display`, `text-title`, `text-section`, `text-body`, `text-caption`, `eyebrow`. Nothing smaller than caption.
 - **Canvas:** `bg-background`. `LandingAtmosphere` orbs use `color-mix` of `--primary`, `--chart-2`, and `--chart-4`. Loops run only under `prefers-reduced-motion: no-preference`. No pointer spotlight, parallax, or magnetic controls.
 - **Hero:** `.landing-hero-wash` is a marketing-only wash built from those tokens and `--shadow-panel`. One primary `Button` (`Crear cuenta`); the second action is `ghost`.
-- **Product:** real screenshots in `public/landing/` (`next/image`, webp), desktop and mobile, light and dark. There is no pricing section — the product has no paid plans; copy may say it is free to use. Statement import is described as a file the user brings, not a bank connection.
+- **Product:** real screenshots in `public/landing/` (`next/image`, webp), desktop and mobile, light and dark. Both themes are in the first HTML; `.dark` on `<html>` shows one and hides the other, so the shot does not swap after paint. There is no pricing section — the product has no paid plans; copy may say it is free to use. Statement import is the card action Más → Estado de cuenta (dialog Importar estado de cuenta): the user uploads a PDF. Agents are one optional caption pointing at Configuración → Conexiones (`/settings/connections`), not a headline.
 - **Quincena block:** normal document flow below `md` and whenever reduced motion is on. From `md` up, with motion allowed, the pair sits in a 140vh sticky stage.
 - **Money** on the landing uses `<Money>` / `formatCurrency` (sans, tabular). Status chips use `src/lib/status-tone.ts`.
 
