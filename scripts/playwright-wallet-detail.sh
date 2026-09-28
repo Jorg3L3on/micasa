@@ -7,11 +7,16 @@ mkdir -p output/playwright
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 PWCLI="$CODEX_HOME/skills/playwright/scripts/playwright_cli.sh"
 BASE="${PLAYWRIGHT_BASE_URL:-http://localhost:3000}"
+# E2E_EMAIL and E2E_PASSWORD: login for a local seeded account. Not stored in this script.
+if [[ -z "${E2E_EMAIL:-}" || -z "${E2E_PASSWORD:-}" ]]; then
+  echo "E2E_EMAIL and E2E_PASSWORD must be set to a local seeded account before running this script." >&2
+  exit 1
+fi
 
 "$PWCLI" open "$BASE/login"
 "$PWCLI" snapshot >/dev/null
-"$PWCLI" fill e17 "jorgeleon983@gmail.com"
-"$PWCLI" fill e21 "temp1234"
+"$PWCLI" fill e17 "$E2E_EMAIL"
+"$PWCLI" fill e21 "$E2E_PASSWORD"
 "$PWCLI" click e24
 sleep 8
 

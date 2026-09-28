@@ -215,14 +215,9 @@ PostgreSQL must be running before the dev server or any Prisma command.
 
 See `CLAUDE.md` and `README.md` for standard commands (`npm run dev`, `npm run lint`, `npm test`, `npm run build`, `npm run ci`).
 
-### Test accounts (from seed data)
+### Local database seed
 
-| Name   | Email                            | Password  |
-|--------|----------------------------------|-----------|
-| Jorge  | jorgeleon983@gmail.com           | temp1234  |
-| Carmen | Consepcionsolorzano39@gmail.com  | temp1234  |
-
-To re-seed: `npx prisma db seed` (destructive — clears all data first).
+Seed a local database with `npx prisma db seed`. The command replaces existing data. Seeded credentials are defined in the seed script (`prisma/seed.ts`) or in environment variables, and are not listed here.
 
 ### Walkthrough artifacts (agent default)
 
