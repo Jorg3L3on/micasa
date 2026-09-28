@@ -32,6 +32,7 @@ import {
   MONTHLY_ACCENT_TEXT_CLASS,
   MONTHLY_ICON_PILL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
+import { formatMonthTitle } from '@/lib/calendar-dates';
 import {
   formatShortMonthLabel,
   LIQUIDITY_CHART_RANGE_OPTIONS,
@@ -59,12 +60,8 @@ const parseMonthKey = (monthKey: string) => {
 };
 
 const formatMonthName = (monthKey: string): string => {
-  const { year, month } = parseMonthKey(monthKey);
-  const raw = new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('es-MX', {
-    month: 'long',
-    timeZone: 'UTC',
-  });
-  return raw.charAt(0).toUpperCase() + raw.slice(1);
+  const { month } = parseMonthKey(monthKey);
+  return formatMonthTitle(month);
 };
 
 type MonthStepButtonProps = {

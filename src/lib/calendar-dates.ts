@@ -238,10 +238,216 @@ const formatWithDisplayFormatter = (
   }
 };
 
-/** es-MX display for calendar dates and timestamps (civil day in MX). */
-export function formatDisplayDate(dateString: string | Date): string {
-  return formatWithDisplayFormatter(dateString, displayDateFormatter);
+const MONTH_TITLE = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+] as const;
+
+const MONTH_PHRASE = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+] as const;
+
+const MONTH_SHORT = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+] as const;
+
+const monthIndex = (month: number): number =>
+  Number.isInteger(month) && month >= 1 && month <= 12 ? month - 1 : -1;
+
+/** Mexico City civil year. The year rule compares against this. */
+export const currentCalendarYear = (now: Date = new Date()): number =>
+  Number(todayCalendarDate(now).slice(0, 4));
+
+/** Capitalized month for titles and headings. */
+export const formatMonthTitle = (month: number): string =>
+  MONTH_TITLE[monthIndex(month)] ?? '';
+
+/** Lowercase month for text inside a sentence. */
+export const formatMonthPhrase = (month: number): string =>
+  MONTH_PHRASE[monthIndex(month)] ?? '';
+
+/** Three-letter month for chart axes and compact ranges. */
+export const formatMonthShort = (month: number): string =>
+  MONTH_SHORT[monthIndex(month)] ?? '';
+
+/**
+ * Heading: "Septiembre", or "Septiembre 2025" when the year is not current.
+ */
+export const formatMonthHeading = (
+  month: number,
+  year: number,
+  now: Date = new Date(),
+): string => {
+  const name = formatMonthTitle(month);
+  if (!name) return '';
+  return year === currentCalendarYear(now) ? name : `${name} ${year}`;
+};
+
+/**
+ * Phrase: "septiembre", or "septiembre 2025" when the year is not current.
+ */
+export const formatMonthInPhrase = (
+  month: number,
+  year: number,
+  now: Date = new Date(),
+): string => {
+  const name = formatMonthPhrase(month);
+  if (!name) return '';
+  return year === currentCalendarYear(now) ? name : `${name} ${year}`;
+};
+
+const parseMonthKeyParts = (
+  monthKey: string,
+): { year: number; month: number } | null => {
+  const match = /^(\d{4})-(\d{2})$/.exec(monthKey);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) return null;
+  return { year, month };
+};
+
+/** Tooltip / panel title from `YYYY-MM`. */
+export const formatMonthYearTitle = (
+  monthKey: string,
+  now: Date = new Date(),
+): string => {
+  const parts = parseMonthKeyParts(monthKey);
+  if (!parts) return monthKey;
+  const name = formatMonthTitle(parts.month);
+  if (parts.year === currentCalendarYear(now)) return name;
+  return `${name} de ${parts.year}`;
+};
+
+/** Mid-sentence month from `YYYY-MM`. */
+export const formatMonthYearPhrase = (
+  monthKey: string,
+  now: Date = new Date(),
+): string => {
+  const parts = parseMonthKeyParts(monthKey);
+  if (!parts) return monthKey;
+  const name = formatMonthPhrase(parts.month);
+  if (parts.year === currentCalendarYear(now)) return name;
+  return `${name} de ${parts.year}`;
+};
+
+const chartMonthLabel = (
+  parts: { year: number; month: number },
+  now: Date,
+  forceYear: boolean,
+): string => {
+  const short = formatMonthShort(parts.month);
+  if (!forceYear && parts.year === currentCalendarYear(now)) return short;
+  return `${short} ${String(parts.year).slice(2)}`;
+};
+
+/** Chart axis tick: "sep", or "sep 25" outside the current year. */
+export const formatChartAxisMonth = (
+  monthKey: string,
+  now: Date = new Date(),
+): string => {
+  const parts = parseMonthKeyParts(monthKey);
+  if (!parts) return monthKey;
+  return chartMonthLabel(parts, now, parts.year !== currentCalendarYear(now));
+};
+
+/** Chart window: "jul – sep", or "dic 25 – ene 26" when the years differ. */
+export const formatChartMonthRange = (
+  fromMonthKey: string,
+  toMonthKey: string,
+  now: Date = new Date(),
+): string => {
+  if (fromMonthKey === toMonthKey) return formatChartAxisMonth(fromMonthKey, now);
+  const from = parseMonthKeyParts(fromMonthKey);
+  const to = parseMonthKeyParts(toMonthKey);
+  if (!from || !to) return `${fromMonthKey} – ${toMonthKey}`;
+  const crosses = from.year !== to.year;
+  const current = currentCalendarYear(now);
+  return `${chartMonthLabel(from, now, crosses || from.year !== current)} – ${chartMonthLabel(to, now, crosses || to.year !== current)}`;
+};
+
+/**
+ * es-MX display for calendar dates. Omits the year when it is the current
+ * Mexico City year ("31 may"); keeps it otherwise ("31 may 2025").
+ */
+export function formatDisplayDate(
+  dateString: string | Date,
+  now: Date = new Date(),
+): string {
+  try {
+    const date =
+      typeof dateString === 'string'
+        ? CALENDAR_DATE_RE.test(dateString)
+          ? parseCalendarDate(dateString)
+          : new Date(dateString)
+        : dateString;
+    if (Number.isNaN(date.getTime())) return String(dateString);
+    const ymd =
+      typeof dateString === 'string' && CALENDAR_DATE_RE.test(dateString)
+        ? dateString
+        : formatCalendarDate(date);
+    const year = Number(ymd.slice(0, 4));
+    const formatter =
+      year === currentCalendarYear(now)
+        ? displayDayMonthFormatter
+        : displayDateFormatter;
+    return formatter.format(date);
+  } catch {
+    return String(dateString);
+  }
 }
+
+/** Row date. Same year rule as {@link formatDisplayDate}. */
+export const formatRowDate = formatDisplayDate;
+
+const stepperDateFormatter = new Intl.DateTimeFormat('es-MX', {
+  weekday: 'long',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: APP_TIMEZONE,
+});
+
+/**
+ * Date stepper in forms. Always includes the year: the control is an input,
+ * and the saved day must stay unambiguous.
+ */
+export const formatStepperDate = (ymd: string): string => {
+  if (!isValidCalendarDateString(ymd)) return ymd;
+  return stepperDateFormatter.format(parseCalendarDate(ymd));
+};
 
 /** Like {@link formatDisplayDate} without the year (e.g. "1 oct"), for compact list rows. */
 export function formatDisplayDayMonth(dateString: string | Date): string {

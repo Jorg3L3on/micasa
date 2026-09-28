@@ -29,8 +29,10 @@ describe('liquidity month selection helpers', () => {
     expect(shiftSelectedMonthKey([], '2026-01', 1)).toBe('2026-01');
   });
 
-  it('title-cases the month without capitalizing de', () => {
-    expect(formatMonthYearLabel('2026-11')).toBe('Noviembre de 2026');
+  it('title-cases the month and hides the current year', () => {
+    const now = new Date('2026-09-28T18:00:00.000Z');
+    expect(formatMonthYearLabel('2026-11', now)).toBe('Noviembre');
+    expect(formatMonthYearLabel('2025-11', now)).toBe('Noviembre de 2025');
   });
 
   it('never shows negative cash as Entra', () => {

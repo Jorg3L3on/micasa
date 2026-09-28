@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useFinanceContext } from '@/context/finance-context';
+import { formatMonthHeading } from '@/lib/calendar-dates';
 import { getAppHomeHref, formatFortnightDateRangeLabel } from '@/lib/fortnight-calendar';
 import type { FinanceContextType } from '@/types/finance-context';
 import {
@@ -80,22 +81,11 @@ export function getPageTitle(pathname: string): {
   if (segments[0] === 'monthly' && segments[1] && segments[2]) {
     const year = parseInt(segments[1], 10);
     const month = parseInt(segments[2], 10);
-    const months = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
-    ];
-    const monthName = months[month - 1] || '';
-    return { title: `${monthName} ${year}`, isHome: true, showBack: false };
+    return {
+      title: formatMonthHeading(month, year),
+      isHome: true,
+      showBack: false,
+    };
   }
 
   if (segments.length === 0 || segments[0] === 'dashboard') {

@@ -34,7 +34,11 @@ import {
   updateBudgetTemplate,
   type BudgetAllocationExpenseGroup,
 } from '@/lib/api/budgets';
-import { formatWallClockDateRange, todayCalendarDate } from '@/lib/calendar-dates';
+import {
+  formatMonthHeading,
+  formatWallClockDateRange,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import { STATUS_BADGE_CLASS, STATUS_FILL_CLASS, STATUS_SOFT_CLASS, STATUS_TEXT_CLASS } from '@/lib/status-tone';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { BudgetListItem, BudgetPeriodItem } from '@/types/catalog';
@@ -160,21 +164,6 @@ function useBudgetStatusSwipe(status: BudgetStatus, setStatus: (status: BudgetSt
 const PAGE_SIZE = 10;
 const DETAIL_REVEAL_CLASS =
   'animate-in fade-in-0 slide-in-from-top-1 duration-200 ease-out motion-reduce:animate-none';
-const MONTH_NAMES = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-];
-
 function useExpenseGroupCache() {
   const cacheRef = useRef(new Map<number, BudgetAllocationExpenseGroup[]>());
   const store = useCallback((periodId: number, groups: BudgetAllocationExpenseGroup[]) => {
@@ -807,7 +796,7 @@ export default function BudgetsPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <p className="min-w-28 text-center text-sm">
-                    {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+                    {formatMonthHeading(selectedMonth, selectedYear)}
                   </p>
                   <Button variant="ghost" size="icon" className="size-8" onClick={() => moveMonth(1)} disabled={isCurrentMonth} aria-label="Mes siguiente">
                     <ChevronRight className="h-4 w-4" />

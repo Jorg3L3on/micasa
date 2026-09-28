@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useOnboarding } from '@/components/onboarding/OnboardingContext';
 import {
   formatCalendarDate,
+  formatDisplayDayMonth,
   isValidCalendarDateString,
 } from '@/lib/calendar-dates';
 import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
@@ -14,14 +15,8 @@ type Props = {
 
 const PREVIEW_COUNT = 4;
 
-const dateFormatter = new Intl.DateTimeFormat('es-MX', {
-  day: '2-digit',
-  month: 'short',
-  timeZone: 'America/Mexico_City',
-});
-
 function formatFortnightRange(start: Date, end: Date): string {
-  return `${dateFormatter.format(start)} → ${dateFormatter.format(end)}`;
+  return `${formatDisplayDayMonth(start)} → ${formatDisplayDayMonth(end)}`;
 }
 
 function generateFortnights(

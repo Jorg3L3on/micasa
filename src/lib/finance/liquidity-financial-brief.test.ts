@@ -125,7 +125,7 @@ describe('buildLiquidityFinancialBrief', () => {
   it('suggests action for the tightest payment month', () => {
     const brief = buildLiquidityFinancialBrief(baseData());
     expect(brief.actionNow).toContain('Anticipa');
-    expect(brief.actionNow).toContain('Agosto');
+    expect(brief.actionNow).toContain('agosto');
   });
 
   it('prioritizes dangerous card guidance over generic advice', () => {

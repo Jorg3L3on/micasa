@@ -341,6 +341,14 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
 - Weight follows size: **hero** `font-bold`, **row** `font-semibold`, **caption** `font-medium` (`MONEY_SIZE_CLASS`). Color follows `MONEY_TONE_CLASS`: neutral `text-foreground`, positive `text-status-income`, negative `text-status-expense`.
 - Chart axes use `formatAxisMoney` (`$`, `k` from 1,000, `M` from 1,000,000).
 - Charts (`src/components/charts/chart-theme.ts`, `chart-tooltip.tsx`): fills and strokes come from `--chart-1`…`--chart-5` and the status tokens (`--status-income`, `--status-expense`, `--status-pending`, `--status-success`, `--status-info`). Axis ticks use `CHART_AXIS_TICK` (11px, `--muted-foreground`). Grid and cursor use `--border` / a foreground mix. Every tooltip is `ChartTooltip` (popover surface, `shadow-panel`, `text-caption`). Do not hardcode hex or a second palette inside a chart component. Slice order cycles `chartSliceColor`.
+- Dates go through `src/lib/calendar-dates.ts` (`America/Mexico_City`). Do not call `toLocaleDateString`, `toLocaleString` for a month name, or keep a month-name array in a screen.
+  - **Titles** (`formatMonthTitle`, `formatMonthHeading`, `formatMonthYearTitle`): capitalized. `Septiembre` in the current Mexico City year; `Septiembre 2025` or `Noviembre de 2025` otherwise.
+  - **Phrases** (`formatMonthPhrase`, `formatMonthInPhrase`, `formatMonthYearPhrase`): lowercase. `septiembre`, or `septiembre de 2025`.
+  - **Rows** (`formatDisplayDate` / `formatRowDate`): `31 may`, or `31 may 2025` when the year is not current.
+  - **Ranges** (`formatWallClockDateRange`, `formatChartMonthRange`, fortnight labels): hide the year inside the current year. Show the year on both ends when the range crosses years.
+  - **Chart axes** (`formatChartAxisMonth`): `sep`, or `sep 25`.
+  - **Steppers** (`formatStepperDate`) always include the year. The control is an input, so the saved day stays unambiguous.
+  - Statement parsers keep a month map because they read bank files. Préstamos adopts these helpers in JOR-320.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
 - Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
 - Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.

@@ -27,6 +27,7 @@ import {
 } from '@/context/toolbar-actions-context';
 import { Money } from '@/components/money';
 import { STATUS_BADGE_CLASS, STATUS_SOFT_CLASS } from '@/lib/status-tone';
+import { formatMonthPhrase } from '@/lib/calendar-dates';
 import { formatDate, cn } from '@/lib/utils';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { useFinanceContext } from '@/context/finance-context';
@@ -42,7 +43,7 @@ const ALL_VALUE = '__all__';
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
   value: String(i + 1),
-  label: new Date(2000, i).toLocaleString('es-MX', { month: 'long' }),
+  label: formatMonthPhrase(i + 1),
 }));
 
 const TYPE_FILTER_CHIPS = [

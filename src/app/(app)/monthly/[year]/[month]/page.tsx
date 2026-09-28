@@ -13,7 +13,7 @@ import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
-import { todayCalendarDate } from '@/lib/calendar-dates';
+import { formatMonthHeading, formatMonthTitle, todayCalendarDate } from '@/lib/calendar-dates';
 import { PLANNING_MONTH_MAX_YEAR } from '@/lib/finance/planning-month';
 import {
   dueDayFallsInFortnight,
@@ -29,34 +29,6 @@ import {
   MONTHLY_PANEL_SHELL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 
-function getMonthName(month: number): string {
-  const months = [
-    'Enero',
-    'Febrero',
-    'Marzo',
-    'Abril',
-    'Mayo',
-    'Junio',
-    'Julio',
-    'Agosto',
-    'Septiembre',
-    'Octubre',
-    'Noviembre',
-    'Diciembre',
-  ];
-  return months[month - 1] || '';
-}
-
-/** Month label; omit year when it matches the calendar current year. */
-function formatMonthLabel(
-  month: number,
-  year: number,
-  currentYear: number,
-): string {
-  const name = getMonthName(month);
-  return year === currentYear ? name : `${name} ${year}`;
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -71,9 +43,8 @@ export async function generateMetadata({
     };
   }
   const { year, month } = parsedParams.value;
-  const monthName = getMonthName(month);
   return {
-    title: `${monthName} ${year}`,
+    title: formatMonthHeading(month, year),
     description: 'Panel financiero: planifica ingresos y gastos por quincena.',
   };
 }
@@ -96,7 +67,7 @@ export default async function MonthlyPage({
   if ('error' in ownerContext) notFound();
 
   const { year, month } = parsedParams.value;
-  const monthName = getMonthName(month);
+  const monthName = formatMonthTitle(month);
 
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
@@ -160,9 +131,9 @@ export default async function MonthlyPage({
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null;
   const hasNextMonth = nextFirstInfo !== null || nextSecondInfo !== null;
 
-  const prevMonthLabel = formatMonthLabel(prevMonth, prevYear, currentYear);
-  const nextMonthLabel = formatMonthLabel(nextMonth, nextYear, currentYear);
-  const viewedMonthLabel = formatMonthLabel(month, year, currentYear);
+  const prevMonthLabel = formatMonthHeading(prevMonth, prevYear);
+  const nextMonthLabel = formatMonthHeading(nextMonth, nextYear);
+  const viewedMonthLabel = formatMonthHeading(month, year);
 
   const nextMonthAlreadyCreated = nextFirstInfo !== null && nextSecondInfo !== null;
   const canCreateNextMonth =

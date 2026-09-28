@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/form';
 import {
   addCalendarDays,
-  APP_TIMEZONE,
+  formatStepperDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
 import { cn } from '@/lib/utils';
@@ -48,25 +48,6 @@ export const OVERLAY_SECONDARY_BUTTON_CLASS = 'h-9 w-full rounded-xl';
 
 export const OVERLAY_AMOUNT_INPUT_CLASS =
   'h-10 border-0 bg-transparent px-0 font-sans text-2xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-12 md:text-4xl';
-
-const dateStepperFormatter = new Intl.DateTimeFormat('es-MX', {
-  weekday: 'long',
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  timeZone: APP_TIMEZONE,
-});
-
-const formatStepperDate = (ymd: string): string => {
-  try {
-    const [year, month, day] = ymd.split('-').map(Number);
-    return dateStepperFormatter.format(
-      new Date(Date.UTC(year, month - 1, day, 12)),
-    );
-  } catch {
-    return ymd;
-  }
-};
 
 export const FieldClearButton = ({
   label,
