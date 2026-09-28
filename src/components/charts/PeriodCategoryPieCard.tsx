@@ -7,9 +7,10 @@ import { PieChart as PieChartIcon } from 'lucide-react';
 import { SectionHeader } from '@/components/section-header';
 import { cn, formatCurrency } from '@/lib/utils';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { ChartTooltip } from '@/components/charts/chart-tooltip';
+import { chartSliceColor } from '@/components/charts/chart-theme';
 import {
   buildCategoryPieChartData,
-  CATEGORY_PIE_SLICE_COLORS,
   type CategoryPieSlice,
   type CategoryPieRow,
 } from '@/components/charts/period-category-pie';
@@ -27,7 +28,7 @@ const PieTooltip = ({ active, payload }: PieTooltipProps) => {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   return (
-    <div className="rounded-lg border border-border/60 bg-card px-3 py-2 text-xs shadow-lg">
+    <ChartTooltip active>
       <CategoryLabel
         name={row.category}
         icon={row.categoryIcon}
@@ -38,7 +39,7 @@ const PieTooltip = ({ active, payload }: PieTooltipProps) => {
         {formatCurrency(row.value)}
       </p>
       <p className="text-caption text-muted-foreground">{row.pct.toFixed(1)}%</p>
-    </div>
+    </ChartTooltip>
   );
 };
 
@@ -107,11 +108,7 @@ export const PeriodCategoryPieCard = ({
                   {chartData.map((_, i) => (
                     <Cell
                       key={`${chartId}-slice-${i}`}
-                      fill={
-                        CATEGORY_PIE_SLICE_COLORS[
-                          i % CATEGORY_PIE_SLICE_COLORS.length
-                        ]
-                      }
+                      fill={chartSliceColor(i)}
                     />
                   ))}
                 </Pie>
@@ -133,12 +130,7 @@ export const PeriodCategoryPieCard = ({
               <li key={row.name} className="flex min-w-0 items-center gap-2">
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
-                  style={{
-                    background:
-                      CATEGORY_PIE_SLICE_COLORS[
-                        i % CATEGORY_PIE_SLICE_COLORS.length
-                      ],
-                  }}
+                  style={{ background: chartSliceColor(i) }}
                 />
                 <CategoryLabel
                   name={row.category}

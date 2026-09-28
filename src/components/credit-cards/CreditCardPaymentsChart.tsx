@@ -1,9 +1,8 @@
 'use client';
 
 import EmptyState from '@/components/EmptyState';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useTheme } from 'next-themes';
 import {
   Bar,
   BarChart,
@@ -17,6 +16,8 @@ import {
 } from 'recharts';
 import { MoreVertical, Pencil, Trash2, TrendingUp } from 'lucide-react';
 import { SectionHeader } from '@/components/section-header';
+import { CHART_AXIS_TICK, CHART_COLOR } from '@/components/charts/chart-theme';
+import { ChartTooltip } from '@/components/charts/chart-tooltip';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import {
   buildUpcomingCreditCardPaymentSources,
@@ -56,25 +57,24 @@ const PaymentsTooltip = ({ active, payload, label }: TooltipProps) => {
   if (!point) return null;
 
   return (
-    <div className="rounded-md border border-border/60 bg-popover px-3 py-2 text-xs shadow-md">
-      <p className="mb-1 font-medium text-foreground">{label}</p>
+    <ChartTooltip active label={label}>
       {point.paid > 0 ? (
-        <p className="font-sans tabular-nums text-blue-500">
+        <p className="font-sans tabular-nums text-status-info">
           Pagos realizados: {formatCurrency(point.paid)}
         </p>
       ) : null}
       {point.msi > 0 ? (
-        <p className="font-sans tabular-nums text-violet-600 dark:text-violet-400">
+        <p className="font-sans tabular-nums text-status-expense">
           Compras a meses: {formatCurrency(point.msi)}
         </p>
       ) : null}
       {point.plans > 0 ? (
-        <p className="font-sans tabular-nums text-amber-700 dark:text-amber-400">
+        <p className="font-sans tabular-nums text-status-pending">
           Planes a meses: {formatCurrency(point.plans)}
         </p>
       ) : null}
       {point.scheduled > 0 ? (
-        <p className="font-sans tabular-nums text-amber-600 dark:text-amber-300">
+        <p className="font-sans tabular-nums text-status-pending">
           Pagos programados: {formatCurrency(point.scheduled)}
         </p>
       ) : null}
@@ -83,7 +83,7 @@ const PaymentsTooltip = ({ active, payload, label }: TooltipProps) => {
           Por pagar: {formatCurrency(point.pending)}
         </p>
       ) : null}
-    </div>
+    </ChartTooltip>
   );
 };
 
@@ -115,21 +115,11 @@ export const CreditCardPaymentsChart = ({
   onEditScheduled,
   onDeleteScheduled,
 }: Props) => {
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Theme-dependent chart colors must wait for client mount.
-    setMounted(true);
-  }, []);
-
-  const isDark = mounted && resolvedTheme === 'dark';
-  const axisColor = isDark ? '#a1a1aa' : '#71717a';
-  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const blue = isDark ? '#60a5fa' : '#3b82f6';
-  const amber = isDark ? '#fbbf24' : '#d97706';
-  const amberMuted = isDark ? 'rgba(251, 191, 36, 0.35)' : 'rgba(217, 119, 6, 0.35)';
+  const gridColor = CHART_COLOR.grid;
+  const blue = CHART_COLOR.info;
+  const amber = CHART_COLOR.pending;
+  const amberMuted = 'color-mix(in srgb, var(--status-pending) 35%, transparent)';
   const fromMonthKey = todayCalendarDate().slice(0, 7);
 
   const chartInput = useMemo(
@@ -229,12 +219,12 @@ export const CreditCardPaymentsChart = ({
                   />
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 10, fill: axisColor }}
+                    tick={CHART_AXIS_TICK}
                     tickLine={false}
                     axisLine={{ stroke: gridColor }}
                   />
                   <YAxis
-                    tick={{ fontSize: 10, fill: axisColor }}
+                    tick={CHART_AXIS_TICK}
                     tickLine={false}
                     axisLine={false}
                     width={44}
@@ -248,7 +238,7 @@ export const CreditCardPaymentsChart = ({
                     formatter={(value) =>
                       value === 'paid' ? 'Pagos realizados' : 'Por pagar'
                     }
-                    wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
+                    wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
                   />
                   <Bar
                     dataKey="paid"
@@ -297,7 +287,7 @@ export const CreditCardPaymentsChart = ({
                         className={cn(
                           'rounded-xl border border-border/60 bg-card/40',
                           isActive &&
-                            'border-amber-500/40 ring-1 ring-amber-500/20',
+                            'border-status-pending-border ring-1 ring-status-pending-border',
                         )}
                       >
                         <button
@@ -310,7 +300,7 @@ export const CreditCardPaymentsChart = ({
                           <span className="text-xs font-semibold capitalize text-foreground">
                             {month.label}
                           </span>
-                          <span className="font-sans text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                          <span className="font-sans text-xs font-bold tabular-nums text-status-pending">
                             {formatCurrency(month.pending)}
                           </span>
                         </button>

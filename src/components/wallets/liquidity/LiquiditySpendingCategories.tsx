@@ -14,16 +14,9 @@ import {
   LiquidityPanelHeader,
 } from '@/components/wallets/liquidity/liquidity-section';
 import { formatCategoryLabel } from '@/components/categories/CategoryLabel';
+import { chartSliceColor } from '@/components/charts/chart-theme';
 
 const ROLLING_MONTHS = 12;
-
-const BAR_GRADIENTS = [
-  'from-[#3a37fc] to-[#6366f1]',
-  'from-[#6366f1] to-[#911efe]',
-  'from-[#911efe] to-[#c026d3]',
-  'from-[#c026d3] to-[#ee477a]',
-  'from-[#ee477a] to-[#f97316]',
-] as const;
 
 type CategoryReportRow = {
   category: string;
@@ -117,7 +110,7 @@ export const LiquiditySpendingCategories = ({
           <div
             className={cn(
               METRIC_STRIP_CLASS,
-              'flex items-center justify-between gap-2 border-l-[3px] border-l-violet-500/50',
+              'flex items-center justify-between gap-2 border-l-[3px] border-l-status-expense',
             )}
           >
             <span className="overline text-muted-foreground">
@@ -133,17 +126,15 @@ export const LiquiditySpendingCategories = ({
             const sharePercent =
               totalTopFive > 0 ? Math.round((row.total / totalTopFive) * 100) : 0;
             const label = formatCategoryLabel(row.category, row.categoryIcon);
-            const gradient = BAR_GRADIENTS[index % BAR_GRADIENTS.length];
+            const tone = chartSliceColor(index);
 
             return (
               <div key={row.category} className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-2">
                     <span
-                      className={cn(
-                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-caption font-bold tabular-nums text-white',
-                        gradient,
-                      )}
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-caption font-bold tabular-nums text-primary-foreground"
+                      style={{ background: tone }}
                       aria-hidden
                     >
                       {index + 1}
@@ -164,11 +155,11 @@ export const LiquiditySpendingCategories = ({
                   role="presentation"
                 >
                   <div
-                    className={cn(
-                      'h-full rounded-full bg-gradient-to-r transition-all duration-500',
-                      gradient,
-                    )}
-                    style={{ width: `${Math.max(widthPercent, 6)}%` }}
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.max(widthPercent, 6)}%`,
+                      background: tone,
+                    }}
                   />
                 </div>
               </div>
