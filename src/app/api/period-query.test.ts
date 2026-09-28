@@ -115,6 +115,37 @@ describe('period query normalization', () => {
     );
   });
 
+  it('rejects a whitespace-only period and still accepts a missing one', async () => {
+    const spaced = await getJson(
+      getFortnights,
+      '/api/fortnights?year=2026&month=9&period=%20%20',
+    );
+    expect(spaced.status).toBe(400);
+    expect(spaced.body).toEqual({ error: 'period must be FIRST or SECOND' });
+    expect(findFortnightByCalendarPeriod).not.toHaveBeenCalled();
+
+    const missing = await getJson(getFortnights, '/api/fortnights');
+    expect(missing.status).toBe(200);
+    expect(listFortnightsForCatalog).toHaveBeenCalled();
+
+    const report = await getJson(
+      getReports,
+      '/api/reports?type=summary&year=2026&month=9&period=%20%20',
+    );
+    const alerts = await getJson(
+      getAlertsRoute,
+      '/api/alerts?year=2026&month=9&period=%20%20',
+    );
+    const transactions = await getJson(
+      getTransactions,
+      '/api/transactions?year=2026&month=9&period=%20%20',
+    );
+    for (const response of [report, alerts, transactions]) {
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('period must be FIRST or SECOND');
+    }
+  });
+
   it('rejects a garbage period on GET /api/fortnights', async () => {
     const response = await getJson(
       getFortnights,
