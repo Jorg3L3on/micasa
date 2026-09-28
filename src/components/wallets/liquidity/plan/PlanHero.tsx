@@ -5,7 +5,7 @@ import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn, formatCurrency } from '@/lib/utils';
 import { SectionHeader } from '@/components/section-header';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { kpiMetricCardShellClass } from '@/components/finance/kpi-metric-card-styles';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { groupGapBreakdownLines } from '@/components/wallets/liquidity/plan/group-gap-lines';
@@ -29,7 +29,13 @@ const loanCountLabel = (count: number): string =>
   count === 1 ? '1 préstamo' : `${count} préstamos`;
 
 const Amount = ({ amount }: { amount: number }) => (
-  <span className={cn('shrink-0 font-sans tabular-nums', amount < 0 && 'text-emerald-600 dark:text-emerald-400')}>
+  <span
+    className={cn(
+      'shrink-0 font-sans tabular-nums',
+      amount > 0 && 'text-status-expense',
+      amount < 0 && 'text-status-income',
+    )}
+  >
     {formatCurrency(amount)}
   </span>
 );
@@ -97,7 +103,7 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
   const panelId = useId();
   const amount = Math.abs(gapAmount);
   const label = mode === 'surplus' ? PLAN_COPY.extraLabel : mode === 'shortfall' ? PLAN_COPY.gapLabel : PLAN_COPY.month;
-  const accent = mode === 'shortfall' ? 'border-l-amber-500/50' : mode === 'surplus' ? 'border-l-emerald-500/50' : 'border-l-primary/40';
+  const kpiTone = mode === 'shortfall' ? 'destructive' : mode === 'surplus' ? 'income' : 'neutral';
   const showBreakdown = mode !== 'balanced' && lines.length > 0;
 
   return (
@@ -114,8 +120,8 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
         <p className="text-sm text-muted-foreground">{PLAN_COPY.balancedBody}</p>
       ) : (
         <div className="space-y-2">
-          <div className={cn(METRIC_STRIP_CLASS, 'border-l-[3px]', accent)}>
-            <p className="overline text-muted-foreground">{label}</p>
+          <div className={kpiMetricCardShellClass(kpiTone)}>
+            <p className="eyebrow text-muted-foreground">{label}</p>
             <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
               <CurrencyTicker value={amount} />
             </p>

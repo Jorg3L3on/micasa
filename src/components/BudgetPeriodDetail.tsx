@@ -58,20 +58,20 @@ type Props = {
 function remainingToneClass(remaining: number, total: number) {
   if (remaining < 0) return 'text-destructive';
   if (total > 0 && remaining < total * 0.2) {
-    return 'text-amber-600 dark:text-amber-400';
+    return 'text-status-pending';
   }
-  return 'text-emerald-600 dark:text-emerald-400';
+  return 'text-status-income';
 }
 
 function usageProgressClass(pct: number, overspent: boolean) {
   if (overspent || pct >= 100) return 'bg-destructive';
-  if (pct >= 75) return 'bg-orange-500 dark:bg-orange-400';
-  if (pct >= 50) return 'bg-amber-400 dark:bg-amber-500';
-  return 'bg-emerald-500 dark:bg-emerald-400';
+  if (pct >= 75) return 'bg-status-pending';
+  if (pct >= 50) return 'bg-status-pending';
+  return 'bg-status-income';
 }
 
-const PERIOD_PROGRESS_CLASS = 'bg-sky-500 dark:bg-sky-400';
-const WALLET_PROGRESS_CLASS = 'bg-blue-500 dark:bg-blue-400';
+const PERIOD_PROGRESS_CLASS = 'bg-status-info';
+const WALLET_PROGRESS_CLASS = 'bg-status-info';
 
 function PeriodMetric({
   label,
@@ -88,17 +88,17 @@ function PeriodMetric({
     <div
       className={cn(
         'rounded-lg border border-border/60 bg-card px-3 py-2.5',
-        accent === 'spent' && 'bg-violet-500/[0.04]',
-        accent === 'available' && 'bg-emerald-500/[0.04]',
+        accent === 'spent' && 'bg-status-info/[0.04]',
+        accent === 'available' && 'bg-status-income/[0.04]',
       )}
     >
-      <p className="overline text-muted-foreground">
+      <p className="eyebrow text-muted-foreground">
         {label}
       </p>
       <p
         className={cn(
           'mt-1 font-sans text-sm font-bold tabular-nums',
-          accent === 'spent' && !toneClass && 'text-violet-600 dark:text-violet-400',
+          accent === 'spent' && !toneClass && 'text-status-info',
           accent === 'neutral' && 'text-foreground',
           !accent && 'text-foreground',
           toneClass,
@@ -173,9 +173,9 @@ function WalletPoolHeader({ pool }: { pool: WalletPool }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 dark:bg-blue-500/15">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-status-info/10 dark:bg-status-info/15">
             <BarChart3
-              className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400"
+              className="h-3.5 w-3.5 text-status-info"
               aria-hidden data-icon="inline-start" />
           </span>
           <div className="min-w-0">
@@ -254,7 +254,7 @@ function SharedWalletCategoryContext({
         </span>{' '}
         <span className="text-muted-foreground">del límite de categoría</span>
       </p>
-      <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+      <p className="text-xs font-medium text-status-pending">
         {adjustmentNote}
       </p>
     </div>
@@ -380,7 +380,7 @@ function AllocationExpenseList({
               {formatDisplayDate(expense.date)}
             </p>
           </div>
-          <span className="shrink-0 font-sans text-xs font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+          <span className="shrink-0 font-sans text-xs font-semibold tabular-nums text-status-info">
             {formatCurrency(expense.amount)}
           </span>
         </li>

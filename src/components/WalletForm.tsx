@@ -65,32 +65,32 @@ const TYPE_META: Record<WalletFormValues['type'], TypeMeta> = {
   CASH: {
     label: 'Efectivo',
     icon: Banknote,
-    accent: 'text-emerald-600 dark:text-emerald-400',
-    iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
+    accent: 'text-status-income',
+    iconBg: 'bg-status-income/10 dark:bg-status-income/15',
   },
   DEBIT_CARD: {
     label: 'Tarjeta de débito',
     icon: Landmark,
-    accent: 'text-blue-600 dark:text-blue-400',
-    iconBg: 'bg-blue-500/10 dark:bg-blue-500/15',
+    accent: 'text-status-info',
+    iconBg: 'bg-status-info/10 dark:bg-status-info/15',
   },
   CREDIT_CARD: {
     label: 'Tarjeta de crédito',
     icon: CreditCard,
-    accent: 'text-slate-700 dark:text-slate-300',
-    iconBg: 'bg-slate-500/10 dark:bg-slate-500/15',
+    accent: 'text-status-info',
+    iconBg: 'bg-status-info-soft',
   },
   DEPARTMENT_STORE_CARD: {
     label: 'Tienda departamental',
     icon: Store,
-    accent: 'text-amber-600 dark:text-amber-400',
-    iconBg: 'bg-amber-500/10 dark:bg-amber-500/15',
+    accent: 'text-status-pending',
+    iconBg: 'bg-status-pending/10 dark:bg-status-pending/15',
   },
   GOAL: {
     label: 'Meta',
     icon: Target,
-    accent: 'text-blue-600 dark:text-blue-400',
-    iconBg: 'bg-blue-600/10 dark:bg-blue-500/15',
+    accent: 'text-status-info',
+    iconBg: 'bg-status-info/10 dark:bg-status-info/15',
   },
 };
 

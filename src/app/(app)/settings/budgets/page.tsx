@@ -79,14 +79,8 @@ const BUDGETS_VIEW_TABS: ReadonlyArray<{ value: BudgetsView; label: string }> = 
   { value: 'templates', label: 'Plantillas' },
 ];
 
-const MOTION_TABS_LIST_CLASS = cn(
-  'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner',
-  'bg-gradient-to-br from-muted/30 via-background to-muted/10',
-  'dark:from-muted/20 dark:via-card dark:to-muted/5',
-);
 const MOTION_TABS_INDICATOR_CLASS =
   'shadow-glow ring-1 ring-primary/35';
-const MOTION_TABS_TRIGGER_CLASS = 'min-h-8 px-2.5 py-1.5 text-xs font-semibold leading-none';
 
 const BUDGET_SORT_OPTIONS: ReadonlyArray<{ value: BudgetSort; label: string }> = [
   { value: 'attention', label: 'Urgencia' },
@@ -727,7 +721,7 @@ export default function BudgetsPage() {
       {isBudgetsView ? (
         <ToolbarFiltersPortal>
           <div>
-            <p className="mb-1.5 overline text-muted-foreground">
+            <p className="mb-1.5 eyebrow text-muted-foreground">
               Orden
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Ordenar presupuestos">
@@ -754,9 +748,7 @@ export default function BudgetsPage() {
         ariaLabel="Vista de presupuestos"
         stretch
         className="mx-auto w-full max-w-[22rem]"
-        listClassName={MOTION_TABS_LIST_CLASS}
         indicatorClassName={MOTION_TABS_INDICATOR_CLASS}
-        triggerClassName={MOTION_TABS_TRIGGER_CLASS}
         options={BUDGETS_VIEW_TABS.map((tab) => ({
           value: tab.value,
           label: tab.label,
@@ -782,9 +774,7 @@ export default function BudgetsPage() {
                 ariaLabel="Estado de presupuestos"
                 stretch
                 className="w-full max-w-[22rem]"
-                listClassName={MOTION_TABS_LIST_CLASS}
                 indicatorClassName={MOTION_TABS_INDICATOR_CLASS}
-                triggerClassName={MOTION_TABS_TRIGGER_CLASS}
                 options={BUDGET_STATUS_TABS.map((tab) => ({
                   value: tab.value,
                   label: tab.label,

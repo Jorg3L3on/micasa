@@ -197,7 +197,7 @@ export const CreditCardCuotasTab = ({
           aria-label="Saldo del plan, informativo"
         >
           <div className="min-w-0">
-            <p className="overline text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               Saldo MSI
             </p>
             <p className="font-sans text-base font-bold tabular-nums sm:text-lg">
@@ -205,7 +205,7 @@ export const CreditCardCuotasTab = ({
             </p>
           </div>
           <div className="min-w-0 border-l border-border/50 pl-2 sm:pl-3">
-            <p className="overline text-muted-foreground">
+            <p className="eyebrow text-muted-foreground">
               Saldo del plan
             </p>
             <p className="font-sans text-base font-bold tabular-nums sm:text-lg">

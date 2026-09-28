@@ -245,7 +245,7 @@ export const CreditCardInstallmentPlansSection = ({
         <>
           {!embedded ? (
             <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
-              <p className="overline text-muted-foreground">
+              <p className="eyebrow text-muted-foreground">
                 Saldo del plan
               </p>
               <p className="font-sans text-2xl font-bold tabular-nums tracking-tight">
@@ -316,7 +316,7 @@ export const CreditCardInstallmentPlansSection = ({
                   </div>
                   <div className="text-right">
                     <p className="text-caption text-muted-foreground">Saldo del plan</p>
-                    <p className="font-sans text-sm font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                    <p className="font-sans text-sm font-bold tabular-nums text-status-pending">
                       {formatCurrency(item.remainingBalance)}
                     </p>
                   </div>
@@ -324,7 +324,7 @@ export const CreditCardInstallmentPlansSection = ({
 
                 <div className="mb-2 flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
                   <div
-                    className="h-full rounded-full bg-violet-500 dark:bg-violet-400"
+                    className="h-full rounded-full bg-status-info"
                     style={{
                       width: `${Math.max(item.progressPct, 2)}%`,
                     }}

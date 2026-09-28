@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { TransactionRow } from '@/types/catalog';
 import { whereExcludeCreditInstallments } from '@/lib/finance/expense-planning-scope';
+import { parseFortnightPeriod } from '@/lib/finance/report-helpers';
 import {
   buildFortnightWhereForReport,
   linkedCardPaymentExpenseIds,
@@ -68,7 +69,8 @@ export const listPlanningTransactions = async (
     } = {};
     if (month) base.month = parseInt(month, 10);
     if (year) base.year = parseInt(year, 10);
-    if (period) base.period = period as 'FIRST' | 'SECOND';
+    const parsedPeriod = parseFortnightPeriod(period);
+    if (parsedPeriod) base.period = parsedPeriod;
 
     const fortnights = await prisma.fortnight.findMany({
       where: { ...ownerFilter, ...base },
@@ -136,8 +138,7 @@ export const listPlanningTransactions = async (
     if (month && year) {
       const plannerYear = parseInt(year, 10);
       const plannerMonth = parseInt(month, 10);
-      const resolvedPeriod =
-        period === 'FIRST' || period === 'SECOND' ? period : null;
+      const resolvedPeriod = parseFortnightPeriod(period) ?? null;
       const { first, second } = await listLoanPaymentsForPlannerMonth(
         ownerFilter,
         plannerYear,

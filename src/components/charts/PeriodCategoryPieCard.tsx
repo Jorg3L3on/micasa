@@ -116,7 +116,7 @@ export const PeriodCategoryPieCard = ({
               </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pt-1">
-              <span className="overline text-muted-foreground">
+              <span className="eyebrow text-muted-foreground">
                 Total
               </span>
               <span className="mt-0.5 font-sans text-base font-bold tabular-nums text-foreground sm:text-lg">

@@ -299,11 +299,11 @@ export const WalletListCard = ({
                     </Badge>
                   ) : null}
                 </div>
-                <p className="overline text-muted-foreground">{cycleLabel ?? typeLabel}</p>
+                <p className="eyebrow text-muted-foreground">{cycleLabel ?? typeLabel}</p>
                 <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
                   {rowMetrics.map((metric) => (
                     <div key={metric.label} className="min-w-0">
-                      <dt className="overline text-muted-foreground">{metric.label}</dt>
+                      <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
                       <dd className="mt-0.5">
                         {metric.value == null ? (
                           <span className="text-caption text-muted-foreground">Sin línea</span>
@@ -359,7 +359,7 @@ export const WalletListCard = ({
               'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
               'active:scale-[0.985]',
               WALLET_LIST_CARD_SHELL_CLASS,
-              hasAlert && 'ring-2 ring-inset ring-rose-400/70',
+              hasAlert && 'ring-2 ring-inset ring-status-expense/70',
             )}
             style={cardStyle}
             data-wallet-vt={viewTransitionName}
@@ -390,7 +390,7 @@ export const WalletListCard = ({
                       >
                         {wallet.name}
                       </p>
-                      <p className="overline opacity-60">
+                      <p className="eyebrow opacity-60">
                         {cycleLabel ?? typeLabel}
                       </p>
                     </div>
@@ -412,13 +412,13 @@ export const WalletListCard = ({
 
                 <div className="space-y-3">
                   <div>
-                    <p className="overline opacity-70">
+                    <p className="eyebrow opacity-70">
                       Deuda total
                     </p>
                     <p
                       className={cn(
                         'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-rose-200',
+                        hasAlert && 'text-status-expense',
                       )}
                     >
                       {formatCurrency(amountNumber)}
@@ -427,13 +427,13 @@ export const WalletListCard = ({
 
                   <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
                     <div>
-                      <p className="overline opacity-70">
+                      <p className="eyebrow opacity-70">
                         Disponible
                       </p>
                       <p
                         className={cn(
                           'font-sans text-sm font-semibold tabular-nums leading-snug',
-                          (availableCredit ?? 0) < 0 && 'text-red-200',
+                          (availableCredit ?? 0) < 0 && 'text-status-expense',
                         )}
                       >
                         {availableCredit == null
@@ -443,7 +443,7 @@ export const WalletListCard = ({
                     </div>
                     {hasCreditLimit && effectiveLimit != null ? (
                       <div className="text-right">
-                        <p className="overline opacity-70">
+                        <p className="eyebrow opacity-70">
                           Límite
                         </p>
                         <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -460,7 +460,7 @@ export const WalletListCard = ({
                         <span
                           className={cn(
                             'font-sans tabular-nums',
-                            isOverLimit && 'text-rose-200',
+                            isOverLimit && 'text-status-expense',
                           )}
                         >
                           {isOverLimit ? 'Excedido' : `${usagePercent}%`}
@@ -477,7 +477,7 @@ export const WalletListCard = ({
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
-                            isOverLimit ? 'bg-rose-300' : 'bg-white/85',
+                            isOverLimit ? 'bg-status-expense' : 'bg-white/85',
                           )}
                           style={{ width: `${Math.min(usagePercent, 100)}%` }}
                         />
@@ -510,7 +510,7 @@ export const WalletListCard = ({
                         >
                           {wallet.name}
                         </p>
-                        <p className="overline opacity-60">
+                        <p className="eyebrow opacity-60">
                           {typeLabel}
                         </p>
                       </div>
@@ -543,13 +543,13 @@ export const WalletListCard = ({
                 */}
                 <div className="space-y-3">
                   <div>
-                    <p className="overline opacity-70">
+                    <p className="eyebrow opacity-70">
                       Saldo disponible
                     </p>
                     <p
                       className={cn(
                         'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-rose-200',
+                        hasAlert && 'text-status-expense',
                       )}
                     >
                       {formatCurrency(amountNumber)}
@@ -561,7 +561,7 @@ export const WalletListCard = ({
                     aria-hidden
                   >
                     <div>
-                      <p className="overline">
+                      <p className="eyebrow">
                         Disponible
                       </p>
                       <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -569,7 +569,7 @@ export const WalletListCard = ({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="overline">Límite</p>
+                      <p className="eyebrow">Límite</p>
                       <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         $0.00
                       </p>

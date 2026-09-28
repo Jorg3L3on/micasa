@@ -1,4 +1,5 @@
 import { formatCalendarDate } from '@/lib/calendar-dates';
+import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
 import prisma from '@/lib/prisma';
 import { FortnightPeriod, Prisma } from '@/generated/prisma/client';
 import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
@@ -37,10 +38,7 @@ export const resolveOrCreateFortnight = async (
   });
 
   const bounds = getCanonicalFortnightBounds(year, month, period);
-  const defaultLabel =
-    period === 'FIRST'
-      ? `Primera quincena - ${month}/${year}`
-      : `Segunda quincena - ${month}/${year}`;
+  const defaultLabel = formatFortnightPeriodTitle(period, month, year);
 
   if (existing) {
     const startYmd = formatCalendarDate(existing.start_date);

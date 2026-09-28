@@ -511,8 +511,8 @@ export default function ConnectionsPanel({
 
   const createBody = createdToken ? (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
-        <KeyRound className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
+      <div className="flex items-start gap-3 rounded-xl border border-status-pending/40 bg-status-pending/10 p-3">
+        <KeyRound className="mt-0.5 size-4 shrink-0 text-status-pending" aria-hidden />
         <p className="text-xs leading-relaxed text-foreground">
           Copia el token ahora. Por seguridad{' '}
           <span className="font-semibold">no se volverá a mostrar</span>: si lo
@@ -691,7 +691,7 @@ export default function ConnectionsPanel({
                         'flex size-9 shrink-0 items-center justify-center rounded-xl',
                         inactive
                           ? 'bg-muted text-muted-foreground'
-                          : 'bg-sky-500/15 text-sky-500',
+                          : 'bg-status-info/15 text-status-info',
                       )}
                     >
                       <KeyRound className="size-4" aria-hidden />
@@ -707,21 +707,21 @@ export default function ConnectionsPanel({
                         {revoked ? (
                           <Badge
                             variant="outline"
-                            className="border-red-500/40 text-caption text-red-500"
+                            className="border-status-expense/40 text-caption text-status-expense"
                           >
                             Revocada
                           </Badge>
                         ) : expired ? (
                           <Badge
                             variant="outline"
-                            className="border-amber-500/40 text-caption text-amber-500"
+                            className="border-status-pending/40 text-caption text-status-pending"
                           >
                             Expirada
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-emerald-500/40 text-caption text-emerald-500"
+                            className="border-status-income/40 text-caption text-status-income"
                           >
                             Activa
                           </Badge>
@@ -787,7 +787,7 @@ export default function ConnectionsPanel({
 
       <Card>
         <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-500">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-status-info/15 text-status-info">
             <Sparkles className="size-4" aria-hidden />
           </span>
           <div className="space-y-1">
@@ -827,7 +827,7 @@ export default function ConnectionsPanel({
                         'flex size-9 shrink-0 items-center justify-center rounded-xl',
                         inactive
                           ? 'bg-muted text-muted-foreground'
-                          : 'bg-violet-500/15 text-violet-500',
+                          : 'bg-status-info/15 text-status-info',
                       )}
                     >
                       <Sparkles className="size-4" aria-hidden />
@@ -846,21 +846,21 @@ export default function ConnectionsPanel({
                         {revoked ? (
                           <Badge
                             variant="outline"
-                            className="border-red-500/40 text-caption text-red-500"
+                            className="border-status-expense/40 text-caption text-status-expense"
                           >
                             Revocada
                           </Badge>
                         ) : expired ? (
                           <Badge
                             variant="outline"
-                            className="border-amber-500/40 text-caption text-amber-500"
+                            className="border-status-pending/40 text-caption text-status-pending"
                           >
                             Expirada
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-emerald-500/40 text-caption text-emerald-500"
+                            className="border-status-income/40 text-caption text-status-income"
                           >
                             Activa
                           </Badge>

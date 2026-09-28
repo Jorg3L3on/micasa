@@ -179,7 +179,7 @@ const WalletImportDialog = ({
                 role="alert"
                 id="wallet-import-field-errors"
               >
-                <p className="overline text-muted-foreground">
+                <p className="eyebrow text-muted-foreground">
                   Errores
                 </p>
                 <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-4 text-caption text-destructive">

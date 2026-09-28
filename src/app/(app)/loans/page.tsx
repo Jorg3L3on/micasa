@@ -446,7 +446,6 @@ export default function LoansPage() {
 
   const loadData = useCallback(async (options?: { silent?: boolean }) => {
     if (context.type === 'user' && context.id === 0) {
-      setLoading(false);
       return;
     }
     if (!options?.silent) {
@@ -1206,7 +1205,7 @@ export default function LoansPage() {
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 overline text-muted-foreground">Estado</p>
+            <p className="mb-1.5 eyebrow text-muted-foreground">Estado</p>
             <div
               className="flex flex-wrap gap-2"
               role="group"

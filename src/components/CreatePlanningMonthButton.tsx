@@ -71,7 +71,7 @@ export default function CreatePlanningMonthButton({
       className={cn(
         'h-auto min-h-9 shrink-0 justify-start gap-2.5 whitespace-normal',
         variant === 'compact'
-          ? 'rounded-xl border-border/60 bg-card py-2 pl-2 pr-3 text-left shadow-sm transition-all hover:border-violet-500/40 hover:shadow-md dark:bg-card/80'
+          ? 'rounded-xl border-border/60 bg-card py-2 pl-2 pr-3 text-left shadow-sm transition-all hover:border-status-info/40 hover:shadow-md dark:bg-card/80'
           : 'rounded-lg px-4 py-2',
       )}
     >
@@ -79,7 +79,7 @@ export default function CreatePlanningMonthButton({
         className={cn(
           'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
           variant === 'compact'
-            ? 'bg-violet-500/10 dark:bg-violet-500/15'
+            ? 'bg-status-info/10 dark:bg-status-info/15'
             : 'bg-primary-foreground/15',
         )}
         aria-hidden
@@ -88,14 +88,14 @@ export default function CreatePlanningMonthButton({
           <CalendarPlus
             className={cn(
               'h-4 w-4',
-              variant === 'compact' && 'text-violet-600 dark:text-violet-400',
+              variant === 'compact' && 'text-status-info',
             )} data-icon="inline-start" />
         )}
       </span>
       <span className="flex min-w-0 flex-col items-start gap-0.5">
         <span
           className={cn(
-            'overline leading-none',
+            'eyebrow leading-none',
             variant === 'compact'
               ? 'text-muted-foreground'
               : 'text-primary-foreground/80',

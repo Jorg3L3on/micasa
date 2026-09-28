@@ -121,6 +121,42 @@ describe('listPlanningTransactions', () => {
     );
   });
 
+  it('queries FIRST when the period query is 1', async () => {
+    await listPlanningTransactions({
+      ownerFilter,
+      year: '2026',
+      month: '6',
+      period: '1',
+      excludeCreditInstallment: false,
+    });
+
+    expect(findManyFortnight).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          period: 'FIRST',
+          month: 6,
+          year: 2026,
+        }),
+      }),
+    );
+  });
+
+  it('queries SECOND when the period query is 2', async () => {
+    await listPlanningTransactions({
+      ownerFilter,
+      year: '2026',
+      month: '6',
+      period: '2',
+      excludeCreditInstallment: false,
+    });
+
+    expect(findManyFortnight).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ period: 'SECOND' }),
+      }),
+    );
+  });
+
   it('sends the paid calendar day only when the expense is paid', async () => {
     findManyExpense.mockResolvedValue([
       {

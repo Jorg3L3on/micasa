@@ -1069,7 +1069,7 @@ export default function WalletsPage() {
                 </div>
 
                 <div>
-                  <p className="mb-1.5 overline text-muted-foreground">
+                  <p className="mb-1.5 eyebrow text-muted-foreground">
                     Atajos
                   </p>
                   <ScrollFadeChipRow
@@ -1120,7 +1120,7 @@ export default function WalletsPage() {
                 </div>
 
                 <div>
-                  <p className="mb-1.5 overline text-muted-foreground">
+                  <p className="mb-1.5 eyebrow text-muted-foreground">
                     Ámbito
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por efectivo o tarjetas">
@@ -1145,7 +1145,7 @@ export default function WalletsPage() {
                 </div>
 
                 <div>
-                  <p className="mb-1.5 overline text-muted-foreground">
+                  <p className="mb-1.5 eyebrow text-muted-foreground">
                     Estado
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por estado">
@@ -1168,7 +1168,7 @@ export default function WalletsPage() {
 
                 {isHouseContext ? (
                   <div>
-                    <p className="mb-1.5 overline text-muted-foreground">
+                    <p className="mb-1.5 eyebrow text-muted-foreground">
                       Asignado a
                     </p>
                     <ScrollFadeChipRow ariaLabel="Filtrar por asignación">
@@ -1204,7 +1204,7 @@ export default function WalletsPage() {
                 ) : null}
 
                 <div>
-                  <p className="mb-1.5 overline text-muted-foreground">
+                  <p className="mb-1.5 eyebrow text-muted-foreground">
                     Tipo
                   </p>
                   <ScrollFadeChipRow ariaLabel="Filtrar por tipo de billetera">
@@ -1227,7 +1227,7 @@ export default function WalletsPage() {
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1.5 overline text-muted-foreground">
+                    <p className="mb-1.5 eyebrow text-muted-foreground">
                       Monto registrado
                     </p>
                     <ScrollFadeChipRow ariaLabel="Filtrar por monto en libros">
@@ -1318,7 +1318,7 @@ export default function WalletsPage() {
             <SkeletonExit>
               <WalletsListSkeleton />
             </SkeletonExit>
-          ) : (
+          ) : error && wallets.length === 0 ? null : (
             <ContentEnter>
               {wallets.length === 0 ? (
                 <EmptyState message="No se encontraron billeteras" />
@@ -1326,7 +1326,9 @@ export default function WalletsPage() {
                 <div className="@container w-full min-w-0">
                   <div className="mx-auto w-full max-w-full space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
                     {displayWallets.length === 0 ? (
-                      <EmptyState message="Ninguna billetera coincide con los filtros." />
+                      error ? null : (
+                        <EmptyState message="Ninguna billetera coincide con los filtros." />
+                      )
                     ) : (
                       <WalletCardsList
                         wallets={displayWallets}

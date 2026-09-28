@@ -2,7 +2,7 @@
 
 import { ErrorBanner } from '@/components/error-banner';
 import EmptyState from '@/components/EmptyState';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PlannerPageSkeleton } from '@/components/loading/page-skeletons';
 import { useMemo, useState } from 'react';
 import { SegmentedControl } from '@/components/segmented-control';
 import { Button } from '@/components/ui/button';
@@ -114,13 +114,7 @@ export const CashPlanTab = ({
   };
 
   if (loading && !data) {
-    return (
-      <div className="space-y-3" aria-busy="true" aria-label={PLAN_COPY.loading}>
-        <Skeleton className="h-11 w-56 rounded-full" />
-        <Skeleton className="h-28 rounded-2xl" />
-        <Skeleton className="h-40 rounded-2xl" />
-      </div>
-    );
+    return <PlannerPageSkeleton />;
   }
 
   if (error && !data) {
@@ -181,7 +175,6 @@ export const CashPlanTab = ({
             value={strategy}
             onValueChange={(next) => handleStrategyChange(next as 'avalanche' | 'snowball')}
             ariaLabel={PLAN_COPY.strategyLabel}
-            listClassName="rounded-full border border-border/60 bg-muted/40 p-0.5"
             options={[
               { value: 'avalanche', label: PLAN_COPY.avalanche },
               { value: 'snowball', label: PLAN_COPY.snowball },

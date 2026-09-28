@@ -44,9 +44,9 @@ const STATUS_CLASS: Record<AnimatedBadgeStatus, string> = {
   neutral: 'border-border/50 bg-transparent text-muted-foreground',
   info: 'border-primary/40 bg-transparent text-primary',
   success:
-    'border-emerald-500/40 bg-transparent text-emerald-700 dark:text-emerald-300',
+    'border-status-income/40 bg-transparent text-status-income',
   warning:
-    'border-amber-500/40 bg-transparent text-amber-700 dark:text-amber-300',
+    'border-status-pending/40 bg-transparent text-status-pending',
   danger: 'border-destructive/40 bg-transparent text-destructive',
   loading: 'border-primary/40 bg-transparent text-primary',
 };

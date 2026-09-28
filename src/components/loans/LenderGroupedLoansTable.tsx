@@ -23,7 +23,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import {
+  kpiMetricCardShellClass,
+  type KpiMetricTone,
+} from '@/components/finance/kpi-metric-card-styles';
 import { SwipeDeleteRow } from '@/components/ui/swipe-delete-row';
 import {
   Table,
@@ -140,21 +143,20 @@ const HeaderMetric = ({
   label,
   amount,
   hint,
-  accentClassName,
+  tone,
 }: {
   label: string;
   amount: string;
   hint?: string;
-  accentClassName: string;
+  tone: KpiMetricTone;
 }) => (
   <div
     className={cn(
-      METRIC_STRIP_CLASS,
-      'flex h-full min-w-0 flex-col justify-between border-l-[3px] px-2.5 py-2',
-      accentClassName,
+      kpiMetricCardShellClass(tone),
+      'flex h-full min-w-0 flex-col justify-between',
     )}
   >
-    <p className="overline text-muted-foreground">
+    <p className="eyebrow text-muted-foreground">
       {label}
     </p>
     <p className="mt-1 font-sans text-sm font-bold tabular-nums leading-none text-foreground">
@@ -170,8 +172,8 @@ const loanIconClass = (isPayroll: boolean) =>
   cn(
     'flex h-5 w-5 shrink-0 items-center justify-center rounded-md ring-1',
     isPayroll
-      ? 'bg-blue-500/15 text-blue-700 ring-blue-500/25 dark:text-blue-300'
-      : 'bg-violet-500/15 text-violet-700 ring-violet-500/25 dark:text-violet-300',
+      ? 'bg-status-info/15 text-status-info ring-status-info/25 dark:text-status-info'
+      : 'bg-status-info/15 text-status-info ring-status-info/25 dark:text-status-info',
   );
 
 const InstitutionActions = ({
@@ -347,7 +349,7 @@ const InstitutionCard = ({
             <HeaderMetric
               label="Pendiente"
               amount={formatCurrency(remaining)}
-              accentClassName="border-l-emerald-500/50"
+              tone="destructive"
             />
             <div className="flex min-w-0 flex-col gap-2">
               {cues.overdue ? (
@@ -355,7 +357,7 @@ const InstitutionCard = ({
                   label="Vencida"
                   amount={formatCurrency(cues.overdue.amount)}
                   hint={cueHint(cues.overdue)}
-                  accentClassName="border-l-destructive/70"
+                  tone="destructive"
                 />
               ) : null}
               {cues.next ? (
@@ -367,14 +369,14 @@ const InstitutionCard = ({
                       ? payrollCommitmentHint(formatDate(cues.next.date))
                       : cueHint(cues.next)
                   }
-                  accentClassName="border-l-amber-500/50"
+                  tone="blue"
                 />
               ) : null}
               {!cues.overdue && !cues.next ? (
                 <HeaderMetric
                   label="Próximo"
                   amount="—"
-                  accentClassName="border-l-amber-500/50"
+                  tone="blue"
                 />
               ) : null}
             </div>
@@ -526,7 +528,7 @@ export const LenderGroupedLoansTable = ({
             <div className="w-[4.75rem]">
               <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
                 <div
-                  className="h-full rounded-full bg-emerald-500 dark:bg-emerald-400"
+                  className="h-full rounded-full bg-status-income"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>

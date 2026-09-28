@@ -21,7 +21,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { deleteIncomeTemplate } from '@/lib/api/incomes';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { Money } from '@/components/money';
 import type { IncomeTemplateListItem } from '@/types/catalog';
 import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 
@@ -119,9 +119,16 @@ export default function IncomeTemplatesPage() {
           />
         ),
         cell: ({ row }) =>
-          row.original.suggestedAmount != null
-            ? formatCurrency(row.original.suggestedAmount)
-            : '—',
+          row.original.suggestedAmount != null ? (
+            <Money
+              value={row.original.suggestedAmount}
+              size="row"
+              tone="positive"
+              className="block text-right"
+            />
+          ) : (
+            '—'
+          ),
       },
       {
         accessorKey: 'source',
@@ -247,6 +254,7 @@ export default function IncomeTemplatesPage() {
                   name={template.name}
                   subtitle={template.source ?? undefined}
                   amount={template.suggestedAmount}
+                  tone="positive"
                   active={template.active}
                   onEdit={() => handleEdit(template)}
                   onRequestDelete={() => openDeleteDialog(template)}

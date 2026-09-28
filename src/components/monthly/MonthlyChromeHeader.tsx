@@ -15,7 +15,6 @@ import { MonthlyMonthPicker } from '@/components/monthly/MonthlyMonthPicker';
 import {
   GLASS_TAB_ACTIVE_LABEL_CLASS,
   AURA_TAB_INDICATOR_CLASS,
-  GLASS_TAB_TRACK_CLASS,
   MONTHLY_ACCENT_TEXT_CLASS,
   MONTHLY_ICON_PILL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
@@ -95,7 +94,7 @@ export const statusGlyphClass = (tone: ProgressTone) => {
   if (tone === 'complete') {
     return cn(
       'flex size-8 shrink-0 items-center justify-center rounded-xl',
-      'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300',
+      'bg-status-income/15 text-status-income',
     );
   }
   return cn(
@@ -224,7 +223,7 @@ const FortnightProgressStatus = ({
             </span>
           </p>
           {tone === 'upcoming' ? (
-            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 overline text-muted-foreground">
+            <span className="shrink-0 rounded-full border border-border/50 px-2 py-0.5 eyebrow text-muted-foreground">
               Próxima
             </span>
           ) : (
@@ -303,13 +302,8 @@ export const MonthlyChromeHeader = ({
       stretch
       className="w-full @min-[42rem]:w-auto"
       wrapperClassName="w-full @min-[42rem]:w-auto"
-      listClassName={cn(
-        'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:w-max',
-        GLASS_TAB_TRACK_CLASS,
-      )}
       indicatorClassName={AURA_TAB_INDICATOR_CLASS}
       activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-      triggerClassName="px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
       options={[
         {
           value: 'FIRST',

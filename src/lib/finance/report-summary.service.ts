@@ -227,23 +227,23 @@ export const getReportSummary = async (
     excludeCreditInstallment &&
     year &&
     month &&
-    period &&
-    (period === 'FIRST' || period === 'SECOND')
+    parseFortnightPeriod(period)
   ) {
     const parsedYear = parseInt(year, 10);
     const parsedMonth = parseInt(month, 10);
+    const parsedPeriod = parseFortnightPeriod(period)!;
     const [cardDue, loanDue] = await Promise.all([
       sumPlannerCardDueForFortnight(
         ownerFilter,
         parsedYear,
         parsedMonth,
-        period,
+        parsedPeriod,
       ),
       sumPlannerLoanDueForFortnight(
         ownerFilter,
         parsedYear,
         parsedMonth,
-        period,
+        parsedPeriod,
       ),
     ]);
     planningCardStatementDueTotal = cardDue.total;

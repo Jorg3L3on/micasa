@@ -79,7 +79,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
 
               return (
                 <div key={section.id} className="space-y-1">
-                  <p className="px-2 overline text-muted-foreground">
+                  <p className="px-2 eyebrow text-muted-foreground">
                     {section.label}
                   </p>
                   <ul className="space-y-0.5">

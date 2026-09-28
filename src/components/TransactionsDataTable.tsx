@@ -379,12 +379,12 @@ export default function TransactionsDataTable({
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 overline text-muted-foreground">
+            <p className="mb-1.5 eyebrow text-muted-foreground">
               Tipo
             </p>
             <div
               className="flex flex-wrap gap-2"
-              role="tablist"
+              role="group"
               aria-label="Filtrar por tipo"
             >
               {TYPE_FILTER_CHIPS.map(({ value, label }) => {
@@ -404,7 +404,7 @@ export default function TransactionsDataTable({
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
-              <p className="mb-1.5 overline text-muted-foreground">
+              <p className="mb-1.5 eyebrow text-muted-foreground">
                 Mes
               </p>
               <Select
@@ -426,7 +426,7 @@ export default function TransactionsDataTable({
               </Select>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="mb-1.5 overline text-muted-foreground">
+              <p className="mb-1.5 eyebrow text-muted-foreground">
                 Año
               </p>
               <Select
@@ -451,7 +451,7 @@ export default function TransactionsDataTable({
 
           {month && year ? (
             <div>
-              <p className="mb-1.5 overline text-muted-foreground">
+              <p className="mb-1.5 eyebrow text-muted-foreground">
                 Quincena
               </p>
               <Select
@@ -473,7 +473,7 @@ export default function TransactionsDataTable({
 
           {categories.length > 0 ? (
             <div>
-              <p className="mb-1.5 overline text-muted-foreground">
+              <p className="mb-1.5 eyebrow text-muted-foreground">
                 Categoría
               </p>
               <Select
@@ -498,7 +498,7 @@ export default function TransactionsDataTable({
 
           {paymentMethods.length > 0 ? (
             <div>
-              <p className="mb-1.5 overline text-muted-foreground">
+              <p className="mb-1.5 eyebrow text-muted-foreground">
                 Método de pago
               </p>
               <Select

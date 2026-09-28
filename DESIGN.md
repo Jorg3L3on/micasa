@@ -334,7 +334,7 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
   | Section | `text-section` | 14px / 600 | `SectionHeader` (`h2`, nested `h3`) |
   | Body | `text-body` | 14px / 1.5 | Reading copy |
   | Caption | `text-caption` | 11px / 1.35 | Minimum size. Labels, hints |
-  | Overline | `overline` | 11px / 600 / uppercase | Eyebrows. One utility, not a copied class string |
+  | Eyebrow | `eyebrow` | 11px / 600 / uppercase | Eyebrows. One utility, not a copied class string |
 
 - `SectionHeader` (`src/components/section-header.tsx`) is the only section heading. `LiquidityPanelHeader` renders it. Page sections are `h2`; nested sections are `h3`. Do not add a second `h1`.
 - Truncated names keep the full string in `title` or `aria-label`. Short labels such as **Utilización** wrap; they are not clipped.

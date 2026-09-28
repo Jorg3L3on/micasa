@@ -28,7 +28,6 @@ import {
 import {
   AURA_TAB_INDICATOR_CLASS,
   GLASS_TAB_ACTIVE_LABEL_CLASS,
-  GLASS_TAB_TRACK_CLASS,
   MONTHLY_ACCENT_TEXT_CLASS,
   MONTHLY_ICON_PILL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
@@ -155,9 +154,9 @@ const LiquidityMonthPicker = ({
               <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             </span>
             {isCurrent ? (
-              <span className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 overline text-foreground">
+              <span className="inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 eyebrow text-foreground">
                 <span
-                  className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                  className="size-1.5 rounded-full bg-status-income"
                   aria-hidden
                 />
                 Actual
@@ -167,7 +166,7 @@ const LiquidityMonthPicker = ({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[17.5rem] p-2">
-        <p className="mb-2 px-1 overline text-muted-foreground">
+        <p className="mb-2 px-1 eyebrow text-muted-foreground">
           Meses en la gráfica
         </p>
         <div className="grid grid-cols-3 gap-1" role="listbox" aria-label="Meses">
@@ -185,7 +184,7 @@ const LiquidityMonthPicker = ({
                     'bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground',
                   !isSelected &&
                     isCalendarCurrent &&
-                    'border border-emerald-500/40 text-emerald-700 dark:text-emerald-300',
+                    'border border-status-income/40 text-status-income',
                 )}
                 onSelect={(event) => {
                   event.preventDefault();
@@ -259,13 +258,8 @@ const RangeToggle = ({ chartRange, onChartRangeChange }: RangeToggleProps) => {
       stretch
       className="w-full @min-[42rem]:w-auto @min-[42rem]:shrink-0"
       wrapperClassName="w-full @min-[42rem]:w-auto @min-[42rem]:min-w-60"
-      listClassName={cn(
-        'w-full gap-0.5 rounded-2xl border border-border/40 p-0.5 shadow-inner @min-[42rem]:w-max',
-        GLASS_TAB_TRACK_CLASS,
-      )}
       indicatorClassName={AURA_TAB_INDICATOR_CLASS}
       activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-      triggerClassName="px-2 py-1.5 text-xs font-semibold leading-none @min-[42rem]:px-2.5"
       options={LIQUIDITY_CHART_RANGE_OPTIONS.map((option) => ({
         value: option.value,
         label: option.label,

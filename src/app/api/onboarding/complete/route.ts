@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma';
 import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
 import { WALLET_PROVIDER_ICON_KEYS } from '@/lib/wallet-provider-icons';
 import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
+import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
 import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 
 type WalletPayload = {
@@ -89,10 +90,7 @@ function generateFortnights(startYmd: string, count: number): GeneratedFortnight
     result.push({
       startDate: bounds.start_date,
       endDate: bounds.end_date,
-      label:
-        period === 'FIRST'
-          ? `Primera quincena - ${month}/${year}`
-          : `Segunda quincena - ${month}/${year}`,
+      label: formatFortnightPeriodTitle(period, month, year),
       month,
       year,
       period,

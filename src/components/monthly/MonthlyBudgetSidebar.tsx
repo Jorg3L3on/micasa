@@ -39,7 +39,7 @@ type MonthlyBudgetSidebarProps = {
 const budgetPanelShellClass = cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-4');
 const budgetEmbeddedShellClass = cn(
   METRIC_STRIP_CLASS,
-  'border-l-[3px] border-l-violet-500/50 px-3 py-3',
+  'border-l-[3px] border-l-status-info/50 px-3 py-3',
 );
 
 const BudgetSidebarHeader = ({
@@ -188,7 +188,7 @@ function BudgetAllocationRow({
     <AuraSurface
       role="listitem"
       color={brandColor}
-      className="space-y-1.5 rounded-xl border border-border/40 bg-card/40 px-3 py-2.5"
+      className="space-y-1.5 rounded-xl bg-card/40 px-3 py-2.5"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -251,7 +251,7 @@ function BudgetAllocationRow({
             'font-sans font-semibold tabular-nums',
             overspent
               ? 'text-destructive'
-              : 'text-emerald-600 dark:text-emerald-300',
+              : 'text-status-income',
           )}
         >
           {remainingLabel}

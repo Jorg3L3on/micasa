@@ -6,6 +6,7 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { formatCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
+import { parseFortnightPeriod } from '@/lib/finance/report-helpers';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 
 export type FortnightDateBounds = { start_date: Date; end_date: Date };
@@ -162,8 +163,9 @@ export function buildFortnightWhereForReport(
   if (year) {
     w.year = parseInt(year, 10);
   }
-  if (period) {
-    w.period = period as 'FIRST' | 'SECOND';
+  const parsedPeriod = parseFortnightPeriod(period);
+  if (parsedPeriod) {
+    w.period = parsedPeriod;
   }
   return w;
 }

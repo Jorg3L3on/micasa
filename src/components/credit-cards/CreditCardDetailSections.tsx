@@ -54,12 +54,12 @@ export const CreditCardDetailTabTrigger = ({
 );
 
 const CATEGORY_BAR_COLORS = [
-  'bg-violet-500',
-  'bg-blue-500',
-  'bg-amber-500',
-  'bg-emerald-500',
-  'bg-rose-500',
-  'bg-sky-500',
+  'bg-chart-1',
+  'bg-chart-2',
+  'bg-chart-3',
+  'bg-chart-4',
+  'bg-chart-5',
+  'bg-status-expense',
 ] as const;
 
 export const CreditCardHeroZone = ({ children }: { children: ReactNode }) => (
@@ -107,7 +107,7 @@ export const CreditCardCycleSpendingBar = ({
     >
       <div className="mb-2 flex items-end justify-between gap-2">
         <div>
-          <p className="overline text-muted-foreground">
+          <p className="eyebrow text-muted-foreground">
             {cycleLabel}
           </p>
           <p className="font-sans text-xl font-bold tabular-nums tracking-tight">
@@ -198,7 +198,7 @@ export const CreditCardVisualHero = ({
           // narrow viewports when locked to aspect-[1.586/1] + overflow-hidden.
           'relative w-full overflow-hidden rounded-face border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
           !cardStyle &&
-            'border-slate-500/40 bg-linear-to-br from-slate-700 via-slate-900 to-slate-950',
+            'border-border bg-linear-to-br from-foreground to-background',
         )}
         style={cardStyle}
       >
@@ -235,7 +235,7 @@ export const CreditCardVisualHero = ({
                 >
                   {card.name}
                 </p>
-                <p className="overline opacity-60">
+                <p className="eyebrow opacity-60">
                   Corte {card.cutoff_day} · Pago {card.due_day}
                 </p>
               </div>
@@ -247,7 +247,7 @@ export const CreditCardVisualHero = ({
 
           <div className="space-y-3">
             <div>
-              <p className="overline opacity-70">
+              <p className="eyebrow opacity-70">
                 Deuda total
               </p>
               <p className="text-3xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-4xl">
@@ -257,13 +257,13 @@ export const CreditCardVisualHero = ({
 
             <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
               <div>
-                <p className="overline opacity-70">
+                <p className="eyebrow opacity-70">
                   Disponible
                 </p>
                 <p
                   className={cn(
                     'font-sans text-sm font-semibold tabular-nums leading-snug',
-                    (availableCredit ?? 0) < 0 && 'text-red-200',
+                    (availableCredit ?? 0) < 0 && 'text-status-expense',
                   )}
                 >
                   {availableCredit == null
@@ -273,7 +273,7 @@ export const CreditCardVisualHero = ({
               </div>
               {limit > 0 ? (
                 <div className="text-right">
-                  <p className="overline opacity-70">
+                  <p className="eyebrow opacity-70">
                     Límite
                   </p>
                   <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
@@ -338,20 +338,20 @@ export const CreditCardDuePaymentStrip = ({
       className={cn(
         'flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 backdrop-blur-sm',
         isMissingCorte
-          ? 'border-amber-500/35 bg-card/50'
+          ? 'border-status-pending/35 bg-card/50'
           : !hasPendingDue
           ? 'border-border/50 bg-card/50 dark:bg-card/30'
           : daysUntilDue < 0
             ? 'border-destructive/35 bg-destructive/5'
             : daysUntilDue <= 5
-              ? 'border-amber-500/35 bg-amber-500/5'
+              ? 'border-status-pending/35 bg-status-pending/5'
               : 'border-border/50 bg-card/50 dark:bg-card/30',
       )}
       role="status"
       aria-label="Toca pagar este corte"
     >
       <div className="min-w-0">
-        <p className="overline text-muted-foreground">
+        <p className="eyebrow text-muted-foreground">
           Toca pagar este corte
         </p>
         <p className="text-caption text-muted-foreground">
@@ -366,7 +366,7 @@ export const CreditCardDuePaymentStrip = ({
           <Button
             type="button"
             variant="ghost"
-            className="h-8 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 dark:text-amber-300"
+            className="h-8 px-2 text-xs font-medium text-status-pending hover:text-status-pending"
             onClick={onCapture}
             aria-label="Capturar pago del corte"
           >
@@ -389,13 +389,13 @@ export const CreditCardDuePaymentStrip = ({
           className={cn(
             'gap-1 text-caption font-medium',
             isMissingCorte
-              ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+              ? 'border-status-pending-border bg-status-pending-soft text-status-pending'
               : !hasPendingDue
-              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+              ? 'border-status-success-border bg-status-success-soft text-status-success'
               : daysUntilDue < 0
-                ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                ? 'border-status-overdue-border bg-status-overdue-soft text-status-overdue'
                 : daysUntilDue <= 5
-                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                  ? 'border-status-pending-border bg-status-pending-soft text-status-pending'
                   : 'border-border/60 text-muted-foreground',
           )}
         >
@@ -443,7 +443,7 @@ export const CreditCardCycleSummary = ({
           <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
         </Button>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
-          <p className="overline text-muted-foreground">
+          <p className="eyebrow text-muted-foreground">
             {isCurrentCycle ? 'Ciclo actual' : 'Ciclo seleccionado'}
           </p>
           <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">
@@ -498,8 +498,8 @@ export const CreditCardStatementSummaryCard = ({
   const body = (
     <Card className="overflow-hidden border-border/60">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 dark:bg-violet-500/15">
-          <Receipt className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" data-icon="inline-start" />
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-status-info/10 dark:bg-status-info/15">
+          <Receipt className="h-3.5 w-3.5 text-status-info" data-icon="inline-start" />
         </span>
         <div>
           <CardTitle className="text-sm font-semibold leading-none">
@@ -513,7 +513,7 @@ export const CreditCardStatementSummaryCard = ({
       <CardContent className="divide-y divide-border/40 p-0 pb-0">
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Receipt className="h-3 w-3 text-violet-500" data-icon="inline-start" />
+            <Receipt className="h-3 w-3 text-status-info" data-icon="inline-start" />
             Periodo
           </span>
           <span className="text-right font-medium">
@@ -522,7 +522,7 @@ export const CreditCardStatementSummaryCard = ({
         </div>
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Landmark className="h-3 w-3 text-blue-500" data-icon="inline-start" />
+            <Landmark className="h-3 w-3 text-status-info" data-icon="inline-start" />
             {statement.imported_statement_total != null
               ? 'Total importado'
               : 'Saldo del corte'}
@@ -549,13 +549,13 @@ export const CreditCardStatementSummaryCard = ({
           className={cn(
             'flex items-center justify-between px-4 py-3 text-sm font-semibold',
             isMissingCorte
-              ? 'text-amber-700 dark:text-amber-300'
+              ? 'text-status-pending'
               : !hasPendingDue
               ? 'bg-muted/30 text-foreground'
               : daysUntilDue < 0
                 ? 'bg-destructive/8 text-destructive'
                 : daysUntilDue <= 5
-                  ? 'bg-amber-500/8 text-amber-700 dark:text-amber-300'
+                  ? 'bg-status-pending/8 text-status-pending'
                   : 'bg-muted/30',
           )}
         >

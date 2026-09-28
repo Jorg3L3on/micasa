@@ -10,6 +10,10 @@ import {
   getClientApiBaseUrl,
   clientFetchFromApi,
 } from '@/lib/api/client-fetch';
+import {
+  NETWORK_ERROR_MESSAGE,
+  isBrowserNetworkError,
+} from '@/lib/user-facing-error';
 
 export type FetchLiquidityProjectionParams = {
   until?: string;
@@ -93,12 +97,24 @@ export const downloadLiquidityProjectionCsv = async (
   const qs = search.toString();
   const path = `/api/wallets/liquidity-projection?${qs}`;
   const baseUrl = getClientApiBaseUrl();
-  const res = await fetch(`${baseUrl}${path}`, { credentials: 'include' });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}${path}`, { credentials: 'include' });
+  } catch (error) {
+    if (isBrowserNetworkError(error)) {
+      throw new Error(NETWORK_ERROR_MESSAGE);
+    }
+    throw error;
+  }
   if (!res.ok) {
     let message = 'No se pudo descargar el CSV';
     try {
       const body = (await res.json()) as { error?: string };
-      if (body.error) message = body.error;
+      if (body.error) {
+        message = isBrowserNetworkError(new Error(body.error))
+          ? NETWORK_ERROR_MESSAGE
+          : body.error;
+      }
     } catch {
       /* ignore */
     }

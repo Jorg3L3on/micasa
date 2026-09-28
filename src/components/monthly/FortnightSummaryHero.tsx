@@ -5,6 +5,7 @@ import {
   type DueToPayCompositionRow,
 } from '@/components/monthly/fortnight-summary-header';
 import { getFortnightCommitmentBar } from '@/components/monthly/fortnight-income-commitment';
+import { kpiMetricCardShellClass, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { AuraSurface } from '@/components/aura/aura-surface';
 import { AURA_TONE_HEX, type AuraTone } from '@/lib/ui/aura-palette';
@@ -50,10 +51,10 @@ const remainderToneClass: Record<
   ReturnType<typeof getFortnightRemainderCopy>['tone'],
   string
 > = {
-  surplus: 'text-emerald-600 dark:text-emerald-400',
-  shortfall: 'text-destructive',
+  surplus: 'text-status-income',
+  shortfall: 'text-status-expense',
   even: 'text-foreground',
-  gap: 'text-amber-700 dark:text-amber-300',
+  gap: 'text-status-pending',
 };
 
 const commitmentCaptionClass: Record<
@@ -61,8 +62,8 @@ const commitmentCaptionClass: Record<
   string
 > = {
   ok: 'text-muted-foreground',
-  warning: 'text-amber-700 dark:text-amber-400',
-  danger: 'text-destructive',
+  warning: 'text-status-pending',
+  danger: 'text-status-expense',
 };
 
 const ratioToPercent = (ratio: number) => `${Math.max(0, ratio).toFixed(4)}%`;
@@ -138,19 +139,19 @@ const CommitmentBar = ({
         >
           {paidPercent > 0.0001 ? (
             <div
-              className="h-full bg-emerald-500 transition-[width] duration-500 dark:bg-emerald-400"
+              className="h-full bg-status-success transition-[width] duration-500"
               style={{ width: ratioToPercent(paidPercent) }}
             />
           ) : null}
           {pendingPercent > 0.0001 ? (
             <div
-              className="h-full bg-amber-400 transition-[width] duration-500 dark:bg-amber-500"
+              className="h-full bg-status-pending transition-[width] duration-500"
               style={{ width: ratioToPercent(pendingPercent) }}
             />
           ) : null}
           {budgetPercent > 0.0001 ? (
             <div
-              className="h-full bg-violet-500 transition-[width] duration-500 dark:bg-violet-400"
+              className="h-full bg-status-info transition-[width] duration-500"
               style={{ width: ratioToPercent(budgetPercent) }}
             />
           ) : null}
@@ -205,7 +206,7 @@ const DueToPayLabel = ({ compositionRows }: DueToPayLabelProps) => {
           sideOffset={6}
           className="max-w-[16rem] space-y-1.5 px-3 py-2 text-left"
         >
-          <p className="overline text-background/70">
+          <p className="eyebrow text-background/70">
             Qué incluye
           </p>
           <ul className="space-y-1">
@@ -231,27 +232,23 @@ type AccountMetricProps = {
   label: string;
   amount: number;
   subtitle: string;
-  auraTone: AuraTone;
+  auraTone?: AuraTone;
+  /** When set, the tile uses the shared KPI shell instead of an aura surface. */
+  kpiTone?: KpiMetricTone;
   pillClassName: string;
   icon: typeof Banknote;
   amountClassName: string;
 };
 
-/** Aura hero tile (Balance actual / Liquidez actual); reused by Liquidez month metrics. */
-export const AccountMetric = ({
+const AccountMetricBody = ({
   label,
   amount,
   subtitle,
-  auraTone,
   pillClassName,
   icon: Icon,
   amountClassName,
 }: AccountMetricProps) => (
-  <AuraSurface
-    color={AURA_TONE_HEX[auraTone]}
-    animated
-    className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
-  >
+  <>
     <div className="mb-1.5 flex items-center gap-1.5">
       <span
         className={cn(
@@ -261,7 +258,7 @@ export const AccountMetric = ({
       >
         <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
       </span>
-      <span className="overline text-muted-foreground">
+      <span className="eyebrow text-muted-foreground">
         {label}
       </span>
     </div>
@@ -274,8 +271,29 @@ export const AccountMetric = ({
     <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
       {subtitle}
     </p>
-  </AuraSurface>
+  </>
 );
+
+/** Aura hero tile (Balance actual / Liquidez actual); reused by Liquidez month metrics. */
+export const AccountMetric = (props: AccountMetricProps) => {
+  if (props.kpiTone) {
+    return (
+      <div className={kpiMetricCardShellClass(props.kpiTone)} role="region" aria-label={props.label}>
+        <AccountMetricBody {...props} />
+      </div>
+    );
+  }
+
+  return (
+    <AuraSurface
+      color={AURA_TONE_HEX[props.auraTone ?? 'primary']}
+      animated
+      className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
+    >
+      <AccountMetricBody {...props} />
+    </AuraSurface>
+  );
+};
 
 type LegendItemProps = {
   label: string;
@@ -296,7 +314,7 @@ const LegendItem = ({
         className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClassName)}
         aria-hidden
       />
-      <span className="overline min-w-0 truncate text-muted-foreground">
+      <span className="eyebrow min-w-0 truncate text-muted-foreground">
         {label}
       </span>
     </div>
@@ -331,10 +349,14 @@ export const FortnightAccountMetrics = ({
         amount={fundingInAccounts}
         subtitle="Efectivo + débito hoy"
         auraTone={fundingInAccounts < 0 ? 'destructive' : 'emerald'}
-        pillClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+        pillClassName={
+          fundingInAccounts < 0
+            ? 'bg-status-expense-soft text-status-expense'
+            : 'bg-status-income-soft text-status-income'
+        }
         icon={Banknote}
         amountClassName={
-          fundingInAccounts < 0 ? 'text-destructive' : 'text-foreground'
+          fundingInAccounts < 0 ? 'text-status-expense' : 'text-foreground'
         }
       />
       <AccountMetric
@@ -344,14 +366,12 @@ export const FortnightAccountMetrics = ({
         auraTone={liquidityNegative ? 'destructive' : 'emerald'}
         pillClassName={
           liquidityNegative
-            ? 'bg-destructive/10 text-destructive dark:bg-destructive/15'
-            : 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+            ? 'bg-status-expense-soft text-status-expense'
+            : 'bg-status-income-soft text-status-income'
         }
         icon={Wallet}
         amountClassName={
-          liquidityNegative
-            ? 'text-destructive'
-            : 'text-emerald-700 dark:text-emerald-300'
+          liquidityNegative ? 'text-status-expense' : 'text-status-income'
         }
       />
     </div>
@@ -507,7 +527,7 @@ export const FortnightSummaryHero = ({
             <div className="flex items-baseline justify-between gap-3">
               <span
                 className={cn(
-                  'overline',
+                  'eyebrow',
                   remainderClass,
                 )}
               >
@@ -519,7 +539,7 @@ export const FortnightSummaryHero = ({
               />
             </div>
             {copy.gapNote ? (
-              <p className="mt-1 text-caption font-medium text-amber-700 dark:text-amber-300">
+              <p className="mt-1 text-caption font-medium text-status-pending">
                 {copy.gapNote}
               </p>
             ) : null}

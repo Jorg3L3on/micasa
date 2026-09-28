@@ -180,7 +180,7 @@ export function RegisterForm({
                 )}
               />
               {apiError && (
-                <div className="text-sm text-red-500" role="alert">
+                <div className="text-sm text-status-expense" role="alert">
                   {apiError}
                   {autoSignInFailed && (
                     <p className="mt-2">

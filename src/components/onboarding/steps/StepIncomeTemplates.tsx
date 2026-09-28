@@ -207,7 +207,7 @@ export default function StepIncomeTemplates() {
                     Empresa o cliente
                   </p>
                   <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
-                    Quien paga o de donde sale (empresa, cliente).
+                    Quién paga o de dónde sale (empresa, cliente).
                   </p>
                   <Input
                     id={`income-source-${income.id}`}
@@ -229,7 +229,7 @@ export default function StepIncomeTemplates() {
                     Monto estimado
                   </p>
                   <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
-                    Aproximado por quincena; puedes ajustarlo despues.
+                    Aproximado por quincena; puedes ajustarlo después.
                   </p>
                   <div className="flex items-center gap-2">
                     <CurrencyInput
@@ -250,10 +250,10 @@ export default function StepIncomeTemplates() {
                     Billetera de depósito
                   </Label>
                   <p className="text-muted-foreground text-xs leading-snug sm:hidden">
-                    Donde cae el ingreso
+                    Dónde cae el ingreso
                   </p>
                   <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
-                    Donde entra este dinero al cobrarlo.
+                    Dónde entra este dinero al cobrarlo.
                   </p>
                   <Select
                     value={income.walletId || undefined}
@@ -286,7 +286,7 @@ export default function StepIncomeTemplates() {
                     Elige primera, segunda o ambas
                   </p>
                   <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
-                    Si solo cae en una quincena del mes, elige cual.
+                    Si solo cae en una quincena del mes, elige cuál.
                   </p>
                   <Select
                     value={frequency}
@@ -327,7 +327,7 @@ export default function StepIncomeTemplates() {
         + Agregar ingreso
       </Button>
       {!canContinue ? (
-        <p className="text-sm text-amber-700 dark:text-amber-400">
+        <p className="text-sm text-status-pending">
           Para continuar, agrega al menos un ingreso con nombre, monto mayor a 0
           y billetera de deposito.
         </p>

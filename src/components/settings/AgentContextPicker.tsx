@@ -88,8 +88,8 @@ export default function AgentContextPicker({
                   className={cn(
                     'flex size-8 shrink-0 items-center justify-center rounded-lg',
                     context.ownerType === 'user'
-                      ? 'bg-sky-500/15 text-sky-500'
-                      : 'bg-violet-500/15 text-violet-500',
+                      ? 'bg-status-info/15 text-status-info'
+                      : 'bg-status-info/15 text-status-info',
                   )}
                 >
                   <Icon className="size-4" aria-hidden />
