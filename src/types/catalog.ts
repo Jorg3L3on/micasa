@@ -66,6 +66,15 @@ export type TransactionRow = {
   planning_row_kind?: PlanningExpenseRowKind;
   /** Solo loan_payment: origen WALLET vs deducción nómina. */
   loan_payment_source?: 'WALLET' | 'PAYROLL_DEDUCTION';
+  /**
+   * Expense creado al liquidar una cuota desde billetera (`Expense.loan_payment_id`).
+   * Llega como `planning_row_kind: "expense"` y también se ve en Prest.
+   */
+  loan_payment_id?: number | null;
+  /**
+   * Expense del pago agrupado al prestamista (`LenderPayment.expense_id`).
+   */
+  lender_payment_id?: number | null;
   type?: 'income' | 'expense';
   is_paid: boolean;
   due_day?: number | null;

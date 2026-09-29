@@ -190,7 +190,69 @@ describe('listPlanningTransactions', () => {
       is_paid: true,
       paid_at: '2026-09-04',
       due_day: 30,
+      loan_payment_id: null,
+      lender_payment_id: null,
     });
+  });
+
+  it('keeps a settled loan expense in the feed and marks its loan link', async () => {
+    findManyExpense.mockResolvedValue([
+      {
+        id: 31,
+        description: 'Pago préstamo: Auto (Banco)',
+        amount: 1500,
+        is_paid: true,
+        payment_date: new Date('2026-09-16T12:00:00.000Z'),
+        created_at: new Date('2026-09-16T12:00:00.000Z'),
+        loan_payment_id: 22,
+        category: { name: 'Préstamos', icon: 'LANDMARK' },
+        wallet: { name: 'Débito', type: 'DEBIT_CARD' },
+        wallet_id: 4,
+        due_day: null,
+        lender_payment: null,
+      },
+      {
+        id: 32,
+        description: 'Pago a Banco',
+        amount: 800,
+        is_paid: true,
+        payment_date: new Date('2026-10-01T12:00:00.000Z'),
+        created_at: new Date('2026-10-01T12:00:00.000Z'),
+        loan_payment_id: null,
+        category: { name: 'Préstamos', icon: 'LANDMARK' },
+        wallet: { name: 'Débito', type: 'DEBIT_CARD' },
+        wallet_id: 4,
+        due_day: null,
+        lender_payment: { id: 70 },
+      },
+    ]);
+
+    const rows = await listPlanningTransactions({
+      ownerFilter,
+      year: '2026',
+      month: '09',
+      period: 'SECOND',
+      type: 'expense',
+      excludeCreditInstallment: true,
+      resolvedFortnightIds: [1],
+    });
+
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 31,
+          planning_row_kind: 'expense',
+          loan_payment_id: 22,
+          lender_payment_id: null,
+        }),
+        expect.objectContaining({
+          id: 32,
+          planning_row_kind: 'expense',
+          loan_payment_id: null,
+          lender_payment_id: 70,
+        }),
+      ]),
+    );
   });
 
   it('lists a planned card payment and leaves gaps out of the expense rows', async () => {

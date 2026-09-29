@@ -51,6 +51,7 @@ import {
 } from '@/lib/fortnight-calendar';
 import { formatDisplayDayMonth, todayCalendarDate } from '@/lib/calendar-dates';
 import {
+  isFortnightCardOrLoanMovement,
   shouldShowCashFlowFooter,
   sumCashFlowFooterTotal,
 } from '@/lib/finance/fortnight-expense-tab';
@@ -636,10 +637,8 @@ export default function ExpenseTable({
 
   const cashFlowSource = useMemo(() => {
     if (!cashFlowRows) return localExpenses;
-    const hiddenCardAndLoanRows = cashFlowRows.filter(
-      (row) =>
-        row.planning_row_kind === 'card_payment' ||
-        row.planning_row_kind === 'loan_payment',
+    const hiddenCardAndLoanRows = cashFlowRows.filter((row) =>
+      isFortnightCardOrLoanMovement(row),
     );
     return [...localExpenses, ...hiddenCardAndLoanRows];
   }, [cashFlowRows, localExpenses]);

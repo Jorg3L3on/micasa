@@ -155,6 +155,50 @@ describe('filterFortnightExpenseTabRows', () => {
     expect(shouldShowCashFlowFooter(view.rows.length)).toBe(true);
   });
 
+  it('hides settled loan expenses linked by loan_payment_id, not by description', () => {
+    const settledWallet = row({
+      id: 12,
+      description: 'Pago préstamo: Auto (Banco)',
+      amount: 60,
+      is_paid: true,
+      planning_row_kind: 'expense',
+      loan_payment_id: 22,
+    });
+    const settledLenderBatch = row({
+      id: 13,
+      description: 'Pago a Banco',
+      amount: 90,
+      is_paid: true,
+      planning_row_kind: 'expense',
+      lender_payment_id: 70,
+    });
+    const userNote = row({
+      id: 14,
+      description: 'Pago préstamo: anotación del usuario',
+      amount: 7,
+      planning_row_kind: 'expense',
+    });
+    const onlySettled = [settledWallet, settledLenderBatch];
+
+    expect(filterFortnightExpenseTabRows(onlySettled)).toEqual([]);
+    expect(countUnpaidFortnightExpenses(onlySettled)).toBe(0);
+    expect(shouldShowCashFlowFooter(0)).toBe(false);
+    expect(
+      visibleFortnightExpenseDateKeys(onlySettled, (item) => item.date),
+    ).toEqual([]);
+
+    const view = presentFortnightExpenseTab({
+      rows: [expense, settledWallet, userNote],
+      totals,
+    });
+    expect(view.rows.map((item) => item.id)).toEqual([1, 14]);
+    expect(view.unpaidCount).toBe(2);
+    expect(view.totals).toBe(totals);
+    expect(sumCashFlowFooterTotal(view.cashFlowRows)).toBe(167);
+    expect(sumCashFlowFooterTotal(view.rows)).toBe(107);
+    expect(countUnpaidFortnightExpenses([settledWallet, userNote])).toBe(1);
+  });
+
   it('hides the list, date sections, and footer when only card or loan payments remain', () => {
     const onlyPayments = [cardPayment, walletLoan, payrollLoan];
     const visible = filterFortnightExpenseTabRows(onlyPayments);

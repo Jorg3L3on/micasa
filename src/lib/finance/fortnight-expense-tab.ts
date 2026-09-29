@@ -5,11 +5,17 @@ import type { TransactionRow } from '@/types/catalog';
 /**
  * Gastos-tab view filter.
  * Tarjetas and Préstamos already own these rows (`card_payment` / `loan_payment`).
- * The kind is the same origin those tabs use — not the description text.
+ * A settled wallet installment stays an expense row, linked by `loan_payment_id`.
+ * A lender batch payment stays an expense row, linked by `lender_payment_id`.
+ * The description text is not used.
  */
 export type FortnightExpenseTabRow = Pick<
   TransactionRow,
-  'planning_row_kind' | 'type' | 'is_paid'
+  | 'planning_row_kind'
+  | 'type'
+  | 'is_paid'
+  | 'loan_payment_id'
+  | 'lender_payment_id'
 >;
 
 export type FortnightPlannerMoneyTotals = {
@@ -20,10 +26,15 @@ export type FortnightPlannerMoneyTotals = {
 };
 
 export const isFortnightCardOrLoanMovement = (
-  row: Pick<TransactionRow, 'planning_row_kind'>,
+  row: Pick<
+    TransactionRow,
+    'planning_row_kind' | 'loan_payment_id' | 'lender_payment_id'
+  >,
 ): boolean =>
   row.planning_row_kind === 'card_payment' ||
-  row.planning_row_kind === 'loan_payment';
+  row.planning_row_kind === 'loan_payment' ||
+  row.loan_payment_id != null ||
+  row.lender_payment_id != null;
 
 export const filterFortnightExpenseTabRows = <T extends FortnightExpenseTabRow>(
   rows: readonly T[],
