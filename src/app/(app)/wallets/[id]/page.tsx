@@ -46,6 +46,7 @@ import {
   walletMovementsWarmKey,
 } from '@/lib/ui/wallet-detail-prefetch';
 import { useFinanceContext } from '@/context/finance-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import {
   useRegisterToolbarActions,
   type ToolbarOverflowItem,
@@ -627,7 +628,7 @@ export default function WalletDetailPage() {
     primaryAction:
       wallet && canImport
         ? {
-            label: 'Agregar movimiento',
+            label: PAGE_CREATE_ACTION.walletMovement.label,
             onClick: handleOpenExpense,
             icon: registrarIcon,
           }

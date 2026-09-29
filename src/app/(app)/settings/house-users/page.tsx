@@ -18,6 +18,7 @@ import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { Trash2, UserPlus } from 'lucide-react';
 import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 
 type HouseUserItem = {
   id: number;
@@ -192,7 +193,7 @@ export default function HouseUsersPage() {
   useRegisterToolbarActions({
     primaryAction: isOwner
       ? {
-          label: 'Invitar usuario',
+          label: PAGE_CREATE_ACTION.invite.label,
           onClick: handleOpenInvite,
           icon: primaryActionIcon,
         }

@@ -90,7 +90,7 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
   },
 ];
 
-/** Link tabs in the mobile dock, in slot order (plus and Más sit between/after them). */
+/** Link tabs in the mobile dock, in slot order. Más follows them; the create "+" is the header icon. */
 export const DOCK_DESTINATION_IDS: readonly NavDestinationId[] = [
   'panel',
   'wallets',

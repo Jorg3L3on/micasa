@@ -13,6 +13,7 @@ import {
 } from '@/components/monthly/monthly-panel-shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import { useFinanceContext } from '@/context/finance-context';
 import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 import { isOwnerContextPending } from '@/lib/api/client-fetch';
@@ -77,7 +78,7 @@ export const MonthlyPanelLayout = ({
   useRegisterToolbarActions({
     primaryAction: quickCapture
       ? {
-          label: 'Agregar gasto o ingreso',
+          label: PAGE_CREATE_ACTION.expenseOrIncome.label,
           onClick: quickCapture.open,
           icon: primaryActionIcon,
         }

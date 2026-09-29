@@ -3,30 +3,15 @@
 import {
   Suspense,
   useCallback,
-  useEffect,
   useId,
-  useRef,
-  useState,
   type KeyboardEvent,
 } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  type Transition,
-} from 'framer-motion';
-import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  MoreHorizontal,
-  Plus,
-  type LucideIcon,
-} from 'lucide-react';
+import { motion, useReducedMotion, type Transition } from 'framer-motion';
+import { MoreHorizontal, type LucideIcon } from 'lucide-react';
 
 import { getDockDestinations } from '@/components/nav-destinations';
-import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
 import { useSidebar } from '@/components/ui/sidebar';
 import { DOCK_FLOAT_PADDING_CLASS } from '@/lib/ui/dock-clearance';
 import { cn } from '@/lib/utils';
@@ -38,15 +23,8 @@ const PILL_SPRING: Transition = {
   mass: 0.6,
 };
 
-const MENU_TRANSITION: Transition = {
-  type: 'spring',
-  stiffness: 420,
-  damping: 28,
-  mass: 0.7,
-};
-
 export const MOBILE_DOCK_SHELL_CLASS = cn(
-  'relative grid h-(--dock-bar-height) grid-cols-5 items-center overflow-hidden rounded-full',
+  'relative grid h-(--dock-bar-height) grid-cols-4 items-center overflow-hidden rounded-full',
   'border border-black/10 bg-background/70 shadow-panel',
   'supports-[backdrop-filter]:bg-background/45 backdrop-blur-2xl backdrop-saturate-180',
   'dark:border-white/[0.12] dark:bg-[rgb(9_14_29/0.6)] dark:supports-[backdrop-filter]:bg-[rgb(9_14_29/0.4)] dark:shadow-panel',
@@ -132,12 +110,8 @@ function MobileBottomDockInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { setOpenMobile } = useSidebar();
-  const quickCapture = useOptionalQuickCapture();
   const reduceMotion = useReducedMotion();
   const pillLayoutId = useId();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const plusRef = useRef<HTMLButtonElement>(null);
 
   const ownerParams = new URLSearchParams();
   const ownerType = searchParams.get('ownerType');
@@ -151,23 +125,8 @@ function MobileBottomDockInner() {
   const moreActive = !activeTab;
 
   const handleOpenMore = useCallback(() => {
-    setMenuOpen(false);
     setOpenMobile(true);
   }, [setOpenMobile]);
-
-  const handleToggleMenu = useCallback(() => {
-    setMenuOpen((open) => !open);
-  }, []);
-
-  const handleChooseExpense = useCallback(() => {
-    setMenuOpen(false);
-    quickCapture?.openExpense();
-  }, [quickCapture]);
-
-  const handleChooseIncome = useCallback(() => {
-    setMenuOpen(false);
-    quickCapture?.openIncome();
-  }, [quickCapture]);
 
   const handleMoreKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -175,42 +134,6 @@ function MobileBottomDockInner() {
       handleOpenMore();
     }
   };
-
-  const handlePlusKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      handleToggleMenu();
-    }
-  };
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (menuRef.current?.contains(target)) return;
-      if (plusRef.current?.contains(target)) return;
-      setMenuOpen(false);
-    };
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [menuOpen]);
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
 
   return (
     <nav
@@ -222,75 +145,6 @@ function MobileBottomDockInner() {
       )}
     >
       <div className="pointer-events-auto relative mx-auto max-w-lg">
-        <AnimatePresence>
-          {menuOpen ? (
-            <motion.div
-              ref={menuRef}
-              role="menu"
-              aria-label="Agregar gasto o ingreso"
-              initial={
-                reduceMotion
-                  ? { opacity: 1, scale: 1 }
-                  : { opacity: 0, scale: 0.92, y: 8 }
-              }
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={
-                reduceMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, scale: 0.92, y: 8 }
-              }
-              transition={reduceMotion ? { duration: 0 } : MENU_TRANSITION}
-              className={cn(
-                'absolute bottom-[calc(100%+0.75rem)] left-1/2 z-10 w-[min(17.5rem,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden rounded-2xl',
-                'border border-black/10 bg-background/90 p-1.5 shadow-panel',
-                'supports-[backdrop-filter]:bg-background/80 backdrop-blur-2xl backdrop-saturate-150',
-                'dark:border-white/10 dark:bg-[rgb(9_14_29/0.88)] dark:shadow-panel',
-              )}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                aria-label="Agregar gasto"
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                onClick={handleChooseExpense}
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 ring-1 ring-status-info/25">
-                  <ArrowDownCircle
-                    className="h-4 w-4 text-status-info"
-                    aria-hidden
-                  />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">Gasto</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Planear o marcar como pagado
-                  </span>
-                </span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                aria-label="Agregar ingreso"
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                onClick={handleChooseIncome}
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 ring-1 ring-status-info/25">
-                  <ArrowUpCircle
-                    className="h-4 w-4 text-status-info"
-                    aria-hidden
-                  />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">Ingreso</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Solo esta quincena
-                  </span>
-                </span>
-              </button>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
         <div className={MOBILE_DOCK_SHELL_CLASS}>
           <DockTabLink
             title={tabs[0].title}
@@ -308,33 +162,6 @@ function MobileBottomDockInner() {
             layoutId={pillLayoutId}
             reduceMotion={reduceMotion}
           />
-
-          <div className="relative flex min-w-0 flex-1 items-center justify-center">
-            <motion.button
-              ref={plusRef}
-              type="button"
-              aria-label="Agregar gasto o ingreso"
-              aria-expanded={menuOpen}
-              aria-haspopup="menu"
-              tabIndex={0}
-              onClick={handleToggleMenu}
-              onKeyDown={handlePlusKeyDown}
-              whileTap={reduceMotion ? undefined : { scale: 0.9 }}
-              className={cn(
-                'flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md',
-                'ring-2 ring-primary/30 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-              )}
-            >
-              <motion.span
-                animate={{ rotate: menuOpen ? 45 : 0 }}
-                transition={reduceMotion ? { duration: 0 } : PILL_SPRING}
-                className="flex"
-              >
-                <Plus className="h-6 w-6" aria-hidden />
-              </motion.span>
-            </motion.button>
-          </div>
-
           <DockTabLink
             title={tabs[2].title}
             href={hrefWithOwnerParams(tabs[2].href, queryString)}

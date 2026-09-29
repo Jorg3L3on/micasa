@@ -57,6 +57,7 @@ import {
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
 import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import AgentContextPicker, {
   formatContextLabel,
   useDefaultContextSelection,
@@ -310,7 +311,7 @@ export default function ConnectionsPanel({
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Agregar conexión',
+      label: PAGE_CREATE_ACTION.connection.label,
       onClick: handleOpenCreate,
       icon: primaryActionIcon,
     },
