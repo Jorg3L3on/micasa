@@ -3,7 +3,6 @@ import { fetchFromApi, type OwnerContext } from '@/lib/api-server';
 import FortnightHeader from '@/components/FortnightHeader';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
-import EmptyState from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/error-banner';
 import { ReceivePayrollTrigger } from '@/components/ReceivePayrollButton';
 import type { Metadata } from 'next';
@@ -20,7 +19,10 @@ import type {
   TransactionRow,
   WalletListItem,
 } from '@/types/catalog';
-import { filterFortnightExpenseTabRows } from '@/lib/finance/fortnight-expense-tab';
+import {
+  filterFortnightExpenseTabRows,
+  visibleFortnightExpenseDateKeys,
+} from '@/lib/finance/fortnight-expense-tab';
 import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
 
 type Summary = {
@@ -43,12 +45,15 @@ type Summary = {
   planningPayrollLoanDeduction?: PlannerPayrollLoanDeductionSummary | null;
 } & ReportsSummaryFundingFields;
 
+const dateKeyOf = (transaction: TransactionRow) =>
+  formatCalendarDate(new Date(transaction.date));
+
 function groupTransactionsByDate(
   transactions: TransactionRow[],
 ): Record<string, TransactionRow[]> {
   return transactions.reduce(
     (acc, transaction) => {
-      const date = formatCalendarDate(new Date(transaction.date));
+      const date = dateKeyOf(transaction);
       if (!acc[date]) {
         acc[date] = [];
       }
@@ -206,7 +211,7 @@ export default async function FortnightPage({
 
   const transactionsByDate = groupTransactionsByDate(transactions);
   const visibleByDate = groupTransactionsByDate(expenseListRows);
-  const sortedDates = Object.keys(transactionsByDate).sort();
+  const sortedDates = visibleFortnightExpenseDateKeys(transactions, dateKeyOf);
 
   const tenemos = summary.totalIncome;
   const libre = summary.balance;
@@ -274,23 +279,19 @@ export default async function FortnightPage({
 
       {/* BOTTOM SECTION - Expense Tables */}
       <div className="space-y-6">
-        {sortedDates.length === 0 ? (
-          <EmptyState message="No hay movimientos para esta quincena" />
-        ) : (
-          sortedDates.map((date) => (
-            <ExpenseTable
-              key={date}
-              date={date}
-              expenses={visibleByDate[date] ?? []}
-              cashFlowRows={transactionsByDate[date]}
-              totalIncome={tenemos}
-              year={year}
-              month={month}
-              period={period}
-              wallets={wallets}
-            />
-          ))
-        )}
+        {sortedDates.map((date) => (
+          <ExpenseTable
+            key={date}
+            date={date}
+            expenses={visibleByDate[date] ?? []}
+            cashFlowRows={transactionsByDate[date]}
+            totalIncome={tenemos}
+            year={year}
+            month={month}
+            period={period}
+            wallets={wallets}
+          />
+        ))}
       </div>
       </>
       )}

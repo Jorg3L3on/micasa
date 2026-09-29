@@ -4,7 +4,9 @@ import {
   countUnpaidFortnightExpenses,
   filterFortnightExpenseTabRows,
   presentFortnightExpenseTab,
+  shouldShowCashFlowFooter,
   sumCashFlowFooterTotal,
+  visibleFortnightExpenseDateKeys,
   type FortnightPlannerMoneyTotals,
 } from '@/lib/finance/fortnight-expense-tab';
 import type { TransactionRow } from '@/types/catalog';
@@ -150,5 +152,39 @@ describe('filterFortnightExpenseTabRows', () => {
         Number(walletLoan.amount) +
         Number(payrollLoan.amount),
     );
+    expect(shouldShowCashFlowFooter(view.rows.length)).toBe(true);
+  });
+
+  it('hides the list, date sections, and footer when only card or loan payments remain', () => {
+    const onlyPayments = [cardPayment, walletLoan, payrollLoan];
+    const visible = filterFortnightExpenseTabRows(onlyPayments);
+
+    expect(visible).toEqual([]);
+    expect(
+      visibleFortnightExpenseDateKeys(onlyPayments, (item) => item.date),
+    ).toEqual([]);
+    expect(shouldShowCashFlowFooter(visible.length)).toBe(false);
+
+    const cardOnlyDate = row({
+      id: 10,
+      date: '2026-09-16',
+      description: 'Pago tarjeta: demo',
+      amount: 80,
+      planning_row_kind: 'card_payment',
+    });
+    const expenseOnOtherDate = row({
+      id: 11,
+      date: '2026-09-14',
+      description: 'Pan',
+      amount: 12,
+    });
+
+    expect(
+      visibleFortnightExpenseDateKeys(
+        [cardOnlyDate, expenseOnOtherDate, walletLoan],
+        (item) => item.date,
+      ),
+    ).toEqual(['2026-09-14']);
+    expect(shouldShowCashFlowFooter(1)).toBe(true);
   });
 });

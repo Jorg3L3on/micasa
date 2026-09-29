@@ -6,7 +6,6 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
-import EmptyState from '@/components/EmptyState';
 import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
 import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
@@ -1061,18 +1060,7 @@ export default function FortnightColumn({
         >
 
           <TabsContent value="expenses" className="mt-0 outline-none">
-            {sortedTransactions.length === 0 ? (
-              <EmptyState
-                message="Sin gastos en esta quincena"
-                description="Empieza con un gasto para ver totales y el estado del mes."
-                action={{
-                  label: 'Agregar movimiento',
-                  onClick: () => setAddExpenseDialogOpen(true),
-                  variant: 'default',
-                }}
-              />
-            ) : null}
-            {sortedTransactions.length > 0 || transactions.length > 0 ? (
+            {sortedTransactions.length > 0 ? (
               <ExpenseTable
                 expenses={sortedTransactions}
                 cashFlowRows={expenseTab.cashFlowRows}

@@ -56,6 +56,25 @@ export const sumCashFlowFooterTotal = (
     return sum + toDisplayAmount(row.amount);
   }, 0);
 
+/** "Total efectivo/débito" only when the Gastos list has at least one visible row. */
+export const shouldShowCashFlowFooter = (visibleRowCount: number): boolean =>
+  visibleRowCount > 0;
+
+/**
+ * Dates that still have a visible Gastos row after hiding card and loan payments.
+ * A date that is only Pago TC / préstamos is omitted.
+ */
+export const visibleFortnightExpenseDateKeys = <T extends FortnightExpenseTabRow>(
+  rows: readonly T[],
+  dateKey: (row: T) => string,
+): string[] => {
+  const keys = new Set<string>();
+  for (const row of filterFortnightExpenseTabRows(rows)) {
+    keys.add(dateKey(row));
+  }
+  return [...keys].sort();
+};
+
 /**
  * List + chip for the Gastos tab.
  * `rows` is the visible list. `cashFlowRows` is the unfiltered set for the footer.

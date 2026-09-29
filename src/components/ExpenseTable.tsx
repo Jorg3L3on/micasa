@@ -50,7 +50,10 @@ import {
   getCurrentCalendarFortnightRef,
 } from '@/lib/fortnight-calendar';
 import { formatDisplayDayMonth, todayCalendarDate } from '@/lib/calendar-dates';
-import { sumCashFlowFooterTotal } from '@/lib/finance/fortnight-expense-tab';
+import {
+  shouldShowCashFlowFooter,
+  sumCashFlowFooterTotal,
+} from '@/lib/finance/fortnight-expense-tab';
 import {
   sortExpenseListRows,
   type PlannerListSortDir,
@@ -652,8 +655,7 @@ export default function ExpenseTable({
   );
   const cardGrandTotal = cardTotalPaid + cardTotalPending;
 
-  const showCashFooter =
-    localExpenses.length > 0 || (cashFlowRows?.length ?? 0) > 0;
+  const showCashFooter = shouldShowCashFlowFooter(localExpenses.length);
 
   const totalsPinned =
     pinTotalsToBottom && showCashFooter ? (
