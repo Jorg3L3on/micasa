@@ -12,8 +12,7 @@ export type CreateAction = {
 };
 
 /**
- * Page alta when one is registered; otherwise Agregar gasto o ingreso.
- * The header "+" is the only create control.
+ * Header "+": the page alta when one is registered, otherwise Agregar gasto o ingreso.
  */
 export const useCreateAction = (): CreateAction | null => {
   const { primaryAction } = useToolbarActions();

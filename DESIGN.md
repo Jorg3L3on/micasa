@@ -115,7 +115,7 @@ The quincena route stays for deep links and adopts planner chrome. It is **not**
 ### Chrome (toolbar-first)
 
 - The **app header** owns the route title, search, filters, and the **one primary action** — register them with `useRegisterToolbarActions` (`src/context/toolbar-actions-context.tsx`). Rare actions go in the header overflow (`overflow` / `useRegisterToolbarOverflow`).
-- **Create actions.** The primary action is an icon button in the header glass group: `variant="ghost"`, `size="icon"`, `TOOLBAR_GLASS_GROUP_ITEM`, `aria-label` and tooltip carry the verb (`Agregar meta`, `Ahorrar`, …). No visible label. That is the only create control, including below `md` (390px) in light and dark. The dock does not repeat it. Pages without their own alta use **Agregar gasto o ingreso**. Register the action with `useRegisterToolbarActions`; the map lives in `src/lib/ui/page-create-action.ts`.
+- **Create actions.** The header primary is an icon button in the glass group: `variant="ghost"`, `size="icon"`, `TOOLBAR_GLASS_GROUP_ITEM`. `aria-label` and the tooltip carry the verb (`Agregar meta`, `Ahorrar`, …). No visible label, in light and dark, including at 390px. Each page registers its own alta with `useRegisterToolbarActions`; the map lives in `src/lib/ui/page-create-action.ts`. Pages without their own alta use **Agregar gasto o ingreso**. The dock **+** stays a separate control and always opens **Agregar gasto o ingreso**.
 - Do **not** repeat the header title with an in-page heading. Do **not** add an in-page sticky action bar.
 - Page rhythm under the header is **`space-y-5`**.
 - The month name in the planner glass band stays — that band is the period control, not a second page title.
@@ -124,7 +124,7 @@ The quincena route stays for deep links and adopts planner chrome. It is **not**
 
 ### Mobile map
 
-- **Dock** is four slots: **Panel**, **Billeteras**, **Análisis**, **Más**. The create **+** is the header icon, so the dock does not add a second one.
+- **Dock** stays five slots: **Panel**, **Billeteras**, **Análisis**, the **plus** button, **Más**. The dock **+** opens **Agregar gasto o ingreso**.
 - The third tab is labeled **Análisis** and opens the same page as the sidebar item **Análisis**.
 - **Más** opens the sidebar sheet.
 - **Sidebar order** (canonical): Panel financiero, Billeteras, Préstamos, Análisis, Metas, Operaciones, then Configuración (Presupuestos lives under Configuración). Configuración is in that list **and** stays in the team switcher.
