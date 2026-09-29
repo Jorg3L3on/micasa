@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import {
   useRegisterToolbarActions,
   type ToolbarOverflowItem,
@@ -303,7 +304,7 @@ export default function MetaDetailPage() {
     primaryAction:
       wallet && canSaveAndArchive
         ? {
-            label: 'Ahorrar',
+            label: PAGE_CREATE_ACTION.goalSave.label,
             onClick: handleOpenIncome,
             icon: primaryActionIcon,
           }

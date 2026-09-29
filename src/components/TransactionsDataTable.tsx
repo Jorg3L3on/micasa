@@ -29,12 +29,15 @@ import { STATUS_BADGE_CLASS, STATUS_SOFT_CLASS } from '@/lib/status-tone';
 import { formatMonthPhrase } from '@/lib/calendar-dates';
 import { formatDate, cn } from '@/lib/utils';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
+import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
 import { useFinanceContext } from '@/context/finance-context';
+import { resolveTransactionCreateAction } from '@/lib/ui/page-create-action';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import type { TransactionRow } from '@/types/catalog';
 import {
   ArrowDownRight,
   ArrowUpRight,
+  Plus,
   Wallet,
 } from 'lucide-react';
 
@@ -246,6 +249,25 @@ export default function TransactionsDataTable({
   }, [router, searchParams]);
 
   const handleFiltersSelectOpenChange = useToolbarFiltersSelectOpenChange();
+  const quickCapture = useOptionalQuickCapture();
+  const transactionCreate = resolveTransactionCreateAction(type);
+  const transactionCreateIcon = useMemo(
+    () => <Plus data-icon="inline-start" />,
+    [],
+  );
+
+  const handleCreateTransaction = useCallback(() => {
+    if (!quickCapture) return;
+    if (transactionCreate.kind === 'expense') {
+      quickCapture.openExpense();
+      return;
+    }
+    if (transactionCreate.kind === 'income') {
+      quickCapture.openIncome();
+      return;
+    }
+    quickCapture.open();
+  }, [quickCapture, transactionCreate.kind]);
 
   useRegisterToolbarActions({
     search: {
@@ -258,6 +280,13 @@ export default function TransactionsDataTable({
       onOpenChange: setFiltersOpen,
       activeCount: activeFilterDimensionCount,
     },
+    primaryAction: quickCapture
+      ? {
+          label: transactionCreate.label,
+          onClick: handleCreateTransaction,
+          icon: transactionCreateIcon,
+        }
+      : null,
   });
 
   const columns = useMemo<ColumnDef<TransactionRow>[]>(

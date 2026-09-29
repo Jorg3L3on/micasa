@@ -151,10 +151,10 @@ export const CreditCardCuotasTab = ({
               type="button"
               size="sm"
               className="h-8 shrink-0 rounded-xl"
-              aria-label="Agregar compra"
+              aria-label="Agregar cuota"
             >
               <Plus data-icon="inline-start" className="h-3.5 w-3.5" aria-hidden />
-              Agregar compra
+              Agregar cuota
               <ChevronDown className="ml-0.5 h-3.5 w-3.5 opacity-70" aria-hidden />
             </Button>
           </DropdownMenuTrigger>
