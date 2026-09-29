@@ -97,7 +97,7 @@ Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914
 
 ## Logged-in UI contract
 
-Panel financiero is the reference for **tokens, glass, overlay chrome, and operate motion** — not a layout to paste onto Configuración or onto wallet and goal card faces. These decisions are locked; do not invent a second pattern. F1 and F2 live in **Glossary**, **Fintech data UI**, **Filters**, **Surfaces**, **Empty, error, and loading**, and **Chrome**. F3 screen choices (Operaciones as a mobile list, Billeteras rows vs desktop faces, Alertas, onboarding, one mobile plus) are in **Surfaces** and **Chrome**.
+Panel financiero is the reference for **tokens, glass, overlay chrome, and operate motion** — not a layout to paste onto Configuración or onto wallet and goal card faces. These decisions are locked; do not invent a second pattern. F1 and F2 live in **Glossary**, **Fintech data UI**, **Filters**, **Surfaces**, **Empty, error, and loading**, and **Chrome**. F3 screen choices (Operaciones as a mobile list, Billeteras mobile deck vs desktop faces, Alertas, onboarding, one mobile plus) are in **Surfaces** and **Chrome**.
 
 ### Page archetypes
 
@@ -379,9 +379,9 @@ Three surfaces. Radius does not change with the theme.
 | --- | --- | --- | --- |
 | Panel glass | `orion-panel-glass` / `MONTHLY_PANEL_SHELL_CLASS` | `rounded-2xl` | `--shadow-panel` (`shadow-panel`) |
 | Calm card | `.card-surface`, settings cards | `rounded-xl` | `--shadow-card` (`shadow-card`) |
-| Card face | Wallet and credit-card faces, desktop Billeteras only | `rounded-face` (1.375rem) | `--shadow-face` (`shadow-face`) |
+| Card face | Wallet and credit-card faces (Billeteras deck below `md`, grid from `md`) | `rounded-face` (1.375rem) | `--shadow-face` (`shadow-face`) |
 
-**Billeteras layout.** Below `md`, Billeteras is a list of calm rows (`bg-card`, one row per wallet). Disponible, Límite, and saldo sit in the row, and rows do not overlap. From `md` up, the same wallets are card faces in a grid. That face uses the `wow` tone: dark plastic in light and dark, like a physical card, not a theme surface (`isProviderCardDarkSurface`). Do not paint a light-theme version of the face. The Panel wallet strip may still use the theme-adaptive `aura` tone. The Prestamistas chip stays off this page.
+**Billeteras layout.** Below `md`, Billeteras is a stacked deck of `wow` card faces, not calm rows. Each collapsed card shows a strip with the provider icon, the name, the type or cycle, and the primary amount (saldo or deuda). The next card overlaps only the bottom padding of that strip, so the amount stays readable. Touch, focus, Enter, and Space expand the card to the full face (Disponible, Límite, Utilización, the masked number, the temporary-limit chip, the holder, and “Fuera de la liquidez” when they apply). The following card moves down so it does not cover the expanded face. The last card is always fully visible. The deck springs open with `SPRING_LAYOUT`; `prefers-reduced-motion` skips the spring and snaps. From `md` up, the same wallets are card faces in a grid with no overlap. That face uses the `wow` tone: dark plastic in light and dark, like a physical card, not a theme surface (`isProviderCardDarkSurface`). Do not paint a light-theme version of the face. The Panel wallet strip may still use the theme-adaptive `aura` tone. The Prestamistas chip stays off this page.
 
 **Alertas.** The bell sits in the sidebar footer. Below `md` it opens a `ResponsiveOverlay` sheet titled Alertas and closes the sidebar. From `md` it opens a menu to the right of the footer so the panel wallet strip stays visible. Severity uses status tokens (`overdue`, `pending`, `info`). Empty, error, and loading use `EmptyState`, `ErrorBanner`, and skeletons.
 
