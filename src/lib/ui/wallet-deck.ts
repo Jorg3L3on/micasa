@@ -17,6 +17,22 @@ export const WALLET_DECK_OVERLAP_CLASS = 'max-md:-mt-3';
 export const WALLET_DECK_CLEAR_CLASS = 'max-md:mt-4';
 export const WALLET_DECK_COLLAPSED_PADDING_CLASS = 'p-4 pb-6';
 
+/** Deuda, Saldo, and Disponible stay on the plastic face. */
+export const WALLET_DECK_AMOUNT_TEXT_CLASS = 'text-white';
+/** Alert pink on the mobile deck is the inset ring. */
+export const WALLET_DECK_ALERT_RING_CLASS =
+  'ring-2 ring-inset ring-status-expense/70';
+/** Alert pink on the mobile deck is also the "Excedido" label. */
+export const WALLET_DECK_EXCEEDED_TEXT_CLASS = 'text-status-expense';
+
+export type WalletDeckToneSlot = 'amount' | 'alert-ring' | 'exceeded';
+
+export const walletDeckToneClass = (slot: WalletDeckToneSlot): string => {
+  if (slot === 'alert-ring') return WALLET_DECK_ALERT_RING_CLASS;
+  if (slot === 'exceeded') return WALLET_DECK_EXCEEDED_TEXT_CLASS;
+  return WALLET_DECK_AMOUNT_TEXT_CLASS;
+};
+
 export const walletDeckLipClearsPrimaryAmount = (): boolean =>
   WALLET_DECK_LIP_PX < WALLET_DECK_COLLAPSED_BOTTOM_PADDING_PX &&
   WALLET_DECK_STRIP_CONTENT_PX > 0;

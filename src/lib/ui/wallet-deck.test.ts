@@ -9,6 +9,7 @@ import {
   buildWalletDeckSlots,
   reduceWalletDeck,
   walletDeckLipClearsPrimaryAmount,
+  walletDeckToneClass,
 } from './wallet-deck';
 
 describe('wallet deck strip', () => {
@@ -19,6 +20,21 @@ describe('wallet deck strip', () => {
     expect(WALLET_DECK_CLEAR_CLASS).toBe('max-md:mt-4');
     expect(WALLET_DECK_COLLAPSED_PADDING_CLASS).toContain('pb-6');
     expect(WALLET_DECK_STRIP_CONTENT_PX).toBeGreaterThanOrEqual(100);
+  });
+});
+
+describe('wallet deck tone', () => {
+  it('keeps Deuda, Saldo, and Disponible on the face color', () => {
+    expect(walletDeckToneClass('amount')).toBe('text-white');
+    expect(walletDeckToneClass('amount')).not.toContain('text-status-expense');
+  });
+
+  it('uses expense pink only on the alert ring and the Excedido label', () => {
+    expect(walletDeckToneClass('alert-ring')).toContain('ring-status-expense');
+    expect(walletDeckToneClass('alert-ring')).not.toContain(
+      'text-status-expense',
+    );
+    expect(walletDeckToneClass('exceeded')).toBe('text-status-expense');
   });
 });
 

@@ -42,7 +42,12 @@ import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 import { useWalletDeckCard } from '@/components/wallets/WalletCardsList';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import { WALLET_DECK_COLLAPSED_PADDING_CLASS } from '@/lib/ui/wallet-deck';
+import {
+  WALLET_DECK_ALERT_RING_CLASS,
+  WALLET_DECK_AMOUNT_TEXT_CLASS,
+  WALLET_DECK_COLLAPSED_PADDING_CLASS,
+  WALLET_DECK_EXCEEDED_TEXT_CLASS,
+} from '@/lib/ui/wallet-deck';
 import {
   navigateWithTransitionType,
   stashWalletCardVtSnapshot,
@@ -267,7 +272,7 @@ export const WalletListCard = ({
               'shadow-face',
               'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
               deck.expanded ? 'p-4 pb-5' : WALLET_DECK_COLLAPSED_PADDING_CLASS,
-              hasAlert && 'ring-2 ring-inset ring-status-expense/70',
+              hasAlert && WALLET_DECK_ALERT_RING_CLASS,
             )}
             style={cardStyle}
           >
@@ -352,7 +357,7 @@ export const WalletListCard = ({
                   <p
                     className={cn(
                       'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight',
-                      hasAlert && 'text-status-expense',
+                      WALLET_DECK_AMOUNT_TEXT_CLASS,
                     )}
                   >
                     {formatCurrency(amountNumber)}
@@ -370,7 +375,7 @@ export const WalletListCard = ({
                           <p
                             className={cn(
                               'font-sans text-sm font-semibold tabular-nums leading-snug',
-                              (availableCredit ?? 0) < 0 && 'text-status-expense',
+                              WALLET_DECK_AMOUNT_TEXT_CLASS,
                             )}
                           >
                             {availableCredit == null
@@ -396,7 +401,7 @@ export const WalletListCard = ({
                             <span
                               className={cn(
                                 'font-sans tabular-nums',
-                                isOverLimit && 'text-status-expense',
+                                isOverLimit && WALLET_DECK_EXCEEDED_TEXT_CLASS,
                               )}
                             >
                               {isOverLimit ? 'Excedido' : `${usagePercent}%`}
@@ -411,10 +416,7 @@ export const WalletListCard = ({
                             aria-valuenow={usagePercent}
                           >
                             <div
-                              className={cn(
-                                'h-full rounded-full transition-all motion-reduce:transition-none',
-                                isOverLimit ? 'bg-status-expense' : 'bg-white/85',
-                              )}
+                              className="h-full rounded-full bg-white/85 transition-all motion-reduce:transition-none"
                               style={{ width: `${Math.min(usagePercent, 100)}%` }}
                             />
                           </div>
