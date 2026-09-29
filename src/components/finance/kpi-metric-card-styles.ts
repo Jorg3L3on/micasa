@@ -26,7 +26,7 @@ export const kpiMetricLabelClass = (tone: KpiMetricTone) =>
   cn('truncate text-caption font-semibold leading-tight', labelByTone[tone]);
 
 export const kpiMetricValueClass = (tone: KpiMetricTone) => {
-  if (tone === 'destructive') return 'text-status-expense';
+  if (tone === 'destructive') return 'text-foreground';
   if (tone === 'income') return 'text-status-income';
   if (tone === 'emerald') return 'text-status-success';
   if (tone === 'neutral') return 'text-muted-foreground';

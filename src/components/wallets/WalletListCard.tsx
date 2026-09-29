@@ -415,12 +415,7 @@ export const WalletListCard = ({
                     <p className="eyebrow opacity-70">
                       Deuda total
                     </p>
-                    <p
-                      className={cn(
-                        'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-status-expense',
-                      )}
-                    >
+                    <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
                       {formatCurrency(amountNumber)}
                     </p>
                   </div>
@@ -430,12 +425,7 @@ export const WalletListCard = ({
                       <p className="eyebrow opacity-70">
                         Disponible
                       </p>
-                      <p
-                        className={cn(
-                          'font-sans text-sm font-semibold tabular-nums leading-snug',
-                          (availableCredit ?? 0) < 0 && 'text-status-expense',
-                        )}
-                      >
+                      <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         {availableCredit == null
                           ? 'Sin línea'
                           : formatCurrency(availableCredit)}
@@ -546,12 +536,7 @@ export const WalletListCard = ({
                     <p className="eyebrow opacity-70">
                       Saldo disponible
                     </p>
-                    <p
-                      className={cn(
-                        'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl',
-                        hasAlert && 'text-status-expense',
-                      )}
-                    >
+                    <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
                       {formatCurrency(amountNumber)}
                     </p>
                   </div>

@@ -59,6 +59,7 @@ import {
   type PlannerListSortDir,
   type PlannerListSortMode,
 } from '@/lib/finance/planner-list-sort';
+import { presentFortnightExpenseTab } from '@/lib/finance/fortnight-expense-tab';
 import { useFinanceContext } from '@/context/finance-context';
 import { useRegisterToolbarOverflow } from '@/context/toolbar-actions-context';
 import {
@@ -824,15 +825,32 @@ export default function FortnightColumn({
       ? summary.userIncome.filter((ui) => ui.fortnightId === fortnightId)
       : undefined;
 
-  const sortedTransactions = useMemo(
-    () => sortExpenseListRows(transactions, listSortMode, listSortDir),
-    [transactions, listSortMode, listSortDir],
+  const expenseTab = useMemo(
+    () =>
+      presentFortnightExpenseTab({
+        rows: transactions,
+        totals: {
+          pagado: summary.totalPaid,
+          pendiente: summary.totalUnpaid,
+          presupuesto: summary.planningBudgetRemaining ?? 0,
+          liquidez: summary.fundingNetVsPendingExpense ?? 0,
+        },
+      }),
+    [
+      transactions,
+      summary.totalPaid,
+      summary.totalUnpaid,
+      summary.planningBudgetRemaining,
+      summary.fundingNetVsPendingExpense,
+    ],
   );
 
-  const unpaidExpenseCount = useMemo(
-    () => transactions.filter((t) => !t.is_paid).length,
-    [transactions],
+  const sortedTransactions = useMemo(
+    () => sortExpenseListRows(expenseTab.rows, listSortMode, listSortDir),
+    [expenseTab.rows, listSortMode, listSortDir],
   );
+
+  const unpaidExpenseCount = expenseTab.unpaidCount;
 
   const summaryExpenseCount =
     summary.planningExpenseCount ?? transactions.length;

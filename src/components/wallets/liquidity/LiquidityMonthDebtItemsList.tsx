@@ -53,11 +53,8 @@ const rowAuraColor = (item: MonthDebtItem): string =>
     ? AURA_TONE_HEX.amber
     : getAuraWalletColor(item.wallet_icon_key, undefined, 'violet');
 
-const amountClass = (mode: MonthDebtListMode): string =>
-  cn(
-    'shrink-0 font-sans text-sm font-bold tabular-nums',
-    mode === 'payment' ? 'text-status-expense' : 'text-status-expense',
-  );
+const amountClass = (_mode: MonthDebtListMode): string =>
+  'shrink-0 font-sans text-sm font-bold tabular-nums text-foreground';
 
 type LiquidityMonthDebtItemsListProps = {
   items: MonthDebtItem[];

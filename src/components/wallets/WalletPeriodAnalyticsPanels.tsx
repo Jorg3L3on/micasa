@@ -379,7 +379,7 @@ export const WalletPeriodAnalyticsPanels = ({
                   <p className="truncate text-sm font-medium">
                     {analytics.largestOutflow.description}
                   </p>
-                  <p className="font-sans text-sm font-bold tabular-nums text-status-expense">
+                  <p className="font-sans text-sm font-bold tabular-nums text-foreground">
                     {formatCurrency(analytics.largestOutflow.amount)}
                   </p>
                 </div>

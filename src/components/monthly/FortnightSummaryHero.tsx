@@ -52,7 +52,7 @@ const remainderToneClass: Record<
   string
 > = {
   surplus: 'text-status-income',
-  shortfall: 'text-status-expense',
+  shortfall: 'text-foreground',
   even: 'text-foreground',
   gap: 'text-status-pending',
 };
@@ -355,9 +355,7 @@ export const FortnightAccountMetrics = ({
             : 'bg-status-income-soft text-status-income'
         }
         icon={Banknote}
-        amountClassName={
-          fundingInAccounts < 0 ? 'text-status-expense' : 'text-foreground'
-        }
+        amountClassName="text-foreground"
       />
       <AccountMetric
         label="Liquidez actual"
@@ -371,7 +369,7 @@ export const FortnightAccountMetrics = ({
         }
         icon={Wallet}
         amountClassName={
-          liquidityNegative ? 'text-status-expense' : 'text-status-income'
+          liquidityNegative ? 'text-foreground' : 'text-status-income'
         }
       />
     </div>

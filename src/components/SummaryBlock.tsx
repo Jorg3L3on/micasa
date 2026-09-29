@@ -615,7 +615,7 @@ export default function SummaryBlock({
                     </div>
                   ) : null}
                   <div className="flex items-center justify-between gap-2 border-t border-status-income/20 pt-2 text-xs font-semibold">
-                    <span className={displayFundingNet >= 0 ? 'text-status-income' : 'text-status-expense'}>
+                    <span className={displayFundingNet >= 0 ? 'text-status-income' : 'text-foreground'}>
                       = Liquidez actual
                     </span>
                     <CurrencyTicker
@@ -624,7 +624,7 @@ export default function SummaryBlock({
                         'text-xs font-semibold',
                         displayFundingNet >= 0
                           ? 'text-status-income'
-                          : 'text-status-expense',
+                          : 'text-foreground',
                       )}
                     />
                   </div>

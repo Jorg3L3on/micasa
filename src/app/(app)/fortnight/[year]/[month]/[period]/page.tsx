@@ -20,6 +20,7 @@ import type {
   TransactionRow,
   WalletListItem,
 } from '@/types/catalog';
+import { filterFortnightExpenseTabRows } from '@/lib/finance/fortnight-expense-tab';
 import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
 
 type Summary = {
@@ -198,11 +199,12 @@ export default async function FortnightPage({
     fetchFromApi<WalletListItem[]>('/api/wallets', ownerContext).catch(() => []),
   ]);
   const transactions = transactionResult.rows;
+  const expenseListRows = filterFortnightExpenseTabRows(transactions);
   const summary = summaryResult.summary;
   const movementsFailed = transactionResult.failed || summaryResult.failed;
   const fortnightId = fortnightInfo.id;
 
-  const transactionsByDate = groupTransactionsByDate(transactions);
+  const transactionsByDate = groupTransactionsByDate(expenseListRows);
   const sortedDates = Object.keys(transactionsByDate).sort();
 
   const tenemos = summary.totalIncome;

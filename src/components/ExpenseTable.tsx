@@ -688,7 +688,7 @@ export default function ExpenseTable({
             </div>
             <span
               className={cn(
-                'font-sans font-bold tabular-nums text-status-expense',
+                'font-sans font-bold tabular-nums text-foreground',
                 isCompact ? 'text-xs' : 'text-sm',
               )}
             >
@@ -1086,7 +1086,7 @@ export default function ExpenseTable({
                           No suman hasta pagar el estado de cuenta
                         </span>
                       </div>
-                      <span className="font-sans text-sm font-bold tabular-nums text-status-expense">
+                      <span className="font-sans text-sm font-bold tabular-nums text-foreground">
                         {formatCurrency(cardGrandTotal)}
                       </span>
                     </li>

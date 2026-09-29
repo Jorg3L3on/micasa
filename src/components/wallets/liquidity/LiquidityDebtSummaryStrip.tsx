@@ -65,7 +65,7 @@ export const LiquidityDebtSummaryStrip = ({
       <p className="eyebrow text-muted-foreground">
         Debes
       </p>
-      <p className="mt-1 font-sans text-xl font-bold tabular-nums text-status-expense">
+      <p className="mt-1 font-sans text-xl font-bold tabular-nums text-foreground">
         {formatCurrency(breakdown.debtTotal)}
       </p>
       {composition.length > 0 ? (
