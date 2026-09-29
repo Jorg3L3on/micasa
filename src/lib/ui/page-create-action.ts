@@ -1,5 +1,5 @@
 /**
- * Page → create-action map for the header / dock "+".
+ * Page → create-action map for the header "+".
  *
  * The control is icon-only (pre-JOR-304 glass icon). `label` is the
  * aria-label and tooltip, not visible button text.
