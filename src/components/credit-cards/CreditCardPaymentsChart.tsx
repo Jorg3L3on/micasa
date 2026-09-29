@@ -64,7 +64,7 @@ const PaymentsTooltip = ({ active, payload, label }: TooltipProps) => {
         </p>
       ) : null}
       {point.msi > 0 ? (
-        <p className="font-sans tabular-nums text-status-expense">
+        <p className="font-sans tabular-nums text-foreground">
           Compras a meses: {formatCurrency(point.msi)}
         </p>
       ) : null}

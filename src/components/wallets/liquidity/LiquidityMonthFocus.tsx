@@ -34,7 +34,7 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
         kpiTone="destructive"
         pillClassName="bg-status-expense-soft text-status-expense"
         icon={CalendarClock}
-        amountClassName="text-status-expense"
+        amountClassName="text-foreground"
       />
       <AccountMetric
         label="Adeudo al cierre"
@@ -52,7 +52,7 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
         }
         icon={Landmark}
         amountClassName={
-          outstandingTotal > 0 ? 'text-status-expense' : 'text-status-success'
+          outstandingTotal > 0 ? 'text-foreground' : 'text-status-success'
         }
       />
     </div>

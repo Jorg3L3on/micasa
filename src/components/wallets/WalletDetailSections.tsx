@@ -174,13 +174,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
             <p className="eyebrow opacity-70">
               Saldo disponible
             </p>
-            <p
-              className={cn(
-                // leading-snug: WebKit clips glyph ink at line-height:1 inside overflow-hidden
-                'break-words text-2xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-3xl',
-                isNegative && 'text-status-expense',
-              )}
-            >
+            <p className="break-words text-2xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-3xl">
               {formatCurrency(wallet.amount)}
             </p>
             {isNegative ? (

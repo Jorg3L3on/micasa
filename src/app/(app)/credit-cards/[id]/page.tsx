@@ -62,6 +62,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent } from '@/components/motion/tabs';
 import { useFinanceContext } from '@/context/finance-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import {
   useRegisterToolbarActions,
   type ToolbarOverflowItem,
@@ -675,7 +676,7 @@ export default function CreditCardDetailPage() {
   useRegisterToolbarActions({
     primaryAction: card
       ? {
-          label: 'Agregar compra',
+          label: PAGE_CREATE_ACTION.cardPurchase.label,
           onClick: handleOpenPurchase,
           icon: compraIcon,
         }

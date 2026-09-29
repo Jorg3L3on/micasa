@@ -14,6 +14,7 @@ import EmptyState from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import {
   ToolbarFiltersPortal,
   useRegisterToolbarActions,
@@ -169,7 +170,7 @@ export default function MetasPage() {
       activeCount: activeFilterDimensionCount,
     },
     primaryAction: {
-      label: 'Agregar meta',
+      label: PAGE_CREATE_ACTION.goal.label,
       onClick: openCreateDialog,
       icon: primaryActionIcon,
     },
@@ -324,7 +325,7 @@ export default function MetasPage() {
           }
           action={
             !hasSearch && statusFilter === 'active'
-              ? { label: 'Agregar meta', onClick: openCreateDialog }
+              ? { label: PAGE_CREATE_ACTION.goal.label, onClick: openCreateDialog }
               : undefined
           }
         />

@@ -145,7 +145,7 @@ export const LiquiditySpendingCategories = ({
                     <span className="text-caption tabular-nums text-muted-foreground">
                       {sharePercent}%
                     </span>
-                    <span className="money-negative font-sans text-sm font-bold tabular-nums">
+                    <span className="font-sans text-sm font-bold tabular-nums text-foreground">
                       {formatCurrency(row.total)}
                     </span>
                   </div>

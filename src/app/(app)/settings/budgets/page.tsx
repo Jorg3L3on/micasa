@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SegmentedControl } from '@/components/segmented-control';
 import { useFinanceContext } from '@/context/finance-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import {
   ToolbarFiltersPortal,
   useRegisterToolbarActions,
@@ -464,7 +465,7 @@ export default function BudgetsPage() {
         }
       : null,
     primaryAction: {
-      label: 'Agregar presupuesto',
+      label: PAGE_CREATE_ACTION.budget.label,
       onClick: handleOpenCreate,
       icon: primaryActionIcon,
     },

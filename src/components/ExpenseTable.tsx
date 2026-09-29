@@ -51,6 +51,11 @@ import {
 } from '@/lib/fortnight-calendar';
 import { formatDisplayDayMonth, todayCalendarDate } from '@/lib/calendar-dates';
 import {
+  isFortnightCardOrLoanMovement,
+  shouldShowCashFlowFooter,
+  sumCashFlowFooterTotal,
+} from '@/lib/finance/fortnight-expense-tab';
+import {
   sortExpenseListRows,
   type PlannerListSortDir,
   type PlannerListSortMode,
@@ -242,6 +247,11 @@ export type ExpenseTableDensity = 'comfortable' | 'compact';
 type ExpenseTableProps = {
   date?: string;
   expenses: TransactionRow[];
+  /**
+   * Unfiltered rows for "Total efectivo/débito".
+   * The list uses `expenses`; the footer still includes card and loan movements.
+   */
+  cashFlowRows?: readonly TransactionRow[];
   onExpenseUpdate?: (expenseId: number, isPaid: boolean) => void;
   totalIncome?: number;
   year?: number;
@@ -259,6 +269,7 @@ type ExpenseTableProps = {
 export default function ExpenseTable({
   date,
   expenses,
+  cashFlowRows,
   onExpenseUpdate,
   year,
   month,
@@ -621,21 +632,18 @@ export default function ExpenseTable({
   const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
   const paidExpenses = localExpenses.filter((e) => e.is_paid);
 
-  const cashFlowPaid = paidExpenses.filter((e) => !isCardChargeExpenseRow(e));
-  const cashFlowPending = pendingExpenses.filter((e) => !isCardChargeExpenseRow(e));
   const cardPaid = paidExpenses.filter((e) => isCardChargeExpenseRow(e));
   const cardPending = pendingExpenses.filter((e) => isCardChargeExpenseRow(e));
 
-  const totalPaid = cashFlowPaid.reduce(
-    (sum, e) => sum + toDisplayAmount(e.amount),
-    0,
-  );
-  const totalPending = cashFlowPending.reduce(
-    (sum, e) => sum + toDisplayAmount(e.amount),
-    0,
-  );
+  const cashFlowSource = useMemo(() => {
+    if (!cashFlowRows) return localExpenses;
+    const hiddenCardAndLoanRows = cashFlowRows.filter((row) =>
+      isFortnightCardOrLoanMovement(row),
+    );
+    return [...localExpenses, ...hiddenCardAndLoanRows];
+  }, [cashFlowRows, localExpenses]);
 
-  const total = totalPaid + totalPending;
+  const total = sumCashFlowFooterTotal(cashFlowSource);
   const cardTotalPaid = cardPaid.reduce(
     (sum, e) => sum + toDisplayAmount(e.amount),
     0,
@@ -646,8 +654,10 @@ export default function ExpenseTable({
   );
   const cardGrandTotal = cardTotalPaid + cardTotalPending;
 
+  const showCashFooter = shouldShowCashFlowFooter(localExpenses.length);
+
   const totalsPinned =
-    pinTotalsToBottom && localExpenses.length > 0 ? (
+    pinTotalsToBottom && showCashFooter ? (
       <div
         className="shrink-0 space-y-1.5 border-t border-border/60 bg-background px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
         role="region"
@@ -688,7 +698,7 @@ export default function ExpenseTable({
             </div>
             <span
               className={cn(
-                'font-sans font-bold tabular-nums text-status-expense',
+                'font-sans font-bold tabular-nums text-foreground',
                 isCompact ? 'text-xs' : 'text-sm',
               )}
             >
@@ -718,9 +728,11 @@ export default function ExpenseTable({
           )}
         >
           {localExpenses.length === 0 ? (
-            <li>
-              <EmptyState message="Sin gastos" className="py-8" />
-            </li>
+            cashFlowRows == null ? (
+              <li>
+                <EmptyState message="Sin gastos" className="py-8" />
+              </li>
+            ) : null
           ) : (
             <>
               {localExpenses.map((e) => {
@@ -1056,45 +1068,45 @@ export default function ExpenseTable({
                   </li>
                 );
               })}
-              {!pinTotalsToBottom ? (
-                <>
-                  <li
-                    className={cn(
-                      METRIC_STRIP_CLASS,
-                      'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px] border-l-status-success/50',
-                    )}
-                  >
-                    <span className="eyebrow text-muted-foreground">
-                      Total efectivo/débito
-                    </span>
-                    <span className="font-sans text-base font-bold tabular-nums text-foreground">
-                      {formatCurrency(total)}
-                    </span>
-                  </li>
-                  {cardGrandTotal > 0 ? (
-                    <li
-                      className={cn(
-                        METRIC_STRIP_CLASS,
-                        'flex list-none items-center justify-between gap-2 border-l-[3px] border-l-status-expense',
-                      )}
-                    >
-                      <div className="flex min-w-0 flex-col">
-                        <span className="eyebrow text-status-expense">
-                          Cargos a tarjeta
-                        </span>
-                        <span className="text-caption text-muted-foreground">
-                          No suman hasta pagar el estado de cuenta
-                        </span>
-                      </div>
-                      <span className="font-sans text-sm font-bold tabular-nums text-status-expense">
-                        {formatCurrency(cardGrandTotal)}
-                      </span>
-                    </li>
-                  ) : null}
-                </>
-              ) : null}
             </>
           )}
+          {!pinTotalsToBottom && showCashFooter ? (
+            <>
+              <li
+                className={cn(
+                  METRIC_STRIP_CLASS,
+                  'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px] border-l-status-success/50',
+                )}
+              >
+                <span className="eyebrow text-muted-foreground">
+                  Total efectivo/débito
+                </span>
+                <span className="font-sans text-base font-bold tabular-nums text-foreground">
+                  {formatCurrency(total)}
+                </span>
+              </li>
+              {cardGrandTotal > 0 ? (
+                <li
+                  className={cn(
+                    METRIC_STRIP_CLASS,
+                    'flex list-none items-center justify-between gap-2 border-l-[3px] border-l-status-expense',
+                  )}
+                >
+                  <div className="flex min-w-0 flex-col">
+                    <span className="eyebrow text-status-expense">
+                      Cargos a tarjeta
+                    </span>
+                    <span className="text-caption text-muted-foreground">
+                      No suman hasta pagar el estado de cuenta
+                    </span>
+                  </div>
+                  <span className="font-sans text-sm font-bold tabular-nums text-foreground">
+                    {formatCurrency(cardGrandTotal)}
+                  </span>
+                </li>
+              ) : null}
+            </>
+          ) : null}
         </ul>
         {totalsPinned}
       </div>

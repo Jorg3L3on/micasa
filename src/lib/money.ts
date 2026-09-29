@@ -14,13 +14,13 @@ export type MoneyTone = 'auto' | 'neutral' | 'positive' | 'negative';
 export type ResolvedMoneyTone = Exclude<MoneyTone, 'auto'>;
 
 /**
- * One mapping from tone to semantic status tokens (JOR-310).
- * Positive money is income; negative money is expense.
+ * Positive money uses the income token. Negative money stays foreground;
+ * the minus sign is the only negative marker.
  */
 export const MONEY_TONE_CLASS: Record<ResolvedMoneyTone, string> = {
   neutral: 'text-foreground',
   positive: 'text-status-income',
-  negative: 'text-status-expense',
+  negative: 'text-foreground',
 };
 
 /** Weight and size. Sans + tabular figures — never the mono face. */

@@ -572,11 +572,7 @@ const WalletBalanceStrip = ({
                           value={effectiveAmount}
                           className={cn(
                             'text-body font-black sm:text-sm',
-                            effectiveAmount < 0
-                              ? 'text-status-expense'
-                              : onDarkSurface
-                                ? 'text-white'
-                                : 'text-foreground',
+                            onDarkSurface ? 'text-white' : 'text-foreground',
                           )}
                         />
                       </p>

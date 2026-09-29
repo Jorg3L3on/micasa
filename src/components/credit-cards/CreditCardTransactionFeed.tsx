@@ -329,9 +329,7 @@ export const CreditCardRecentMovements = ({
                     <span
                       className={cn(
                         'font-sans text-caption font-semibold tabular-nums',
-                        dayNet >= 0
-                          ? 'text-status-income'
-                          : 'text-status-expense',
+                        dayNet >= 0 ? 'text-status-income' : 'text-foreground',
                       )}
                     >
                       {formatSignedCurrency(dayNet)}

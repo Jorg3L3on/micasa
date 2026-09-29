@@ -24,6 +24,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Money } from '@/components/money';
 import type { IncomeTemplateListItem } from '@/types/catalog';
 import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 
 export default function IncomeTemplatesPage() {
   const { context } = useFinanceContext();
@@ -217,7 +218,7 @@ export default function IncomeTemplatesPage() {
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Agregar plantilla de ingreso',
+      label: PAGE_CREATE_ACTION.incomeTemplate.label,
       onClick: handleCreateTemplate,
       icon: primaryActionIcon,
     },

@@ -6,7 +6,6 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
-import EmptyState from '@/components/EmptyState';
 import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
 import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
@@ -59,6 +58,7 @@ import {
   type PlannerListSortDir,
   type PlannerListSortMode,
 } from '@/lib/finance/planner-list-sort';
+import { presentFortnightExpenseTab } from '@/lib/finance/fortnight-expense-tab';
 import { useFinanceContext } from '@/context/finance-context';
 import { useRegisterToolbarOverflow } from '@/context/toolbar-actions-context';
 import {
@@ -824,15 +824,32 @@ export default function FortnightColumn({
       ? summary.userIncome.filter((ui) => ui.fortnightId === fortnightId)
       : undefined;
 
-  const sortedTransactions = useMemo(
-    () => sortExpenseListRows(transactions, listSortMode, listSortDir),
-    [transactions, listSortMode, listSortDir],
+  const expenseTab = useMemo(
+    () =>
+      presentFortnightExpenseTab({
+        rows: transactions,
+        totals: {
+          pagado: summary.totalPaid,
+          pendiente: summary.totalUnpaid,
+          presupuesto: summary.planningBudgetRemaining ?? 0,
+          liquidez: summary.fundingNetVsPendingExpense ?? 0,
+        },
+      }),
+    [
+      transactions,
+      summary.totalPaid,
+      summary.totalUnpaid,
+      summary.planningBudgetRemaining,
+      summary.fundingNetVsPendingExpense,
+    ],
   );
 
-  const unpaidExpenseCount = useMemo(
-    () => transactions.filter((t) => !t.is_paid).length,
-    [transactions],
+  const sortedTransactions = useMemo(
+    () => sortExpenseListRows(expenseTab.rows, listSortMode, listSortDir),
+    [expenseTab.rows, listSortMode, listSortDir],
   );
+
+  const unpaidExpenseCount = expenseTab.unpaidCount;
 
   const summaryExpenseCount =
     summary.planningExpenseCount ?? transactions.length;
@@ -840,7 +857,8 @@ export default function FortnightColumn({
     summary.planningPaidExpenseCount ??
     transactions.filter((t) => t.is_paid).length;
   const summaryUnpaidExpenseCount =
-    summary.planningUnpaidExpenseCount ?? unpaidExpenseCount;
+    summary.planningUnpaidExpenseCount ??
+    transactions.filter((t) => !t.is_paid).length;
 
   const pendingCardPaymentsCount = useMemo(
     () =>
@@ -1042,19 +1060,10 @@ export default function FortnightColumn({
         >
 
           <TabsContent value="expenses" className="mt-0 outline-none">
-            {sortedTransactions.length === 0 ? (
-              <EmptyState
-                message="Sin gastos en esta quincena"
-                description="Empieza con un gasto para ver totales y el estado del mes."
-                action={{
-                  label: 'Agregar movimiento',
-                  onClick: () => setAddExpenseDialogOpen(true),
-                  variant: 'default',
-                }}
-              />
-            ) : (
+            {sortedTransactions.length > 0 ? (
               <ExpenseTable
                 expenses={sortedTransactions}
+                cashFlowRows={expenseTab.cashFlowRows}
                 onExpenseUpdate={handleExpenseUpdate}
                 totalIncome={tenemos}
                 year={year}
@@ -1066,7 +1075,7 @@ export default function FortnightColumn({
                 sortMode={listSortMode}
                 sortDir={listSortDir}
               />
-            )}
+            ) : null}
           </TabsContent>
 
           <TabsContent value="cards" className="mt-0 outline-none">
