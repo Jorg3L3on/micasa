@@ -204,7 +204,8 @@ export default async function FortnightPage({
   const movementsFailed = transactionResult.failed || summaryResult.failed;
   const fortnightId = fortnightInfo.id;
 
-  const transactionsByDate = groupTransactionsByDate(expenseListRows);
+  const transactionsByDate = groupTransactionsByDate(transactions);
+  const visibleByDate = groupTransactionsByDate(expenseListRows);
   const sortedDates = Object.keys(transactionsByDate).sort();
 
   const tenemos = summary.totalIncome;
@@ -280,7 +281,8 @@ export default async function FortnightPage({
             <ExpenseTable
               key={date}
               date={date}
-              expenses={transactionsByDate[date]}
+              expenses={visibleByDate[date] ?? []}
+              cashFlowRows={transactionsByDate[date]}
               totalIncome={tenemos}
               year={year}
               month={month}

@@ -858,7 +858,8 @@ export default function FortnightColumn({
     summary.planningPaidExpenseCount ??
     transactions.filter((t) => t.is_paid).length;
   const summaryUnpaidExpenseCount =
-    summary.planningUnpaidExpenseCount ?? unpaidExpenseCount;
+    summary.planningUnpaidExpenseCount ??
+    transactions.filter((t) => !t.is_paid).length;
 
   const pendingCardPaymentsCount = useMemo(
     () =>
@@ -1070,9 +1071,11 @@ export default function FortnightColumn({
                   variant: 'default',
                 }}
               />
-            ) : (
+            ) : null}
+            {sortedTransactions.length > 0 || transactions.length > 0 ? (
               <ExpenseTable
                 expenses={sortedTransactions}
+                cashFlowRows={expenseTab.cashFlowRows}
                 onExpenseUpdate={handleExpenseUpdate}
                 totalIncome={tenemos}
                 year={year}
@@ -1084,7 +1087,7 @@ export default function FortnightColumn({
                 sortMode={listSortMode}
                 sortDir={listSortDir}
               />
-            )}
+            ) : null}
           </TabsContent>
 
           <TabsContent value="cards" className="mt-0 outline-none">
