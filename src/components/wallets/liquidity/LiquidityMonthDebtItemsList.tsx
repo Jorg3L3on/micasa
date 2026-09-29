@@ -53,11 +53,8 @@ const rowAuraColor = (item: MonthDebtItem): string =>
     ? AURA_TONE_HEX.amber
     : getAuraWalletColor(item.wallet_icon_key, undefined, 'violet');
 
-const amountClass = (mode: MonthDebtListMode): string =>
-  cn(
-    'shrink-0 font-sans text-sm font-bold tabular-nums',
-    mode === 'payment' ? 'text-status-expense' : 'text-status-expense',
-  );
+const amountClass =
+  'shrink-0 font-sans text-sm font-bold tabular-nums text-foreground';
 
 type LiquidityMonthDebtItemsListProps = {
   items: MonthDebtItem[];
@@ -132,7 +129,7 @@ export const LiquidityMonthDebtItemsList = ({
               {item.subtitle ? <span className="truncate">{item.subtitle}</span> : null}
             </p>
           </div>
-          <p className={amountClass(mode)}>{formatCurrency(item.displayAmount)}</p>
+          <p className={amountClass}>{formatCurrency(item.displayAmount)}</p>
         </li>
       ))}
       <li
@@ -145,7 +142,7 @@ export const LiquidityMonthDebtItemsList = ({
         <span className="eyebrow text-muted-foreground">
           {resolvedTotalLabel}
         </span>
-        <span className={cn(amountClass(mode), 'text-base')}>{formatCurrency(total)}</span>
+        <span className={cn(amountClass, 'text-base')}>{formatCurrency(total)}</span>
       </li>
     </ul>
   );

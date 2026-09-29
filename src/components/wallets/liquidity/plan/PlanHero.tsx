@@ -32,7 +32,6 @@ const Amount = ({ amount }: { amount: number }) => (
   <span
     className={cn(
       'shrink-0 font-sans tabular-nums',
-      amount > 0 && 'text-status-expense',
       amount < 0 && 'text-status-income',
     )}
   >

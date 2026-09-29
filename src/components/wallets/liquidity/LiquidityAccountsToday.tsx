@@ -110,7 +110,7 @@ const UtilizationBar = ({
 
 const debtToneClass = (view: AccountTodayView): string =>
   view.kind === 'loan' || view.figures.isCredit
-    ? 'text-status-expense'
+    ? 'text-foreground'
     : 'text-muted-foreground';
 
 const breakdownKeyForRow = (row: AccountTodayRow): string =>

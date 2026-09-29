@@ -100,6 +100,7 @@ export const listPlanningTransactions = async (
     include: {
       category: { select: { name: true, icon: true } },
       wallet: { select: { name: true, type: true } },
+      lender_payment: { select: { id: true } },
     },
     orderBy: { created_at: 'desc' },
   });
@@ -206,6 +207,8 @@ export const listPlanningTransactions = async (
         wallet_id: expense.wallet_id ?? null,
         wallet_type: expense.wallet?.type ?? null,
         planning_row_kind: 'expense' as const,
+        loan_payment_id: expense.loan_payment_id ?? null,
+        lender_payment_id: expense.lender_payment?.id ?? null,
         type: 'expense' as const,
         is_paid: expense.is_paid,
         paid_at: paidAt,

@@ -46,10 +46,10 @@ export const WalletAmountTrendIndicator = ({
   const amountColorClass = onGradient
     ? isPositive
       ? 'text-status-income'
-      : 'text-status-expense'
+      : 'text-foreground'
     : isPositive
       ? 'text-status-success'
-      : 'text-status-expense';
+      : 'text-foreground';
   const labelColorClass = onGradient
     ? 'text-white/70'
     : 'text-muted-foreground';

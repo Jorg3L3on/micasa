@@ -24,7 +24,7 @@ describe('resolveMoneyTone', () => {
     expect(resolveMoneyTone(1)).toBe('positive');
     expect(resolveMoneyTone(0)).toBe('neutral');
     expect(resolveMoneyTone(-20, 'neutral')).toBe('neutral');
-    expect(MONEY_TONE_CLASS.negative).toBe('text-status-expense');
+    expect(MONEY_TONE_CLASS.negative).toBe('text-foreground');
     expect(MONEY_TONE_CLASS.positive).toBe('text-status-income');
   });
 });
