@@ -274,7 +274,7 @@ export const WalletListCard = ({
             {deck.collapsible ? (
               <button
                 type="button"
-                className="absolute inset-0 z-0 rounded-face focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/90"
+                className="peer absolute inset-0 z-0 rounded-face focus-visible:outline-none"
                 aria-expanded={deck.expanded}
               aria-label={
                 deck.expanded
@@ -294,7 +294,7 @@ export const WalletListCard = ({
                 onClick={handleOpenDetail}
                 onPointerEnter={handlePrefetchDetail}
                 onFocus={handlePrefetchDetail}
-                className="absolute inset-0 z-0 rounded-face focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/90"
+                className="peer absolute inset-0 z-0 rounded-face focus-visible:outline-none"
                 aria-label={`Abrir ${wallet.name}`}
               />
             )}
@@ -443,6 +443,10 @@ export const WalletListCard = ({
                 </div>
               ) : null}
             </div>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-[15] rounded-face opacity-0 ring-2 ring-inset ring-white/90 peer-focus-visible:opacity-100"
+            />
             <div className="absolute top-2.5 right-2.5 z-20">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
