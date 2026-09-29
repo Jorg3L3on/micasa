@@ -26,6 +26,7 @@ import {
   type ToolbarOverflowItem,
 } from '@/context/toolbar-actions-context';
 import { cn } from '@/lib/utils';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 
 export default function CategoriesPage() {
   const { context } = useFinanceContext();
@@ -249,7 +250,7 @@ export default function CategoriesPage() {
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Agregar categoría',
+      label: PAGE_CREATE_ACTION.category.label,
       onClick: openCreate,
       icon: primaryActionIcon,
     },
@@ -314,7 +315,7 @@ export default function CategoriesPage() {
                     : `Se crean por defecto al registrar; puedes agregar padres o subcategorías de ${kindNoun}.`
                 }
                 action={{
-                  label: 'Agregar categoría',
+                  label: PAGE_CREATE_ACTION.category.label,
                   onClick: openCreate,
                 }}
               />

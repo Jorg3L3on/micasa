@@ -36,6 +36,7 @@ import {
 } from '@/components/categories/CategoryLabel';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 
 export default function ExpenseTemplatesPage() {
   const { context } = useFinanceContext();
@@ -295,7 +296,7 @@ export default function ExpenseTemplatesPage() {
 
   useRegisterToolbarActions({
     primaryAction: {
-      label: 'Agregar plantilla de gasto',
+      label: PAGE_CREATE_ACTION.expenseTemplate.label,
       onClick: handleCreateTemplate,
       icon: primaryActionIcon,
     },

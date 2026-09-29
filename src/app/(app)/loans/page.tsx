@@ -56,6 +56,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useFinanceContext } from '@/context/finance-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import {
   ToolbarFiltersPortal,
   useRegisterToolbarActions,
@@ -1166,7 +1167,7 @@ export default function LoansPage() {
       activeCount: statusFilter === 'ALL' ? 0 : 1,
     },
     primaryAction: {
-      label: 'Agregar préstamo',
+      label: PAGE_CREATE_ACTION.loan.label,
       onClick: openCreateLoan,
       icon: primaryActionIcon,
     },
@@ -1285,7 +1286,7 @@ export default function LoansPage() {
             message="No tienes préstamos registrados."
             description="Crea un préstamo para ver sus pagos en el inicio."
             action={{
-              label: 'Agregar préstamo',
+              label: PAGE_CREATE_ACTION.loan.label,
               onClick: openCreateLoan,
             }}
           />

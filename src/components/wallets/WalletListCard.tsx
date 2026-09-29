@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, type MouseEvent } from 'react';
+import { useMemo, type KeyboardEvent, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ViewTransition } from 'react';
@@ -22,7 +22,6 @@ import {
   getProviderCardStyle,
   getWalletBrandCssVars,
 } from '@/lib/provider-card-style';
-import { Money } from '@/components/money';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +40,14 @@ import { useFinanceContext } from '@/context/finance-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
+import { useWalletDeckCard } from '@/components/wallets/WalletCardsList';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import {
+  WALLET_DECK_ALERT_RING_CLASS,
+  WALLET_DECK_AMOUNT_TEXT_CLASS,
+  WALLET_DECK_COLLAPSED_PADDING_CLASS,
+  WALLET_DECK_EXCEEDED_TEXT_CLASS,
+} from '@/lib/ui/wallet-deck';
 import {
   navigateWithTransitionType,
   stashWalletCardVtSnapshot,
@@ -84,6 +90,7 @@ export const WalletListCard = ({
 }: WalletListCardProps) => {
   const router = useRouter();
   const isMobile = useIsMobile();
+  const deck = useWalletDeckCard(wallet.id);
   const { context } = useFinanceContext();
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
@@ -231,31 +238,13 @@ export const WalletListCard = ({
     </>
   );
 
-  const rowMetrics = isCard
-    ? [
-        {
-          label: 'Deuda',
-          value: amountNumber,
-          tone: 'neutral' as const,
-        },
-        {
-          label: 'Disponible',
-          value: availableCredit,
-          tone: (availableCredit ?? 0) < 0 ? ('negative' as const) : ('neutral' as const),
-        },
-        {
-          label: 'Límite',
-          value: hasCreditLimit ? effectiveLimit : null,
-          tone: 'neutral' as const,
-        },
-      ]
-    : [
-        {
-          label: 'Saldo',
-          value: amountNumber,
-          tone: isNegativeBalance ? ('negative' as const) : ('neutral' as const),
-        },
-      ];
+  const handleDeckKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    deck.onKeyboardToggle();
+  };
+
+  const amountLabel = isCard ? 'Deuda total' : 'Saldo disponible';
 
   return (
     <article
@@ -265,65 +254,209 @@ export const WalletListCard = ({
       )}
       aria-label={articleLabel}
     >
-      <div className="md:hidden">
+      <div
+        className="md:hidden"
+        onFocusCapture={() => deck.onFocus()}
+      >
         <SwipeDeleteRow
           enabled={isMobile}
           onRequestDelete={handleRequestDelete}
           deleteAriaLabel={`Eliminar ${wallet.name}`}
-          className="rounded-xl"
+          className="rounded-face"
+          railClassName="items-start"
+          actionClassName="h-28"
         >
-          <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card px-3 py-3 shadow-card">
-            <Link
-              href={detailHref}
-              onClick={handleOpenDetail}
-              onPointerEnter={handlePrefetchDetail}
-              onFocus={handlePrefetchDetail}
-              className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
-              aria-label={`Abrir ${wallet.name}`}
-            />
-            <div className="relative z-10 flex min-w-0 items-start gap-3 pr-8">
-              <WalletProviderIcon
-                providerIconKey={wallet.provider_icon_key}
-                className="h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-muted"
-                iconClassName="h-4 w-4"
-                showTooltipLabel={false}
+          <div
+            className={cn(
+              'relative w-full min-w-0 overflow-hidden rounded-face border border-white/15 text-white',
+              'shadow-face',
+              'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
+              deck.expanded ? 'p-4 pb-5' : WALLET_DECK_COLLAPSED_PADDING_CLASS,
+              hasAlert && WALLET_DECK_ALERT_RING_CLASS,
+            )}
+            style={cardStyle}
+          >
+            {deck.collapsible ? (
+              <button
+                type="button"
+                className="peer absolute inset-0 z-0 rounded-face focus-visible:outline-none"
+                aria-expanded={deck.expanded}
+              aria-label={
+                deck.expanded
+                  ? `Contraer ${wallet.name}`
+                  : `Expandir ${wallet.name}. ${amountLabel} ${formatCurrency(amountNumber)}`
+              }
+                onPointerDown={() => deck.onPointerDown()}
+                onClick={(event) => {
+                  if (event.detail === 0) return;
+                  deck.onPointerToggle();
+                }}
+                onKeyDown={handleDeckKeyDown}
               />
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-2">
-                  <p className="min-w-0 truncate text-body font-medium text-foreground" title={wallet.name}>
-                    {wallet.name}
-                  </p>
+            ) : (
+              <Link
+                href={detailHref}
+                onClick={handleOpenDetail}
+                onPointerEnter={handlePrefetchDetail}
+                onFocus={handlePrefetchDetail}
+                className="peer absolute inset-0 z-0 rounded-face focus-visible:outline-none"
+                aria-label={`Abrir ${wallet.name}`}
+              />
+            )}
+            <div className="pointer-events-none relative z-10">
+              <div data-wallet-deck-strip>
+                <div className="flex items-start justify-between gap-2 pr-8">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <WalletProviderIcon
+                      providerIconKey={wallet.provider_icon_key}
+                      className="h-8 w-8 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
+                      iconClassName="h-4 w-4"
+                      showTooltipLabel={false}
+                    />
+                    <div className="min-w-0">
+                      {deck.collapsible && deck.expanded ? (
+                        <Link
+                          href={detailHref}
+                          onClick={handleOpenDetail}
+                          onPointerEnter={handlePrefetchDetail}
+                          onFocus={handlePrefetchDetail}
+                          className="pointer-events-auto relative z-20 block truncate text-sm font-semibold leading-tight text-white/95 no-underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                          title={wallet.name}
+                        >
+                          {wallet.name}
+                        </Link>
+                      ) : (
+                        <p
+                          className="truncate text-sm font-semibold leading-tight opacity-95"
+                          title={wallet.name}
+                        >
+                          {wallet.name}
+                        </p>
+                      )}
+                      <p className="eyebrow opacity-60">
+                        {cycleLabel ?? typeLabel}
+                      </p>
+                    </div>
+                  </div>
                   {!wallet.active ? (
-                    <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-caption">
+                    <Badge
+                      variant="outline"
+                      className="pointer-events-none h-6 shrink-0 gap-0.5 border-white/30 bg-black/20 px-1.5 text-caption text-white"
+                    >
+                      <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
                       Inactivo
                     </Badge>
+                  ) : isCard ? (
+                    <span className="font-mono text-caption tracking-[0.2em] opacity-50">
+                      •••• ••••
+                    </span>
                   ) : null}
                 </div>
-                <p className="eyebrow text-muted-foreground">{cycleLabel ?? typeLabel}</p>
-                <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
-                  {rowMetrics.map((metric) => (
-                    <div key={metric.label} className="min-w-0">
-                      <dt className="eyebrow text-muted-foreground">{metric.label}</dt>
-                      <dd className="mt-0.5">
-                        {metric.value == null ? (
-                          <span className="text-caption text-muted-foreground">Sin línea</span>
-                        ) : (
-                          <Money value={metric.value} size="row" tone={metric.tone} />
-                        )}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
+                <div className="mt-2">
+                  <p className="eyebrow opacity-70">{amountLabel}</p>
+                  <p
+                    className={cn(
+                      'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight',
+                      WALLET_DECK_AMOUNT_TEXT_CLASS,
+                    )}
+                  >
+                    {formatCurrency(amountNumber)}
+                  </p>
+                </div>
               </div>
+              {deck.expanded &&
+              (isCard || assigneeMetric || !wallet.include_in_liquidity) ? (
+                <div className="mt-3 space-y-3">
+                  {isCard ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
+                        <div>
+                          <p className="eyebrow opacity-70">Disponible</p>
+                          <p
+                            className={cn(
+                              'font-sans text-sm font-semibold tabular-nums leading-snug',
+                              WALLET_DECK_AMOUNT_TEXT_CLASS,
+                            )}
+                          >
+                            {availableCredit == null
+                              ? 'Sin línea'
+                              : formatCurrency(availableCredit)}
+                          </p>
+                        </div>
+                        {hasCreditLimit && effectiveLimit != null ? (
+                          <div className="text-right">
+                            <p className="eyebrow opacity-70">Límite</p>
+                            <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
+                              {formatCurrency(effectiveLimit)}
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                      {usagePercent != null && hasCreditLimit ? (
+                        <div className="space-y-1">
+                          <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
+                            <span className="shrink-0 whitespace-normal">
+                              Utilización
+                            </span>
+                            <span
+                              className={cn(
+                                'font-sans tabular-nums',
+                                isOverLimit && WALLET_DECK_EXCEEDED_TEXT_CLASS,
+                              )}
+                            >
+                              {isOverLimit ? 'Excedido' : `${usagePercent}%`}
+                            </span>
+                          </div>
+                          <div
+                            className="h-1.5 w-full overflow-hidden rounded-full bg-white/20"
+                            role="meter"
+                            aria-label="Porcentaje de línea usado"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={usagePercent}
+                          >
+                            <div
+                              className="h-full rounded-full bg-white/85 transition-all motion-reduce:transition-none"
+                              style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                      {showTemporaryTope ? (
+                        <span className="inline-flex rounded-full border border-white/25 bg-black/25 px-2 py-0.5 text-caption font-medium tracking-wide text-white/90">
+                          Tope temporal
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      {assigneeMetric ? (
+                        <p className="truncate text-body font-medium leading-tight text-white/80">
+                          {assigneeMetric}
+                        </p>
+                      ) : null}
+                      {!wallet.include_in_liquidity ? (
+                        <p className="truncate text-caption text-white/55">
+                          Fuera de la liquidez
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              ) : null}
             </div>
-            <div className="absolute top-1.5 right-1.5 z-20">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-[15] rounded-face opacity-0 ring-2 ring-inset ring-white/90 peer-focus-visible:opacity-100"
+            />
+            <div className="absolute top-2.5 right-2.5 z-20">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    className="size-8 rounded-full"
+                    className="size-8 rounded-full text-white hover:bg-white/15 hover:text-white focus-visible:ring-white/70"
                     aria-label={`Más opciones para ${wallet.name}`}
                   >
                     <MoreVertical className="h-4 w-4" />

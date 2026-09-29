@@ -25,6 +25,7 @@ import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import WalletDeleteDialog from '@/components/wallets/WalletDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import {
   ToolbarFiltersPortal,
   useRegisterToolbarActions,
@@ -1002,7 +1003,7 @@ export default function WalletsPage() {
       activeCount: activeFilterDimensionCount,
     },
     primaryAction: {
-      label: 'Agregar billetera o tarjeta',
+      label: PAGE_CREATE_ACTION.wallet.label,
       onClick: openCreateDialog,
       icon: primaryActionIcon,
     },
