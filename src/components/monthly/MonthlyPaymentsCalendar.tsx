@@ -168,7 +168,7 @@ const AgendaList = ({
 
 const CalendarAgendaRow = ({ item }: { item: PaymentsCalendarItem }) => (
   <li className="flex min-w-0 items-center gap-2 rounded-xl border border-border/40 bg-background/40 px-2.5 py-2 dark:bg-black/20">
-    <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
       {item.typeLabel}
     </span>
     <span className="min-w-0 flex-1 truncate text-sm text-foreground">
@@ -508,7 +508,7 @@ export const MonthlyPaymentsCalendar = ({
             <span
               key={label}
               className={cn(
-                'pb-1 text-center text-[10px] font-medium uppercase tracking-wide transition-colors duration-200',
+                'pb-1 text-center text-caption font-medium uppercase tracking-wide transition-colors duration-200',
                 hoverCol === col ? 'text-foreground' : 'text-muted-foreground',
               )}
             >
@@ -563,7 +563,7 @@ export const MonthlyPaymentsCalendar = ({
                 <motion.span
                   className={cn(
                     'pointer-events-none absolute inset-px grid place-items-center rounded-[3px]',
-                    'font-mono text-[11px] font-medium tabular-nums leading-none sm:text-xs',
+                    'font-mono text-caption font-medium tabular-nums leading-none',
                     selectionVisible && 'font-semibold text-foreground',
                   )}
                   style={{
@@ -645,7 +645,7 @@ export const MonthlyPaymentsCalendar = ({
                           {hoverItems.length === 1 ? '' : 's'}
                         </span>
                       </span>
-                      <ul className="flex flex-col gap-0.5 text-[11px] text-muted-foreground">
+                      <ul className="flex flex-col gap-0.5 text-caption text-muted-foreground">
                         {hoverItems.slice(0, 3).map((item) => (
                           <li
                             key={`${item.type}-${item.sourceId}-${item.date}`}
