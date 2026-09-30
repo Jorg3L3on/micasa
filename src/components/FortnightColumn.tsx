@@ -90,6 +90,8 @@ import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import type { WalletListItem } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
+import type { PaymentsCalendarItem } from '@/types/payments-calendar';
+import { MonthlyPaymentsCalendar } from '@/components/monthly/MonthlyPaymentsCalendar';
 import { cn } from '@/lib/utils';
 import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
 
@@ -154,6 +156,10 @@ type FortnightColumnProps = {
   dualColumnLayout?: boolean;
   budgetPanel?: MonthlyBudgetPanelResult | null;
   budgetOwnerQuery?: string;
+  /** Payments calendar for < xl (sidebar hosts it at xl+). */
+  paymentsCalendarItems?: PaymentsCalendarItem[];
+  todayYmd?: string;
+  calendarRefreshNonce?: number;
   /** Refetch panel data in place. Avoids router.refresh(), which remounts the page. */
   onPanelRefresh: () => Promise<void>;
 };
@@ -175,8 +181,12 @@ export default function FortnightColumn({
   dualColumnLayout = false,
   budgetPanel = null,
   budgetOwnerQuery = '',
+  paymentsCalendarItems = [],
+  todayYmd: todayYmdProp,
+  calendarRefreshNonce = 0,
   onPanelRefresh,
 }: FortnightColumnProps) {
+  const todayYmd = todayYmdProp ?? todayCalendarDate();
   const { context } = useFinanceContext();
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -934,6 +944,15 @@ export default function FortnightColumn({
           onEditIncomeSource={handleOpenEditIncomeSource}
           budgetPanel={budgetPanel}
           budgetOwnerQuery={budgetOwnerQuery || ownerQueryString}
+        />
+
+        <MonthlyPaymentsCalendar
+          year={year}
+          month={month}
+          items={paymentsCalendarItems}
+          todayYmd={todayYmd}
+          refreshNonce={calendarRefreshNonce}
+          className="xl:hidden"
         />
 
         <SegmentedControl

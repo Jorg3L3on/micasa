@@ -8,6 +8,7 @@ import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import { listPlanningTransactions } from '@/lib/finance/planning-transactions.service';
 import { ensureBudgetPeriodsForMonth } from '@/lib/finance/budget-period.service';
 import { getMonthlyBudgetPanel } from '@/lib/finance/monthly-budget-panel.service';
+import { listPaymentsCalendarForMonth } from '@/lib/finance/payments-calendar.service';
 import { getReportSummary } from '@/lib/finance/report-summary.service';
 import { listWalletsByOwner } from '@/lib/finance/wallet.service';
 import { measure } from './monthly.performance';
@@ -125,14 +126,21 @@ export const getMonthlyFortnightContentData = async (
   const secondFortnightInfo = pickFortnight(shell.fortnightMap, shell.navKeys[1]);
 
   if (firstFortnightInfo === null || secondFortnightInfo === null) {
+    const [budgetPanel, paymentsCalendar] = await Promise.all([
+      measure('monthly.budget-panel', () =>
+        getMonthlyBudgetPanel(ownerFilter, year, month),
+      ),
+      measure('monthly.payments-calendar', () =>
+        listPaymentsCalendarForMonth(ownerFilter, year, month),
+      ),
+    ]);
     return {
       firstTransactions: [],
       secondTransactions: [],
       firstSummary: null,
       secondSummary: null,
-      budgetPanel: await measure('monthly.budget-panel', () =>
-        getMonthlyBudgetPanel(ownerFilter, year, month),
-      ),
+      budgetPanel,
+      paymentsCalendarItems: paymentsCalendar.items,
       loadedPeriod: activePeriod,
     };
   }
@@ -141,9 +149,14 @@ export const getMonthlyFortnightContentData = async (
     ensureBudgetPeriodsForMonth(ownerFilter, year, month),
   );
 
-  const budgetPanel = await measure('monthly.budget-panel', () =>
-    getMonthlyBudgetPanel(ownerFilter, year, month),
-  );
+  const [budgetPanel, paymentsCalendar] = await Promise.all([
+    measure('monthly.budget-panel', () =>
+      getMonthlyBudgetPanel(ownerFilter, year, month),
+    ),
+    measure('monthly.payments-calendar', () =>
+      listPaymentsCalendarForMonth(ownerFilter, year, month),
+    ),
+  ]);
 
   const activeFortnightIds =
     activePeriod === 'FIRST'
@@ -190,6 +203,7 @@ export const getMonthlyFortnightContentData = async (
     firstSummary: activePeriod === 'FIRST' ? activeData.summary : null,
     secondSummary: activePeriod === 'SECOND' ? activeData.summary : null,
     budgetPanel,
+    paymentsCalendarItems: paymentsCalendar.items,
     loadedPeriod: activePeriod,
   };
 };
@@ -221,6 +235,7 @@ const assemblePageData = (
     firstSummary: content.firstSummary,
     secondSummary: content.secondSummary,
     budgetPanel: content.budgetPanel,
+    paymentsCalendarItems: content.paymentsCalendarItems,
     loadedPeriod: content.loadedPeriod,
   };
 };

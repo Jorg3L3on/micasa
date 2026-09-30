@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
 import WalletBalanceStrip from '@/components/WalletBalanceStrip';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
+import { MonthlyPaymentsCalendar } from '@/components/monthly/MonthlyPaymentsCalendar';
 import { useRegisterMonthlyPanelRefresh } from '@/components/monthly/monthly-panel-refresh';
 import {
   MONTHLY_PANEL_CONTENT_GRID_CLASS,
@@ -33,6 +34,9 @@ import type {
 import type { LoanDuePaymentItem } from '@/types/loans';
 import type { FinanceContextType } from '@/types/finance-context';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
+import type { PaymentsCalendarItem } from '@/types/payments-calendar';
+import { todayCalendarDate } from '@/lib/calendar-dates';
+import { cn } from '@/lib/utils';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
 
@@ -89,11 +93,18 @@ export type MonthlyFortnightViewProps = {
   isCurrentMonth: boolean;
   budgetPanel?: MonthlyBudgetPanelResult | null;
   budgetOwnerQuery?: string;
+  paymentsCalendarItems?: PaymentsCalendarItem[];
+  todayYmd?: string;
   serverLoadedPeriod: FortnightPeriod;
   loading?: boolean;
 };
 
 const planningQuerySuffix = '&exclude_credit_installment=true';
+
+/** Stable defaults — inline `= []` allocates a new array every render and
+ *  retriggers the props→state sync effect (Maximum update depth). */
+const EMPTY_WALLETS: WalletListItem[] = [];
+const EMPTY_PAYMENTS_CALENDAR_ITEMS: PaymentsCalendarItem[] = [];
 
 const fetchFortnightBundleData = async (
   year: number,
@@ -123,11 +134,13 @@ export default function MonthlyFortnightView({
   month,
   first,
   second,
-  wallets = [],
+  wallets = EMPTY_WALLETS,
   paidWalletIds,
   isCurrentMonth,
   budgetPanel = null,
   budgetOwnerQuery = '',
+  paymentsCalendarItems = EMPTY_PAYMENTS_CALENDAR_ITEMS,
+  todayYmd = todayCalendarDate(),
   serverLoadedPeriod,
   loading = false,
 }: MonthlyFortnightViewProps) {
@@ -145,6 +158,7 @@ export default function MonthlyFortnightView({
 
   const [summaryFundingRefreshNonce, setSummaryFundingRefreshNonce] =
     useState(0);
+  const [calendarRefreshNonce, setCalendarRefreshNonce] = useState(0);
 
   useEffect(() => {
     setFirstBundle(first);
@@ -167,16 +181,31 @@ export default function MonthlyFortnightView({
       setBundle((current) => ({ ...current, ...patch }));
     };
 
+    const monthParam = String(month).padStart(2, '0');
     const [firstSlice, secondSlice, budget, walletList, cardDues, loanDues] =
       await Promise.allSettled([
-        fetchFortnightPanelSlice<FortnightSummary>(year, month, 'FIRST', context),
-        fetchFortnightPanelSlice<FortnightSummary>(year, month, 'SECOND', context),
+        fetchFortnightPanelSlice<FortnightSummary>(
+          year,
+          month,
+          'FIRST',
+          context,
+        ),
+        fetchFortnightPanelSlice<FortnightSummary>(
+          year,
+          month,
+          'SECOND',
+          context,
+        ),
         clientFetchFromApi<MonthlyBudgetPanelResult>(
-          `/api/monthly/${year}/${String(month).padStart(2, '0')}/budget-panel`,
+          `/api/monthly/${year}/${monthParam}/budget-panel`,
           undefined,
           context,
         ),
-        clientFetchFromApi<WalletListItem[]>('/api/wallets', undefined, context),
+        clientFetchFromApi<WalletListItem[]>(
+          '/api/wallets',
+          undefined,
+          context,
+        ),
         getPlannerDuePayments(year, month, context),
         getPlannerLoanPayments(year, month, context),
       ]);
@@ -201,6 +230,10 @@ export default function MonthlyFortnightView({
       patchFortnight('FIRST', { loanDueItems: loanDues.value.first });
       patchFortnight('SECOND', { loanDueItems: loanDues.value.second });
     }
+
+    // Calendar month is independent of the Panel URL — refresh the viewed month
+    // inside the widget rather than forcing Panel-month items.
+    setCalendarRefreshNonce((n) => n + 1);
 
     const visibleSlice = period === 'FIRST' ? firstSlice : secondSlice;
     if (visibleSlice.status === 'rejected') {
@@ -338,7 +371,7 @@ export default function MonthlyFortnightView({
   }
 
   const budgetSidebar = (
-    <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
+    <div className={cn(MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS, 'space-y-4')}>
       {panelBudget ? (
         <MonthlyBudgetSidebar
           panel={panelBudget}
@@ -347,6 +380,14 @@ export default function MonthlyFortnightView({
       ) : (
         <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
       )}
+      <MonthlyPaymentsCalendar
+        key={`${year}-${month}-${ownerKey}`}
+        year={year}
+        month={month}
+        items={paymentsCalendarItems}
+        todayYmd={todayYmd}
+        refreshNonce={calendarRefreshNonce}
+      />
     </div>
   );
 
@@ -377,6 +418,9 @@ export default function MonthlyFortnightView({
               dualColumnLayout={false}
               budgetPanel={panelBudget}
               budgetOwnerQuery={budgetOwnerQuery}
+              paymentsCalendarItems={paymentsCalendarItems}
+              todayYmd={todayYmd}
+              calendarRefreshNonce={calendarRefreshNonce}
               onPanelRefresh={refreshPanelData}
             />
           ) : (

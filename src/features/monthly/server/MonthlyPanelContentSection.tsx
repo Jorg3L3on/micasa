@@ -35,6 +35,7 @@ type MonthlyPanelContentSectionProps = {
   paidWalletIds: number[];
   isCurrentMonth: boolean;
   monthIsMissing: boolean;
+  todayYmd: string;
 };
 
 const buildFortnightBundle = (params: {
@@ -71,6 +72,7 @@ export const MonthlyPanelContentSection = async ({
   paidWalletIds,
   isCurrentMonth,
   monthIsMissing,
+  todayYmd,
 }: MonthlyPanelContentSectionProps) => {
   if (monthIsMissing) {
     return null;
@@ -102,6 +104,8 @@ export const MonthlyPanelContentSection = async ({
       isCurrentMonth={isCurrentMonth}
       budgetPanel={content.budgetPanel}
       budgetOwnerQuery={ownerQuery}
+      paymentsCalendarItems={content.paymentsCalendarItems}
+      todayYmd={todayYmd}
       serverLoadedPeriod={content.loadedPeriod}
       first={buildFortnightBundle({
         label: firstLabel,
@@ -159,7 +163,10 @@ export const MonthlyPanelContentFallback = ({
         />
       </div>
       <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
-        <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
+        <div className="space-y-4">
+          <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
+          <Skeleton className="h-72 w-full rounded-xl border border-border/60" />
+        </div>
       </div>
     </div>
   </SkeletonExit>

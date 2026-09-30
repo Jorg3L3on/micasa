@@ -1,4 +1,5 @@
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
+import type { PaymentsCalendarItem } from '@/types/payments-calendar';
 import type { ReportSummaryResult } from '@/lib/finance/report-summary.service';
 import type { TransactionRow } from '@/types/catalog';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -35,6 +36,7 @@ export type MonthlyPageData = {
   firstSummary: MonthlyFortnightSummary | null;
   secondSummary: MonthlyFortnightSummary | null;
   budgetPanel: MonthlyBudgetPanelResult;
+  paymentsCalendarItems: PaymentsCalendarItem[];
   /** Fortnight whose transactions/summary were loaded on the server. */
   loadedPeriod: MonthlyFortnightPeriod;
 };
@@ -76,6 +78,7 @@ export type MonthlyFortnightContentData = {
   firstSummary: MonthlyFortnightSummary | null;
   secondSummary: MonthlyFortnightSummary | null;
   budgetPanel: MonthlyBudgetPanelResult;
+  paymentsCalendarItems: PaymentsCalendarItem[];
   loadedPeriod: MonthlyFortnightPeriod;
 };
 

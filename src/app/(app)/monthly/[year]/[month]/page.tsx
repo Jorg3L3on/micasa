@@ -295,6 +295,7 @@ export default async function MonthlyPage({
         paidWalletIds={paidWalletIds}
         isCurrentMonth={isCurrentMonth}
         monthIsMissing={monthIsMissing}
+        todayYmd={todayYmd}
       />
     </MonthlyPanelLayout>
   );
