@@ -103,17 +103,20 @@ const listScheduledExpensesByDueDay = async (
   year: number,
   month: number,
 ): Promise<PaymentsCalendarItem[]> => {
-  const { monthPrefix } = monthRangeYmd(year, month);
+  const { startYmd, endYmd, monthPrefix } = monthRangeYmd(year, month);
 
+  // Overlap, not year/month: the month's last day belongs to next month's FIRST.
   const fortnights = await prisma.fortnight.findMany({
-    where: { ...ownerFilter, year, month },
-    select: { id: true, period: true },
+    where: {
+      ...ownerFilter,
+      end_date: { gte: startOfCalendarDay(startYmd) },
+      start_date: { lte: endOfCalendarDay(endYmd) },
+    },
+    select: { id: true, year: true, month: true, period: true },
   });
   if (fortnights.length === 0) return [];
 
-  const fortnightById = new Map(
-    fortnights.map((fn) => [fn.id, fn.period as 'FIRST' | 'SECOND']),
-  );
+  const fortnightById = new Map(fortnights.map((fn) => [fn.id, fn]));
 
   const rows = await prisma.expense.findMany({
     where: {
@@ -138,9 +141,14 @@ const listScheduledExpensesByDueDay = async (
   const items: PaymentsCalendarItem[] = [];
   for (const row of rows) {
     if (row.due_day == null) continue;
-    const period = fortnightById.get(row.fortnight_id);
-    if (!period) continue;
-    const ymd = dueYmdInFortnight(row.due_day, year, month, period);
+    const fn = fortnightById.get(row.fortnight_id);
+    if (!fn) continue;
+    const ymd = dueYmdInFortnight(
+      row.due_day,
+      fn.year,
+      fn.month,
+      fn.period as 'FIRST' | 'SECOND',
+    );
     if (!ymd || !dateInViewedMonth(ymd, monthPrefix)) continue;
     items.push({
       date: ymd,

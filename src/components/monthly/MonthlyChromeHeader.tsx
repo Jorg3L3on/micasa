@@ -49,8 +49,6 @@ type MonthlyChromeHeaderProps = {
   showFortnightToggle?: boolean;
 };
 
-const accentEmphasisClass = cn('font-semibold', MONTHLY_ACCENT_TEXT_CLASS);
-
 export const ChromeDivider = ({ className }: { className?: string }) => (
   <div
     className={cn(
@@ -145,16 +143,12 @@ export const FortnightProgressTrack = ({
 
 type FortnightProgressStatusProps = {
   position: ReturnType<typeof getFortnightPeriodPosition>;
-  todayYmd: string;
   startYmd: string;
-  endYmd: string;
 };
 
 const FortnightProgressStatus = ({
   position,
-  todayYmd,
   startYmd,
-  endYmd,
 }: FortnightProgressStatusProps) => {
   const tone: ProgressTone =
     position.kind === 'current'
@@ -198,11 +192,6 @@ const FortnightProgressStatus = ({
       ? `Faltan ${position.remainingDays} días`
       : title;
 
-  const leftDate =
-    position.kind === 'current'
-      ? formatAxisDate(todayYmd)
-      : formatAxisDate(startYmd);
-
   return (
     <div className={chromeTileClass} aria-live="polite">
       <div className="min-w-0 flex-1 space-y-1.5">
@@ -243,14 +232,6 @@ const FortnightProgressStatus = ({
             tone={tone}
             label={progressLabel}
           />
-        </div>
-        <div className="flex items-center justify-between gap-2 text-caption leading-none text-muted-foreground sm:text-caption">
-          <span className={cn('min-w-0 truncate', accentEmphasisClass)}>
-            {leftDate}
-          </span>
-          <span className={cn('shrink-0', accentEmphasisClass)}>
-            {formatAxisDate(endYmd)}
-          </span>
         </div>
       </div>
     </div>
@@ -302,6 +283,7 @@ export const MonthlyChromeHeader = ({
       stretch
       className="w-full @min-[42rem]:w-auto"
       wrapperClassName="w-full @min-[42rem]:w-auto"
+      listClassName="w-full @min-[42rem]:w-max"
       indicatorClassName={AURA_TAB_INDICATOR_CLASS}
       activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
       options={[
@@ -345,9 +327,7 @@ export const MonthlyChromeHeader = ({
   const progressCenter = (
     <FortnightProgressStatus
       position={position}
-      todayYmd={todayYmd}
       startYmd={bounds.startYmd}
-      endYmd={bounds.endYmd}
     />
   );
 

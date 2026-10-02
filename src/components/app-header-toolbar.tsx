@@ -36,6 +36,9 @@ import PageTitle, {
 } from '@/components/PageTitle';
 import { ToolbarFiltersControl } from '@/components/toolbar-filters-control';
 import {
+  GLASS_MENU_ICON_PILL_CLASS,
+  GLASS_MENU_ITEM_CLASS,
+  GLASS_MENU_PANEL_CLASS,
   TOOLBAR_GLASS_CANCEL,
   TOOLBAR_GLASS_FIELD,
   TOOLBAR_GLASS_GROUP,
@@ -46,6 +49,7 @@ import {
 } from '@/components/toolbar-glass';
 import { useToolbarActions } from '@/context/toolbar-actions-context';
 import { useCreateAction } from '@/hooks/use-create-action';
+import { isDockCreateLabel } from '@/lib/ui/page-create-action';
 import { useFinanceContext } from '@/context/finance-context';
 import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import { navigateWithTransitionType } from '@/lib/ui/wallet-card-view-transition';
@@ -123,7 +127,7 @@ export default function AppHeaderToolbar() {
    * Hierarchical hub details: push the list with nav-back (not history.back)
    * so DirectionalTransition (and card morph where used) run.
    * - Billeteras: `/wallets/[id]` or `/credit-cards/[id]` → `/wallets`
-   * - Metas: `/metas/[id]` → `/metas`
+   * - Metas: `/settings/metas/[id]` → `/settings/metas`
    */
   const hierarchicalBackHref = useMemo(() => {
     const segments = pathname.split('/').filter(Boolean);
@@ -140,8 +144,12 @@ export default function AppHeaderToolbar() {
     ) {
       return withOwner('/wallets');
     }
-    if (segments[0] === 'metas' && Boolean(segments[1])) {
-      return withOwner('/metas');
+    if (
+      segments[0] === 'settings' &&
+      segments[1] === 'metas' &&
+      Boolean(segments[2])
+    ) {
+      return withOwner('/settings/metas');
     }
     return null;
   }, [pathname, context]);
@@ -243,7 +251,11 @@ export default function AppHeaderToolbar() {
 
   const overflowItems = overflow?.items ?? [];
   const hasOverflow = overflowItems.length > 0;
+  const hasRichOverflow = overflowItems.some((item) => Boolean(item.description));
   const showActionsGroup = Boolean(createAction || filters || hasOverflow);
+  const hideCreateOnMobile = createAction
+    ? isDockCreateLabel(createAction.label)
+    : false;
 
   const overflowMenu = hasOverflow ? (
     <DropdownMenu>
@@ -263,25 +275,67 @@ export default function AppHeaderToolbar() {
         </TooltipTrigger>
         <TooltipContent side="bottom">Más</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="end" className="w-52">
-        {overflowItems.map((item) => (
-          <DropdownMenuItem
-            key={item.key}
-            onClick={item.onClick}
-            disabled={item.disabled}
-            className="cursor-pointer"
-            variant={item.destructive ? 'destructive' : 'default'}
-          >
-            {item.icon}
-            {item.label}
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent
+        align="end"
+        sideOffset={8}
+        className={
+          hasRichOverflow
+            ? cn(GLASS_MENU_PANEL_CLASS, 'w-[min(17.5rem,calc(100vw-1.5rem))]')
+            : 'w-52'
+        }
+      >
+        {overflowItems.map((item) =>
+          hasRichOverflow ? (
+            <DropdownMenuItem
+              key={item.key}
+              onClick={item.onClick}
+              disabled={item.disabled}
+              className={cn(
+                GLASS_MENU_ITEM_CLASS,
+                'cursor-pointer focus:bg-muted/40',
+              )}
+              variant={item.destructive ? 'destructive' : 'default'}
+            >
+              <span className={GLASS_MENU_ICON_PILL_CLASS} aria-hidden>
+                {item.icon}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-foreground">
+                  {item.label}
+                </span>
+                {item.description ? (
+                  <span className="block text-xs text-muted-foreground">
+                    {item.description}
+                  </span>
+                ) : null}
+              </span>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              key={item.key}
+              onClick={item.onClick}
+              disabled={item.disabled}
+              className="cursor-pointer"
+              variant={item.destructive ? 'destructive' : 'default'}
+            >
+              {item.icon}
+              {item.label}
+            </DropdownMenuItem>
+          ),
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   ) : null;
 
   const actionsGroup = showActionsGroup ? (
-    <div className={TOOLBAR_GLASS_GROUP} role="group" aria-label="Acciones">
+    <div
+      className={cn(
+        TOOLBAR_GLASS_GROUP,
+        hideCreateOnMobile && !filters && !hasOverflow && 'max-md:hidden',
+      )}
+      role="group"
+      aria-label="Acciones"
+    >
       {createAction ? (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -289,7 +343,10 @@ export default function AppHeaderToolbar() {
               type="button"
               variant="ghost"
               size="icon"
-              className={TOOLBAR_GLASS_GROUP_ITEM}
+              className={cn(
+                TOOLBAR_GLASS_GROUP_ITEM,
+                hideCreateOnMobile && 'max-md:hidden',
+              )}
               aria-label={createAction.label}
               onClick={createAction.onClick}
             >
@@ -300,7 +357,13 @@ export default function AppHeaderToolbar() {
         </Tooltip>
       ) : null}
       {createAction && (filters || hasOverflow) ? (
-        <span className={TOOLBAR_GLASS_GROUP_DIVIDER} aria-hidden />
+        <span
+          className={cn(
+            TOOLBAR_GLASS_GROUP_DIVIDER,
+            hideCreateOnMobile && 'max-md:hidden',
+          )}
+          aria-hidden
+        />
       ) : null}
       {filters ? (
         <ToolbarFiltersControl
@@ -415,12 +478,14 @@ export default function AppHeaderToolbar() {
               ref={leftClusterRef}
               className="z-10 flex min-w-0 shrink-0 items-center gap-0.5"
             >
-              <SidebarTrigger className={TOOLBAR_GLASS_ICON} />
+              <SidebarTrigger
+                className={cn(TOOLBAR_GLASS_ICON, 'max-md:hidden')}
+              />
               {leadingAction ? (
                 <>
                   <Separator
                     orientation="vertical"
-                    className="mx-1.5 shrink-0 bg-border/50 data-[orientation=vertical]:h-5 dark:bg-white/15"
+                    className="mx-1.5 shrink-0 bg-border/50 data-[orientation=vertical]:h-5 max-md:hidden dark:bg-white/15"
                   />
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -454,7 +519,7 @@ export default function AppHeaderToolbar() {
                   />
                   <ToolbarIconButton
                     label={
-                      hierarchicalBackHref?.startsWith('/metas')
+                      hierarchicalBackHref?.startsWith('/settings/metas')
                         ? 'Volver a metas'
                         : hierarchicalBackHref?.startsWith('/wallets')
                           ? 'Volver a billeteras'

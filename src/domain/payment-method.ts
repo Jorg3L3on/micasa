@@ -31,6 +31,15 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethodType, string> = {
   GOAL: 'Meta',
 }
 
+/** Compact labels for tight surfaces (wallet strip cards, chips). */
+export const PAYMENT_METHOD_SHORT_LABELS: Record<PaymentMethodType, string> = {
+  CASH: 'Efectivo',
+  DEBIT_CARD: 'Débito',
+  CREDIT_CARD: 'Crédito',
+  DEPARTMENT_STORE_CARD: 'Departamental',
+  GOAL: 'Meta',
+}
+
 export const PAYMENT_METHOD_OPTIONS = PAYMENT_METHODS.map((value) => ({
   value,
   label: PAYMENT_METHOD_LABELS[value],

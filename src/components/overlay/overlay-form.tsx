@@ -149,6 +149,59 @@ export const FormAmountRow = ({
   </FormItem>
 );
 
+const MXN_AMOUNT_FORMAT = new Intl.NumberFormat('es-MX', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** Read-only amount row: same layout as `AmountRow`, for totals and summaries. */
+export const AmountDisplayRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) => (
+  <div className="space-y-1 px-3 py-2">
+    <span className="text-sm font-medium text-foreground">{label}</span>
+    <div className="flex h-10 items-center gap-2 md:h-12">
+      <MxnChip />
+      <span className="font-sans text-2xl font-bold tabular-nums text-foreground md:text-4xl">
+        {MXN_AMOUNT_FORMAT.format(value)}
+      </span>
+    </div>
+  </div>
+);
+
+/** Read-only list row inside a grouped card: icon, title + subtitle, trailing value. */
+export const OverlayListRow = ({
+  icon,
+  title,
+  subtitle,
+  trailing,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle?: string;
+  trailing?: ReactNode;
+}) => (
+  <div className="flex min-h-11 items-center gap-3 px-3 py-2">
+    <span
+      className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground [&_svg]:size-4"
+      aria-hidden
+    >
+      {icon}
+    </span>
+    <div className="min-w-0 flex-1">
+      <p className="truncate text-sm font-medium text-foreground">{title}</p>
+      {subtitle ? (
+        <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+      ) : null}
+    </div>
+    {trailing ? <div className="shrink-0 text-right">{trailing}</div> : null}
+  </div>
+);
+
 /** Label + control row without react-hook-form. */
 export const GroupedRow = ({
   label,

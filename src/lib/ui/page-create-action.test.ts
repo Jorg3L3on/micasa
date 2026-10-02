@@ -25,10 +25,10 @@ const PAGE_REGISTRATIONS: {
     key: 'walletMovement',
   },
   { file: 'src/app/(app)/loans/page.tsx', route: '/loans', key: 'loan' },
-  { file: 'src/app/(app)/metas/page.tsx', route: '/metas', key: 'goal' },
+  { file: 'src/app/(app)/settings/metas/page.tsx', route: '/settings/metas', key: 'goal' },
   {
-    file: 'src/app/(app)/metas/[id]/page.tsx',
-    route: '/metas/9',
+    file: 'src/app/(app)/settings/metas/[id]/page.tsx',
+    route: '/settings/metas/9',
     key: 'goalSave',
   },
   {
@@ -111,7 +111,7 @@ describe('resolvePageCreateAction', () => {
       PAGE_CREATE_ACTION.wallet,
     );
     expect(resolvePageCreateAction('/loans')).toEqual(PAGE_CREATE_ACTION.loan);
-    expect(resolvePageCreateAction('/metas')).toEqual(PAGE_CREATE_ACTION.goal);
+    expect(resolvePageCreateAction('/settings/metas')).toEqual(PAGE_CREATE_ACTION.goal);
     expect(resolvePageCreateAction('/settings/budgets')).toEqual(
       PAGE_CREATE_ACTION.budget,
     );
@@ -139,7 +139,7 @@ describe('resolvePageCreateAction', () => {
     expect(resolvePageCreateAction('/credit-cards/4')).toEqual(
       PAGE_CREATE_ACTION.cardPurchase,
     );
-    expect(resolvePageCreateAction('/metas/9')).toEqual(
+    expect(resolvePageCreateAction('/settings/metas/9')).toEqual(
       PAGE_CREATE_ACTION.goalSave,
     );
   });
@@ -177,7 +177,7 @@ describe('resolvePageCreateAction', () => {
   });
 
   it('ignores a query string on the pathname', () => {
-    expect(resolvePageCreateAction('/metas?ownerType=house&ownerId=1')).toEqual(
+    expect(resolvePageCreateAction('/settings/metas?ownerType=house&ownerId=1')).toEqual(
       PAGE_CREATE_ACTION.goal,
     );
   });

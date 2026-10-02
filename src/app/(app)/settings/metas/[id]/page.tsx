@@ -83,7 +83,7 @@ export default function MetaDetailPage() {
   const id = Number(params.id);
   const { context } = useFinanceContext();
   const ownerQs = buildOwnerQuery(context).toString();
-  const listHref = `/metas${ownerQs ? `?${ownerQs}` : ''}`;
+  const listHref = `/settings/metas${ownerQs ? `?${ownerQs}` : ''}`;
 
   const [wallet, setWallet] = useState<WalletDetail | null>(null);
   const [allWallets, setAllWallets] = useState<WalletListItem[]>([]);

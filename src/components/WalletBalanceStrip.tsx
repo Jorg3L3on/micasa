@@ -30,30 +30,22 @@ import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { AnimatedGridPattern } from '@/components/ui/animated-grid-pattern';
 import { ShineBorder } from '@/components/ui/shine-border';
 import { cn } from '@/lib/utils';
+import {
+  PAYMENT_METHOD_SHORT_LABELS,
+  type PaymentMethodType,
+} from '@/domain/payment-method';
 import { CreditCard, GripVertical, Landmark, Wallet } from 'lucide-react';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import { todayCalendarDate } from '@/lib/calendar-dates';
-import {
-  calendarDayCountInclusive,
-  dueDayFallsInFortnight,
-  dueYmdInFortnight,
-  getCurrentCalendarFortnightRef,
-} from '@/lib/fortnight-calendar';
 
 type WalletBalanceStripProps = {
   wallets: WalletListItem[];
-  paidWalletIds?: number[];
-  /** Past/future monthly views must not use “today” due reminders */
-  isCurrentMonth?: boolean;
   /** After saldo persists to the API (e.g. refetch resumen / billeteras vs pendiente). */
   onBalancesPersisted?: () => void;
 };
 
 const WalletBalanceStrip = ({
   wallets,
-  paidWalletIds = [],
-  isCurrentMonth = true,
   onBalancesPersisted,
 }: WalletBalanceStripProps) => {
   const { context } = useFinanceContext();
@@ -392,58 +384,6 @@ const WalletBalanceStrip = ({
                   wallet.type === 'DEPARTMENT_STORE_CARD';
                 const effectiveAmount = getEffectiveAmount(wallet);
 
-                const creditLimit = wallet.credit_limit ?? 0;
-                const percentUsed = (() => {
-                  if (isCreditType) {
-                    if (!creditLimit || creditLimit <= 0) return 0;
-                    return Math.max(
-                      0,
-                      Math.min(100, (Math.max(0, effectiveAmount) / creditLimit) * 100),
-                    );
-                  }
-                  return effectiveAmount > 0 ? 100 : 0;
-                })();
-
-                const current = getCurrentCalendarFortnightRef();
-                const todayYmd = todayCalendarDate();
-                const dueYmd =
-                  wallet.due_day != null
-                    ? dueYmdInFortnight(
-                        wallet.due_day,
-                        current.year,
-                        current.month,
-                        current.period,
-                      )
-                    : null;
-
-                const walletAlreadyPaid = paidWalletIds.includes(wallet.id);
-                const dueInCurrentFortnight =
-                  isCreditType &&
-                  !walletAlreadyPaid &&
-                  wallet.due_day != null &&
-                  dueDayFallsInFortnight(
-                    wallet.due_day,
-                    current.year,
-                    current.month,
-                    current.period,
-                  );
-
-                const isDueNear = (() => {
-                  if (!dueInCurrentFortnight || dueYmd == null) return false;
-                  const daysUntilDue = calendarDayCountInclusive(todayYmd, dueYmd) - 1;
-                  return daysUntilDue >= 0 && daysUntilDue <= 5;
-                })();
-
-                const isDuePast = (() => {
-                  if (!dueInCurrentFortnight || dueYmd == null) return false;
-                  return dueYmd < todayYmd;
-                })();
-
-                const showDueReminder =
-                  isCurrentMonth &&
-                  (isDueNear || isDuePast) &&
-                  !walletAlreadyPaid;
-
                 const WalletIcon =
                   wallet.type === 'CREDIT_CARD' || wallet.type === 'DEPARTMENT_STORE_CARD'
                     ? CreditCard
@@ -481,10 +421,14 @@ const WalletBalanceStrip = ({
                   draggingId === wallet.id || holdingId === wallet.id;
                 const accent = hasBankIcon ? 'neutral' : fallbackAccent;
 
+                const typeLabel =
+                  PAYMENT_METHOD_SHORT_LABELS[wallet.type as PaymentMethodType];
+
                 const cardContent = (
-                  <div className="flex items-start gap-1.5">
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
                     {hasBankIcon ? (
-                      <span className="relative mt-0.5 shrink-0">
+                      <span className="relative shrink-0">
                         <span
                           className={cn(
                             'absolute inset-0 rounded-md',
@@ -504,22 +448,11 @@ const WalletBalanceStrip = ({
                           )}
                           iconClassName="h-3.5 w-3.5"
                           showTooltipLabel={false} data-icon="inline-start" />
-                        {showDueReminder && (
-                          <span
-                            className={cn(
-                              'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
-                              isDuePast
-                                ? 'bg-destructive animate-pulse'
-                                : 'bg-status-pending',
-                            )}
-                            aria-hidden
-                          />
-                        )}
                       </span>
                     ) : (
                       <span
                         className={cn(
-                          'relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 shadow-sm',
+                          'relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 shadow-sm',
                           accent === 'violet' &&
                             'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                           accent === 'blue' &&
@@ -542,97 +475,48 @@ const WalletBalanceStrip = ({
                             accent === 'neutral' && 'text-muted-foreground',
                           )}
                           aria-hidden data-icon="inline-start" />
-                        {showDueReminder && (
-                          <span
-                            className={cn(
-                              'absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
-                              isDuePast
-                                ? 'bg-destructive animate-pulse'
-                                : 'bg-status-pending',
-                            )}
-                            aria-hidden
-                          />
-                        )}
                       </span>
                     )}
-                    <div className="flex min-w-0 flex-col gap-0.5">
+                    <div className="min-w-0">
                       <p
                         className={cn(
                           'truncate text-caption font-semibold leading-tight',
                           onDarkSurface
-                            ? 'text-white/85'
-                            : 'text-muted-foreground/90',
+                            ? 'text-white/90'
+                            : 'text-foreground/90',
                         )}
                         title={wallet.name}
                       >
                         {wallet.name}
                       </p>
-                      <p className="leading-none">
-                        <CurrencyTicker
-                          value={effectiveAmount}
+                      {typeLabel ? (
+                        <p
                           className={cn(
-                            'text-body font-black sm:text-sm',
-                            onDarkSurface ? 'text-white' : 'text-foreground',
-                          )}
-                        />
-                      </p>
-                      <div
-                        className={cn(
-                          'mt-1 flex h-3.5 items-center gap-1.5',
-                          !isCreditType && 'invisible',
-                        )}
-                        aria-hidden={!isCreditType}
-                      >
-                        <div
-                          className={cn(
-                            'relative h-1 w-10 overflow-hidden rounded-full sm:w-12',
-                            onDarkSurface ? 'bg-white/25' : 'bg-muted/50',
+                            'mt-0.5 truncate text-caption font-semibold uppercase leading-none tracking-[0.08em]',
+                            onDarkSurface
+                              ? 'text-white/50'
+                              : 'text-muted-foreground/80',
                           )}
                         >
-                          <div
-                            className={cn(
-                              'h-full rounded-full transition-all',
-                              onDarkSurface
-                                ? 'bg-white/85'
-                                : 'bg-status-info',
-                            )}
-                            style={{
-                              width: `${isCreditType ? percentUsed : 0}%`,
-                            }}
-                            aria-hidden
-                          />
-                        </div>
-                        {isCreditType && wallet.due_day != null ? (
-                          <span
-                            className={cn(
-                              'whitespace-nowrap rounded-full px-1.5 py-0.5 text-caption font-semibold leading-none tabular-nums',
-                              walletAlreadyPaid
-                                ? 'bg-status-success-soft text-status-success'
-                                : !isCurrentMonth
-                                  ? onDarkSurface
-                                    ? 'text-white/75'
-                                    : 'text-muted-foreground/70'
-                                  : isDuePast
-                                    ? 'text-status-overdue'
-                                    : isDueNear
-                                      ? 'text-status-pending'
-                                      : onDarkSurface
-                                        ? 'text-white/75'
-                                        : 'text-muted-foreground/70',
-                            )}
-                          >
-                            {walletAlreadyPaid ? 'Pagada' : `Paga ${wallet.due_day}`}
-                          </span>
-                        ) : null}
-                      </div>
+                          {typeLabel}
+                        </p>
+                      ) : null}
                     </div>
+                    </div>
+                    <p className="leading-none tabular-nums">
+                      <CurrencyTicker
+                        value={effectiveAmount}
+                        className={cn(
+                          'text-body font-black sm:text-sm',
+                          onDarkSurface ? 'text-white' : 'text-foreground',
+                        )}
+                      />
+                    </p>
                   </div>
                 );
 
                 const cardClasses = cn(
-                  'group relative isolate flex h-full min-w-[136px] shrink-0 snap-start flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 pr-6 text-left sm:min-w-[164px] sm:px-2.5 sm:py-2 sm:pr-7',
-                  orderedWallets.length > 1 &&
-                    'max-md:w-[min(17rem,calc(100%-2.75rem))]',
+                  'group relative isolate flex h-full w-full min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-3 py-3.5 pr-7 text-left sm:px-3.5 sm:pr-8',
                   'backdrop-blur-sm ring-1 ring-inset transition-all duration-300 [-webkit-touch-callout:none]',
                   onDarkSurface ? 'ring-white/5' : 'ring-black/5',
                   'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:to-transparent',
@@ -685,7 +569,9 @@ const WalletBalanceStrip = ({
                     onPointerDown={handleCardPointerDown(wallet.id)}
                     onContextMenu={handleCardContextMenu}
                     className={cn(
-                      'group/wallet relative flex shrink-0 touch-manipulation',
+                      'group/wallet relative flex min-w-[136px] shrink-0 snap-start touch-manipulation sm:min-w-[164px]',
+                      orderedWallets.length > 1 &&
+                        'max-md:w-[min(13rem,calc(100%-2.75rem))]',
                       draggingId === wallet.id && 'z-20',
                       draggingId != null &&
                         draggingId !== wallet.id &&
@@ -762,7 +648,7 @@ const WalletBalanceStrip = ({
                       tabIndex={-1}
                       aria-label={`Reordenar ${wallet.name}`}
                       className={cn(
-                        'absolute inset-y-0 right-0 z-10 flex w-8 touch-none items-center justify-center',
+                        'absolute inset-y-0 right-0 z-10 flex w-8 touch-none items-start justify-center pt-5',
                         draggingId === wallet.id
                           ? 'cursor-grabbing'
                           : 'cursor-grab',

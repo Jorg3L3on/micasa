@@ -230,7 +230,7 @@ export default function WalletDetailPage() {
         setWallet(detail);
         setHeroLoading(false);
         const qs = searchParams.toString();
-        router.replace(`/metas/${walletId}${qs ? `?${qs}` : ''}`);
+        router.replace(`/settings/metas/${walletId}${qs ? `?${qs}` : ''}`);
         return null;
       }
       // Activate share morph for placeholder → real hero (same VT name).

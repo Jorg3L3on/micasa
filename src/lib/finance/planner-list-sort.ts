@@ -1,4 +1,8 @@
 import { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
+import {
+  dueYmdInFortnight,
+  type CalendarFortnightRef,
+} from '@/lib/fortnight-calendar';
 import type { DuePaymentItem, PlannerCardPaymentStatusUi } from '@/types/catalog';
 import type { LoanDuePaymentItem, LoanPaymentStatusValue } from '@/types/loans';
 
@@ -9,6 +13,11 @@ export type PlannerListSortDir = 'asc' | 'desc';
 export type PlannerListSortPreference = {
   mode: PlannerListSortMode;
   dir: PlannerListSortDir;
+};
+
+export const DEFAULT_PLANNER_LIST_SORT: PlannerListSortPreference = {
+  mode: 'due_day',
+  dir: 'asc',
 };
 
 /** @deprecated Use PlannerListSortMode */
@@ -75,13 +84,13 @@ export const nextPlannerListSortPreference = (
 
 export const readPlannerListSortPreference = (): PlannerListSortPreference => {
   if (typeof window === 'undefined') {
-    return { mode: 'amount', dir: 'desc' };
+    return DEFAULT_PLANNER_LIST_SORT;
   }
   try {
     const raw =
       localStorage.getItem(PLANNER_LIST_SORT_STORAGE_KEY) ??
       localStorage.getItem(PLANNER_LIST_SORT_STORAGE_KEY_LEGACY);
-    if (!raw) return { mode: 'amount', dir: 'desc' };
+    if (!raw) return DEFAULT_PLANNER_LIST_SORT;
 
     if (raw.startsWith('{')) {
       const parsed = JSON.parse(raw) as Partial<PlannerListSortPreference>;
@@ -99,7 +108,7 @@ export const readPlannerListSortPreference = (): PlannerListSortPreference => {
   } catch {
     /* ignore */
   }
-  return { mode: 'amount', dir: 'desc' };
+  return DEFAULT_PLANNER_LIST_SORT;
 };
 
 /** @deprecated Use readPlannerListSortPreference */
@@ -133,11 +142,26 @@ type SortableExpenseRow = {
   due_day?: number | null;
 };
 
-const dueDayRank = (dueDay: number | null | undefined): number => {
+/** Days outside the quincena sort after every in-quincena civil date. */
+const OUT_OF_FORTNIGHT_RANK_OFFSET = 100_000_000;
+
+const dueDayRank = (
+  dueDay: number | null | undefined,
+  fortnight: CalendarFortnightRef | undefined,
+): number => {
   if (dueDay == null || Number.isNaN(Number(dueDay))) {
     return Number.POSITIVE_INFINITY;
   }
-  return Number(dueDay);
+  if (!fortnight) return Number(dueDay);
+
+  const dueYmd = dueYmdInFortnight(
+    Number(dueDay),
+    fortnight.year,
+    fortnight.month,
+    fortnight.period,
+  );
+  if (!dueYmd) return OUT_OF_FORTNIGHT_RANK_OFFSET + Number(dueDay);
+  return Number(dueYmd.replaceAll('-', ''));
 };
 
 const dirSign = (dir: PlannerListSortDir): number => (dir === 'asc' ? 1 : -1);
@@ -145,11 +169,14 @@ const dirSign = (dir: PlannerListSortDir): number => (dir === 'asc' ? 1 : -1);
 /**
  * Unpaid first, then by mode + direction.
  * Missing due days stay last among unpaid regardless of direction.
+ * Pass `fortnight` so due days rank by civil date: in FIRST, day 30/31 is the
+ * previous month's last day and comes before day 1.
  */
 export const sortExpenseListRows = <T extends SortableExpenseRow>(
   rows: T[],
   mode: PlannerListSortMode,
   dir: PlannerListSortDir = defaultDirForMode(mode),
+  fortnight?: CalendarFortnightRef,
 ): T[] =>
   [...rows].sort((a, b) => {
     if (a.is_paid !== b.is_paid) {
@@ -157,8 +184,8 @@ export const sortExpenseListRows = <T extends SortableExpenseRow>(
     }
 
     if (mode === 'due_day') {
-      const dueA = dueDayRank(a.due_day);
-      const dueB = dueDayRank(b.due_day);
+      const dueA = dueDayRank(a.due_day, fortnight);
+      const dueB = dueDayRank(b.due_day, fortnight);
       const aMissing = !Number.isFinite(dueA);
       const bMissing = !Number.isFinite(dueB);
       if (aMissing !== bMissing) return aMissing ? 1 : -1;

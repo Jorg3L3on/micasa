@@ -68,6 +68,15 @@ type ResponsiveOverlayProps = {
 };
 
 /**
+ * The PWA draws under a translucent status bar (`viewport-fit: cover`), so a
+ * tall sheet must stop below the safe area or Cancelar hides under the
+ * Dynamic Island / notch. The body also needs `overscroll-y-contain`: without
+ * it iOS chains the scroll to the page and pans the fixed sheet upward.
+ */
+const SHEET_MAX_HEIGHT_CLASS =
+  'max-h-[min(92dvh,calc(100dvh_-_env(safe-area-inset-top)_-_0.75rem))]';
+
+/**
  * Dialog on desktop, bottom Sheet on mobile. Header Cancelar + centered title.
  * Description is sr-only. Body is the caller’s form — no footer chrome here.
  */
@@ -162,7 +171,8 @@ export const ResponsiveOverlay = ({
           side="bottom"
           showCloseButton={false}
           className={cn(
-            'flex max-h-[92vh] flex-col gap-0 rounded-t-xl p-0',
+            'flex flex-col gap-0 rounded-t-xl p-0',
+            SHEET_MAX_HEIGHT_CLASS,
             contentClassName,
           )}
           onPointerDownOutside={preventDismissWhileSelectOpen}
@@ -172,7 +182,7 @@ export const ResponsiveOverlay = ({
           <div className="border-b border-border/50 px-4 py-3">{sheetHeader}</div>
           <div
             className={cn(
-              'flex-1 overflow-y-auto p-4',
+              'flex-1 overflow-y-auto overscroll-y-contain p-4',
               DOCK_CLEARANCE_PADDING_CLASS,
             )}
           >
