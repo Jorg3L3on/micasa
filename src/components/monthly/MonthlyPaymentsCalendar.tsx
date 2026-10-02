@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Goal,
+  HandCoins,
+  Receipt,
+  RefreshCw,
+  type LucideIcon,
+} from 'lucide-react';
 import { Money } from '@/components/money';
 import {
   AURA_TAB_INDICATOR_CLASS,
@@ -12,9 +22,20 @@ import {
 } from '@/components/monthly/monthly-panel-shell';
 import { EASE_OUT, SPRING_PRESS } from '@/components/motion/ease';
 import { Tooltip } from '@/components/motion/tooltip';
+import {
+  AmountDisplayRow,
+  OVERLAY_GROUPED_CARD_CLASS,
+  OverlayHint,
+  OverlayListRow,
+} from '@/components/overlay/overlay-form';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { SegmentedControl } from '@/components/segmented-control';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip as UiTooltip,
+  TooltipContent as UiTooltipContent,
+  TooltipTrigger as UiTooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useFinanceContext } from '@/context/finance-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { addCalendarDays } from '@/lib/calendar-dates';
@@ -47,11 +68,9 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import type {
   PaymentsCalendarItem,
+  PaymentsCalendarItemType,
   PaymentsCalendarResult,
 } from '@/types/payments-calendar';
-
-/** Today day-number color when that civil day is visible. */
-const TODAY_NUMBER_COLOR = '#EB4C46';
 
 const MAX_PENDING_DOTS = 3;
 
@@ -97,28 +116,21 @@ const glassFill = (hot: boolean): string => {
 };
 
 /**
- * Every pending day is a glass tile; urgency only colors the edge, a bottom
- * glow and the dots. Low-alpha amber/red fills turn muddy brown on navy.
+ * Every pending day is a neutral glass tile; urgency only tints a bottom glow
+ * and the dots. Low-alpha amber/red fills turn muddy brown on navy.
  */
 const pendingCellStyle = (
   urgency: DayUrgency,
   hot: boolean,
 ): { background: string; boxShadow: string } => {
   const hex = URGENCY_HEX[urgency];
-  if (!hex) {
-    const edge = hot ? 28 : 16;
-    return {
-      background: glassFill(hot),
-      boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(--foreground) ${edge}%, transparent), ${GLASS_TOP_HIGHLIGHT}`,
-    };
-  }
+  const edge = hot ? 28 : 16;
+  const glow = hex
+    ? `radial-gradient(120% 90% at 50% 120%, ${hexWithAlpha(hex, hot ? 0.5 : 0.34)}, transparent 70%), `
+    : '';
   return {
-    background: `radial-gradient(120% 90% at 50% 120%, ${hexWithAlpha(hex, hot ? 0.5 : 0.34)}, transparent 70%), ${glassFill(hot)}`,
-    boxShadow: [
-      `inset 0 0 0 1px ${hexWithAlpha(hex, hot ? 0.85 : 0.6)}`,
-      GLASS_TOP_HIGHLIGHT,
-      `0 0 ${hot ? 16 : 10}px -4px ${hexWithAlpha(hex, hot ? 0.8 : 0.55)}`,
-    ].join(', '),
+    background: `${glow}${glassFill(hot)}`,
+    boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(--foreground) ${edge}%, transparent), ${GLASS_TOP_HIGHLIGHT}`,
   };
 };
 
@@ -295,57 +307,91 @@ const buildWindowCells = (
   return cells;
 };
 
-const AgendaList = ({
-  items,
-  emptyClassName,
-}: {
-  items: PaymentsCalendarItem[];
-  emptyClassName?: string;
-}) => {
-  if (items.length === 0) {
-    return (
-      <p
-        className={cn(
-          'py-3 text-center text-caption text-muted-foreground',
-          emptyClassName,
-        )}
-      >
-        Sin pagos pendientes
-      </p>
-    );
-  }
-  return (
-    <ul className="space-y-1.5" role="list">
-      {items.map((item) => (
-        <CalendarAgendaRow
-          key={`${item.type}-${item.sourceId}-${item.date}`}
-          item={item}
-        />
-      ))}
-    </ul>
-  );
+const CALENDAR_ITEM_ICON: Record<PaymentsCalendarItemType, LucideIcon> = {
+  expense: Receipt,
+  loan: HandCoins,
+  revolving: CreditCard,
+  msi: CreditCard,
+  template: RefreshCw,
 };
 
-const CalendarAgendaRow = ({ item }: { item: PaymentsCalendarItem }) => (
-  <li className="flex min-w-0 items-center gap-2 rounded-xl border border-border/40 bg-background/40 px-2.5 py-2 dark:bg-black/20">
-    <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
-      {item.typeLabel}
-    </span>
-    <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-      {item.name}
-    </span>
-    {item.amount != null ? (
-      <Money
-        value={item.amount}
-        size="caption"
-        tone="neutral"
-        className="shrink-0"
-      />
-    ) : (
-      <span className="shrink-0 text-caption text-muted-foreground">—</span>
-    )}
-  </li>
-);
+const pluralDays = (days: number): string =>
+  `${days} ${days === 1 ? 'día' : 'días'}`;
+
+const dayStatusLabel = (ymd: string, todayYmd: string): string => {
+  const daysLeft = daysBetweenYmd(todayYmd, ymd);
+  if (daysLeft < 0) return `Vencido · hace ${pluralDays(-daysLeft)}`;
+  if (daysLeft === 0) return 'Vence hoy';
+  return `En ${pluralDays(daysLeft)}`;
+};
+
+/** Largest known amounts first; unknown amounts last. */
+const sortDayItems = (items: PaymentsCalendarItem[]): PaymentsCalendarItem[] =>
+  [...items].sort((a, b) => {
+    if (a.amount == null || b.amount == null) {
+      return a.amount == null ? (b.amount == null ? 0 : 1) : -1;
+    }
+    return b.amount - a.amount;
+  });
+
+const DaySheetBody = ({
+  ymd,
+  items,
+  todayYmd,
+}: {
+  ymd: string;
+  items: PaymentsCalendarItem[];
+  todayYmd: string;
+}) => {
+  const urgency = getDayUrgency(ymd, todayYmd);
+  const sortedItems = sortDayItems(items);
+  const total = items.reduce((sum, item) => sum + (item.amount ?? 0), 0);
+  const hasUnknownAmount = items.some((item) => item.amount == null);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <OverlayHint role="status" className="flex items-center gap-1.5">
+        <span
+          className="block size-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: URGENCY_HEX[urgency] ?? GLASS_DOT_COLOR }}
+          aria-hidden
+        />
+        {dayStatusLabel(ymd, todayYmd)} · {items.length} pendiente
+        {items.length === 1 ? '' : 's'}
+      </OverlayHint>
+
+      <div className={OVERLAY_GROUPED_CARD_CLASS}>
+        <AmountDisplayRow label="Total del día" value={total} />
+        {sortedItems.map((item) => {
+          const Icon = CALENDAR_ITEM_ICON[item.type];
+          return (
+            <OverlayListRow
+              key={`${item.type}-${item.sourceId}-${item.date}`}
+              icon={<Icon />}
+              title={item.name}
+              subtitle={item.typeLabel}
+              trailing={
+                item.amount != null ? (
+                  <Money value={item.amount} size="row" tone="neutral" />
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    Sin monto
+                  </span>
+                )
+              }
+            />
+          );
+        })}
+      </div>
+
+      {hasUnknownAmount ? (
+        <OverlayHint>
+          Algunos montos aún no se conocen y no suman al total.
+        </OverlayHint>
+      ) : null}
+    </div>
+  );
+};
 
 export const MonthlyPaymentsCalendar = ({
   year,
@@ -406,15 +452,6 @@ export const MonthlyPaymentsCalendar = ({
   const dayItems = useMemo(
     () => itemsForCalendarDate(items, selectedYmd),
     [items, selectedYmd],
-  );
-
-  const dayTotal = useMemo(
-    () =>
-      dayItems.reduce(
-        (sum, item) => sum + (item.amount != null ? item.amount : 0),
-        0,
-      ),
-    [dayItems],
   );
 
   const hoverItems = useMemo(
@@ -638,7 +675,7 @@ export const MonthlyPaymentsCalendar = ({
     currentWindow.endYmd === windowBounds.endYmd;
 
   const handleGoToCurrentWindow = () => {
-    if (currentWindow && !isOnCurrentWindow) void navigateToWindow(currentWindow);
+    if (currentWindow) void navigateToWindow(currentWindow);
   };
 
   const navLabel = (bounds: CalendarWindowBounds | null, which: 'prev' | 'next') => {
@@ -676,17 +713,26 @@ export const MonthlyPaymentsCalendar = ({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2.5 text-caption"
-                disabled={!currentWindow || isOnCurrentWindow || loadingMonth}
-                aria-label={CURRENT_WINDOW_LABEL_BY_MODE[viewMode]}
-                onClick={handleGoToCurrentWindow}
-              >
-                Hoy
-              </Button>
+              {currentWindow && !isOnCurrentWindow ? (
+                <UiTooltip>
+                  <UiTooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:text-foreground"
+                      disabled={loadingMonth}
+                      aria-label={CURRENT_WINDOW_LABEL_BY_MODE[viewMode]}
+                      onClick={handleGoToCurrentWindow}
+                    >
+                      <Goal className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </UiTooltipTrigger>
+                  <UiTooltipContent side="bottom" sideOffset={4}>
+                    {CURRENT_WINDOW_LABEL_BY_MODE[viewMode]}
+                  </UiTooltipContent>
+                </UiTooltip>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"
@@ -781,9 +827,6 @@ export const MonthlyPaymentsCalendar = ({
             : null;
           const selectionRing =
             'inset 0 0 0 1.5px color-mix(in srgb, var(--foreground) 22%, transparent)';
-          const hoverBorderColor =
-            URGENCY_HEX[urgency] ??
-            'color-mix(in srgb, var(--foreground) 40%, transparent)';
           return (
             <span
               key={cell.ymd}
@@ -847,7 +890,10 @@ export const MonthlyPaymentsCalendar = ({
                     {hot && showHoverTip ? (
                       <motion.span
                         className="pointer-events-none absolute inset-0 rounded-[inherit] border"
-                        style={{ borderColor: hoverBorderColor }}
+                        style={{
+                          borderColor:
+                            'color-mix(in srgb, var(--foreground) 40%, transparent)',
+                        }}
                         initial={reduce ? false : { opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -859,11 +905,9 @@ export const MonthlyPaymentsCalendar = ({
                     className={cn(
                       'relative z-10',
                       hasPending && 'font-semibold text-foreground',
-                      isToday && 'font-black',
+                      isToday &&
+                        'grid size-6 place-items-center rounded-full bg-primary font-bold text-white shadow-[0_0_10px_-2px_var(--primary)]',
                     )}
-                    style={
-                      isToday ? { color: TODAY_NUMBER_COLOR } : undefined
-                    }
                   >
                     {cell.day}
                   </span>
@@ -949,8 +993,10 @@ export const MonthlyPaymentsCalendar = ({
         {DAY_URGENCY_LEGEND.map(({ urgency, label }) => (
           <li key={urgency} className="flex items-center gap-1.5">
             <span
-              className="block size-2.5 rounded-[4px]"
-              style={pendingCellStyle(urgency, false)}
+              className="block size-1.5 rounded-full"
+              style={{
+                backgroundColor: URGENCY_HEX[urgency] ?? GLASS_DOT_COLOR,
+              }}
               aria-hidden
             />
             {label}
@@ -965,14 +1011,7 @@ export const MonthlyPaymentsCalendar = ({
         description="Pagos pendientes del día seleccionado."
         dismissLabel="Cerrar"
       >
-        <div className="space-y-3 px-1 pb-2">
-          {dayItems.some((item) => item.amount != null) ? (
-            <p className="text-caption text-muted-foreground tabular-nums">
-              Total {formatCurrency(dayTotal)}
-            </p>
-          ) : null}
-          <AgendaList items={dayItems} emptyClassName="py-6" />
-        </div>
+        <DaySheetBody ymd={selectedYmd} items={dayItems} todayYmd={todayYmd} />
       </ResponsiveOverlay>
     </aside>
   );
