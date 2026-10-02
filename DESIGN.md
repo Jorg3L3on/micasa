@@ -278,7 +278,7 @@ Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these 
 | Element | Value | Source |
 | --- | --- | --- |
 | Dialog | `max-w-md`, `p-5`, `gap-4` | `ResponsiveOverlay` |
-| Sheet | `side="bottom"`, `max-h-[92vh]`, `rounded-t-xl`, body `p-4` + safe-area bottom | `ResponsiveOverlay` |
+| Sheet | `side="bottom"`, `max-h` = `min(92dvh, 100dvh − safe-area-top − 0.75rem)` (header stays below the notch / Dynamic Island), `rounded-t-xl`, body `p-4` + safe-area bottom | `ResponsiveOverlay` |
 | Header | `min-h-10`; Cancelar `h-9 px-2 text-primary-text`; title `text-base font-semibold` | `ResponsiveOverlay` |
 | Grouped card | `rounded-xl border border-border/60 bg-card divide-y divide-border/60` | `OVERLAY_GROUPED_CARD_CLASS` |
 | Row | `px-3 py-1.5`, `min-h-11`, `gap-3` | `GroupedRow` / `FormGroupedRow` |
