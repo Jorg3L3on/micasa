@@ -39,16 +39,88 @@ import {
 } from '@/lib/finance/payments-calendar';
 import { getDaysInCalendarMonth } from '@/lib/fortnight-calendar';
 import { useHoverCapable } from '@/lib/hooks/use-hover-capable';
+import {
+  AURA_TONE_HEX,
+  getDueRowTone,
+  hexWithAlpha,
+} from '@/lib/ui/aura-palette';
 import { cn, formatCurrency } from '@/lib/utils';
 import type {
   PaymentsCalendarItem,
   PaymentsCalendarResult,
 } from '@/types/payments-calendar';
 
-/** Pending payment cell fill — exact product color. */
-const PENDING_CELL_COLOR = '#F09343';
 /** Today day-number color when that civil day is visible. */
 const TODAY_NUMBER_COLOR = '#EB4C46';
+
+const MAX_PENDING_DOTS = 3;
+
+type DayUrgency = 'overdue' | 'soon' | 'later';
+
+const DAY_URGENCY_LEGEND: Array<{ urgency: DayUrgency; label: string }> = [
+  { urgency: 'overdue', label: 'Vencido' },
+  { urgency: 'soon', label: 'Próximos 7 días' },
+  { urgency: 'later', label: 'Más adelante' },
+];
+
+const ymdToUtcMs = (ymd: string): number => {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+};
+
+const daysBetweenYmd = (fromYmd: string, toYmd: string): number =>
+  Math.round((ymdToUtcMs(toYmd) - ymdToUtcMs(fromYmd)) / 86_400_000);
+
+const getDayUrgency = (ymd: string, todayYmd: string): DayUrgency => {
+  const tone = getDueRowTone('pending', daysBetweenYmd(todayYmd, ymd));
+  if (tone === 'destructive') return 'overdue';
+  if (tone === 'amber') return 'soon';
+  return 'later';
+};
+
+/** Tinted hex for urgent days; null keeps the neutral glass tile. */
+const URGENCY_HEX: Record<DayUrgency, string | null> = {
+  overdue: AURA_TONE_HEX.destructive,
+  soon: AURA_TONE_HEX.amber,
+  later: null,
+};
+
+const GLASS_DOT_COLOR = 'color-mix(in srgb, var(--foreground) 55%, transparent)';
+
+const GLASS_TOP_HIGHLIGHT =
+  'inset 0 1px 0 color-mix(in srgb, white 16%, transparent)';
+
+const glassFill = (hot: boolean): string => {
+  const top = hot ? 14 : 9;
+  const bottom = hot ? 6 : 3;
+  return `linear-gradient(180deg, color-mix(in srgb, var(--foreground) ${top}%, transparent), color-mix(in srgb, var(--foreground) ${bottom}%, transparent))`;
+};
+
+/**
+ * Every pending day is a glass tile; urgency only colors the edge, a bottom
+ * glow and the dots. Low-alpha amber/red fills turn muddy brown on navy.
+ */
+const pendingCellStyle = (
+  urgency: DayUrgency,
+  hot: boolean,
+): { background: string; boxShadow: string } => {
+  const hex = URGENCY_HEX[urgency];
+  if (!hex) {
+    const edge = hot ? 28 : 16;
+    return {
+      background: glassFill(hot),
+      boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(--foreground) ${edge}%, transparent), ${GLASS_TOP_HIGHLIGHT}`,
+    };
+  }
+  return {
+    background: `radial-gradient(120% 90% at 50% 120%, ${hexWithAlpha(hex, hot ? 0.5 : 0.34)}, transparent 70%), ${glassFill(hot)}`,
+    boxShadow: [
+      `inset 0 0 0 1px ${hexWithAlpha(hex, hot ? 0.85 : 0.6)}`,
+      GLASS_TOP_HIGHLIGHT,
+      `0 0 ${hot ? 16 : 10}px -4px ${hexWithAlpha(hex, hot ? 0.8 : 0.55)}`,
+    ].join(', '),
+  };
+};
 
 const WEEKDAY_LABELS = ['lu', 'ma', 'mi', 'ju', 'vi', 'sá', 'do'] as const;
 
@@ -136,6 +208,12 @@ const CALENDAR_HEADING_BY_MODE: Record<CalendarViewMode, string> = {
   month: 'Pagos del mes',
 };
 
+const CURRENT_WINDOW_LABEL_BY_MODE: Record<CalendarViewMode, string> = {
+  week: 'Ir a la semana actual',
+  fortnight: 'Ir a la quincena actual',
+  month: 'Ir al mes actual',
+};
+
 const formatWindowTitle = (
   mode: CalendarViewMode,
   bounds: CalendarWindowBounds,
@@ -144,13 +222,6 @@ const formatWindowTitle = (
   if (mode === 'fortnight') return formatFortnightTitle(bounds);
   const { year, month } = parseYmdParts(bounds.startYmd);
   return formatMonthTitle(year, month);
-};
-
-/** Soft fill from pending count, always anchored on PENDING_CELL_COLOR. */
-const pendingTint = (count: number, hot: boolean): string | undefined => {
-  if (count <= 0) return undefined;
-  const strength = Math.round(Math.min(count / 4, 1) * 20 + (hot ? 18 : 42));
-  return `color-mix(in srgb, ${PENDING_CELL_COLOR} ${strength}%, transparent)`;
 };
 
 type DayCellModel = {
@@ -330,11 +401,6 @@ export const MonthlyPaymentsCalendar = ({
   const cells = useMemo(
     () => buildWindowCells(viewMode, windowBounds, items),
     [viewMode, windowBounds, items],
-  );
-
-  const maxPending = useMemo(
-    () => cells.reduce((max, cell) => Math.max(max, cell?.count ?? 0), 1),
-    [cells],
   );
 
   const dayItems = useMemo(
@@ -559,6 +625,22 @@ export const MonthlyPaymentsCalendar = ({
     [hoverYmd],
   );
 
+  const currentWindow = useMemo(
+    () =>
+      createdMonths
+        ? resolveInitialWindow(viewMode, todayYmd, createdMonths)
+        : null,
+    [createdMonths, todayYmd, viewMode],
+  );
+  const isOnCurrentWindow =
+    currentWindow != null &&
+    currentWindow.startYmd === windowBounds.startYmd &&
+    currentWindow.endYmd === windowBounds.endYmd;
+
+  const handleGoToCurrentWindow = () => {
+    if (currentWindow && !isOnCurrentWindow) void navigateToWindow(currentWindow);
+  };
+
   const navLabel = (bounds: CalendarWindowBounds | null, which: 'prev' | 'next') => {
     if (!bounds) {
       return which === 'prev'
@@ -594,6 +676,17 @@ export const MonthlyPaymentsCalendar = ({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2.5 text-caption"
+                disabled={!currentWindow || isOnCurrentWindow || loadingMonth}
+                aria-label={CURRENT_WINDOW_LABEL_BY_MODE[viewMode]}
+                onClick={handleGoToCurrentWindow}
+              >
+                Hoy
+              </Button>
               <Button
                 type="button"
                 variant="ghost"
@@ -681,7 +774,16 @@ export const MonthlyPaymentsCalendar = ({
           const row = Math.floor(index / 7);
           const col = index % 7;
           const selectionVisible = selected && opensDaySheet;
-
+          const hasPending = cell.count > 0;
+          const urgency = getDayUrgency(cell.ymd, todayYmd);
+          const pendingStyle = hasPending
+            ? pendingCellStyle(urgency, hot)
+            : null;
+          const selectionRing =
+            'inset 0 0 0 1.5px color-mix(in srgb, var(--foreground) 22%, transparent)';
+          const hoverBorderColor =
+            URGENCY_HEX[urgency] ??
+            'color-mix(in srgb, var(--foreground) 40%, transparent)';
           return (
             <span
               key={cell.ymd}
@@ -698,7 +800,7 @@ export const MonthlyPaymentsCalendar = ({
                     : ''
                 }`}
                 aria-pressed={selectionVisible}
-                className="absolute -inset-px block rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="absolute -inset-px block rounded-[8px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onPointerEnter={() => {
                   if (showHoverTip) setHoverYmd(cell.ymd);
                 }}
@@ -713,24 +815,23 @@ export const MonthlyPaymentsCalendar = ({
               >
                 <motion.span
                   className={cn(
-                    'pointer-events-none absolute inset-px grid place-items-center rounded-[3px]',
+                    'pointer-events-none absolute inset-px grid place-items-center rounded-[7px]',
                     'font-mono text-caption font-medium tabular-nums leading-none',
                     selectionVisible && 'font-semibold text-foreground',
                   )}
                   style={{
                     background:
-                      pendingTint(
-                        cell.count > 0
-                          ? Math.max(1, (cell.count / maxPending) * 4)
-                          : 0,
-                        hot,
-                      ) ??
+                      pendingStyle?.background ??
                       (selectionVisible
                         ? 'color-mix(in srgb, var(--foreground) 6%, transparent)'
                         : undefined),
-                    boxShadow: selectionVisible
-                      ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--foreground) 22%, transparent)'
-                      : 'none',
+                    boxShadow:
+                      [
+                        pendingStyle?.boxShadow,
+                        selectionVisible ? selectionRing : null,
+                      ]
+                        .filter(Boolean)
+                        .join(', ') || 'none',
                     transition: 'background 150ms, box-shadow 150ms',
                   }}
                   initial={reduce ? false : { opacity: 0, scale: 0.72 }}
@@ -746,7 +847,7 @@ export const MonthlyPaymentsCalendar = ({
                     {hot && showHoverTip ? (
                       <motion.span
                         className="pointer-events-none absolute inset-0 rounded-[inherit] border"
-                        style={{ borderColor: PENDING_CELL_COLOR }}
+                        style={{ borderColor: hoverBorderColor }}
                         initial={reduce ? false : { opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -755,13 +856,36 @@ export const MonthlyPaymentsCalendar = ({
                     ) : null}
                   </AnimatePresence>
                   <span
-                    className={cn('relative z-10', isToday && 'font-black')}
+                    className={cn(
+                      'relative z-10',
+                      hasPending && 'font-semibold text-foreground',
+                      isToday && 'font-black',
+                    )}
                     style={
                       isToday ? { color: TODAY_NUMBER_COLOR } : undefined
                     }
                   >
                     {cell.day}
                   </span>
+                  {hasPending ? (
+                    <span
+                      className="absolute inset-x-0 bottom-1 z-10 flex justify-center gap-0.5"
+                      aria-hidden
+                    >
+                      {Array.from({
+                        length: Math.min(cell.count, MAX_PENDING_DOTS),
+                      }).map((_, dotIndex) => (
+                        <span
+                          key={dotIndex}
+                          className="block size-[3px] rounded-full"
+                          style={{
+                            backgroundColor:
+                              URGENCY_HEX[urgency] ?? GLASS_DOT_COLOR,
+                          }}
+                        />
+                      ))}
+                    </span>
+                  ) : null}
                 </motion.span>
               </motion.button>
             </span>
@@ -817,6 +941,22 @@ export const MonthlyPaymentsCalendar = ({
           />
         ) : null}
       </div>
+
+      <ul
+        className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-caption text-muted-foreground"
+        aria-label="Leyenda del calendario"
+      >
+        {DAY_URGENCY_LEGEND.map(({ urgency, label }) => (
+          <li key={urgency} className="flex items-center gap-1.5">
+            <span
+              className="block size-2.5 rounded-[4px]"
+              style={pendingCellStyle(urgency, false)}
+              aria-hidden
+            />
+            {label}
+          </li>
+        ))}
+      </ul>
 
       <ResponsiveOverlay
         open={sheetOpen && opensDaySheet}

@@ -162,16 +162,22 @@ describe('listPaymentsCalendarForMonth', () => {
     );
   });
 
-  it('includes unpaid expenses scheduled by due_day without payment_date', async () => {
-    fortnightFindMany.mockImplementation(async (args: { where: Record<string, unknown> }) => {
-      if (args.where.year === 2026 && args.where.month === 9) {
+  const mockScheduledExpenseFortnights = () => {
+    fortnightFindMany.mockImplementation(
+      async (args: { select: Record<string, unknown> }) => {
+        // Template obligations select end_date; the due_day query does not.
+        if (args.select.end_date) return [];
         return [
-          { id: 1, period: 'FIRST' },
-          { id: 2, period: 'SECOND' },
+          { id: 1, year: 2026, month: 9, period: 'FIRST' },
+          { id: 2, year: 2026, month: 9, period: 'SECOND' },
+          { id: 3, year: 2026, month: 10, period: 'FIRST' },
         ];
-      }
-      return [];
-    });
+      },
+    );
+  };
+
+  it('includes unpaid expenses scheduled by due_day without payment_date', async () => {
+    mockScheduledExpenseFortnights();
     expenseFindMany.mockImplementation(async (args: { where: Record<string, unknown> }) => {
       if (args.where.payment_date === null) {
         return [
@@ -194,6 +200,34 @@ describe('listPaymentsCalendarForMonth', () => {
       name: 'Netflix',
       amount: 199,
       sourceId: 55,
+      typeLabel: 'Gasto',
+    });
+  });
+
+  it('places next month FIRST due on the last day into the viewed month', async () => {
+    mockScheduledExpenseFortnights();
+    expenseFindMany.mockImplementation(async (args: { where: Record<string, unknown> }) => {
+      if (args.where.payment_date === null) {
+        return [
+          {
+            id: 56,
+            description: 'Sky',
+            amount: 269,
+            due_day: 30,
+            fortnight_id: 3,
+          },
+        ];
+      }
+      return [];
+    });
+
+    const result = await listPaymentsCalendarForMonth(ownerFilter, 2026, 9);
+    expect(result.items).toContainEqual({
+      date: '2026-09-30',
+      type: 'expense',
+      name: 'Sky',
+      amount: 269,
+      sourceId: 56,
       typeLabel: 'Gasto',
     });
   });
