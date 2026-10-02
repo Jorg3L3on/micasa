@@ -341,7 +341,7 @@ export const CommitmentMeter = ({
                 <span className="truncate font-sans text-sm font-bold tabular-nums text-foreground">
                   {formatCurrency(entry.amount)}
                 </span>
-                <span className="shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                <span className="shrink-0 text-caption font-semibold tabular-nums text-muted-foreground">
                   {percentOfIncome}%
                 </span>
               </span>

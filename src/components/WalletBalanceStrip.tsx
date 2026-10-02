@@ -492,7 +492,7 @@ const WalletBalanceStrip = ({
                       {typeLabel ? (
                         <p
                           className={cn(
-                            'mt-0.5 truncate text-[10px] font-semibold uppercase leading-none tracking-[0.08em]',
+                            'mt-0.5 truncate text-caption font-semibold uppercase leading-none tracking-[0.08em]',
                             onDarkSurface
                               ? 'text-white/50'
                               : 'text-muted-foreground/80',
