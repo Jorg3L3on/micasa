@@ -16,7 +16,6 @@ import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
 import { formatMonthHeading, formatMonthTitle, todayCalendarDate } from '@/lib/calendar-dates';
 import { PLANNING_MONTH_MAX_YEAR } from '@/lib/finance/planning-month';
 import {
-  dueDayFallsInFortnight,
   formatFortnightPeriodTitle,
   getCurrentCalendarFortnightRef,
   getCurrentMonthlyPanelHref,
@@ -125,8 +124,6 @@ export default async function MonthlyPage({
   const prevSecondInfo = pickNav(3);
   const nextFirstInfo = pickNav(4);
   const nextSecondInfo = pickNav(5);
-  const wallets = shell.wallets;
-  const duePayments = shell.duePayments;
 
   const hasPrevMonth = prevFirstInfo !== null || prevSecondInfo !== null;
   const hasNextMonth = nextFirstInfo !== null || nextSecondInfo !== null;
@@ -242,25 +239,6 @@ export default async function MonthlyPage({
     );
   }
 
-  const dueWalletIds = duePayments.map((dp) => dp.walletId);
-  const paidWalletIds = isCurrentMonth
-    ? wallets
-        .filter((w) => {
-          if (w.type !== 'CREDIT_CARD' && w.type !== 'DEPARTMENT_STORE_CARD') {
-            return false;
-          }
-          if (w.due_day == null) return false;
-          const dueInFortnight = dueDayFallsInFortnight(
-            w.due_day,
-            currentFn.year,
-            currentFn.month,
-            currentFn.period,
-          );
-          return dueInFortnight && !dueWalletIds.includes(w.id);
-        })
-        .map((w) => w.id)
-    : [];
-
   return (
     <MonthlyPanelLayout
       ownerKey={ownerKey}
@@ -292,8 +270,6 @@ export default async function MonthlyPage({
         secondLabel={secondLabel}
         firstFortnightId={firstFortnightId}
         secondFortnightId={secondFortnightId}
-        paidWalletIds={paidWalletIds}
-        isCurrentMonth={isCurrentMonth}
         monthIsMissing={monthIsMissing}
         todayYmd={todayYmd}
       />

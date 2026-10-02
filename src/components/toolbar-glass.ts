@@ -92,6 +92,22 @@ export const TOOLBAR_GLASS_CANCEL =
     'motion-reduce:transition-none motion-reduce:active:scale-100',
   ].join(' ');
 
+/** Frosted action menu panel (dock “+” menu, header “Más”). */
+export const GLASS_MENU_PANEL_CLASS =
+  [
+    'overflow-hidden rounded-2xl p-1.5',
+    'border border-black/10 bg-background/90 shadow-panel',
+    'supports-[backdrop-filter]:bg-background/80 backdrop-blur-2xl backdrop-saturate-150',
+    'dark:border-white/10 dark:bg-[rgb(9_14_29/0.88)] dark:shadow-panel',
+  ].join(' ');
+
+/** Two-line action row inside GLASS_MENU_PANEL_CLASS: icon pill + title + hint. */
+export const GLASS_MENU_ITEM_CLASS =
+  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50';
+
+export const GLASS_MENU_ICON_PILL_CLASS =
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 text-status-info ring-1 ring-status-info/25 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:!text-status-info";
+
 /** Search field — frosted capsule (idle pill or takeover field). */
 export const TOOLBAR_GLASS_FIELD =
   [

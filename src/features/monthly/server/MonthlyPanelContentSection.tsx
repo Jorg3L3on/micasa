@@ -32,8 +32,6 @@ type MonthlyPanelContentSectionProps = {
   secondLabel: string;
   firstFortnightId: number;
   secondFortnightId: number;
-  paidWalletIds: number[];
-  isCurrentMonth: boolean;
   monthIsMissing: boolean;
   todayYmd: string;
 };
@@ -69,8 +67,6 @@ export const MonthlyPanelContentSection = async ({
   secondLabel,
   firstFortnightId,
   secondFortnightId,
-  paidWalletIds,
-  isCurrentMonth,
   monthIsMissing,
   todayYmd,
 }: MonthlyPanelContentSectionProps) => {
@@ -100,8 +96,6 @@ export const MonthlyPanelContentSection = async ({
       year={year}
       month={month}
       wallets={shell.wallets}
-      paidWalletIds={paidWalletIds}
-      isCurrentMonth={isCurrentMonth}
       budgetPanel={content.budgetPanel}
       budgetOwnerQuery={ownerQuery}
       paymentsCalendarItems={content.paymentsCalendarItems}
@@ -129,12 +123,8 @@ export const MonthlyPanelContentSection = async ({
 
 export const MonthlyPanelContentFallback = ({
   wallets = [],
-  paidWalletIds = [],
-  isCurrentMonth = false,
 }: {
   wallets?: WalletListItem[];
-  paidWalletIds?: number[];
-  isCurrentMonth?: boolean;
 }) => (
   <SkeletonExit>
     <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
@@ -144,8 +134,6 @@ export const MonthlyPanelContentFallback = ({
           year={2000}
           month={1}
           wallets={wallets}
-          paidWalletIds={paidWalletIds}
-          isCurrentMonth={isCurrentMonth}
           serverLoadedPeriod="FIRST"
           loading
           first={{
@@ -178,11 +166,7 @@ export const MonthlyPanelContentSuspense = (
   <Suspense
     key={props.ownerKey}
     fallback={
-      <MonthlyPanelContentFallback
-        wallets={props.shell.wallets}
-        paidWalletIds={props.paidWalletIds}
-        isCurrentMonth={props.isCurrentMonth}
-      />
+      <MonthlyPanelContentFallback wallets={props.shell.wallets} />
     }
   >
     <ContentEnter>

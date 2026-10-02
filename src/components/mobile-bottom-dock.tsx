@@ -27,6 +27,12 @@ import {
 
 import { getDockDestinations } from '@/components/nav-destinations';
 import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
+import {
+  GLASS_MENU_ICON_PILL_CLASS,
+  GLASS_MENU_ITEM_CLASS,
+  GLASS_MENU_PANEL_CLASS,
+  TOOLBAR_GLASS_ICON,
+} from '@/components/toolbar-glass';
 import { useSidebar } from '@/components/ui/sidebar';
 import { DOCK_FLOAT_PADDING_CLASS } from '@/lib/ui/dock-clearance';
 import { cn } from '@/lib/utils';
@@ -241,24 +247,19 @@ function MobileBottomDockInner() {
               }
               transition={reduceMotion ? { duration: 0 } : MENU_TRANSITION}
               className={cn(
-                'absolute bottom-[calc(100%+0.75rem)] left-1/2 z-10 w-[min(17.5rem,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden rounded-2xl',
-                'border border-black/10 bg-background/90 p-1.5 shadow-panel',
-                'supports-[backdrop-filter]:bg-background/80 backdrop-blur-2xl backdrop-saturate-150',
-                'dark:border-white/10 dark:bg-[rgb(9_14_29/0.88)] dark:shadow-panel',
+                'absolute bottom-[calc(100%+0.75rem)] left-1/2 z-10 w-[min(17.5rem,calc(100vw-1.5rem))] -translate-x-1/2',
+                GLASS_MENU_PANEL_CLASS,
               )}
             >
               <button
                 type="button"
                 role="menuitem"
                 aria-label="Agregar gasto"
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                className={GLASS_MENU_ITEM_CLASS}
                 onClick={handleChooseExpense}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 ring-1 ring-status-info/25">
-                  <ArrowDownCircle
-                    className="h-4 w-4 text-status-info"
-                    aria-hidden
-                  />
+                <span className={GLASS_MENU_ICON_PILL_CLASS}>
+                  <ArrowDownCircle aria-hidden />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">Gasto</span>
@@ -271,14 +272,11 @@ function MobileBottomDockInner() {
                 type="button"
                 role="menuitem"
                 aria-label="Agregar ingreso"
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                className={GLASS_MENU_ITEM_CLASS}
                 onClick={handleChooseIncome}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-info/15 ring-1 ring-status-info/25">
-                  <ArrowUpCircle
-                    className="h-4 w-4 text-status-info"
-                    aria-hidden
-                  />
+                <span className={GLASS_MENU_ICON_PILL_CLASS}>
+                  <ArrowUpCircle aria-hidden />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">Ingreso</span>
@@ -321,8 +319,9 @@ function MobileBottomDockInner() {
               onKeyDown={handlePlusKeyDown}
               whileTap={reduceMotion ? undefined : { scale: 0.9 }}
               className={cn(
-                'flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md',
-                'ring-2 ring-primary/30 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                TOOLBAR_GLASS_ICON,
+                'flex size-12 items-center justify-center active:scale-100',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
               )}
             >
               <motion.span
@@ -330,7 +329,7 @@ function MobileBottomDockInner() {
                 transition={reduceMotion ? { duration: 0 } : PILL_SPRING}
                 className="flex"
               >
-                <Plus className="h-6 w-6" aria-hidden />
+                <Plus className="size-6" aria-hidden />
               </motion.span>
             </motion.button>
           </div>

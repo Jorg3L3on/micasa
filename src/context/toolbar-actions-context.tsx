@@ -41,6 +41,8 @@ export type ToolbarLeadingAction = {
 export type ToolbarOverflowItem = {
   key: string;
   label: string;
+  /** Second line; when set the item renders as a rich row (icon pill + title + hint). */
+  description?: string;
   onClick: () => void;
   icon?: ReactNode;
   destructive?: boolean;

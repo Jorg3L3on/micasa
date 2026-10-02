@@ -3,6 +3,7 @@ import {
   Bell,
   ClipboardList,
   FolderTree,
+  Goal,
   PiggyBank,
   Plug,
   TrendingUp,
@@ -78,6 +79,13 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     icon: PiggyBank,
     section: 'catalogos',
     matchPrefix: '/settings/budgets',
+  },
+  {
+    href: '/settings/metas',
+    label: 'Metas',
+    icon: Goal,
+    section: 'catalogos',
+    matchPrefix: '/settings/metas',
   },
   {
     href: '/settings/house-users',

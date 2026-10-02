@@ -91,6 +91,16 @@ export const PAGE_CREATE_ACTION = {
   },
 } as const satisfies Record<string, PageCreateAction>;
 
+const DOCK_CREATE_LABELS = new Set<string>([
+  PAGE_CREATE_ACTION.expense.label,
+  PAGE_CREATE_ACTION.income.label,
+  PAGE_CREATE_ACTION.expenseOrIncome.label,
+]);
+
+/** The mobile dock "+" already offers gasto/ingreso, so a header "+" with these labels is redundant there. */
+export const isDockCreateLabel = (label: string): boolean =>
+  DOCK_CREATE_LABELS.has(label);
+
 export type TransactionTypeFilter = string | null | undefined;
 
 /** Operaciones: the type filter picks gasto, ingreso, or the chooser. */
@@ -131,8 +141,8 @@ export const resolvePageCreateAction = (
     return PAGE_CREATE_ACTION.cardPurchase;
   }
   if (path === '/loans') return PAGE_CREATE_ACTION.loan;
-  if (path === '/metas') return PAGE_CREATE_ACTION.goal;
-  if (/^\/metas\/[^/]+$/.test(path)) return PAGE_CREATE_ACTION.goalSave;
+  if (path === '/settings/metas') return PAGE_CREATE_ACTION.goal;
+  if (/^\/settings\/metas\/[^/]+$/.test(path)) return PAGE_CREATE_ACTION.goalSave;
   if (path === '/settings/budgets') return PAGE_CREATE_ACTION.budget;
   if (path === '/settings/categories') return PAGE_CREATE_ACTION.category;
   if (path === '/settings/expense-templates') {

@@ -17,7 +17,6 @@ import {
   MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
-import { AuraSurface } from '@/components/aura/aura-surface';
 import {
   AURA_TONE_HEX,
   getAuraBarStyle,
@@ -185,9 +184,8 @@ function BudgetAllocationRow({
   const barColor = overspent ? AURA_TONE_HEX.destructive : brandColor;
 
   return (
-    <AuraSurface
+    <div
       role="listitem"
-      color={brandColor}
       className="space-y-1.5 rounded-xl bg-card/40 px-3 py-2.5"
     >
       <div className="flex items-center justify-between gap-3">
@@ -257,6 +255,6 @@ function BudgetAllocationRow({
           {remainingLabel}
         </span>
       </div>
-    </AuraSurface>
+    </div>
   );
 }

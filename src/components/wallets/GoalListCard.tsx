@@ -171,7 +171,7 @@ export const GoalListCard = ({
     return { ...getGoalActiveCardStyle(), ...brandCssVars };
   }, [isFinishedVisual, visual, brandCssVars]);
 
-  const detailHref = `/metas/${wallet.id}${ownerQueryString ? `?${ownerQueryString}` : ''}`;
+  const detailHref = `/settings/metas/${wallet.id}${ownerQueryString ? `?${ownerQueryString}` : ''}`;
   const savedPct = Math.round(metrics.savedProgress * 100);
   const progressPct = isFinishedVisual ? 100 : savedPct;
   const dueDateLabel = wallet.goal_due_date

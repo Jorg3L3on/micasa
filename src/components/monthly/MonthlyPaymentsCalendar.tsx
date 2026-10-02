@@ -5,6 +5,8 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Money } from '@/components/money';
 import {
+  AURA_TAB_INDICATOR_CLASS,
+  GLASS_TAB_ACTIVE_LABEL_CLASS,
   MONTHLY_ICON_PILL_CLASS,
   MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
@@ -24,12 +26,14 @@ import {
 import {
   defaultSelectedDayInWindow,
   fortnightRefForWindow,
+  isWindowFullyCreated,
   monthBounds,
   neighborWindow,
   pendingDatesFromCalendarItems,
   resolveInitialWindow,
   type CalendarViewMode,
   type CalendarWindowBounds,
+  weekBoundsContaining,
   windowMonths,
   itemsForCalendarDate,
 } from '@/lib/finance/payments-calendar';
@@ -40,23 +44,6 @@ import type {
   PaymentsCalendarItem,
   PaymentsCalendarResult,
 } from '@/types/payments-calendar';
-
-const XL_BREAKPOINT_PX = 1280;
-
-/** Matches Tailwind `xl` — sidebar calendar breakpoint. */
-function useIsXlUp() {
-  const [isXlUp, setIsXlUp] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia(`(min-width: ${XL_BREAKPOINT_PX}px)`);
-    const update = () => setIsXlUp(mql.matches);
-    update();
-    mql.addEventListener('change', update);
-    return () => mql.removeEventListener('change', update);
-  }, []);
-
-  return isXlUp;
-}
 
 /** Pending payment cell fill — exact product color. */
 const PENDING_CELL_COLOR = '#F09343';
@@ -140,10 +127,13 @@ const formatWeekTitle = (bounds: CalendarWindowBounds): string => {
 const formatFortnightTitle = (bounds: CalendarWindowBounds): string => {
   const ref = fortnightRefForWindow(bounds);
   const ordinal = ref.period === 'FIRST' ? '1.ª' : '2.ª';
-  const monthLabel = new Intl.DateTimeFormat('es-MX', {
-    month: 'long',
-  }).format(new Date(ref.year, ref.month - 1, 1));
-  return `${ordinal} quincena · ${monthLabel} ${ref.year}`;
+  return `${ordinal} quincena · ${formatWeekTitle(bounds)}`;
+};
+
+const CALENDAR_HEADING_BY_MODE: Record<CalendarViewMode, string> = {
+  week: 'Pagos de la semana',
+  fortnight: 'Pagos de la quincena',
+  month: 'Pagos del mes',
 };
 
 const formatWindowTitle = (
@@ -297,27 +287,41 @@ export const MonthlyPaymentsCalendar = ({
   const { context } = useFinanceContext();
   const canHover = useHoverCapable();
   const isMobile = useIsMobile();
-  const isXlUp = useIsXlUp();
   const reduce = useReducedMotion();
+  /**
+   * Hover-capable md+: tooltip on hover.
+   * Mobile or touch-only: Sheet on day tap only when the day has pendientes.
+   */
+  const showHoverTip = canHover && !isMobile;
+  const opensDaySheet = !showHoverTip;
   const tooltipId = useId();
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
-  const [windowBounds, setWindowBounds] = useState<CalendarWindowBounds>(() =>
-    monthBounds(year, month),
-  );
+  const [initialWeek] = useState<CalendarWindowBounds>(() => {
+    const viewedMonth = monthBounds(year, month);
+    const todayInViewedMonth =
+      todayYmd >= viewedMonth.startYmd && todayYmd <= viewedMonth.endYmd;
+    return weekBoundsContaining(
+      todayInViewedMonth ? todayYmd : viewedMonth.startYmd,
+    );
+  });
+  const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
+  const [windowBounds, setWindowBounds] =
+    useState<CalendarWindowBounds>(initialWeek);
   const [items, setItems] = useState(initialItems);
   const [createdMonths, setCreatedMonths] = useState<CreatedMonth[] | null>(
     null,
   );
   const [loadingMonth, setLoadingMonth] = useState(false);
+  const [loadingBounds, setLoadingBounds] =
+    useState<CalendarWindowBounds | null>(null);
   const [hoverYmd, setHoverYmd] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const [selectedYmd, setSelectedYmd] = useState(() =>
     defaultSelectedDayInWindow({
-      startYmd: monthBounds(year, month).startYmd,
-      endYmd: monthBounds(year, month).endYmd,
+      startYmd: initialWeek.startYmd,
+      endYmd: initialWeek.endYmd,
       todayYmd,
       pendingDates: pendingDatesFromCalendarItems(initialItems),
     }),
@@ -362,8 +366,8 @@ export const MonthlyPaymentsCalendar = ({
   );
 
   const periodTitle = useMemo(
-    () => formatWindowTitle(viewMode, windowBounds),
-    [viewMode, windowBounds],
+    () => formatWindowTitle(viewMode, loadingBounds ?? windowBounds),
+    [viewMode, loadingBounds, windowBounds],
   );
 
   const prevWindow = useMemo(
@@ -426,6 +430,7 @@ export const MonthlyPaymentsCalendar = ({
   const navigateToWindow = useCallback(
     async (bounds: CalendarWindowBounds) => {
       setLoadingMonth(true);
+      setLoadingBounds(bounds);
       try {
         const nextItems = await fetchWindow(bounds);
         applyWindowData(bounds, nextItems);
@@ -433,6 +438,7 @@ export const MonthlyPaymentsCalendar = ({
         console.error('Error loading payments calendar window:', error);
       } finally {
         setLoadingMonth(false);
+        setLoadingBounds(null);
       }
     },
     [applyWindowData, fetchWindow],
@@ -451,6 +457,36 @@ export const MonthlyPaymentsCalendar = ({
       cancelled = true;
     };
   }, [context]);
+
+  const initialWindowResolvedRef = useRef(false);
+  useEffect(() => {
+    if (!createdMonths || initialWindowResolvedRef.current) return;
+    initialWindowResolvedRef.current = true;
+
+    if (
+      !isWindowFullyCreated(
+        initialWeek.startYmd,
+        initialWeek.endYmd,
+        createdMonths,
+      )
+    ) {
+      setViewMode('month');
+      applyWindowData(monthBounds(year, month), initialItems);
+      return;
+    }
+
+    if (windowMonths(initialWeek.startYmd, initialWeek.endYmd).length > 1) {
+      void navigateToWindow(initialWeek);
+    }
+  }, [
+    applyWindowData,
+    createdMonths,
+    initialItems,
+    initialWeek,
+    month,
+    navigateToWindow,
+    year,
+  ]);
 
   const windowRef = useRef(windowBounds);
   windowRef.current = windowBounds;
@@ -476,19 +512,19 @@ export const MonthlyPaymentsCalendar = ({
   }, [refreshNonce, fetchWindow, applyWindowData]);
 
   useEffect(() => {
-    if (!isMobile) setSheetOpen(false);
-  }, [isMobile]);
+    if (!opensDaySheet) setSheetOpen(false);
+  }, [opensDaySheet]);
 
   const selectDay = useCallback(
     (ymd: string) => {
       setSelectedYmd(ymd);
-      // Mobile Sheet only when the day has pending payments — empty days
+      // Sheet only when the day has pending payments — empty days
       // just update selection so taps stay light.
-      if (isMobile && itemsForCalendarDate(items, ymd).length > 0) {
+      if (opensDaySheet && itemsForCalendarDate(items, ymd).length > 0) {
         setSheetOpen(true);
       }
     },
-    [isMobile, items],
+    [opensDaySheet, items],
   );
 
   const handleViewModeChange = useCallback(
@@ -508,14 +544,7 @@ export const MonthlyPaymentsCalendar = ({
     [createdMonths, navigateToWindow, todayYmd, viewMode],
   );
 
-  /**
-   * Desktop xl+ (sidebar): hover tooltip.
-   * Tablet / <xl under summary: agenda below the grid.
-   * Mobile: bottom Sheet on day tap only when the day has pendientes.
-   */
-  const showInlineAgenda = !isMobile && !isXlUp;
-  const showSelectionChrome = showInlineAgenda || isMobile;
-  const tipOpen = canHover && isXlUp && hoverYmd != null;
+  const tipOpen = showHoverTip && hoverYmd != null;
 
   const tipAnchorRef = useMemo(
     () => ({
@@ -558,7 +587,7 @@ export const MonthlyPaymentsCalendar = ({
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-sm font-semibold leading-tight text-foreground">
-                Pagos del mes
+                {CALENDAR_HEADING_BY_MODE[viewMode]}
               </h2>
               <p className="mt-0.5 text-caption text-muted-foreground">
                 {periodTitle}
@@ -605,7 +634,9 @@ export const MonthlyPaymentsCalendar = ({
         )}
         listClassName="w-full"
         stretch
-        triggerClassName="px-2 text-caption sm:text-sm"
+        triggerClassName="px-2"
+        indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+        activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
       />
 
       <div
@@ -649,7 +680,7 @@ export const MonthlyPaymentsCalendar = ({
           const lift = !reduce && canHover && hot ? 1.06 : 1;
           const row = Math.floor(index / 7);
           const col = index % 7;
-          const selectionVisible = selected && showSelectionChrome;
+          const selectionVisible = selected && opensDaySheet;
 
           return (
             <span
@@ -669,10 +700,10 @@ export const MonthlyPaymentsCalendar = ({
                 aria-pressed={selectionVisible}
                 className="absolute -inset-px block rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onPointerEnter={() => {
-                  if (canHover && isXlUp) setHoverYmd(cell.ymd);
+                  if (showHoverTip) setHoverYmd(cell.ymd);
                 }}
                 onFocus={() => {
-                  if (canHover && isXlUp) setHoverYmd(cell.ymd);
+                  if (showHoverTip) setHoverYmd(cell.ymd);
                 }}
                 onBlur={() => setHoverYmd(null)}
                 onClick={() => selectDay(cell.ymd)}
@@ -712,7 +743,7 @@ export const MonthlyPaymentsCalendar = ({
                   }}
                 >
                   <AnimatePresence>
-                    {hot && canHover && isXlUp ? (
+                    {hot && showHoverTip ? (
                       <motion.span
                         className="pointer-events-none absolute inset-0 rounded-[inherit] border"
                         style={{ borderColor: PENDING_CELL_COLOR }}
@@ -737,7 +768,7 @@ export const MonthlyPaymentsCalendar = ({
           );
         })}
 
-        {canHover && isXlUp ? (
+        {showHoverTip ? (
           <Tooltip
             key={hoverYmd ?? 'closed'}
             id={tooltipId}
@@ -787,24 +818,8 @@ export const MonthlyPaymentsCalendar = ({
         ) : null}
       </div>
 
-      {showInlineAgenda ? (
-        <div className="space-y-2 border-t border-border/50 pt-3">
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-caption font-semibold text-foreground">
-              {formatDayHeading(selectedYmd)}
-            </h3>
-            {dayItems.some((item) => item.amount != null) ? (
-              <span className="text-caption text-muted-foreground tabular-nums">
-                {formatCurrency(dayTotal)}
-              </span>
-            ) : null}
-          </div>
-          <AgendaList items={dayItems} />
-        </div>
-      ) : null}
-
       <ResponsiveOverlay
-        open={sheetOpen && isMobile}
+        open={sheetOpen && opensDaySheet}
         onOpenChange={setSheetOpen}
         title={formatDayHeading(selectedYmd)}
         description="Pagos pendientes del día seleccionado."

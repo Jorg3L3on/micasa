@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
 import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
 import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
 import { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
@@ -208,6 +209,7 @@ export default function FortnightColumn({
   } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
   const [addIncomeError, setAddIncomeError] = useState<string | null>(null);
@@ -422,12 +424,20 @@ export default function FortnightColumn({
   const handleOpenPayroll = useCallback(() => {
     setPayrollDialogOpen(true);
   }, []);
+  const handleOpenRegenerateConfirm = useCallback(() => {
+    setRegenerateConfirmOpen(true);
+  }, []);
+  const handleConfirmRegenerate = useCallback(async () => {
+    await handleRegenerateFromTemplates();
+    setRegenerateConfirmOpen(false);
+  }, [handleRegenerateFromTemplates]);
   const fortnightOverflowItems = useMemo(() => {
     const canAct = Boolean(fortnightId && fortnightId > 0);
     return [
       {
         key: 'receive-payroll',
         label: 'Recibir quincena',
+        description: 'Depositar la nómina en su billetera',
         onClick: handleOpenPayroll,
         icon: payrollOverflowIcon,
         disabled: !canAct,
@@ -435,9 +445,8 @@ export default function FortnightColumn({
       {
         key: 'regenerate-templates',
         label: 'Regenerar desde plantillas',
-        onClick: () => {
-          void handleRegenerateFromTemplates();
-        },
+        description: 'Crear movimientos faltantes',
+        onClick: handleOpenRegenerateConfirm,
         icon: regenerateOverflowIcon,
         disabled: !canAct || isRefreshing || isRegenerating,
       },
@@ -445,7 +454,7 @@ export default function FortnightColumn({
   }, [
     fortnightId,
     handleOpenPayroll,
-    handleRegenerateFromTemplates,
+    handleOpenRegenerateConfirm,
     payrollOverflowIcon,
     regenerateOverflowIcon,
     isRefreshing,
@@ -966,6 +975,7 @@ export default function FortnightColumn({
             'mb-1.5 flex min-w-0 flex-wrap items-center gap-1 p-1 sm:mb-3.5 sm:flex-nowrap sm:gap-1.5 sm:p-1.5',
           )}
           wrapperClassName="min-w-0 w-full flex-1 sm:w-auto"
+          listClassName="min-w-full"
           indicatorClassName={AURA_TAB_INDICATOR_CLASS}
           activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
           options={[
@@ -1001,8 +1011,10 @@ export default function FortnightColumn({
               label: (
                 <span className={plannerTabLabelClass}>
                   <HandCoins className={plannerTabIconClass} aria-hidden />
-                  <span className="@min-[6.25rem]:hidden">Prest.</span>
-                  <span className="hidden @min-[6.25rem]:inline">Préstamos</span>
+                  <span className={cn(!compactTabs && 'sm:hidden')}>Prest.</span>
+                  {!compactTabs ? (
+                    <span className="hidden sm:inline">Préstamos</span>
+                  ) : null}
                   <Badge variant={pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
                     {pendingLoanPaymentsCount}
                   </Badge>
@@ -1139,6 +1151,18 @@ export default function FortnightColumn({
         year={year}
         month={month}
         onSuccess={refreshData}
+      />
+
+      <ConfirmDeleteDialog
+        open={regenerateConfirmOpen}
+        onOpenChange={setRegenerateConfirmOpen}
+        onConfirm={handleConfirmRegenerate}
+        title="Regenerar desde plantillas"
+        description="Se crearán los gastos e ingresos de tus plantillas que aún no estén en esta quincena. Los movimientos existentes no se modifican."
+        confirmLabel="Regenerar"
+        loadingLabel="Regenerando…"
+        tone="default"
+        busy={isRegenerating}
       />
 
       {/* Override Amount Dialog */}

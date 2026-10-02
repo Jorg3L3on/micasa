@@ -15,7 +15,6 @@ import { Money } from '@/components/money';
 import { STATUS_BADGE_CLASS, STATUS_SOFT_CLASS } from '@/lib/status-tone';
 import { formatCurrency, toDisplayAmount, cn } from '@/lib/utils';
 import { userFacingErrorMessage } from '@/lib/user-facing-error';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { useFinanceContext } from '@/context/finance-context';
 import {
@@ -50,11 +49,6 @@ import {
   getCurrentCalendarFortnightRef,
 } from '@/lib/fortnight-calendar';
 import { formatDisplayDayMonth, todayCalendarDate } from '@/lib/calendar-dates';
-import {
-  isFortnightCardOrLoanMovement,
-  shouldShowCashFlowFooter,
-  sumCashFlowFooterTotal,
-} from '@/lib/finance/fortnight-expense-tab';
 import {
   sortExpenseListRows,
   type PlannerListSortDir,
@@ -248,8 +242,8 @@ type ExpenseTableProps = {
   date?: string;
   expenses: TransactionRow[];
   /**
-   * Unfiltered rows for "Total efectivo/débito".
-   * The list uses `expenses`; the footer still includes card and loan movements.
+   * Unfiltered rows, including card and loan movements hidden from the list.
+   * When provided, an empty `expenses` list renders no empty state.
    */
   cashFlowRows?: readonly TransactionRow[];
   onExpenseUpdate?: (expenseId: number, isPaid: boolean) => void;
@@ -629,86 +623,6 @@ export default function ExpenseTable({
     };
   }, [date, month, period, year]);
 
-  const pendingExpenses = localExpenses.filter((e) => !e.is_paid);
-  const paidExpenses = localExpenses.filter((e) => e.is_paid);
-
-  const cardPaid = paidExpenses.filter((e) => isCardChargeExpenseRow(e));
-  const cardPending = pendingExpenses.filter((e) => isCardChargeExpenseRow(e));
-
-  const cashFlowSource = useMemo(() => {
-    if (!cashFlowRows) return localExpenses;
-    const hiddenCardAndLoanRows = cashFlowRows.filter((row) =>
-      isFortnightCardOrLoanMovement(row),
-    );
-    return [...localExpenses, ...hiddenCardAndLoanRows];
-  }, [cashFlowRows, localExpenses]);
-
-  const total = sumCashFlowFooterTotal(cashFlowSource);
-  const cardTotalPaid = cardPaid.reduce(
-    (sum, e) => sum + toDisplayAmount(e.amount),
-    0,
-  );
-  const cardTotalPending = cardPending.reduce(
-    (sum, e) => sum + toDisplayAmount(e.amount),
-    0,
-  );
-  const cardGrandTotal = cardTotalPaid + cardTotalPending;
-
-  const showCashFooter = shouldShowCashFlowFooter(localExpenses.length);
-
-  const totalsPinned =
-    pinTotalsToBottom && showCashFooter ? (
-      <div
-        className="shrink-0 space-y-1.5 border-t border-border/60 bg-background px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
-        role="region"
-        aria-label="Totales de efectivo y débito"
-      >
-        <div
-          className={cn(
-            METRIC_STRIP_CLASS,
-            'flex items-center justify-between gap-2 border-l-[3px] border-l-status-success/50',
-          )}
-        >
-          <span className="eyebrow text-muted-foreground">
-            Total efectivo/débito
-          </span>
-          <span
-            className={cn(
-              'font-sans font-bold tabular-nums text-foreground',
-              isCompact ? 'text-sm' : 'text-base',
-            )}
-          >
-            {formatCurrency(total)}
-          </span>
-        </div>
-        {cardGrandTotal > 0 ? (
-          <div
-            className={cn(
-              METRIC_STRIP_CLASS,
-              'flex items-center justify-between gap-2 border-l-[3px] border-l-status-expense',
-            )}
-          >
-            <div className="flex min-w-0 flex-col">
-              <span className="eyebrow text-status-expense">
-                Cargos a tarjeta
-              </span>
-              <span className="text-caption text-muted-foreground">
-                No suman hasta pagar el estado de cuenta
-              </span>
-            </div>
-            <span
-              className={cn(
-                'font-sans font-bold tabular-nums text-foreground',
-                isCompact ? 'text-xs' : 'text-sm',
-              )}
-            >
-              {formatCurrency(cardGrandTotal)}
-            </span>
-          </div>
-        ) : null}
-      </div>
-    ) : null;
-
   return (
     <>
       <div
@@ -771,30 +685,6 @@ export default function ExpenseTable({
                 const leftActions: SwipeAction[] = swipeEnabled
                   ? [
                       {
-                        id: e.is_paid ? 'unpay' : 'pay',
-                        label: e.is_paid ? 'Deshacer pago' : 'Marcar pagado',
-                        tone: 'success',
-                        disabled: isUpdating,
-                        icon: (
-                          <CheckCircle2
-                            className="h-4 w-4"
-                            aria-hidden
-                            data-icon="inline-start"
-                          />
-                        ),
-                        onClick: () => {
-                          if (e.is_paid) {
-                            handleOpenUnpayConfirm(e);
-                            return;
-                          }
-                          handleOpenPayConfirm(e);
-                        },
-                      },
-                    ]
-                  : [];
-                const rightActions: SwipeAction[] = swipeEnabled
-                  ? [
-                      {
                         id: 'edit',
                         label: 'Modificar',
                         tone: 'neutral',
@@ -808,6 +698,10 @@ export default function ExpenseTable({
                         ),
                         onClick: () => handleEditAmount(e),
                       },
+                    ]
+                  : [];
+                const rightActions: SwipeAction[] = swipeEnabled
+                  ? [
                       ...(!e.is_paid
                         ? [
                             {
@@ -1070,45 +964,7 @@ export default function ExpenseTable({
               })}
             </>
           )}
-          {!pinTotalsToBottom && showCashFooter ? (
-            <>
-              <li
-                className={cn(
-                  METRIC_STRIP_CLASS,
-                  'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px] border-l-status-success/50',
-                )}
-              >
-                <span className="eyebrow text-muted-foreground">
-                  Total efectivo/débito
-                </span>
-                <span className="font-sans text-base font-bold tabular-nums text-foreground">
-                  {formatCurrency(total)}
-                </span>
-              </li>
-              {cardGrandTotal > 0 ? (
-                <li
-                  className={cn(
-                    METRIC_STRIP_CLASS,
-                    'flex list-none items-center justify-between gap-2 border-l-[3px] border-l-status-expense',
-                  )}
-                >
-                  <div className="flex min-w-0 flex-col">
-                    <span className="eyebrow text-status-expense">
-                      Cargos a tarjeta
-                    </span>
-                    <span className="text-caption text-muted-foreground">
-                      No suman hasta pagar el estado de cuenta
-                    </span>
-                  </div>
-                  <span className="font-sans text-sm font-bold tabular-nums text-foreground">
-                    {formatCurrency(cardGrandTotal)}
-                  </span>
-                </li>
-              ) : null}
-            </>
-          ) : null}
         </ul>
-        {totalsPinned}
       </div>
 
       {/* Edit Expense Dialog */}

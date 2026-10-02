@@ -1,9 +1,8 @@
 'use client';
 
 import { startTransition, useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ChevronsUpDown, Home, LogOut, Plus, Settings, User } from 'lucide-react';
+import { ChevronsUpDown, Home, LogOut, Plus, User } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
@@ -131,17 +130,6 @@ export function TeamSwitcher() {
   const DisplayIcon = context.type === 'user' ? User : Home;
   const isPersonalActive = context.type === 'user';
 
-  const ownerQuery = (() => {
-    const params = new URLSearchParams();
-    const ownerType = searchParams.get('ownerType');
-    const ownerId = searchParams.get('ownerId');
-    if (ownerType) params.set('ownerType', ownerType);
-    if (ownerId) params.set('ownerId', ownerId);
-    const qs = params.toString();
-    return qs ? `?${qs}` : '';
-  })();
-  const settingsHref = `/settings${ownerQuery}`;
-
   const handleCreateHouse = useCallback(() => {
     setCreateOpen(true);
   }, []);
@@ -250,12 +238,6 @@ export function TeamSwitcher() {
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href={settingsHref}>
-                  <Settings data-icon="inline-start" />
-                  Configuración
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
                 onClick={() => signOut({ callbackUrl: '/login' })}

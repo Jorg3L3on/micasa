@@ -7,6 +7,7 @@ import {
 import { getFortnightCommitmentBar } from '@/components/monthly/fortnight-income-commitment';
 import { kpiMetricCardShellClass, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { AuraSurface } from '@/components/aura/aura-surface';
 import { AURA_TONE_HEX, type AuraTone } from '@/lib/ui/aura-palette';
 import {
@@ -235,6 +236,8 @@ type AccountMetricProps = {
   auraTone?: AuraTone;
   /** When set, the tile uses the shared KPI shell instead of an aura surface. */
   kpiTone?: KpiMetricTone;
+  /** Panel glass face (no bloom or grid) so the tile matches the planner panels; keeps the tinted border and shine. */
+  glassSurface?: boolean;
   pillClassName: string;
   icon: typeof Banknote;
   amountClassName: string;
@@ -288,7 +291,12 @@ export const AccountMetric = (props: AccountMetricProps) => {
     <AuraSurface
       color={AURA_TONE_HEX[props.auraTone ?? 'primary']}
       animated
-      className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
+      grid={!props.glassSurface}
+      style={props.glassSurface ? { backgroundImage: 'none' } : undefined}
+      className={cn(
+        props.glassSurface ? MONTHLY_LIQUID_PANEL_CLASS : METRIC_STRIP_CLASS,
+        'rounded-xl px-3 py-2.5',
+      )}
     >
       <AccountMetricBody {...props} />
     </AuraSurface>
@@ -348,6 +356,7 @@ export const FortnightAccountMetrics = ({
         label="Balance actual"
         amount={fundingInAccounts}
         subtitle="Efectivo + débito hoy"
+        glassSurface
         auraTone={fundingInAccounts < 0 ? 'destructive' : 'emerald'}
         pillClassName={
           fundingInAccounts < 0
@@ -361,6 +370,7 @@ export const FortnightAccountMetrics = ({
         label="Liquidez actual"
         amount={fundingLiquidity}
         subtitle="Tras pendientes y presupuesto"
+        glassSurface
         auraTone={liquidityNegative ? 'destructive' : 'emerald'}
         pillClassName={
           liquidityNegative
@@ -520,7 +530,9 @@ export const FortnightSummaryHero = ({
                     : 'emerald'
               ]
             }
-            className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
+            grid={false}
+            style={{ backgroundImage: 'none' }}
+            className="rounded-xl border bg-transparent px-3 py-2.5"
           >
             <div className="flex items-baseline justify-between gap-3">
               <span

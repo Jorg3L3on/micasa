@@ -89,8 +89,6 @@ export type MonthlyFortnightViewProps = {
   first: FortnightBundle;
   second: FortnightBundle;
   wallets?: WalletListItem[];
-  paidWalletIds: number[];
-  isCurrentMonth: boolean;
   budgetPanel?: MonthlyBudgetPanelResult | null;
   budgetOwnerQuery?: string;
   paymentsCalendarItems?: PaymentsCalendarItem[];
@@ -135,8 +133,6 @@ export default function MonthlyFortnightView({
   first,
   second,
   wallets = EMPTY_WALLETS,
-  paidWalletIds,
-  isCurrentMonth,
   budgetPanel = null,
   budgetOwnerQuery = '',
   paymentsCalendarItems = EMPTY_PAYMENTS_CALENDAR_ITEMS,
@@ -340,8 +336,6 @@ export default function MonthlyFortnightView({
       <div className="mb-7 min-w-0">
         <WalletBalanceStrip
           wallets={stripWallets}
-          paidWalletIds={paidWalletIds}
-          isCurrentMonth={isCurrentMonth}
           onBalancesPersisted={handleWalletBalancesPersisted}
         />
       </div>

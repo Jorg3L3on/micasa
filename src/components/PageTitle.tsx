@@ -20,7 +20,6 @@ const buildOwnerSuffix = (context: FinanceContextType): string => {
 /** Top-level module indexes — no toolbar back (avoids history confusion). */
 const MODULE_ROOT_SEGMENTS = new Set([
   'wallets',
-  'metas',
   'loans',
   'transactions',
   'categories',
@@ -38,7 +37,7 @@ export function shouldShowToolbarBack(pathname: string): boolean {
   if (segments[0] === 'dashboard') return false;
   if (segments[0] === 'monthly') return false;
 
-  // Single-segment hubs: /wallets, /metas, /budgets, …
+  // Single-segment hubs: /wallets, /loans, …
   if (segments.length === 1 && MODULE_ROOT_SEGMENTS.has(segments[0])) {
     return false;
   }
@@ -119,6 +118,10 @@ export function getPageTitle(pathname: string): {
     if (segments[1] === 'budgets') {
       return { title: 'Presupuestos', isHome: false, showBack };
     }
+    if (segments[1] === 'metas') {
+      if (segments[2]) return { title: 'Meta', isHome: false, showBack };
+      return { title: 'Metas', isHome: false, showBack };
+    }
     if (segments[1] === 'account') {
       return { title: 'Cuenta', isHome: false, showBack };
     }
@@ -178,11 +181,6 @@ export function getPageTitle(pathname: string): {
       return { title: 'Billetera', isHome: false, showBack };
     }
     return { title: 'Billeteras', isHome: false, showBack };
-  }
-
-  if (segments[0] === 'metas') {
-    if (segments[1]) return { title: 'Meta', isHome: false, showBack };
-    return { title: 'Metas', isHome: false, showBack };
   }
 
   if (segments[0] === 'credit-cards') {

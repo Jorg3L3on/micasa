@@ -7,13 +7,12 @@ import {
 } from '@/components/nav-destinations';
 
 describe('NAV_DESTINATIONS', () => {
-  it('lists the seven sidebar destinations in canonical order', () => {
+  it('lists the six sidebar destinations in canonical order', () => {
     expect(NAV_DESTINATIONS.map((item) => item.title)).toEqual([
       'Panel financiero',
       'Billeteras',
       'Préstamos',
       'Análisis',
-      'Metas',
       'Operaciones',
       'Configuración',
     ]);
@@ -43,6 +42,7 @@ describe('NAV_DESTINATIONS', () => {
     expect(settings.getHref()).toBe('/settings');
     expect(settings.isActive('/settings/account')).toBe(true);
     expect(settings.isActive('/settings/budgets')).toBe(true);
+    expect(settings.isActive('/settings/metas/9')).toBe(true);
     expect(settings.isActive('/settingsx')).toBe(false);
   });
 

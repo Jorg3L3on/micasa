@@ -1,7 +1,6 @@
 import {
   Calendar,
   ChartLine,
-  Goal,
   HandCoins,
   Receipt,
   Settings,
@@ -15,7 +14,6 @@ export type NavDestinationId =
   | 'panel'
   | 'wallets'
   | 'liquidity'
-  | 'goals'
   | 'loans'
   | 'transactions'
   | 'settings';
@@ -66,13 +64,6 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
     getHref: () => '/wallets/liquidity',
     icon: ChartLine,
     isActive: (pathname) => matchesSection(pathname, '/wallets/liquidity'),
-  },
-  {
-    id: 'goals',
-    title: 'Metas',
-    getHref: () => '/metas',
-    icon: Goal,
-    isActive: (pathname) => matchesSection(pathname, '/metas'),
   },
   {
     id: 'transactions',
