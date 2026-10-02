@@ -4,7 +4,7 @@ import {
   getFortnightRemainderCopy,
   type DueToPayCompositionRow,
 } from '@/components/monthly/fortnight-summary-header';
-import { getFortnightCommitmentBar } from '@/components/monthly/fortnight-income-commitment';
+import { CommitmentMeter } from '@/components/monthly/CommitmentMeter';
 import { kpiMetricCardShellClass, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/tooltip';
 import { Money } from '@/components/money';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
-import { STATUS_FILL_CLASS } from '@/lib/status-tone';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Banknote, Info, Wallet } from 'lucide-react';
 
@@ -56,128 +55,6 @@ const remainderToneClass: Record<
   shortfall: 'text-foreground',
   even: 'text-foreground',
   gap: 'text-status-pending',
-};
-
-const commitmentCaptionClass: Record<
-  ReturnType<typeof getFortnightCommitmentBar>['tone'],
-  string
-> = {
-  ok: 'text-muted-foreground',
-  warning: 'text-status-pending',
-  danger: 'text-status-expense',
-};
-
-const ratioToPercent = (ratio: number) => `${Math.max(0, ratio).toFixed(4)}%`;
-
-type CommitmentBarProps = {
-  periodIncome: number;
-  paidAmount: number;
-  cashCommittedAmount: number;
-  leftoverAmount: number;
-};
-
-const CommitmentBar = ({
-  periodIncome,
-  paidAmount,
-  cashCommittedAmount,
-  leftoverAmount,
-}: CommitmentBarProps) => {
-  const {
-    paidPercent,
-    pendingPercent,
-    budgetPercent,
-    freePercent,
-    incomeMarkerPercent,
-    totalCommittedPercent,
-    tone,
-  } = getFortnightCommitmentBar(
-    periodIncome,
-    paidAmount,
-    cashCommittedAmount,
-    leftoverAmount,
-  );
-
-  if (periodIncome <= 0 && totalCommittedPercent === 0) {
-    return null;
-  }
-
-  const overIncomePercent = Math.max(0, totalCommittedPercent - 100);
-
-  return (
-    <div className="space-y-1.5">
-      <div className="relative pt-1.5">
-        {incomeMarkerPercent != null ? (
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="absolute top-0 z-10 flex h-full w-4 -translate-x-1/2 flex-col items-center"
-                style={{ left: ratioToPercent(incomeMarkerPercent) }}
-                aria-label="Aquí termina tu ingreso"
-              >
-                <span
-                  className="mb-px h-0 w-0 border-x-[3px] border-t-[4px] border-x-transparent border-t-foreground"
-                  aria-hidden
-                />
-                <span
-                  className="w-0.5 flex-1 rounded-full bg-foreground ring-1 ring-background"
-                  aria-hidden
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={6}>
-              Aquí termina tu ingreso
-            </TooltipContent>
-          </Tooltip>
-        ) : null}
-        <div
-          className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted/50"
-          role="progressbar"
-          aria-valuenow={totalCommittedPercent}
-          aria-valuemin={0}
-          aria-valuemax={Math.max(100, totalCommittedPercent)}
-          aria-label={`${totalCommittedPercent}% del ingreso comprometido`}
-        >
-          {paidPercent > 0.0001 ? (
-            <div
-              className="h-full bg-status-success transition-[width] duration-500"
-              style={{ width: ratioToPercent(paidPercent) }}
-            />
-          ) : null}
-          {pendingPercent > 0.0001 ? (
-            <div
-              className="h-full bg-status-pending transition-[width] duration-500"
-              style={{ width: ratioToPercent(pendingPercent) }}
-            />
-          ) : null}
-          {budgetPercent > 0.0001 ? (
-            <div
-              className="h-full bg-status-info transition-[width] duration-500"
-              style={{ width: ratioToPercent(budgetPercent) }}
-            />
-          ) : null}
-          {freePercent > 0.0001 ? (
-            <div
-              className="h-full bg-muted-foreground/25 transition-[width] duration-500"
-              style={{ width: ratioToPercent(freePercent) }}
-            />
-          ) : null}
-        </div>
-      </div>
-      <p className={cn('text-caption', commitmentCaptionClass[tone])}>
-        <span className="font-sans font-semibold tabular-nums">
-          {totalCommittedPercent}%
-        </span>{' '}
-        comprometido
-        {overIncomePercent > 0 ? (
-          <>
-            {' '}
-            · {overIncomePercent}% arriba de tu ingreso
-          </>
-        ) : null}
-      </p>
-    </div>
-  );
 };
 
 type DueToPayLabelProps = {
@@ -303,39 +180,6 @@ export const AccountMetric = (props: AccountMetricProps) => {
   );
 };
 
-type LegendItemProps = {
-  label: string;
-  amount: number;
-  subtitle: string;
-  dotClassName: string;
-};
-
-const LegendItem = ({
-  label,
-  amount,
-  subtitle,
-  dotClassName,
-}: LegendItemProps) => (
-  <div className="min-w-0">
-    <div className="flex min-w-0 items-center gap-1.5">
-      <span
-        className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClassName)}
-        aria-hidden
-      />
-      <span className="eyebrow min-w-0 truncate text-muted-foreground">
-        {label}
-      </span>
-    </div>
-    <Money
-      value={amount}
-      size="caption"
-      tone="neutral"
-      className="mt-1 block pl-3"
-    />
-    <p className="mt-0.5 pl-3 text-caption text-muted-foreground">{subtitle}</p>
-  </div>
-);
-
 type FortnightAccountMetricsProps = {
   /** Saldos activos Efectivo + Débito (bruto, “en cuentas hoy”). */
   fundingInAccounts: number;
@@ -407,10 +251,6 @@ export const FortnightSummaryHero = ({
   const showLeftover = leftoverAmount > 0;
   const remainderClass = remainderToneClass[copy.tone];
   const dueToPayCash = dueToPay - leftoverAmount;
-  const freeAmount = Math.max(
-    0,
-    periodIncome - cashCommittedAmount - leftoverAmount,
-  );
   const paidSubtitle =
     expenseCount > 0
       ? `${paidExpenseCount} de ${expenseCount} gastos`
@@ -429,46 +269,17 @@ export const FortnightSummaryHero = ({
   return (
     <div className="@container min-w-0">
       <div className="flex min-w-0 flex-col gap-4 @3xl:flex-row @3xl:items-start @3xl:gap-6">
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <CommitmentBar
+      <div className="min-w-0 flex-1">
+        <CommitmentMeter
           periodIncome={periodIncome}
           paidAmount={paidAmount}
+          pendingAmount={pendingAmount}
           cashCommittedAmount={cashCommittedAmount}
           leftoverAmount={leftoverAmount}
+          paidSubtitle={paidSubtitle}
+          pendingSubtitle={pendingSubtitle}
+          showFree={!showIncomeRemainderBreakdown}
         />
-
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          {paidAmount > 0 ? (
-            <LegendItem
-              label="Pagado"
-              amount={paidAmount}
-              subtitle={paidSubtitle}
-              dotClassName={STATUS_FILL_CLASS.success}
-            />
-          ) : null}
-          <LegendItem
-            label="Pendiente"
-            amount={pendingAmount}
-            subtitle={pendingSubtitle}
-            dotClassName={STATUS_FILL_CLASS.pending}
-          />
-          {showLeftover ? (
-            <LegendItem
-              label="Presupuesto"
-              amount={leftoverAmount}
-              subtitle="Aún no gastado"
-              dotClassName={STATUS_FILL_CLASS.info}
-            />
-          ) : null}
-          {freeAmount > 0 && !showIncomeRemainderBreakdown ? (
-            <LegendItem
-              label="Libre"
-              amount={freeAmount}
-              subtitle="Del ingreso"
-              dotClassName="bg-muted-foreground/40"
-            />
-          ) : null}
-        </div>
       </div>
 
       {showIncomeRemainderBreakdown ? (

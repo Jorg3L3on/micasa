@@ -6,7 +6,6 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeftIcon } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
-import { DOCK_CLEARANCE_PADDING_CLASS } from "@/lib/ui/dock-clearance"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -153,32 +152,11 @@ function SidebarProvider({
   )
 }
 
-function MobileSidebarSheetBody({
-  children,
-  setOpenMobile,
-}: {
-  children: React.ReactNode
-  setOpenMobile: (open: boolean) => void
-}) {
+function MobileSidebarSheetBody({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-full min-h-0 w-full flex-col pt-[env(safe-area-inset-top)]">
+    <div className="flex h-full min-h-0 w-full flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {children}
-      </div>
-      <div
-        className={cn(
-          "border-sidebar-border shrink-0 border-t px-2 pt-2",
-          DOCK_CLEARANCE_PADDING_CLASS,
-        )}
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-11 w-full justify-center rounded-md"
-          onClick={() => setOpenMobile(false)}
-        >
-          Cerrar menú
-        </Button>
       </div>
     </div>
   )
@@ -236,7 +214,7 @@ function Sidebar({
             <SheetTitle>Menú</SheetTitle>
             <SheetDescription>Muestra el menú lateral en móvil.</SheetDescription>
           </SheetHeader>
-          <MobileSidebarSheetBody setOpenMobile={setOpenMobile}>
+          <MobileSidebarSheetBody>
             {children}
           </MobileSidebarSheetBody>
         </SheetContent>

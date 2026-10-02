@@ -144,7 +144,7 @@ Apply **only**:
 | Shared-element morph | Billeteras and tarjetas only. Do not add one for metas or préstamos |
 | Swipe to delete | Below `md` only, then `ConfirmDeleteDialog` (see **Viewport delete**). Billeteras, metas, préstamos, plantillas, categorías, expense rows |
 
-Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy summary accordion, and the animated summary badge.
+Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy summary accordion, the animated summary badge, and the commitment meter (`CommitmentMeter`: segment fill reveal and the legend ↔ segment highlight).
 
 ### Out of scope
 

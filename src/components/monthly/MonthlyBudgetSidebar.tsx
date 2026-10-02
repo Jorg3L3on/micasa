@@ -36,10 +36,7 @@ type MonthlyBudgetSidebarProps = {
 };
 
 const budgetPanelShellClass = cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-4');
-const budgetEmbeddedShellClass = cn(
-  METRIC_STRIP_CLASS,
-  'border-l-[3px] border-l-status-info/50 px-3 py-3',
-);
+const budgetEmbeddedShellClass = cn(METRIC_STRIP_CLASS, 'px-3 py-3');
 
 const BudgetSidebarHeader = ({
   headingId,
