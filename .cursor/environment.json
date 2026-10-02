@@ -1,0 +1,12 @@
+{
+  "name": "MiCasa",
+  "install": "bash .cursor/install.sh",
+  "start": "sudo pg_ctlcluster 16 main start || true",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev"
+    }
+  ],
+  "ports": [3000]
+}
