@@ -56,6 +56,26 @@ describe('sortExpenseListRows', () => {
       sortExpenseListRows(rows, 'due_day', 'desc').map((r) => r.id),
     ).toEqual([1, 2, 4, 3]);
   });
+
+  it('ranks the previous month last day first in a FIRST quincena', () => {
+    const firstRows = [
+      { id: 1, is_paid: false, amount: 100, due_day: 11 },
+      { id: 2, is_paid: false, amount: 100, due_day: 1 },
+      { id: 3, is_paid: false, amount: 100, due_day: 30 },
+      { id: 4, is_paid: false, amount: 100, due_day: 5 },
+    ];
+    const fortnight = { year: 2026, month: 10, period: 'FIRST' as const };
+    expect(
+      sortExpenseListRows(firstRows, 'due_day', 'asc', fortnight).map(
+        (r) => r.id,
+      ),
+    ).toEqual([3, 2, 4, 1]);
+    expect(
+      sortExpenseListRows(firstRows, 'due_day', 'desc', fortnight).map(
+        (r) => r.id,
+      ),
+    ).toEqual([1, 4, 2, 3]);
+  });
 });
 
 describe('sortCardDuePaymentRows', () => {

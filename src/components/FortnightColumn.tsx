@@ -53,6 +53,7 @@ import {
   PLANNER_LIST_SORT_FIELD_LABELS,
   nextPlannerListSortPreference,
   plannerListSortDisplayLabel,
+  DEFAULT_PLANNER_LIST_SORT,
   readPlannerListSortPreference,
   sortExpenseListRows,
   writePlannerListSortPreference,
@@ -216,9 +217,12 @@ export default function FortnightColumn({
   const [columnTab, setColumnTab] = useState<'expenses' | 'cards' | 'loans'>(
     'expenses',
   );
-  const [listSortMode, setListSortMode] =
-    useState<PlannerListSortMode>('amount');
-  const [listSortDir, setListSortDir] = useState<PlannerListSortDir>('desc');
+  const [listSortMode, setListSortMode] = useState<PlannerListSortMode>(
+    DEFAULT_PLANNER_LIST_SORT.mode,
+  );
+  const [listSortDir, setListSortDir] = useState<PlannerListSortDir>(
+    DEFAULT_PLANNER_LIST_SORT.dir,
+  );
 
   const [plannerPaymentDialogOpen, setPlannerPaymentDialogOpen] =
     useState(false);
@@ -864,8 +868,13 @@ export default function FortnightColumn({
   );
 
   const sortedTransactions = useMemo(
-    () => sortExpenseListRows(expenseTab.rows, listSortMode, listSortDir),
-    [expenseTab.rows, listSortMode, listSortDir],
+    () =>
+      sortExpenseListRows(expenseTab.rows, listSortMode, listSortDir, {
+        year,
+        month,
+        period,
+      }),
+    [expenseTab.rows, listSortMode, listSortDir, year, month, period],
   );
 
   const unpaidExpenseCount = expenseTab.unpaidCount;

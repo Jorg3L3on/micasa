@@ -12,7 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Money } from '@/components/money';
-import { STATUS_BADGE_CLASS, STATUS_SOFT_CLASS } from '@/lib/status-tone';
+import { STATUS_SOFT_CLASS } from '@/lib/status-tone';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { formatCurrency, toDisplayAmount, cn } from '@/lib/utils';
 import { userFacingErrorMessage } from '@/lib/user-facing-error';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
@@ -41,7 +46,6 @@ import { AuraRowBloom } from '@/components/aura/aura-surface';
 import { AURA_TONE_HEX, getDueRowTone } from '@/lib/ui/aura-palette';
 
 import type { TransactionRow, WalletListItem } from '@/types/catalog';
-import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 import {
   calendarDayCountInclusive,
   dueYmdInFortnight,
@@ -57,11 +61,6 @@ import {
 
 /** Rows from combined transaction feeds use income ids that are not expense ids. */
 const isExpenseTransactionRow = (row: TransactionRow) => row.type !== 'income';
-
-const isCardChargeExpenseRow = (row: TransactionRow): boolean => {
-  if (!isExpenseTransactionRow(row)) return false;
-  return isCreditOrStoreCardWalletType(row.wallet_type);
-};
 
 const isPlanningCardPaymentRow = (row: TransactionRow): boolean =>
   row.planning_row_kind === 'card_payment';
@@ -151,11 +150,7 @@ const ExpenseWalletLabel = ({
 
   return (
     <span
-      className={cn(
-        'inline-flex min-w-0 items-center gap-1.5',
-        wallet &&
-          'rounded-full bg-muted/50 px-1.5 py-px ring-1 ring-inset ring-border/60 dark:bg-white/[0.05] dark:ring-white/[0.08]',
-      )}
+      className="inline-flex min-w-0 items-center gap-1"
       aria-label={walletLabel}
       title={walletLabel}
     >
@@ -173,7 +168,7 @@ const ExpenseWalletLabel = ({
       <span
         className={cn(
           'truncate',
-          wallet ? 'text-foreground/75' : 'text-muted-foreground/65',
+          wallet ? 'text-muted-foreground' : 'text-muted-foreground/65',
         )}
       >
         {walletLabel}
@@ -305,10 +300,23 @@ export default function ExpenseTable({
     [wallets],
   );
 
+  const sortRows = useCallback(
+    (rows: TransactionRow[]) =>
+      sortExpenseListRows(
+        rows,
+        sortMode,
+        sortDir,
+        year != null && month != null && period != null
+          ? { year, month, period }
+          : undefined,
+      ),
+    [sortMode, sortDir, year, month, period],
+  );
+
   // Sync local state with props when expenses / sort mode change
   useEffect(() => {
-    setLocalExpenses(sortExpenseListRows(expenses, sortMode, sortDir));
-  }, [expenses, sortMode, sortDir]);
+    setLocalExpenses(sortRows(expenses));
+  }, [expenses, sortRows]);
 
   useEffect(() => {
     if (!payDialogOpen && !insufficientPayOpen) {
@@ -363,7 +371,7 @@ export default function ExpenseTable({
           }
         : e,
     );
-    setLocalExpenses(sortExpenseListRows(updatedExpenses, sortMode, sortDir));
+    setLocalExpenses(sortRows(updatedExpenses));
 
     try {
       await updateExpensePaidStatus(expenseId, newPaidStatus, context, {
@@ -380,7 +388,7 @@ export default function ExpenseTable({
           : 'Gasto marcado como no pagado.',
       );
     } catch (error) {
-      setLocalExpenses(sortExpenseListRows(expenses, sortMode, sortDir));
+      setLocalExpenses(sortRows(expenses));
       if (newPaidStatus && isInsufficientWalletError(error)) {
         setPayDialogOpen(false);
         setPayingExpense(expense);
@@ -402,7 +410,7 @@ export default function ExpenseTable({
         return next;
       });
     }
-  }, [context, expenses, localExpenses, onExpenseUpdate, sortMode, sortDir]);
+  }, [context, expenses, localExpenses, onExpenseUpdate, sortRows]);
 
   const handleEditAmount = useCallback((expense: TransactionRow) => {
     if (isPlanningDerivedExpenseRow(expense)) return;
@@ -442,7 +450,7 @@ export default function ExpenseTable({
           }
         : e,
     );
-    setLocalExpenses(sortExpenseListRows(updatedExpenses, sortMode, sortDir));
+    setLocalExpenses(sortRows(updatedExpenses));
 
     const originalExpense = editingExpense;
     setEditError(null);
@@ -465,7 +473,7 @@ export default function ExpenseTable({
       }
       toast.success('Gasto actualizado.');
     } catch (error) {
-      setLocalExpenses(sortExpenseListRows(expenses, sortMode, sortDir));
+      setLocalExpenses(sortRows(expenses));
       const { userMessage, logToConsole } = getApiErrorFeedback(
         error,
         'Error al actualizar el gasto',
@@ -653,7 +661,6 @@ export default function ExpenseTable({
                 const isUpdating = updatingIds.has(e.id);
                 const isCardPay = isPlanningCardPaymentRow(e);
                 const isLoanPay = isPlanningLoanPaymentRow(e);
-                const isCardCharge = isCardChargeExpenseRow(e);
                 const isIncomeRow = !isExpenseTransactionRow(e);
                 const {
                   hasDue,
@@ -671,6 +678,7 @@ export default function ExpenseTable({
                   daysRemaining >= 0;
                 const showDueBadge =
                   hasDue && (dueDateLabel == null || hasCountdown);
+                const dueDateInBadge = showDueBadge && dueDateLabel != null;
                 const isReadOnlyStatus =
                   isIncomeRow || isCardPay || isLoanPay;
                 const rowKey = `${e.planning_row_kind ?? 'expense'}-${e.id}`;
@@ -808,26 +816,70 @@ export default function ExpenseTable({
                           {e.description}
                         </span>
                       </span>
-                      <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                        {dueDateLabel ? (
-                          <span
-                            className="tabular-nums"
-                            aria-label={`Vence ${dueDateLabel}`}
-                          >
-                            {dueDateLabel}
-                          </span>
-                        ) : null}
-                        <ExpenseWalletLabel
-                          expense={e}
-                          walletsById={walletsById}
-                          isCompact={isCompact}
-                        />
-                        {paidDateLabel ? (
-                          <span className="tabular-nums">
-                            Pagado {paidDateLabel}
-                          </span>
-                        ) : null}
-                        {showDueBadge && (
+                      <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+                        {[
+                          <ExpenseWalletLabel
+                            key="wallet"
+                            expense={e}
+                            walletsById={walletsById}
+                            isCompact={isCompact}
+                          />,
+                          dueDateLabel && !dueDateInBadge ? (
+                            <span
+                              key="due"
+                              className="tabular-nums"
+                              aria-label={`Vence ${dueDateLabel}`}
+                            >
+                              {dueDateLabel}
+                            </span>
+                          ) : null,
+                          paidDateLabel ? (
+                            <span key="paid" className="tabular-nums">
+                              Pagado {paidDateLabel}
+                            </span>
+                          ) : null,
+                          isCardPay ? <span key="card-pay">Pago TC</span> : null,
+                          isLoanPay ? (
+                            <span key="loan-pay">
+                              {planningLoanPaymentBadgeLabel(e)}
+                            </span>
+                          ) : null,
+                        ]
+                          .filter(Boolean)
+                          .flatMap((item, index) =>
+                            index === 0
+                              ? [item]
+                              : [
+                                  <span
+                                    key={`sep-${index}`}
+                                    className="text-muted-foreground/40"
+                                    aria-hidden
+                                  >
+                                    ·
+                                  </span>,
+                                  item,
+                                ],
+                          )}
+                        {showDueBadge && dueDateInBadge ? (
+                          <Tooltip delayDuration={0}>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant={e.is_paid ? 'secondary' : badgeColor}
+                                tabIndex={0}
+                                aria-label={`Vence ${dueDateLabel}, en ${daysRemaining} días`}
+                                className={cn(
+                                  'h-4 cursor-default rounded-full px-1.5 text-caption font-medium',
+                                  e.is_paid && 'opacity-60',
+                                )}
+                              >
+                                en {daysRemaining}d
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={6}>
+                              Vence {dueDateLabel}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : showDueBadge ? (
                           <Badge
                             variant={e.is_paid ? 'secondary' : badgeColor}
                             className={cn(
@@ -835,47 +887,12 @@ export default function ExpenseTable({
                               e.is_paid && 'opacity-60',
                             )}
                           >
-                            {dueDateLabel
-                              ? `en ${daysRemaining}d`
-                              : hasCountdown
-                                ? `Día ${dueDay} · en ${daysRemaining}d`
-                                : `Día ${dueDay}`}
+                            {hasCountdown
+                              ? `Día ${dueDay} · en ${daysRemaining}d`
+                              : `Día ${dueDay}`}
                           </Badge>
-                        )}
+                        ) : null}
                       </p>
-                      {(isCardPay || isLoanPay || isCardCharge) && (
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {isCardPay && (
-                            <span className={cn('inline-flex h-4 items-center gap-1 rounded-full px-1.5 text-caption font-medium', STATUS_BADGE_CLASS.expense)}>
-                              <span className="h-1 w-1 rounded-full bg-status-expense" aria-hidden />
-                              Pago TC
-                            </span>
-                          )}
-                          {isLoanPay && (
-                            <span
-                              className={cn(
-                                'inline-flex h-4 items-center gap-1 rounded-full border px-1.5 text-caption font-medium',
-                                STATUS_BADGE_CLASS.expense,
-                              )}
-                            >
-                              <span
-                                className={cn(
-                                  'h-1 w-1 rounded-full',
-                                  'bg-status-expense',
-                                )}
-                                aria-hidden
-                              />
-                              {planningLoanPaymentBadgeLabel(e)}
-                            </span>
-                          )}
-                          {isCardCharge && (
-                            <span className={cn('inline-flex h-4 items-center gap-1 rounded-full px-1.5 text-caption font-medium', STATUS_BADGE_CLASS.expense)}>
-                              <span className="h-1 w-1 rounded-full bg-status-expense" aria-hidden />
-                              Tarjeta
-                            </span>
-                          )}
-                        </div>
-                      )}
                     </div>
 
                     {/* Amount — vertically centered with the card */}
