@@ -17,6 +17,11 @@ export type ThemeTransitionStart =
 const VT_STYLE_ID = 'beui-theme-toggle-vt';
 
 const VT_CSS = `
+/* Named elements (app header, wallet cards) would get their own snapshot and
+   skip the root reveal, so flatten them into root during theme changes. */
+html[data-beui-vt] * {
+  view-transition-name: none !important;
+}
 html[data-beui-vt="rect"]::view-transition-old(root) {
   animation: none;
   mix-blend-mode: normal;
