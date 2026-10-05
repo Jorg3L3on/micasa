@@ -12,7 +12,6 @@ import { LiquidityMonthDebtTabs } from '@/components/wallets/liquidity/Liquidity
 import { LiquidityAccountsToday } from '@/components/wallets/liquidity/LiquidityAccountsToday';
 import { LiquiditySpendingCategories } from '@/components/wallets/liquidity/LiquiditySpendingCategories';
 import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
-import { buildLiquidityPayoffProgress } from '@/components/wallets/liquidity/liquidity-payoff-progress';
 import {
   resolveInitialMonthKey,
   type LiquidityChartRangeId,
@@ -35,6 +34,7 @@ import {
   defaultCustomChartRange,
   resolveDebtPayoffMonthKey,
   resolveLiquidityChartRange,
+  type LiquidityChartPresetId,
 } from '@/lib/finance/liquidity-chart-range';
 import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
 import { cn } from '@/lib/utils';
@@ -73,8 +73,12 @@ export function LiquidityProjectionTab({
     DEFAULT_LIQUIDITY_CHART_RANGE,
   );
   const [customRange, setCustomRange] = useState<LiquidityCustomChartRange | null>(null);
+  const [lastPreset, setLastPreset] = useState<LiquidityChartPresetId>(
+    DEFAULT_LIQUIDITY_CHART_RANGE,
+  );
 
   const handleChartRangeChange = (next: LiquidityChartRangeId) => {
+    if (next !== 'custom') setLastPreset(next);
     setChartRange(next);
   };
 
@@ -110,55 +114,46 @@ export function LiquidityProjectionTab({
     return clampCustomChartRangeToAvailable(bounds, availableMonthKeys);
   }, [availableMonthKeys, chartRange, customRange, data, payoffMonthKey]);
 
-  const chartMonthKeys = useMemo(
-    () =>
-      new Set(
-        visibleRange
-          ? availableMonthKeys.filter(
-              (monthKey) =>
-                monthKey >= visibleRange.fromMonthKey && monthKey <= visibleRange.toMonthKey,
-            )
-          : [],
-      ),
-    [availableMonthKeys, visibleRange],
-  );
-
-  const chartMonths = useMemo(
-    () => data?.monthly_series.filter((month) => chartMonthKeys.has(month.month_key)) ?? [],
-    [chartMonthKeys, data?.monthly_series],
-  );
-
-  const monthKeys = useMemo(() => chartMonths.map((month) => month.month_key), [chartMonths]);
-
   useEffect(() => {
-    if (!data || monthKeys.length === 0) return;
-    if (selectedMonthKey && monthKeys.includes(selectedMonthKey)) return;
-    onSelectedMonthKeyChange(resolveInitialMonthKey(monthKeys, data.as_of));
-  }, [data, monthKeys, onSelectedMonthKeyChange, selectedMonthKey]);
+    if (!data || availableMonthKeys.length === 0) return;
+    if (selectedMonthKey && availableMonthKeys.includes(selectedMonthKey)) return;
+    onSelectedMonthKeyChange(resolveInitialMonthKey(availableMonthKeys, data.as_of));
+  }, [availableMonthKeys, data, onSelectedMonthKeyChange, selectedMonthKey]);
 
   const resolvedMonthKey =
-    selectedMonthKey && monthKeys.includes(selectedMonthKey)
+    selectedMonthKey && availableMonthKeys.includes(selectedMonthKey)
       ? selectedMonthKey
-      : resolveInitialMonthKey(monthKeys, data?.as_of ?? '');
+      : resolveInitialMonthKey(availableMonthKeys, data?.as_of ?? '');
   const selectedMonth =
-    chartMonths.find((month) => month.month_key === resolvedMonthKey) ?? null;
+    data?.monthly_series.find((month) => month.month_key === resolvedMonthKey) ?? null;
+
+  /**
+   * The month stepper walks every projected month. When the pick lands outside
+   * the chart window, the window grows to include it (as a custom range) so the
+   * user never has to change the range first.
+   */
+  const handleSelectMonth = (monthKey: string) => {
+    onSelectedMonthKeyChange(monthKey);
+    if (!visibleRange) return;
+    if (monthKey >= visibleRange.fromMonthKey && monthKey <= visibleRange.toMonthKey) return;
+    setCustomRange(
+      clampCustomChartRangeToAvailable(
+        {
+          fromMonthKey:
+            monthKey < visibleRange.fromMonthKey ? monthKey : visibleRange.fromMonthKey,
+          toMonthKey: monthKey > visibleRange.toMonthKey ? monthKey : visibleRange.toMonthKey,
+        },
+        availableMonthKeys,
+      ),
+    );
+    setChartRange('custom');
+  };
   const selectedEvents = (data?.projection_events ?? []).filter(
     (event) => event.month_key === resolvedMonthKey,
   );
   const fundingTotal = data?.summary.funding_total ?? 0;
   const currentMonthKey = data?.as_of.slice(0, 7) ?? '';
   const isRefreshing = loading && data !== null;
-
-  const payoff = useMemo(
-    () =>
-      buildLiquidityPayoffProgress({
-        months: data?.monthly_series ?? [],
-        currentMonthKey,
-        selectedMonthKey: resolvedMonthKey,
-        payoffMonthKey,
-      }),
-    [currentMonthKey, data?.monthly_series, payoffMonthKey, resolvedMonthKey],
-  );
 
   return (
     <div>
@@ -177,14 +172,17 @@ export function LiquidityProjectionTab({
         <>
           <div className={CHROME_SHELL_CLASS}>
             <LiquidityChromeHeader
-              monthKeys={monthKeys}
+              monthKeys={availableMonthKeys}
               selectedMonthKey={resolvedMonthKey}
               currentMonthKey={currentMonthKey}
-              onSelectMonth={onSelectedMonthKeyChange}
-              chartRange={chartRange}
-              onChartRangeChange={handleChartRangeChange}
-              payoff={payoff}
+              onSelectMonth={handleSelectMonth}
             />
+            {selectedMonth ? (
+              <>
+                <div className="my-2.5 h-px w-full bg-border/50 sm:my-3" aria-hidden />
+                <LiquidityMonthMetrics month={selectedMonth} />
+              </>
+            ) : null}
           </div>
 
           <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
@@ -196,13 +194,15 @@ export function LiquidityProjectionTab({
               )}
               aria-busy={isRefreshing}
             >
-              {selectedMonth ? <LiquidityMonthMetrics month={selectedMonth} /> : null}
-
               <LiquidityFutureTimeline
                 months={data.monthly_series}
                 events={data.projection_events ?? []}
                 visibleRange={visibleRange}
                 onVisibleRangeChange={handleCustomRangeChange}
+                chartRange={chartRange}
+                customRange={chartRange === 'custom' ? visibleRange : null}
+                lastPreset={lastPreset}
+                onChartRangeChange={handleChartRangeChange}
                 selectedMonthKey={resolvedMonthKey}
                 onSelectMonth={onSelectedMonthKeyChange}
               />

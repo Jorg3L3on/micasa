@@ -31,7 +31,7 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
             ? countLabel(paymentCount, 'pago programado', 'pagos programados')
             : 'Sin pagos de deudas'
         }
-        kpiTone="destructive"
+        kpiTone="neutral"
         pillClassName="bg-status-expense-soft text-status-expense"
         icon={CalendarClock}
         amountClassName="text-foreground"
@@ -44,7 +44,7 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
             ? countLabel(outstandingCount, 'cuenta con saldo', 'cuentas con saldo')
             : 'Sin deudas al cierre'
         }
-        kpiTone={outstandingTotal > 0 ? 'destructive' : 'emerald'}
+        kpiTone="neutral"
         pillClassName={
           outstandingTotal > 0
             ? 'bg-status-expense-soft text-status-expense'
@@ -60,6 +60,12 @@ export const LiquidityMonthMetrics = ({ month }: { month: LiquidityMonthlySeries
 };
 
 /** Payoff milestones for the selected month (“Terminas de pagar …”). */
+/** Loan payoffs carry loan_id, MSI purchases expense_id, installment plans installment_plan_id. */
+const projectionEventKey = (event: LiquidityProjectionEvent, index: number): string => {
+  const id = event.loan_id ?? event.expense_id ?? event.installment_plan_id ?? `i${index}`;
+  return `${event.event_type}-${id}-${event.event_date}`;
+};
+
 export const LiquidityMonthEvents = ({ events }: { events: LiquidityProjectionEvent[] }) => {
   if (events.length === 0) return null;
 
@@ -70,8 +76,8 @@ export const LiquidityMonthEvents = ({ events }: { events: LiquidityProjectionEv
         Buenas noticias
       </p>
       <ul className="space-y-2" role="list">
-        {events.map((event) => (
-          <li key={`${event.event_type}-${event.loan_id ?? event.expense_id}`}>
+        {events.map((event, index) => (
+          <li key={projectionEventKey(event, index)}>
             <AuraSurface
               color={AURA_TONE_HEX.emerald}
               className="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 px-3 py-2.5"

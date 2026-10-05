@@ -110,7 +110,7 @@ export const LiquiditySpendingCategories = ({
           <div
             className={cn(
               METRIC_STRIP_CLASS,
-              'flex items-center justify-between gap-2 border-l-[3px] border-l-status-expense',
+              'flex items-center justify-between gap-2',
             )}
           >
             <span className="eyebrow text-muted-foreground">

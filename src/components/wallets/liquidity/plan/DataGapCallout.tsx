@@ -17,7 +17,7 @@ export const DataGapCallout = ({ gaps, lowConfidence }: DataGapCalloutProps) => 
 
   return (
     <div
-      className="rounded-xl border border-border/60 border-l-[3px] border-l-status-pending/50 bg-card px-4 py-3"
+      className="rounded-xl border border-border/60 bg-card px-4 py-3"
       role="status"
     >
       {lowConfidence ? (

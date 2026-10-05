@@ -38,7 +38,6 @@ export const LiquidityVisualMetric = ({
   hint,
   amount,
   icon,
-  borderClass,
   amountClassName,
   statusLabel,
   statusTone = 'emerald',
@@ -47,7 +46,7 @@ export const LiquidityVisualMetric = ({
 }: LiquidityVisualMetricProps) => {
   return (
     <div
-      className={cn(METRIC_STRIP_CLASS, 'border-l-[3px]', borderClass)}
+      className={METRIC_STRIP_CLASS}
       role="region"
       aria-label={label}
     >

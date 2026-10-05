@@ -549,6 +549,7 @@ export type LiquidityProjectionEvent = {
   subtitle: string;
   loan_id?: number;
   expense_id?: number;
+  installment_plan_id?: number;
   wallet_id?: number;
   wallet_name?: string;
   amount?: number;

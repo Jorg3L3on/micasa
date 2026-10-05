@@ -135,8 +135,7 @@ export const LiquidityMonthDebtItemsList = ({
       <li
         className={cn(
           METRIC_STRIP_CLASS,
-          'mt-1 flex list-none items-center justify-between gap-2 border-l-[3px]',
-          'border-l-status-expense',
+          'mt-1 flex list-none items-center justify-between gap-2',
         )}
       >
         <span className="eyebrow text-muted-foreground">
