@@ -66,20 +66,20 @@ export const LiquidityWorkspace = () => {
             ),
           },
           {
-            value: 'plan',
-            label: (
-              <span className={WORKSPACE_TAB_LABEL_CLASS}>
-                <Route className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {PLAN_COPY.tabPlan}
-              </span>
-            ),
-          },
-          {
             value: 'deudas',
             label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
                 <Landmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 {PLAN_COPY.tabDebts}
+              </span>
+            ),
+          },
+          {
+            value: 'plan',
+            label: (
+              <span className={WORKSPACE_TAB_LABEL_CLASS}>
+                <Route className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                {PLAN_COPY.tabPlan}
               </span>
             ),
           },
