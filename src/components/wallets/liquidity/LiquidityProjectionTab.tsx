@@ -197,6 +197,7 @@ export function LiquidityProjectionTab({
 
               {selectedMonth ? (
                 <LiquidityMonthDebtTabs
+                  monthKey={selectedMonth.month_key}
                   items={selectedMonth.debt_items ?? []}
                   outstandingTotal={selectedMonth.outstanding_debt_total ?? 0}
                 />

@@ -516,6 +516,16 @@ export type LiquidityMonthlySeriesItem = {
     lender_name?: string;
     lender_icon_key?: string | null;
     wallet_icon_key?: string | null;
+    /** Loans only: the contracts behind a lender row, as of this month. */
+    contracts?: Array<{
+      loan_id: number;
+      name: string;
+      is_payroll: boolean;
+      remaining: number;
+      payment_amount: number;
+      remaining_payments: number;
+      next_due_date?: string;
+    }>;
   }>;
 };
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildMonthDebtItems,
+  contractsForMonth,
   groupDebtItemsByMonth,
   monthDebtItemsTotal,
   monthDebtPaymentsTotal,
@@ -247,5 +248,83 @@ describe('pastLoanDebtSubtitle', () => {
   it('labels payroll deductions vs wallet loans', () => {
     expect(pastLoanDebtSubtitle('PAYROLL_DEDUCTION', 'FONACOT')).toBe('Nómina · FONACOT');
     expect(pastLoanDebtSubtitle('WALLET', 'Caja demo')).toBe('Caja demo');
+  });
+});
+
+describe('loan contracts', () => {
+  const contracts = [
+    {
+      loan_id: 11,
+      name: 'Préstamo auto',
+      is_payroll: false,
+      schedule: [
+        { month_key: '2026-10', amount: 1000, due_date: '2026-10-16' },
+        { month_key: '2026-11', amount: 1000, due_date: '2026-11-16' },
+        { month_key: '2026-12', amount: 1000, due_date: '2026-12-16' },
+      ],
+    },
+    {
+      loan_id: 12,
+      name: 'Nómina',
+      is_payroll: true,
+      schedule: [{ month_key: '2026-10', amount: 500, due_date: '2026-10-30' }],
+    },
+  ];
+
+  it('computes each contract as of the month and drops paid-off ones', () => {
+    expect(contractsForMonth(contracts, '2026-10')).toEqual([
+      {
+        loan_id: 11,
+        name: 'Préstamo auto',
+        is_payroll: false,
+        remaining: 3000,
+        payment_amount: 1000,
+        remaining_payments: 3,
+        next_due_date: '2026-10-16',
+      },
+      {
+        loan_id: 12,
+        name: 'Nómina',
+        is_payroll: true,
+        remaining: 500,
+        payment_amount: 500,
+        remaining_payments: 1,
+        next_due_date: '2026-10-30',
+      },
+    ]);
+
+    const november = contractsForMonth(contracts, '2026-11');
+    expect(november).toHaveLength(1);
+    expect(november[0]).toMatchObject({ loan_id: 11, remaining: 2000, remaining_payments: 2 });
+  });
+
+  it('attaches contracts to the lender row for that month', () => {
+    const byMonth = buildMonthDebtItems(
+      ['2026-10', '2026-11'],
+      [],
+      [
+        {
+          id: 'lender-4',
+          kind: 'loan',
+          title: 'Banco',
+          subtitle: '2 contratos · 4 pagos',
+          start_month_key: '2026-10',
+          end_month_key: '2026-12',
+          monthly_amount: 1500,
+          schedule: [
+            { month_key: '2026-10', amount: 1500 },
+            { month_key: '2026-11', amount: 1000 },
+            { month_key: '2026-12', amount: 1000 },
+          ],
+          lender_name: 'Banco',
+          contracts,
+        },
+      ],
+    );
+
+    const october = byMonth.get('2026-10')![0]!;
+    expect(october.contracts?.map((contract) => contract.loan_id)).toEqual([11, 12]);
+    const november = byMonth.get('2026-11')![0]!;
+    expect(november.contracts?.map((contract) => contract.loan_id)).toEqual([11]);
   });
 });
