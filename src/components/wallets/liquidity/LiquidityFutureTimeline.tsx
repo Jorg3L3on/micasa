@@ -65,36 +65,111 @@ type ChartPoint = {
   monthlyRemaining: number;
   eventCount: number;
   eventTitle: string;
+  /** Payoff names without the "Terminas de pagar" prefix, for the tooltip list. */
+  eventNames: string[];
 };
 
 
-const DebtMonthTooltip = ({
-  active,
-  payload,
-}: {
+const stripPayoffPrefix = (title: string): string =>
+  title.replace(/^Terminas de pagar\s+/i, '');
+
+type DebtMonthTooltipProps = {
   active?: boolean;
   payload?: Array<{ payload: ChartPoint }>;
-}) => {
+  /** Every chart row, so the tooltip can compare with the previous month. */
+  rows: readonly ChartPoint[];
+  selectedMonthKey: string;
+};
+
+const DebtMonthTooltip = ({ active, payload, rows, selectedMonthKey }: DebtMonthTooltipProps) => {
   if (!active || !payload?.[0]) return null;
   const point = payload[0].payload;
+  const index = rows.findIndex((row) => row.monthKey === point.monthKey);
+  const previous = index > 0 ? rows[index - 1] : undefined;
+  const outstandingDelta = previous ? point.outstandingDebt - previous.outstandingDebt : 0;
+  const isSelected = point.monthKey === selectedMonthKey;
+  const visibleNames = point.eventNames.slice(0, 2);
+  const hiddenCount = point.eventNames.length - visibleNames.length;
+
   return (
     <ChartTooltip active>
-      <p className="text-xs font-semibold text-foreground">
-        {formatMonthYearLabel(point.monthKey)}
-      </p>
-      <p className="mt-2 font-sans text-sm font-bold tabular-nums text-foreground">
-        {formatCurrency(point.monthDebt)}
-      </p>
-      <p className="text-caption text-muted-foreground">pagos del mes</p>
-      <p className="mt-2 font-sans text-sm font-bold tabular-nums text-status-pending">
-        {formatCurrency(point.outstandingDebt)}
-      </p>
-      <p className="text-caption text-muted-foreground">adeudo total al cierre</p>
-      {point.eventCount > 0 ? (
-        <p className="mt-2 max-w-[220px] text-caption font-medium text-status-success">
-          {point.eventTitle}
-        </p>
-      ) : null}
+      <div className="w-[13.5rem] max-w-[calc(100vw-3rem)]">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-sm font-semibold text-foreground">
+            {formatMonthYearLabel(point.monthKey)}
+          </p>
+          {isSelected ? (
+            <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-primary/40 bg-primary/15 px-1.5 eyebrow text-foreground">
+              En detalle
+            </span>
+          ) : null}
+        </div>
+
+        <dl className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+              <span
+                className="h-1.5 w-3.5 shrink-0 rounded-full bg-linear-to-r from-chart-1 to-chart-2"
+                aria-hidden
+              />
+              <span className="truncate">Pagos del mes</span>
+            </dt>
+            <dd className="shrink-0 font-sans text-sm font-semibold tabular-nums text-foreground">
+              {formatCurrency(point.monthDebt)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+              <span
+                className="h-0 w-3.5 shrink-0 border-t-2 border-dashed border-status-pending"
+                aria-hidden
+              />
+              <span className="truncate">Adeudo al cierre</span>
+            </dt>
+            <dd className="shrink-0 font-sans text-sm font-semibold tabular-nums text-status-pending">
+              {formatCurrency(point.outstandingDebt)}
+            </dd>
+          </div>
+        </dl>
+
+        {previous && Math.abs(outstandingDelta) >= 0.005 ? (
+          <p
+            className={cn(
+              'mt-1 text-right tabular-nums',
+              outstandingDelta < 0 ? 'text-status-success' : 'text-status-expense',
+            )}
+          >
+            {outstandingDelta < 0 ? '↓' : '↑'} {formatCurrency(Math.abs(outstandingDelta))}{' '}
+            <span className="text-muted-foreground">
+              {outstandingDelta < 0 ? 'menos que' : 'más que'} {previous.label}
+            </span>
+          </p>
+        ) : null}
+
+        {point.eventCount > 0 ? (
+          <div className="mt-2 border-t border-border/60 pt-2">
+            <p className="flex items-center gap-1.5 font-medium text-status-success">
+              <span
+                className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-status-success"
+                aria-hidden
+              >
+                <Check className="h-2 w-2 text-background" />
+              </span>
+              {point.eventCount === 1
+                ? 'Terminas de pagar 1 cuenta'
+                : `Terminas de pagar ${point.eventCount} cuentas`}
+            </p>
+            <p className="mt-0.5 truncate pl-5 text-muted-foreground">
+              {visibleNames.join(', ')}
+              {hiddenCount > 0 ? ` +${hiddenCount}` : ''}
+            </p>
+          </div>
+        ) : null}
+
+        {!isSelected ? (
+          <p className="mt-2 text-muted-foreground">Toca para ver su detalle abajo.</p>
+        ) : null}
+      </div>
     </ChartTooltip>
   );
 };
@@ -304,6 +379,7 @@ export const LiquidityFutureTimeline = ({
           monthlyRemaining: month.monthly_remaining,
           eventCount: monthEvents.length,
           eventTitle,
+          eventNames: monthEvents.map((event) => stripPayoffPrefix(event.title)),
         };
       }),
     [eventsByMonth, months],
@@ -442,8 +518,14 @@ export const LiquidityFutureTimeline = ({
                 width={42}
               />
               <Tooltip
-                content={<DebtMonthTooltip />}
+                content={<DebtMonthTooltip rows={chartRows} selectedMonthKey={selectedMonthKey} />}
                 cursor={{ stroke: 'color-mix(in srgb, var(--foreground) 18%, transparent)' }}
+                // On phones a tap must set the tooltip (hover never fires), and a
+                // cursor-following card hides the lines, so pin it to the top.
+                trigger={isMobile ? 'click' : 'hover'}
+                position={isMobile ? { y: 0 } : undefined}
+                offset={14}
+                wrapperStyle={{ outline: 'none', zIndex: 20 }}
               />
               {selectedLabel ? (
                 <>
