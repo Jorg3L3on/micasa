@@ -105,7 +105,7 @@ Every logged-in route is one of four archetypes:
 
 | Archetype | Purpose | Routes | Surface |
 | --- | --- | --- | --- |
-| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Proyección / Plan), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
+| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Proyección / Plan / Deudas), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
 | **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell. Operaciones below `md` is a row list, not a table |
 | **Detail** | One object, back to its collection | Billetera, estado de cuenta (tarjeta), meta | Same as collection; card faces stay solid |
 | **Settings** | Quiet catalogs and account | Configuración (cuenta, categorías, plantillas, usuarios, conexiones) | Calm `bg-card` cards — **never** glass |
@@ -369,7 +369,7 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 ## Filters
 
 - `FilterChip` (`src/components/filter-chip.tsx`) is a single on/off filter: Billeteras, Metas, Operaciones, and the Configuración mobile nav. It sets `aria-pressed` (or `aria-current="page"` when it is a link), can show a count, and uses a 44px target on mobile (`min-h-11`, `sm:min-h-9`) with a visible focus ring.
-- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Plan horizon and strategy, Presupuestos, and Análisis (Proyección / Plan).
+- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Plan horizon and strategy, Presupuestos, and Análisis (Proyección / Plan / Deudas).
 
 ## Surfaces
 
@@ -414,7 +414,7 @@ Use these names in the UI, in `PageTitle`, and in the browser tab. The document 
 | Ellipsis | **…** | `...` |
 | Analysis section | **Análisis** | Liquidez y análisis, as a nav item |
 
-**Análisis** is the section (nav, document title, header). Its two views are the tabs **Proyección** and **Plan**. The tab list is named Análisis.
+**Análisis** is the section (nav, document title, header). Its three views are the tabs **Proyección**, **Plan**, and **Deudas**. The tab list is named Análisis.
 
 Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` in Spanish (`Comida`, not `Food`). Existing rows already stored as `Food` are not migrated in code.
 

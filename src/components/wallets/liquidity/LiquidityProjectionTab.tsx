@@ -9,18 +9,12 @@ import {
   LiquidityMonthMetrics,
 } from '@/components/wallets/liquidity/LiquidityMonthFocus';
 import { LiquidityMonthDebtTabs } from '@/components/wallets/liquidity/LiquidityMonthDebtTabs';
-import { LiquidityAccountsToday } from '@/components/wallets/liquidity/LiquidityAccountsToday';
-import { LiquiditySpendingCategories } from '@/components/wallets/liquidity/LiquiditySpendingCategories';
-import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
 import {
   resolveInitialMonthKey,
   type LiquidityChartRangeId,
   type LiquidityCustomChartRange,
 } from '@/components/wallets/liquidity/liquidity-personalization';
-import {
-  MONTHLY_PANEL_CONTENT_GRID_CLASS,
-  MONTHLY_PANEL_MAIN_COLUMN_CLASS,
-} from '@/components/monthly/MonthlyPanelLayout';
+import { MONTHLY_PANEL_MAIN_COLUMN_CLASS } from '@/components/monthly/MonthlyPanelLayout';
 import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_LIQUID_PANEL_CLASS,
@@ -46,9 +40,6 @@ const CHROME_SHELL_CLASS = cn(
   'mb-5',
 );
 
-/** Always-visible aside: stacks under the main column until `xl`, then docks right like Panel financiero. */
-const LIQUIDITY_ASIDE_CLASS = 'flex min-w-0 flex-col gap-5';
-
 export type LiquidityProjectionTabProps = {
   data: LiquidityProjectionResponse | null;
   loading: boolean;
@@ -56,8 +47,6 @@ export type LiquidityProjectionTabProps = {
   onReload: () => void;
   selectedMonthKey: string;
   onSelectedMonthKeyChange: (monthKey: string) => void;
-  /** Bumped after a pull-to-refresh so self-loading sections reload too. */
-  refreshToken?: number;
 };
 
 export function LiquidityProjectionTab({
@@ -67,7 +56,6 @@ export function LiquidityProjectionTab({
   onReload,
   selectedMonthKey,
   onSelectedMonthKeyChange,
-  refreshToken = 0,
 }: LiquidityProjectionTabProps) {
   const [chartRange, setChartRange] = useState<LiquidityChartRangeId>(
     DEFAULT_LIQUIDITY_CHART_RANGE,
@@ -151,7 +139,6 @@ export function LiquidityProjectionTab({
   const selectedEvents = (data?.projection_events ?? []).filter(
     (event) => event.month_key === resolvedMonthKey,
   );
-  const fundingTotal = data?.summary.funding_total ?? 0;
   const currentMonthKey = data?.as_of.slice(0, 7) ?? '';
   const isRefreshing = loading && data !== null;
 
@@ -185,15 +172,14 @@ export function LiquidityProjectionTab({
             ) : null}
           </div>
 
-          <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
-            <div
-              className={cn(
-                MONTHLY_PANEL_MAIN_COLUMN_CLASS,
-                'space-y-4',
-                isRefreshing && 'opacity-60 transition-opacity',
-              )}
-              aria-busy={isRefreshing}
-            >
+          <div
+            className={cn(
+              MONTHLY_PANEL_MAIN_COLUMN_CLASS,
+              'space-y-4',
+              isRefreshing && 'opacity-60 transition-opacity',
+            )}
+            aria-busy={isRefreshing}
+          >
               <LiquidityFutureTimeline
                 months={data.monthly_series}
                 events={data.projection_events ?? []}
@@ -215,17 +201,6 @@ export function LiquidityProjectionTab({
                   outstandingTotal={selectedMonth.outstanding_debt_total ?? 0}
                 />
               ) : null}
-            </div>
-
-            <aside className={LIQUIDITY_ASIDE_CLASS} aria-label="Cuentas y gastos">
-              <LiquidityAccountsToday
-                fundingTotal={fundingTotal}
-                onChanged={onReload}
-                actions={<LiquidityFundingWalletsMenu onChanged={onReload} />}
-                refreshToken={refreshToken}
-              />
-              <LiquiditySpendingCategories refreshToken={refreshToken} />
-            </aside>
           </div>
         </>
       ) : null}
