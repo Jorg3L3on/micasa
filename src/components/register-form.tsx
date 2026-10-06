@@ -8,26 +8,33 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
-import { MicasaMark } from '@/components/brand/micasa-mark';
-import { Button } from '@/components/ui/button';
+import { ErrorBanner } from '@/components/error-banner';
 import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import {
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AuthFieldHint,
+  AuthFormHeader,
+  AuthLegalLinks,
+  AuthPrimaryButton,
+  AuthSwitchPrompt,
+} from '@/components/auth/auth-form-kit';
+import {
   GENERIC_REGISTER_ERROR_MESSAGE,
+  PASSWORD_MIN_LENGTH,
   registerSchema,
-  RegisterValues,
+  type RegisterValues,
 } from '@/schemas/auth.schema';
 
 const RATE_LIMIT_MESSAGE =
   'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+
+type ApiError =
+  | { kind: 'message'; text: string }
+  | { kind: 'existing-account' }
+  | { kind: 'sign-in-failed' };
 
 export function RegisterForm({
   className,
@@ -36,22 +43,18 @@ export function RegisterForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryString = searchParams.toString();
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [autoSignInFailed, setAutoSignInFailed] = useState(false);
+  const loginHref = `/login${queryString ? `?${queryString}` : ''}`;
+  const [apiError, setApiError] = useState<ApiError | null>(null);
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-    },
+    mode: 'onTouched',
+    defaultValues: { name: '', email: '', password: '' },
   });
+  const { errors, isSubmitting } = form.formState;
 
   const handleSubmit = async (data: RegisterValues) => {
     setApiError(null);
-    setAutoSignInFailed(false);
 
     try {
       const res = await fetch('/api/auth/register', {
@@ -59,16 +62,20 @@ export function RegisterForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-
-      const payload = await res.json().catch(() => ({}));
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
 
       if (res.status === 429) {
-        setApiError(RATE_LIMIT_MESSAGE);
+        setApiError({ kind: 'message', text: RATE_LIMIT_MESSAGE });
         return;
       }
 
       if (!res.ok) {
-        setApiError(payload.error ?? GENERIC_REGISTER_ERROR_MESSAGE);
+        const text = payload.error ?? GENERIC_REGISTER_ERROR_MESSAGE;
+        setApiError(
+          text === GENERIC_REGISTER_ERROR_MESSAGE
+            ? { kind: 'existing-account' }
+            : { kind: 'message', text },
+        );
         return;
       }
 
@@ -79,164 +86,125 @@ export function RegisterForm({
       });
 
       if (result?.error) {
-        setAutoSignInFailed(true);
-        setApiError(
-          'Cuenta creada, pero no pudimos iniciar sesión automáticamente.'
-        );
+        setApiError({ kind: 'sign-in-failed' });
         return;
       }
 
-      const onboardingPath = `/onboarding${queryString ? `?${queryString}` : ''}`;
-      router.push(onboardingPath);
+      router.push(`/onboarding${queryString ? `?${queryString}` : ''}`);
       router.refresh();
     } catch (e) {
       console.error(e);
-      setApiError('Algo salió mal. Por favor, inténtalo de nuevo.');
+      setApiError({
+        kind: 'message',
+        text: 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
+      });
     }
   };
 
   return (
-    <div className={cn('card-surface flex flex-col gap-6 p-6 sm:p-8', className)} {...props}>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)}>
-          <div className="flex flex-col gap-1">
-            <div className="flex flex-col items-center gap-4">
-              <Link
-                href="/"
-                className="inline-flex flex-col items-center gap-2 font-medium text-foreground"
-                aria-label="MiCasa inicio"
-              >
-                <MicasaMark className="size-12" />
-                <span className="text-lg font-semibold tracking-tight">MiCasa</span>
-              </Link>
-              <h1 className="text-xl font-bold">Crear cuenta</h1>
-            </div>
-            <div className="flex flex-col gap-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Tu nombre"
-                        autoComplete="name"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Correo electrónico</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="m@ejemplo.com"
-                        autoComplete="email"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contraseña</FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        autoComplete="new-password"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirmar contraseña</FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        autoComplete="new-password"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {apiError && (
-                <div className="text-sm text-status-expense" role="alert">
-                  {apiError}
-                  {autoSignInFailed && (
-                    <p className="mt-2">
-                      <Link
-                        href="/login"
-                        className="underline hover:text-foreground"
-                      >
-                        Iniciar sesión
-                      </Link>
-                    </p>
-                  )}
-                  {!autoSignInFailed &&
-                    apiError === GENERIC_REGISTER_ERROR_MESSAGE && (
-                      <p className="mt-2 text-muted-foreground">
-                        ¿Ya tienes cuenta?{' '}
-                        <Link
-                          href="/login"
-                          className="underline hover:text-foreground"
-                        >
-                          Iniciar sesión
-                        </Link>
-                      </p>
-                    )}
-                </div>
-              )}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={form.formState.isSubmitting}
-              >
-                {form.formState.isSubmitting
-                  ? 'Creando cuenta…'
-                  : 'Crear cuenta'}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground">
-                ¿Ya tienes cuenta?{' '}
-                <Link
-                  href="/login"
-                  className="underline hover:text-foreground"
-                >
+    <div className={cn('flex h-full flex-col', className)} {...props}>
+      <AuthFormHeader eyebrow="Gratis, en menos de un minuto" title="Crear cuenta" />
+
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="flex flex-col gap-[18px]"
+        noValidate
+      >
+        <div>
+          <Label htmlFor="register-name" className={AUTH_LABEL_CLASS}>
+            Nombre
+          </Label>
+          <Input
+            id="register-name"
+            placeholder="¿Cómo te llamas?"
+            autoComplete="given-name"
+            aria-invalid={errors.name ? true : undefined}
+            aria-describedby={errors.name ? 'register-name-error' : undefined}
+            className={AUTH_INPUT_CLASS}
+            {...form.register('name')}
+          />
+          {errors.name ? (
+            <AuthFieldHint id="register-name-error" tone="error">
+              {errors.name.message}
+            </AuthFieldHint>
+          ) : null}
+        </div>
+
+        <div>
+          <Label htmlFor="register-email" className={AUTH_LABEL_CLASS}>
+            Correo electrónico
+          </Label>
+          <Input
+            id="register-email"
+            type="email"
+            inputMode="email"
+            placeholder="nombre@ejemplo.com"
+            autoComplete="email"
+            aria-invalid={errors.email ? true : undefined}
+            aria-describedby={errors.email ? 'register-email-error' : undefined}
+            className={AUTH_INPUT_CLASS}
+            {...form.register('email')}
+          />
+          {errors.email ? (
+            <AuthFieldHint id="register-email-error" tone="error">
+              {errors.email.message}
+            </AuthFieldHint>
+          ) : null}
+        </div>
+
+        <div>
+          <Label htmlFor="register-password" className={AUTH_LABEL_CLASS}>
+            Contraseña
+          </Label>
+          <PasswordInput
+            id="register-password"
+            autoComplete="new-password"
+            aria-invalid={errors.password ? true : undefined}
+            aria-describedby="register-password-hint"
+            className={AUTH_INPUT_CLASS}
+            {...form.register('password')}
+          />
+          <AuthFieldHint
+            id="register-password-hint"
+            tone={errors.password ? 'error' : 'muted'}
+          >
+            {errors.password?.message ?? `Mínimo ${PASSWORD_MIN_LENGTH} caracteres.`}
+          </AuthFieldHint>
+        </div>
+
+        {apiError ? (
+          <ErrorBanner>
+            {apiError.kind === 'message' ? apiError.text : null}
+            {apiError.kind === 'existing-account' ? (
+              <>
+                {GENERIC_REGISTER_ERROR_MESSAGE}{' '}
+                <Link href={loginHref} className="font-medium underline underline-offset-2">
                   Iniciar sesión
                 </Link>
-              </p>
-              <p className="text-center text-xs text-muted-foreground">
-                <Link href="/privacy" className="underline hover:text-foreground">
-                  Aviso de privacidad
+              </>
+            ) : null}
+            {apiError.kind === 'sign-in-failed' ? (
+              <>
+                Tu cuenta está creada, pero no pudimos entrar automáticamente.{' '}
+                <Link href={loginHref} className="font-medium underline underline-offset-2">
+                  Iniciar sesión
                 </Link>
-                {' · '}
-                <Link href="/terms" className="underline hover:text-foreground">
-                  Términos de uso
-                </Link>
-              </p>
-            </div>
-          </div>
-        </form>
-      </Form>
+              </>
+            ) : null}
+          </ErrorBanner>
+        ) : null}
+
+        <AuthPrimaryButton type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Creando cuenta…' : 'Crear cuenta'}
+        </AuthPrimaryButton>
+      </form>
+
+      <AuthSwitchPrompt
+        question="¿Ya tienes cuenta?"
+        href={loginHref}
+        linkLabel="Iniciar sesión"
+      />
+      <AuthLegalLinks />
     </div>
   );
 }

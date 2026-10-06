@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { AppAtmosphere } from '@/components/app-atmosphere';
 import { OnboardingProvider, useOnboarding } from '@/components/onboarding/OnboardingContext';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { Button } from '@/components/ui/button';
+import { ErrorBanner } from '@/components/error-banner';
 import { cn } from '@/lib/utils';
 import StepWelcome from '@/components/onboarding/steps/StepWelcome';
 import StepWallets from '@/components/onboarding/steps/StepWallets';
@@ -70,12 +72,14 @@ function OnboardingWizardContent() {
   const description = stepDescriptions[currentStep];
 
   const router = useRouter();
+  const [finishError, setFinishError] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
   const stepContentTransition = reduceMotion
     ? { duration: 0 }
     : { duration: 0.2, ease: SOFT_EASE };
 
   const handleFinish = async () => {
+    setFinishError(null);
     try {
       setStepLoading(true);
 
@@ -109,14 +113,18 @@ function OnboardingWizardContent() {
         return;
       }
 
-      try {
-        const errorBody = await response.json();
-        console.error('Onboarding completion failed:', response.status, errorBody);
-      } catch {
-        console.error('Onboarding completion failed with non-JSON response:', response.status);
-      }
+      const errorBody = (await response.json().catch(() => null)) as {
+        message?: string;
+      } | null;
+      console.error('Onboarding completion failed:', response.status, errorBody);
+      setFinishError(
+        errorBody?.message ?? 'No pudimos crear tu panel. Inténtalo de nuevo.',
+      );
     } catch (error) {
       console.error('Onboarding completion error', error);
+      setFinishError(
+        'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
+      );
     } finally {
       setStepLoading(false);
     }
@@ -177,6 +185,12 @@ function OnboardingWizardContent() {
               </motion.div>
             </AnimatePresence>
         </div>
+
+        {finishError ? (
+          <div className="px-5 pb-4 sm:px-8">
+            <ErrorBanner>{finishError}</ErrorBanner>
+          </div>
+        ) : null}
 
         <div className="flex w-full gap-3 border-t border-border/60 px-5 py-5 sm:px-8">
             {!isFirstStep && (
