@@ -398,7 +398,7 @@ const AlertsMobileSheet = () => {
   );
 };
 
-export function AlertsBell() {
+export function AlertsBell({ className }: { className?: string }) {
   const mounted = useClientMounted();
   const isMobile = useIsMobile();
   const { setOpenMobile } = useSidebar();
@@ -440,7 +440,7 @@ export function AlertsBell() {
         type="button"
         variant="ghost"
         size="icon"
-        className="relative size-9"
+        className={cn('relative size-9', className)}
         aria-label="Alertas"
         tabIndex={0}
         disabled
@@ -455,7 +455,7 @@ export function AlertsBell() {
       type="button"
       variant="ghost"
       size="icon"
-      className="relative size-9"
+      className={cn('relative size-9', className)}
       aria-label="Alertas"
       tabIndex={0}
       onClick={isMobile ? () => handleOpenChange(!open) : undefined}

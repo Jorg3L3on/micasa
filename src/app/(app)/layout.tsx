@@ -42,7 +42,7 @@ export default async function AppLayout({
       <AppToolbarShell>
         <SidebarProvider>
           <AppSidebarDynamic />
-          <SidebarInset className="relative min-w-0 dark:bg-transparent">
+          <SidebarInset className="relative min-w-0 md:pl-[4.75rem] dark:bg-transparent">
             <QuickCaptureHost>
               <PwaLifecycle />
               <AppAtmosphere />

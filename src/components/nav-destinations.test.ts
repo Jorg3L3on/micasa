@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   NAV_DESTINATIONS,
-  getDockDestinations,
+  getMobileDockItems,
   getNavDestination,
+  getOverflowDestinations,
 } from '@/components/nav-destinations';
 
 describe('NAV_DESTINATIONS', () => {
@@ -20,6 +21,9 @@ describe('NAV_DESTINATIONS', () => {
 
   it('never links to the quincena view', () => {
     for (const item of NAV_DESTINATIONS) {
+      expect(item.getHref().startsWith('/fortnight')).toBe(false);
+    }
+    for (const item of getMobileDockItems()) {
       expect(item.getHref().startsWith('/fortnight')).toBe(false);
     }
   });
@@ -55,14 +59,54 @@ describe('NAV_DESTINATIONS', () => {
   });
 });
 
-describe('getDockDestinations', () => {
-  it('uses Panel, Billeteras and Análisis as the dock link tabs', () => {
-    const tabs = getDockDestinations();
-    expect(tabs.map((item) => item.dockTitle ?? item.title)).toEqual([
-      'Panel',
+describe('mobile dock', () => {
+  it('keeps the six primaries in the pill', () => {
+    expect(getMobileDockItems().map((item) => item.title)).toEqual([
+      'Panel financiero',
       'Billeteras',
-      'Análisis',
+      'Tarjetas',
+      'Préstamos',
+      'Presupuestos',
+      'Configuración',
     ]);
-    expect(tabs[2].getHref()).toBe(getNavDestination('liquidity').getHref());
+  });
+
+  it('sends Análisis and Operaciones to the overflow sheet', () => {
+    expect(getOverflowDestinations().map((item) => item.title)).toEqual([
+      'Análisis',
+      'Operaciones',
+    ]);
+  });
+
+  it('maps Tarjetas and Presupuestos onto existing pages', () => {
+    const dock = Object.fromEntries(
+      getMobileDockItems().map((item) => [item.id, item]),
+    );
+    expect(dock['credit-cards'].getHref()).toBe('/wallets');
+    expect(dock.budgets.getHref()).toBe('/settings/budgets');
+  });
+
+  it('highlights Tarjetas on a card without clearing the desktop Billeteras rule', () => {
+    const dock = Object.fromEntries(
+      getMobileDockItems().map((item) => [item.id, item]),
+    );
+    expect(getNavDestination('wallets').isActive('/credit-cards/3')).toBe(true);
+    expect(dock.wallets.isActive('/credit-cards/3')).toBe(false);
+    expect(dock['credit-cards'].isActive('/credit-cards/3')).toBe(true);
+    expect(dock.wallets.isActive('/wallets')).toBe(true);
+    expect(dock['credit-cards'].isActive('/wallets')).toBe(false);
+  });
+
+  it('highlights Presupuestos without clearing the desktop Configuración rule', () => {
+    const dock = Object.fromEntries(
+      getMobileDockItems().map((item) => [item.id, item]),
+    );
+    expect(getNavDestination('settings').isActive('/settings/budgets')).toBe(
+      true,
+    );
+    expect(dock.settings.isActive('/settings/budgets')).toBe(false);
+    expect(dock.budgets.isActive('/settings/budgets')).toBe(true);
+    expect(dock.settings.isActive('/settings/account')).toBe(true);
+    expect(dock.budgets.isActive('/settings/account')).toBe(false);
   });
 });

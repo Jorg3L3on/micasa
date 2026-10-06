@@ -1,7 +1,9 @@
 import {
   Calendar,
   ChartLine,
+  CreditCard,
   HandCoins,
+  PiggyBank,
   Receipt,
   Settings,
   Wallet,
@@ -31,7 +33,7 @@ export type NavDestination = {
 const matchesSection = (pathname: string, base: string) =>
   pathname === base || pathname.startsWith(`${base}/`);
 
-/** Canonical order shared by the sidebar (desktop + Más sheet) and the mobile dock. */
+/** Canonical order for the desktop rail. The mobile dock uses a subset plus shortcuts. */
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   {
     id: 'panel',
@@ -81,18 +83,88 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
   },
 ];
 
-/** Link tabs in the mobile dock, in slot order (plus and Más sit between/after them). */
-export const DOCK_DESTINATION_IDS: readonly NavDestinationId[] = [
-  'panel',
-  'wallets',
-  'liquidity',
-];
-
 export const getNavDestination = (id: NavDestinationId): NavDestination => {
   const destination = NAV_DESTINATIONS.find((item) => item.id === id);
   if (!destination) throw new Error(`Unknown nav destination: ${id}`);
   return destination;
 };
 
-export const getDockDestinations = (): NavDestination[] =>
-  DOCK_DESTINATION_IDS.map(getNavDestination);
+/** Credit-card detail lives under `/credit-cards`; the index redirects to Billeteras. */
+export const isCreditCardPath = (pathname: string): boolean =>
+  pathname === '/credit-cards' || pathname.startsWith('/credit-cards/');
+
+/** Presupuestos stays under Configuración; the dock can highlight it on its own. */
+export const isBudgetsPath = (pathname: string): boolean =>
+  matchesSection(pathname, '/settings/budgets');
+
+export type MobileDockItem = {
+  id: string;
+  title: string;
+  getHref: () => string;
+  icon: LucideIcon;
+  /** Dock highlight. May be narrower than the desktop destination's `isActive`. */
+  isActive: (pathname: string) => boolean;
+};
+
+const destinationDockItem = (
+  id: NavDestinationId,
+  isActive?: (pathname: string) => boolean,
+): MobileDockItem => {
+  const destination = getNavDestination(id);
+  return {
+    id: destination.id,
+    title: destination.title,
+    getHref: destination.getHref,
+    icon: destination.icon,
+    isActive: isActive ?? destination.isActive,
+  };
+};
+
+/**
+ * Mobile pill primaries, in slot order. Shortcuts reuse existing pages:
+ * Tarjetas → Billeteras (cards have no separate list), Presupuestos → `/settings/budgets`.
+ * Análisis and Operaciones stay in the overflow sheet.
+ */
+export const MOBILE_DOCK_ITEMS: readonly MobileDockItem[] = [
+  destinationDockItem('panel'),
+  destinationDockItem(
+    'wallets',
+    (pathname) =>
+      getNavDestination('wallets').isActive(pathname) &&
+      !isCreditCardPath(pathname),
+  ),
+  {
+    id: 'credit-cards',
+    title: 'Tarjetas',
+    getHref: () => '/wallets',
+    icon: CreditCard,
+    isActive: isCreditCardPath,
+  },
+  destinationDockItem('loans'),
+  {
+    id: 'budgets',
+    title: 'Presupuestos',
+    getHref: () => '/settings/budgets',
+    icon: PiggyBank,
+    isActive: isBudgetsPath,
+  },
+  destinationDockItem(
+    'settings',
+    (pathname) =>
+      getNavDestination('settings').isActive(pathname) &&
+      !isBudgetsPath(pathname),
+  ),
+];
+
+const MOBILE_DOCK_DESTINATION_IDS = new Set<string>(
+  MOBILE_DOCK_ITEMS.map((item) => item.id),
+);
+
+export const getMobileDockItems = (): readonly MobileDockItem[] =>
+  MOBILE_DOCK_ITEMS;
+
+/** Destinations that are not one of the six mobile primaries. */
+export const getOverflowDestinations = (): NavDestination[] =>
+  NAV_DESTINATIONS.filter(
+    (destination) => !MOBILE_DOCK_DESTINATION_IDS.has(destination.id),
+  );

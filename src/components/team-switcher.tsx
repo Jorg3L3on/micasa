@@ -9,6 +9,7 @@ import {
   CreateHouseDialog,
   type CreatedHouse,
 } from '@/components/create-house-dialog';
+import { navPillIconClass } from '@/components/nav-pill';
 import { SidebarGlyph } from '@/components/sidebar-glyph';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
@@ -26,12 +27,27 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * Placeholder con la misma envoltura que el botón real pero sin DropdownMenu ni useId de Radix.
  * Evita mismatch de hidratación cuando la sesión no existe en el SSR pero sí en el primer paint del cliente.
  */
-export const TeamSwitcherShell = () => (
+export const TeamSwitcherShell = ({
+  variant = 'default',
+}: {
+  variant?: 'default' | 'rail';
+}) =>
+  variant === 'rail' ? (
+    <div
+      className="size-10 animate-pulse rounded-full bg-muted"
+      aria-hidden
+    />
+  ) : (
   <SidebarMenu>
     <SidebarMenuItem>
       <div
@@ -46,7 +62,7 @@ export const TeamSwitcherShell = () => (
       </div>
     </SidebarMenuItem>
   </SidebarMenu>
-);
+  );
 
 const contextItemClass = (active: boolean) =>
   cn(
@@ -68,7 +84,11 @@ const TEAM_SWITCHER_TRIGGER_CLASS = [
   'group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:p-1!',
 ].join(' ');
 
-export function TeamSwitcher() {
+export function TeamSwitcher({
+  variant = 'default',
+}: {
+  variant?: 'default' | 'rail';
+}) {
   const [clientReady, setClientReady] = useState(false);
   const { isMobile } = useSidebar();
   const router = useRouter();
@@ -144,10 +164,109 @@ export function TeamSwitcher() {
   );
 
   if (!clientReady || !session?.user) {
-    return <TeamSwitcherShell />;
+    return <TeamSwitcherShell variant={variant} />;
   }
 
   const userId = Number(session.user.id);
+
+  const menu = (
+    <>
+      <DropdownMenuLabel className="text-muted-foreground text-xs">
+        Personal
+      </DropdownMenuLabel>
+      <DropdownMenuItem
+        className={contextItemClass(isPersonalActive)}
+        aria-current={isPersonalActive ? 'true' : undefined}
+        onClick={() => {
+          setUserContext(userId);
+          pushUrlWithOwnerContext('user', userId);
+        }}
+      >
+        <SidebarGlyph icon={User} active={isPersonalActive} size="sm" />
+        {session.user.name}
+      </DropdownMenuItem>
+
+      <DropdownMenuSeparator />
+      <DropdownMenuLabel className="text-muted-foreground text-xs">
+        Casas
+      </DropdownMenuLabel>
+      {houses.map((house) => {
+        const isHouseActive =
+          context.type === 'house' && house.id === context.id;
+        return (
+          <DropdownMenuItem
+            key={house.id}
+            className={contextItemClass(isHouseActive)}
+            aria-current={isHouseActive ? 'true' : undefined}
+            onClick={() => {
+              setHouseContext(house.id);
+              pushUrlWithOwnerContext('house', house.id);
+            }}
+          >
+            <SidebarGlyph icon={Home} active={isHouseActive} size="sm" />
+            {house.name}
+          </DropdownMenuItem>
+        );
+      })}
+      <DropdownMenuItem className="gap-2 p-2" onClick={handleCreateHouse}>
+        <SidebarGlyph icon={Plus} size="sm" />
+        <div className="text-muted-foreground font-medium">Agregar casa</div>
+      </DropdownMenuItem>
+
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        variant="destructive"
+        onClick={() => signOut({ callbackUrl: '/login' })}
+      >
+        <LogOut data-icon="inline-start" />
+        Cerrar sesión
+      </DropdownMenuItem>
+    </>
+  );
+
+  const dialog = (
+    <CreateHouseDialog
+      open={createOpen}
+      onOpenChange={setCreateOpen}
+      onCreated={handleHouseCreated}
+    />
+  );
+
+  if (variant === 'rail') {
+    return (
+      <>
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger
+                className={navPillIconClass(false)}
+                aria-label={`Contexto: ${displayLabel}`}
+              >
+                <DisplayIcon
+                  className="size-5"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right">{displayLabel}</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent
+            className="z-50 min-w-56 rounded-xl border-border/60 dark:border-white/[0.08] dark:bg-popover/95 dark:backdrop-blur-xl"
+            align="start"
+            side="right"
+            sideOffset={8}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+            }}
+          >
+            {menu}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {dialog}
+      </>
+    );
+  }
 
   return (
     <>
@@ -186,75 +305,12 @@ export function TeamSwitcher() {
                 event.preventDefault();
               }}
             >
-              <DropdownMenuLabel className="text-muted-foreground text-xs">
-                Personal
-              </DropdownMenuLabel>
-              <DropdownMenuItem
-                className={contextItemClass(isPersonalActive)}
-                aria-current={isPersonalActive ? 'true' : undefined}
-                onClick={() => {
-                  setUserContext(userId);
-                  pushUrlWithOwnerContext('user', userId);
-                }}
-              >
-                <SidebarGlyph icon={User} active={isPersonalActive} size="sm" />
-                {session.user.name}
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-muted-foreground text-xs">
-                Casas
-              </DropdownMenuLabel>
-              {houses.map((house) => {
-                const isHouseActive =
-                  context.type === 'house' && house.id === context.id;
-                return (
-                  <DropdownMenuItem
-                    key={house.id}
-                    className={contextItemClass(isHouseActive)}
-                    aria-current={isHouseActive ? 'true' : undefined}
-                    onClick={() => {
-                      setHouseContext(house.id);
-                      pushUrlWithOwnerContext('house', house.id);
-                    }}
-                  >
-                    <SidebarGlyph
-                      icon={Home}
-                      active={isHouseActive}
-                      size="sm"
-                    />
-                    {house.name}
-                  </DropdownMenuItem>
-                );
-              })}
-              <DropdownMenuItem
-                className="gap-2 p-2"
-                onClick={handleCreateHouse}
-              >
-                <SidebarGlyph icon={Plus} size="sm" />
-                <div className="text-muted-foreground font-medium">
-                  Agregar casa
-                </div>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => signOut({ callbackUrl: '/login' })}
-              >
-                <LogOut data-icon="inline-start" />
-                Cerrar sesión
-              </DropdownMenuItem>
+              {menu}
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-
-      <CreateHouseDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onCreated={handleHouseCreated}
-      />
+      {dialog}
     </>
   );
 }

@@ -4,19 +4,10 @@ import * as React from 'react';
 import { Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
-import { TeamSwitcher, TeamSwitcherShell } from '@/components/team-switcher';
-import { NavMain, type NavMainItem } from '@/components/nav-main';
-import { NAV_DESTINATIONS } from '@/components/nav-destinations';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-  useSidebar,
-} from '@/components/ui/sidebar';
-import { AlertsBell, AlertsChrome } from '@/components/AlertsBell';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { AlertsChrome } from '@/components/AlertsBell';
+import { FloatingNavRail } from '@/components/floating-nav-rail';
+import { MobileOverflowNav } from '@/components/mobile-overflow-nav';
+import { Sidebar, useSidebar } from '@/components/ui/sidebar';
 
 /** Cierra el drawer en móvil al cambiar ruta o query (p. ej. contexto de casa). */
 function MobileSidebarCloseOnRouteInner() {
@@ -47,37 +38,18 @@ function MobileSidebarCloseOnRoute() {
   );
 }
 
-export function AppSidebar({
-  ...props
-}: React.ComponentProps<typeof Sidebar>) {
-  const pathname = usePathname();
-
-  const menuItems: NavMainItem[] = NAV_DESTINATIONS.map((destination) => ({
-    title: destination.title,
-    url: destination.getHref(),
-    icon: destination.icon,
-    isActive: destination.isActive(pathname),
-  }));
-
+export function AppSidebar() {
   return (
     <AlertsChrome>
       <MobileSidebarCloseOnRoute />
-      <Sidebar collapsible="icon" {...props}>
-        <SidebarHeader>
-          <Suspense fallback={<TeamSwitcherShell />}>
-            <TeamSwitcher />
-          </Suspense>
-        </SidebarHeader>
-        <SidebarContent>
-          <NavMain groupLabel="Menú" items={menuItems} />
-        </SidebarContent>
-        <SidebarFooter className="gap-1 border-t border-sidebar-border">
-          <div className="flex items-center justify-between gap-2 px-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:justify-center">
-            <AlertsBell />
-            <ThemeToggle />
-          </div>
-        </SidebarFooter>
-        <SidebarRail />
+      <FloatingNavRail />
+      <Sidebar
+        mobileOnly
+        mobileTitle="Más"
+        mobileDescription="Análisis, operaciones, contexto y cuenta."
+        collapsible="offcanvas"
+      >
+        <MobileOverflowNav />
       </Sidebar>
     </AlertsChrome>
   );
