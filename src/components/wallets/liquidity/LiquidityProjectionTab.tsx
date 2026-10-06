@@ -167,7 +167,16 @@ export function LiquidityProjectionTab({
             {selectedMonth ? (
               <>
                 <div className="my-2.5 h-px w-full bg-border/50 sm:my-3" aria-hidden />
-                <LiquidityMonthMetrics month={selectedMonth} />
+                <LiquidityMonthMetrics
+                  month={selectedMonth}
+                  previousMonth={
+                    data.monthly_series[
+                      data.monthly_series.findIndex(
+                        (month) => month.month_key === selectedMonth.month_key,
+                      ) - 1
+                    ] ?? null
+                  }
+                />
               </>
             ) : null}
           </div>
