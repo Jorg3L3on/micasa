@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { Plus, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { CurrencyInput } from '@/components/ui/currency-input';
 import {
   Select,
   SelectContent,
@@ -13,96 +11,74 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import {
+  AmountRow,
+  GroupedRow,
+  OVERLAY_ROW_INPUT_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+  OVERLAY_SECONDARY_BUTTON_CLASS,
+  OverlayHint,
+} from '@/components/overlay/overlay-form';
 import {
   useOnboarding,
   type IncomeTemplateDraft,
 } from '@/components/onboarding/OnboardingContext';
+import { OnboardingItemCard } from '@/components/onboarding/OnboardingItemCard';
+import {
+  FORTNIGHT_FREQUENCY_OPTIONS,
+  flagsFromFrequency,
+  frequencyFromFlags,
+  type FortnightFrequency,
+} from '@/components/onboarding/fortnight-frequency';
 import { createClientId } from '@/lib/polyfills';
-import { cn } from '@/lib/utils';
+
+export const incomesAreValid = (incomes: IncomeTemplateDraft[]): boolean =>
+  incomes.length > 0 &&
+  incomes.every(
+    (income) =>
+      income.name.trim() !== '' &&
+      Number.isFinite(income.amount) &&
+      income.amount > 0 &&
+      income.walletId !== '',
+  );
+
+const IncomeLeading = () => (
+  <span
+    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-status-income-soft text-status-income"
+    aria-hidden
+  >
+    <TrendingUp className="size-4" />
+  </span>
+);
 
 export default function StepIncomeTemplates() {
-  const { setCanProceed, incomeTemplates, setIncomeTemplates, wallets } =
-    useOnboarding();
-
-  const hasMinimumRows = incomeTemplates.length >= 1;
-  const hasValidTemplates = incomeTemplates.every((income) => {
-    const hasName = income.name.trim() !== '';
-    const hasAmount = Number.isFinite(income.amount) && income.amount > 0;
-    const hasWallet = income.walletId.trim() !== '';
-    const appliesAnyFortnight =
-      income.appliesFirstFortnight || income.appliesSecondFortnight;
-    return hasName && hasAmount && hasWallet && appliesAnyFortnight;
-  });
-  const canContinue = hasMinimumRows && hasValidTemplates;
+  const {
+    setCanProceed,
+    incomeTemplates,
+    setIncomeTemplates,
+    wallets,
+    defaultWalletId,
+  } = useOnboarding();
+  const [sourceOpen, setSourceOpen] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    setCanProceed(canContinue);
-  }, [canContinue, setCanProceed]);
+    setCanProceed(incomesAreValid(incomeTemplates));
+  }, [incomeTemplates, setCanProceed]);
 
-  const handleNameChange = (id: string, name: string) => {
-    setIncomeTemplates((prev: IncomeTemplateDraft[]) =>
-      prev.map((i) => (i.id === id ? { ...i, name } : i)),
+  const updateIncome = (id: string, patch: Partial<IncomeTemplateDraft>) => {
+    setIncomeTemplates((prev) =>
+      prev.map((income) => (income.id === id ? { ...income, ...patch } : income)),
     );
-  };
-
-  const handleAmountChange = (id: string, value: number) => {
-    setIncomeTemplates((prev: IncomeTemplateDraft[]) =>
-      prev.map((i) => (i.id === id ? { ...i, amount: value } : i)),
-    );
-  };
-
-  const handleWalletChange = (id: string, walletId: string) => {
-    setIncomeTemplates((prev: IncomeTemplateDraft[]) =>
-      prev.map((i) => (i.id === id ? { ...i, walletId } : i)),
-    );
-  };
-
-  const handleSourceChange = (id: string, source: string) => {
-    setIncomeTemplates((prev: IncomeTemplateDraft[]) =>
-      prev.map((i) => (i.id === id ? { ...i, source } : i)),
-    );
-  };
-
-  const handleFrequencyChange = (
-    id: string,
-    frequency: 'FIRST' | 'SECOND' | 'BOTH',
-  ) => {
-    const appliesFirstFortnight = frequency === 'FIRST' || frequency === 'BOTH';
-    const appliesSecondFortnight =
-      frequency === 'SECOND' || frequency === 'BOTH';
-
-    setIncomeTemplates((prev: IncomeTemplateDraft[]) =>
-      prev.map((i) =>
-        i.id === id
-          ? {
-              ...i,
-              appliesFirstFortnight,
-              appliesSecondFortnight,
-            }
-          : i,
-      ),
-    );
-  };
-
-  const handleIncomeNameFocus = (id: string, currentName: string) => {
-    if (
-      currentName === 'Nombre del ingreso' ||
-      currentName === 'Ingreso' ||
-      currentName === 'Nuevo ingreso'
-    ) {
-      handleNameChange(id, '');
-    }
   };
 
   const handleAdd = () => {
-    setIncomeTemplates((prev: IncomeTemplateDraft[]) => [
+    setIncomeTemplates((prev) => [
       ...prev,
       {
         id: createClientId(),
-        name: 'Ingreso',
+        name: '',
         amount: 0,
-        walletId: '',
+        walletId: defaultWalletId,
         source: '',
         appliesFirstFortnight: true,
         appliesSecondFortnight: true,
@@ -111,227 +87,139 @@ export default function StepIncomeTemplates() {
   };
 
   const handleRemove = (id: string) => {
-    if (incomeTemplates.length <= 1) return;
-    setIncomeTemplates((prev: IncomeTemplateDraft[]) =>
-      prev.filter((i) => i.id !== id),
+    setIncomeTemplates((prev) =>
+      prev.length <= 1 ? prev : prev.filter((income) => income.id !== id),
     );
   };
 
-  const canDelete = incomeTemplates.length > 1;
-
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-foreground text-lg font-semibold">
-          ¿De dónde viene tu dinero?
-        </h3>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          Agrega tus ingresos frecuentes y define monto, billetera y quincena.
-        </p>
-      </div>
-
-      <ul className="flex flex-col gap-4" role="list">
-        {incomeTemplates.map((income, index) => {
-          let frequency: 'FIRST' | 'SECOND' | 'BOTH' = 'BOTH';
-          if (income.appliesFirstFortnight && income.appliesSecondFortnight) {
-            frequency = 'BOTH';
-          } else if (income.appliesFirstFortnight) {
-            frequency = 'FIRST';
-          } else if (income.appliesSecondFortnight) {
-            frequency = 'SECOND';
-          }
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-3" role="list">
+        {incomeTemplates.map((income) => {
+          const nameId = `income-name-${income.id}`;
+          const walletId = `income-wallet-${income.id}`;
+          const frequencyId = `income-frequency-${income.id}`;
+          const sourceId = `income-source-${income.id}`;
+          const showSource = sourceOpen[income.id] || income.source !== '';
 
           return (
-            <motion.li
-              key={income.id}
-              className={cn(
-                'space-y-4 rounded-lg border p-4 transition-colors',
-                'hover:bg-muted/40',
-              )}
-              role="listitem"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-muted-foreground text-sm font-medium">
-                  Ingreso {index + 1}
-                </p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemove(income.id)}
-                  disabled={!canDelete}
-                  aria-label={`Eliminar ingreso ${income.name || `número ${index + 1}`}`}
-                  className="text-muted-foreground hover:text-destructive -mt-1 shrink-0"
-                >
-                  <Trash2 className="size-4" data-icon="inline-start" />
-                </Button>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-1">
-                  <Label htmlFor={`income-name-${income.id}`}>
-                    Nombre del ingreso
-                  </Label>
-                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
-                    Ej. Sueldo
-                  </p>
-                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
-                    Como lo veras en la app (ej. Sueldo, Honorarios).
-                  </p>
+            <li key={income.id} className="flex flex-col gap-1.5">
+              <OnboardingItemCard
+                leading={<IncomeLeading />}
+                title={income.name}
+                subtitle="Ingreso"
+                canDelete={incomeTemplates.length > 1}
+                itemNoun="ingreso"
+                onDelete={() => handleRemove(income.id)}
+              >
+                <AmountRow
+                  id={`income-amount-${income.id}`}
+                  label="Monto por quincena"
+                  value={income.amount || ''}
+                  onChange={(value) =>
+                    updateIncome(income.id, {
+                      amount: Number.isFinite(value) ? value : 0,
+                    })
+                  }
+                />
+                <GroupedRow label="Nombre" htmlFor={nameId}>
                   <Input
-                    id={`income-name-${income.id}`}
-                    type="text"
+                    id={nameId}
                     value={income.name}
-                    onChange={(e) =>
-                      handleNameChange(income.id, e.target.value)
-                    }
-                    onFocus={() =>
-                      handleIncomeNameFocus(income.id, income.name)
+                    onChange={(event) =>
+                      updateIncome(income.id, { name: event.target.value })
                     }
                     placeholder="Ej. Sueldo"
-                    className="min-w-0 w-full"
+                    autoComplete="off"
+                    className={OVERLAY_ROW_INPUT_CLASS}
                   />
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-1">
-                  <Label htmlFor={`income-source-${income.id}`}>
-                    Origen{' '}
-                    <span className="text-muted-foreground font-normal">
-                      (opcional)
-                    </span>
-                  </Label>
-                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
-                    Empresa o cliente
-                  </p>
-                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
-                    Quién paga o de dónde sale (empresa, cliente).
-                  </p>
-                  <Input
-                    id={`income-source-${income.id}`}
-                    type="text"
-                    value={income.source}
-                    onChange={(e) =>
-                      handleSourceChange(income.id, e.target.value)
-                    }
-                    placeholder="Ej. Mi empleador"
-                    className="min-w-0 w-full"
-                  />
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-1">
-                  <Label htmlFor={`income-amount-${income.id}`}>
-                    Monto de referencia
-                  </Label>
-                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
-                    Monto estimado
-                  </p>
-                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
-                    Aproximado por quincena; puedes ajustarlo después.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <CurrencyInput
-                      id={`income-amount-${income.id}`}
-                      value={income.amount}
-                      onChange={(value) =>
-                        handleAmountChange(income.id, value)
-                      }
-                      placeholder="0.00"
-                      className="min-w-0 flex-1"
-                      aria-label="Monto de referencia"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-1">
-                  <Label htmlFor={`income-wallet-${income.id}`}>
-                    Billetera de depósito
-                  </Label>
-                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
-                    Dónde cae el ingreso
-                  </p>
-                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
-                    Dónde entra este dinero al cobrarlo.
-                  </p>
+                </GroupedRow>
+                <GroupedRow label="Billetera" htmlFor={walletId}>
                   <Select
-                    value={income.walletId || undefined}
-                    onValueChange={(value) =>
-                      handleWalletChange(income.id, value)
-                    }
+                    value={income.walletId}
+                    onValueChange={(value) => updateIncome(income.id, { walletId: value })}
                   >
-                    <SelectTrigger
-                      id={`income-wallet-${income.id}`}
-                      className="w-full"
-                      size="default"
-                     aria-label="Seleccionar opción">
-                      <SelectValue placeholder="Elige una billetera" />
+                    <SelectTrigger id={walletId} className={OVERLAY_ROW_TRIGGER_CLASS}>
+                      <SelectValue placeholder="Dónde lo recibes" />
                     </SelectTrigger>
                     <SelectContent>
                       {wallets.map((wallet) => (
                         <SelectItem key={wallet.id} value={wallet.id}>
-                          {wallet.name}
+                          {wallet.name || 'Billetera sin nombre'}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor={`income-frequency-${income.id}`}>
-                    Quincenas en que lo recibes
-                  </Label>
-                  <p className="text-muted-foreground text-xs leading-snug sm:hidden">
-                    Elige primera, segunda o ambas
-                  </p>
-                  <p className="text-muted-foreground hidden text-xs leading-snug sm:block">
-                    Si solo cae en una quincena del mes, elige cuál.
-                  </p>
+                </GroupedRow>
+                <GroupedRow label="Cuándo" htmlFor={frequencyId}>
                   <Select
-                    value={frequency}
+                    value={frequencyFromFlags(income)}
                     onValueChange={(value) =>
-                      handleFrequencyChange(
+                      updateIncome(
                         income.id,
-                        value as 'FIRST' | 'SECOND' | 'BOTH',
+                        flagsFromFrequency(value as FortnightFrequency),
                       )
                     }
                   >
-                    <SelectTrigger
-                      id={`income-frequency-${income.id}`}
-                      className="w-full sm:max-w-md"
-                      size="default"
-                     aria-label="Seleccionar opción">
-                      <SelectValue placeholder="Frecuencia" />
+                    <SelectTrigger id={frequencyId} className={OVERLAY_ROW_TRIGGER_CLASS}>
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="BOTH">Ambas quincenas</SelectItem>
-                      <SelectItem value="FIRST">Solo primera quincena</SelectItem>
-                      <SelectItem value="SECOND">Solo segunda quincena</SelectItem>
+                      {FORTNIGHT_FREQUENCY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-              </div>
-            </motion.li>
+                </GroupedRow>
+                {showSource ? (
+                  <GroupedRow label="Quién paga" htmlFor={sourceId}>
+                    <Input
+                      id={sourceId}
+                      value={income.source}
+                      onChange={(event) =>
+                        updateIncome(income.id, { source: event.target.value })
+                      }
+                      placeholder="Ej. Mi empleador (opcional)"
+                      autoComplete="off"
+                      className={OVERLAY_ROW_INPUT_CLASS}
+                    />
+                  </GroupedRow>
+                ) : null}
+              </OnboardingItemCard>
+
+              {!showSource ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSourceOpen((prev) => ({ ...prev, [income.id]: true }))
+                  }
+                  className="self-start rounded-md px-1 text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  Agregar quién te paga (opcional)
+                </button>
+              ) : null}
+            </li>
           );
         })}
       </ul>
 
+      <OverlayHint role="status">
+        {incomeTemplates.some((income) => !(income.amount > 0))
+          ? 'Escribe cuánto cobras para continuar. Un aproximado basta; lo ajustas cuando cobres.'
+          : 'Monto aproximado por quincena. Lo ajustas cuando cobres.'}
+      </OverlayHint>
+
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         onClick={handleAdd}
-        className="w-full"
-        aria-label="Agregar ingreso"
+        className={`${OVERLAY_SECONDARY_BUTTON_CLASS} text-primary-text`}
       >
-        + Agregar ingreso
+        <Plus className="size-4" aria-hidden />
+        Agregar otro ingreso
       </Button>
-      {!canContinue ? (
-        <p className="text-sm text-status-pending">
-          Para continuar, agrega al menos un ingreso con nombre, monto mayor a 0
-          y billetera de deposito.
-        </p>
-      ) : null}
     </div>
   );
 }

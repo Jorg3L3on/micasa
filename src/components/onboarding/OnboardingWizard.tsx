@@ -1,49 +1,60 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { AppAtmosphere } from '@/components/app-atmosphere';
-import { OnboardingProvider, useOnboarding } from '@/components/onboarding/OnboardingContext';
+import {
+  OnboardingProvider,
+  useOnboarding,
+} from '@/components/onboarding/OnboardingContext';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/error-banner';
 import { cn } from '@/lib/utils';
-import StepWelcome from '@/components/onboarding/steps/StepWelcome';
 import StepWallets from '@/components/onboarding/steps/StepWallets';
 import StepIncomeTemplates from '@/components/onboarding/steps/StepIncomeTemplates';
 import StepExpenseTemplates from '@/components/onboarding/steps/StepExpenseTemplates';
-import StepFortnights from '@/components/onboarding/steps/StepFortnights';
+import StepSummary from '@/components/onboarding/steps/StepSummary';
 import { getAppHomeHref } from '@/lib/fortnight-calendar';
-import type {
-  ExpenseTemplateDraft,
-  IncomeTemplateDraft,
-  WalletDraft,
-} from '@/components/onboarding/OnboardingContext';
+import type { OnboardingCompletePayload } from '@/schemas/onboarding.schema';
 
-const steps = [
-  StepWelcome,
-  StepWallets,
-  StepIncomeTemplates,
-  StepExpenseTemplates,
-  StepFortnights,
-] as const;
-
-const stepTitles: Record<number, string> = {
-  0: 'Bienvenido a MiCasa',
-  1: 'Billeteras',
-  2: 'Plantillas de ingresos',
-  3: 'Plantillas de gastos',
-  4: 'Quincenas',
+type StepMeta = {
+  Component: () => React.ReactNode;
+  /** Short name used for "Siguiente: …". */
+  name: string;
+  title: string;
+  description: string;
 };
 
-const stepDescriptions: Record<number, string> = {
-  0: 'Configura tu cuenta en menos de un minuto.',
-  1: '',
-  2: '',
-  3: '',
-  4: '',
-};
+const STEPS: StepMeta[] = [
+  {
+    Component: StepWallets,
+    name: 'Billeteras',
+    title: '¿Dónde guardas tu dinero?',
+    description:
+      'Primero tus billeteras, después tus ingresos y gastos fijos. Edita los nombres y elige tu banco.',
+  },
+  {
+    Component: StepIncomeTemplates,
+    name: 'Ingresos',
+    title: '¿Cuánto cobras por quincena?',
+    description: 'Con esto calculamos cuánto te queda libre en cada quincena.',
+  },
+  {
+    Component: StepExpenseTemplates,
+    name: 'Gastos',
+    title: '¿Qué pagas cada quincena?',
+    description:
+      'Toca un gasto para agregarlo y escribe cuánto pagas. Puedes omitir este paso.',
+  },
+  {
+    Component: StepSummary,
+    name: 'Resumen',
+    title: 'Todo listo',
+    description: 'Revisa lo que vamos a crear. Puedes cambiar todo después.',
+  },
+];
 
 const stepContentVariants = {
   enter: { opacity: 0, x: 16 },
@@ -66,50 +77,58 @@ function OnboardingWizardContent() {
     setStepLoading,
     canProceed,
   } = onboarding;
-  const StepComponent = steps[currentStep];
+  const step = STEPS[currentStep];
+  const nextStep = STEPS[currentStep + 1];
+  const StepComponent = step.Component;
   const progress = (currentStep + 1) / totalSteps;
-  const title = stepTitles[currentStep] ?? `Paso ${currentStep + 1}`;
-  const description = stepDescriptions[currentStep];
 
   const router = useRouter();
   const [finishError, setFinishError] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const stepContentTransition = reduceMotion
     ? { duration: 0 }
     : { duration: 0.2, ease: SOFT_EASE };
 
+  // Each step starts at the top of the scroll region.
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 });
+  }, [currentStep]);
+
+  const handleBack = () => {
+    setFinishError(null);
+    goBack();
+  };
+
   const handleFinish = async () => {
     setFinishError(null);
+    setStepLoading(true);
     try {
-      setStepLoading(true);
-
-      const startDate =
-        typeof onboarding.startDate === 'string'
-          ? onboarding.startDate
-          : null;
-
-      const onboardingPayload: {
-        wallets: WalletDraft[];
-        incomeTemplates: IncomeTemplateDraft[];
-        expenseTemplates: ExpenseTemplateDraft[];
-        startDate: string | null;
-      } = {
-        wallets: onboarding.wallets ?? [],
-        incomeTemplates: onboarding.incomeTemplates ?? [],
-        expenseTemplates: onboarding.expenseTemplates ?? [],
-        startDate,
+      const payload: OnboardingCompletePayload = {
+        wallets: onboarding.wallets.map((wallet) => ({
+          ...wallet,
+          name: wallet.name.trim(),
+        })),
+        incomeTemplates: onboarding.incomeTemplates.map((income) => ({
+          ...income,
+          name: income.name.trim(),
+          source: income.source.trim(),
+        })),
+        expenseTemplates: onboarding.expenseTemplates.map((expense) => ({
+          ...expense,
+          name: expense.name.trim(),
+        })),
+        startDate: onboarding.startDate,
       };
 
       const response = await fetch('/api/onboarding/complete', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(onboardingPayload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        router.push(getAppHomeHref());
+        router.push(getAppHomeHref('welcome=1'));
         return;
       }
 
@@ -120,12 +139,12 @@ function OnboardingWizardContent() {
       setFinishError(
         errorBody?.message ?? 'No pudimos crear tu panel. Inténtalo de nuevo.',
       );
+      setStepLoading(false);
     } catch (error) {
       console.error('Onboarding completion error', error);
       setFinishError(
         'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
       );
-    } finally {
       setStepLoading(false);
     }
   };
@@ -138,86 +157,96 @@ function OnboardingWizardContent() {
     goNext();
   };
 
+  const primaryLabel = isLastStep
+    ? isStepLoading
+      ? 'Creando tu panel…'
+      : 'Crear mi panel'
+    : 'Continuar';
+
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-background px-4 py-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+    <div className="relative flex h-dvh flex-col items-center justify-start overflow-hidden bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:justify-center sm:py-8">
       <AppAtmosphere />
-      <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'relative z-10 w-full max-w-[640px] motion-slide-up')}>
-        <div className="space-y-5 px-5 pt-6 pb-2 sm:px-8">
-            <div className="space-y-2">
-              <p className="text-caption text-muted-foreground">
+      <div
+        className={cn(
+          MONTHLY_PANEL_SHELL_CLASS,
+          'relative z-10 flex max-h-full min-h-0 w-full max-w-xl flex-col motion-slide-up',
+        )}
+      >
+        <header className="shrink-0 space-y-4 px-5 pt-5 pb-4 sm:px-8 sm:pt-6">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3 text-caption text-muted-foreground">
+              <span>
                 Paso {currentStep + 1} de {totalSteps}
-              </p>
+              </span>
+              {nextStep ? <span>Siguiente: {nextStep.name}</span> : null}
+            </div>
+            <div
+              className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-valuenow={Math.round(progress * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Paso ${currentStep + 1} de ${totalSteps}`}
+            >
               <div
-                className="h-2 w-full overflow-hidden rounded-full bg-muted"
-                role="progressbar"
-                aria-valuenow={Math.round(progress * 100)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`Paso ${currentStep + 1} de ${totalSteps}`}
-              >
-                <div
-                  className="h-full rounded-full bg-primary transition-[width] duration-(--motion-base) ease-(--ease-out-soft) motion-reduce:transition-none"
-                  style={{ width: `${progress * 100}%` }}
-                />
-              </div>
+                className="h-full rounded-full bg-primary transition-[width] duration-(--motion-base) ease-(--ease-out-soft) motion-reduce:transition-none"
+                style={{ width: `${progress * 100}%` }}
+              />
             </div>
+          </div>
 
-            <div className="space-y-1">
-              <h1 className="text-title text-foreground">{title}</h1>
-              {description ? (
-                <p className="text-body text-muted-foreground">{description}</p>
-              ) : null}
-            </div>
-        </div>
+          <div className="space-y-1">
+            <h1 className="text-title text-foreground">{step.title}</h1>
+            <p className="text-body text-muted-foreground">{step.description}</p>
+          </div>
+        </header>
 
-        <div className="min-h-[120px] px-5 pt-4 sm:px-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentStep}
-                variants={stepContentVariants}
-                initial="enter"
-                animate="animate"
-                exit="exit"
-                transition={stepContentTransition}
-                className="w-full"
-              >
-                <StepComponent />
-              </motion.div>
-            </AnimatePresence>
+        <div
+          ref={bodyRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1 pb-6 sm:px-8"
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={currentStep}
+              variants={stepContentVariants}
+              initial="enter"
+              animate="animate"
+              exit="exit"
+              transition={stepContentTransition}
+              className="w-full"
+            >
+              <StepComponent />
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {finishError ? (
-          <div className="px-5 pb-4 sm:px-8">
+          <div className="shrink-0 px-5 pb-3 sm:px-8">
             <ErrorBanner>{finishError}</ErrorBanner>
           </div>
         ) : null}
 
-        <div className="flex w-full gap-3 border-t border-border/60 px-5 py-5 sm:px-8">
-            {!isFirstStep && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={goBack}
-                disabled={isStepLoading}
-                aria-label="Ir al paso anterior"
-              >
-                Atrás
-              </Button>
-            )}
+        <footer className="flex shrink-0 items-center gap-3 border-t border-border/60 px-5 py-4 sm:px-8">
+          {!isFirstStep ? (
             <Button
               type="button"
-              onClick={handleNext}
-              className="ml-auto"
-              disabled={isStepLoading || !canProceed}
-              aria-label="Continuar al siguiente paso"
+              variant="ghost"
+              onClick={handleBack}
+              disabled={isStepLoading}
+              className="h-11 rounded-xl px-3 text-primary-text"
             >
-              {isStepLoading
-                ? 'Preparando tu espacio financiero…'
-                : isLastStep
-                  ? 'Finalizar'
-                  : 'Continuar'}
+              Atrás
             </Button>
-        </div>
+          ) : null}
+          <Button
+            type="button"
+            onClick={handleNext}
+            className="ml-auto h-11 min-w-36 rounded-xl"
+            disabled={isStepLoading || !canProceed}
+          >
+            {primaryLabel}
+          </Button>
+        </footer>
       </div>
     </div>
   );

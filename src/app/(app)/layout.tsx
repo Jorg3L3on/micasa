@@ -14,6 +14,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { ContentEnter } from '@/components/view-transition/SuspenseReveal';
 import { QuickCaptureHost } from '@/components/quick-capture/QuickCaptureHost';
 import { PwaLifecycle } from '@/components/pwa/PwaLifecycle';
+import { OnboardingWelcomeToast } from '@/components/onboarding/OnboardingWelcomeToast';
 import AppLoading from './loading';
 import { DOCK_CLEARANCE_PADDING_MOBILE_CLASS } from '@/lib/ui/dock-clearance';
 
@@ -45,6 +46,9 @@ export default async function AppLayout({
           <SidebarInset className="relative min-w-0 dark:bg-transparent">
             <QuickCaptureHost>
               <PwaLifecycle />
+              <Suspense fallback={null}>
+                <OnboardingWelcomeToast />
+              </Suspense>
               <AppAtmosphere />
               <header
                 data-app-chrome

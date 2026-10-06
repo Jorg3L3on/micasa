@@ -18,6 +18,10 @@ export const onboardingWalletSchema = z.object({
   providerIconKey: z.string().nullable().optional(),
   /** Current balance for CASH / BANK; ignored for CREDIT. */
   initialBalance: z.number().finite().min(0).max(MAX_AMOUNT).optional().default(0),
+  /** CREDIT only. */
+  creditLimit: z.number().finite().min(0).max(MAX_AMOUNT).optional().default(0),
+  cutoffDay: z.number().int().min(1).max(31).nullable().optional().default(null),
+  dueDay: z.number().int().min(1).max(31).nullable().optional().default(null),
 });
 
 export const onboardingIncomeTemplateSchema = z.object({
@@ -51,6 +55,24 @@ export const onboardingCompleteSchema = z
   })
   .superRefine((payload, ctx) => {
     const walletIds = new Set(payload.wallets.map((wallet) => wallet.id));
+
+    payload.wallets.forEach((wallet, index) => {
+      if (wallet.type !== 'CREDIT') return;
+      if (!(wallet.creditLimit > 0)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['wallets', index, 'creditLimit'],
+          message: `Escribe la línea de crédito de ${wallet.name}`,
+        });
+      }
+      if (wallet.cutoffDay == null || wallet.dueDay == null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['wallets', index, wallet.cutoffDay == null ? 'cutoffDay' : 'dueDay'],
+          message: `Escribe los días de corte y de pago de ${wallet.name}`,
+        });
+      }
+    });
 
     payload.incomeTemplates.forEach((income, index) => {
       if (!walletIds.has(income.walletId)) {

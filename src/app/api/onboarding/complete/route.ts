@@ -109,6 +109,10 @@ export async function POST(request: Request) {
           data: {
             name: wallet.name,
             amount: wallet.type === 'CREDIT' ? 0 : wallet.initialBalance,
+            // Credit cards must carry a line and statement days (DB check).
+            credit_limit: wallet.type === 'CREDIT' ? wallet.creditLimit : null,
+            cutoff_day: wallet.type === 'CREDIT' ? wallet.cutoffDay : null,
+            due_day: wallet.type === 'CREDIT' ? wallet.dueDay : null,
             type: prismaType,
             provider_icon_key: normalizeProviderIconKey(
               wallet.type,

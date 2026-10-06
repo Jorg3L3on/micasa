@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Banknote, CreditCard, Landmark, Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useEffect } from 'react';
+import { Banknote, CreditCard, Landmark, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -14,29 +12,30 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
+  AmountRow,
+  GroupedRow,
+  OVERLAY_ROW_INPUT_CLASS,
+  OVERLAY_ROW_NUMBER_INPUT_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+  OVERLAY_SECONDARY_BUTTON_CLASS,
+  OverlayHint,
+} from '@/components/overlay/overlay-form';
+import {
+  WALLET_TYPE_LABEL,
+  createWalletDraft,
   useOnboarding,
   type WalletDraft,
+  type WalletDraftType,
 } from '@/components/onboarding/OnboardingContext';
-import { SwipeableOnboardingCard } from '@/components/onboarding/SwipeableOnboardingCard';
-import { cn } from '@/lib/utils';
-import {
-  WALLET_PROVIDER_ICON_OPTIONS,
-  getWalletProviderOption,
-} from '@/lib/wallet-provider-icons';
+import { OnboardingItemCard } from '@/components/onboarding/OnboardingItemCard';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { createClientId } from '@/lib/polyfills';
-
-const WALLET_TYPE_OPTIONS: { value: WalletDraft['type']; label: string }[] = [
-  { value: 'CASH', label: 'Efectivo' },
-  { value: 'BANK', label: 'Tarjeta de débito' },
-  { value: 'CREDIT', label: 'Tarjeta de crédito' },
-];
+import { WALLET_PROVIDER_ICON_OPTIONS } from '@/lib/wallet-provider-icons';
 
 const TYPE_ICONS = {
   CASH: Banknote,
@@ -44,371 +43,275 @@ const TYPE_ICONS = {
   CREDIT: CreditCard,
 } as const;
 
-const WALLET_PRESETS: {
-  type: WalletDraft['type'];
-  label: string;
-  ariaLabel: string;
-}[] = [
-  { type: 'CASH', label: '+ Efectivo', ariaLabel: 'Agregar billetera de efectivo' },
-  { type: 'BANK', label: '+ Débito', ariaLabel: 'Agregar tarjeta de débito' },
-  { type: 'CREDIT', label: '+ Crédito', ariaLabel: 'Agregar tarjeta de crédito' },
-];
+const ADD_OPTIONS: WalletDraftType[] = ['CASH', 'BANK', 'CREDIT'];
 
-/** Delete only when the user has more than the two required billeteras. */
-const MIN_WALLETS_WITHOUT_DELETE = 2;
-
-const normalizeProviderForType = (
-  type: WalletDraft['type'],
-  currentProviderIconKey: string | null,
-): string | null => {
-  if (type === 'CASH') return 'CASH_GENERIC';
-  if (currentProviderIconKey === 'CASH_GENERIC') return null;
-  return currentProviderIconKey;
-};
-
-const createWallet = (type: WalletDraft['type']): WalletDraft => ({
-  id: createClientId(),
-  name: '',
-  type,
-  providerIconKey: type === 'CASH' ? 'CASH_GENERIC' : null,
-});
-
-const WALLET_NAME_PLACEHOLDER_BY_TYPE: Record<WalletDraft['type'], string> = {
+const NAME_PLACEHOLDER: Record<WalletDraftType, string> = {
   CASH: 'Ej. Efectivo',
-  BANK: 'Ej. BBVA o cuenta de débito',
-  CREDIT: 'Ej. Tarjeta de crédito',
+  BANK: 'Ej. Nómina BBVA',
+  CREDIT: 'Ej. Tarjeta Oro',
 };
 
-type WalletCardBodyProps = {
-  wallet: WalletDraft;
-  canDelete: boolean;
-  onNameChange: (name: string) => void;
-  onTypeChange: (type: WalletDraft['type']) => void;
-  onProviderChange: (providerIconKey: string | null) => void;
-  onDelete: () => void;
+const BANK_OPTIONS = WALLET_PROVIDER_ICON_OPTIONS.filter(
+  (option) => option.key !== 'CASH_GENERIC',
+);
+
+const NO_BANK = '__none__';
+
+/** A wallet type must keep at least one named wallet (CASH and BANK). */
+const isRequiredType = (type: WalletDraftType) => type !== 'CREDIT';
+
+const isStatementDay = (day: number | null) =>
+  day != null && Number.isInteger(day) && day >= 1 && day <= 31;
+
+/** What a draft still needs before it can be created, or null when complete. */
+const walletMissingHint = (wallet: WalletDraft): string | null => {
+  const missing: string[] = [];
+  if (wallet.name.trim() === '') missing.push('un nombre');
+  if (wallet.type === 'CREDIT') {
+    if (!(wallet.creditLimit > 0)) missing.push('la línea de crédito');
+    if (!isStatementDay(wallet.cutoffDay) || !isStatementDay(wallet.dueDay)) {
+      missing.push('los días de corte y de pago');
+    }
+  }
+  if (missing.length === 0) return null;
+  const list =
+    missing.length === 1
+      ? missing[0]
+      : `${missing.slice(0, -1).join(', ')} y ${missing[missing.length - 1]}`;
+  return `Falta ${list}.`;
 };
 
-function WalletCardBody({
-  wallet,
-  canDelete,
-  onNameChange,
-  onTypeChange,
-  onProviderChange,
-  onDelete,
-}: WalletCardBodyProps) {
-  const namePlaceholder = WALLET_NAME_PLACEHOLDER_BY_TYPE[wallet.type];
-  const nameLabel =
-    wallet.name.trim() !== ''
-      ? `Nombre de billetera: ${wallet.name}`
-      : `Nombre de billetera (${namePlaceholder})`;
-  const providerOptions =
-    wallet.type === 'CASH'
-      ? WALLET_PROVIDER_ICON_OPTIONS.filter(
-          (option) => option.key === 'CASH_GENERIC',
-        )
-      : WALLET_PROVIDER_ICON_OPTIONS.filter(
-          (option) => option.key !== 'CASH_GENERIC',
-        );
-  const selectedProvider = getWalletProviderOption(wallet.providerIconKey);
+export const walletsAreValid = (wallets: WalletDraft[]): boolean =>
+  wallets.length > 0 &&
+  wallets.every((wallet) => walletMissingHint(wallet) === null) &&
+  wallets.some((wallet) => wallet.type === 'CASH') &&
+  wallets.some((wallet) => wallet.type === 'BANK');
 
+function WalletLeading({ wallet }: { wallet: WalletDraft }) {
+  if (wallet.providerIconKey) {
+    return (
+      <WalletProviderIcon
+        providerIconKey={wallet.providerIconKey}
+        className="size-8"
+        showTooltipLabel={false}
+      />
+    );
+  }
+  const Icon = TYPE_ICONS[wallet.type];
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-3 rounded-lg border border-border/60 bg-card p-4 transition-colors',
-        'hover:bg-muted/30',
-      )}
+    <span
+      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"
+      aria-hidden
     >
-      <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <Label htmlFor={`wallet-name-${wallet.id}`}>Nombre</Label>
-          <Input
-            id={`wallet-name-${wallet.id}`}
-            type="text"
-            value={wallet.name}
-            onChange={(e) => onNameChange(e.target.value)}
-            placeholder={namePlaceholder}
-            className="w-full"
-            aria-label={nameLabel}
-          />
-        </div>
-        {canDelete ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onDelete}
-                aria-label={`Eliminar billetera ${wallet.name || 'sin nombre'}`}
-                className="mb-0 hidden size-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive md:inline-flex"
-              >
-                <Trash2 className="size-4" data-icon="inline-start" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={4}>
-              Eliminar billetera
-            </TooltipContent>
-          </Tooltip>
-        ) : null}
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor={`wallet-type-${wallet.id}`}>Tipo</Label>
-          <Select
-            value={wallet.type}
-            onValueChange={(value) =>
-              onTypeChange(value as WalletDraft['type'])
-            }
-          >
-            <SelectTrigger
-              id={`wallet-type-${wallet.id}`}
-              className="w-full"
-              size="default"
-              aria-label="Tipo de billetera"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {WALLET_TYPE_OPTIONS.map((opt) => {
-                const OptionIcon = TYPE_ICONS[opt.value];
-                return (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    <span className="flex items-center gap-2">
-                      <OptionIcon
-                        className="size-4 shrink-0 text-muted-foreground"
-                        strokeWidth={2}
-                        aria-hidden
-                        data-icon="inline-start"
-                      />
-                      {opt.label}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`wallet-provider-${wallet.id}`}>
-            Empresa o banco
-          </Label>
-          <Select
-            value={wallet.providerIconKey ?? '__none__'}
-            onValueChange={(value) =>
-              onProviderChange(value === '__none__' ? null : value)
-            }
-          >
-            <SelectTrigger
-              id={`wallet-provider-${wallet.id}`}
-              className="w-full"
-              size="default"
-              aria-label="Empresa o banco"
-            >
-              <SelectValue
-                placeholder="Empresa o banco"
-                aria-label={
-                  selectedProvider?.label
-                    ? `Proveedor seleccionado: ${selectedProvider.label}`
-                    : 'Seleccionar empresa o banco'
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {wallet.type !== 'CASH' ? (
-                <SelectItem value="__none__">Sin asignar</SelectItem>
-              ) : null}
-              {providerOptions.map((provider) => (
-                <SelectItem key={provider.key} value={provider.key}>
-                  <span className="flex items-center gap-2">
-                    <WalletProviderIcon
-                      providerIconKey={provider.key}
-                      className="h-5 w-5 rounded-md border-0"
-                      showTooltipLabel={false}
-                      data-icon="inline-start"
-                    />
-                    {provider.label}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    </div>
+      <Icon className="size-4" />
+    </span>
   );
 }
 
 export default function StepWallets() {
-  const { setCanProceed, wallets, setWallets } = useOnboarding();
-  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
-  const isMobile = useIsMobile();
-
-  const everyWalletNamed =
-    wallets.length > 0 && wallets.every((w) => w.name.trim() !== '');
-  const hasCashWallet = wallets.some(
-    (wallet) => wallet.type === 'CASH' && wallet.name.trim() !== '',
-  );
-  const hasBankWallet = wallets.some(
-    (wallet) => wallet.type === 'BANK' && wallet.name.trim() !== '',
-  );
-  const canContinue = everyWalletNamed && hasCashWallet && hasBankWallet;
-  const canDelete = wallets.length > MIN_WALLETS_WITHOUT_DELETE;
-  const swipeEnabled = canDelete && isMobile;
+  const {
+    setCanProceed,
+    wallets,
+    setWallets,
+    setIncomeTemplates,
+    setExpenseTemplates,
+  } = useOnboarding();
 
   useEffect(() => {
-    setCanProceed(canContinue);
-  }, [canContinue, setCanProceed]);
+    setCanProceed(walletsAreValid(wallets));
+  }, [wallets, setCanProceed]);
 
-  useEffect(() => {
-    if (!swipeEnabled) setOpenSwipeId(null);
-  }, [swipeEnabled]);
-
-  const handleNameChange = (id: string, name: string) => {
-    setWallets(
-      wallets.map((w) => (w.id === id ? { ...w, name } as WalletDraft : w)),
+  const updateWallet = (id: string, patch: Partial<WalletDraft>) => {
+    setWallets((prev) =>
+      prev.map((wallet) => (wallet.id === id ? { ...wallet, ...patch } : wallet)),
     );
   };
 
-  const handleTypeChange = (id: string, type: WalletDraft['type']) => {
-    setWallets(
-      wallets.map((w) =>
-        w.id === id
-          ? {
-              ...w,
-              type,
-              providerIconKey: normalizeProviderForType(type, w.providerIconKey),
-            } as WalletDraft
-          : w,
-      ),
-    );
-  };
+  const canDelete = (wallet: WalletDraft) =>
+    !isRequiredType(wallet.type) ||
+    wallets.filter((other) => other.type === wallet.type).length > 1;
 
-  const handleProviderChange = (id: string, providerIconKey: string | null) => {
-    setWallets(
-      wallets.map((w) =>
-        w.id === id ? ({ ...w, providerIconKey } as WalletDraft) : w,
-      ),
-    );
-  };
-
-  const handleAddPreset = (type: WalletDraft['type']) => {
-    setWallets((prev) => [...prev, createWallet(type)]);
+  const handleAdd = (type: WalletDraftType) => {
+    setWallets((prev) => [...prev, createWalletDraft(type)]);
   };
 
   const handleRemove = (id: string) => {
-    setWallets((prev) => {
-      if (prev.length <= MIN_WALLETS_WITHOUT_DELETE) return prev;
-      return prev.filter((w) => w.id !== id);
-    });
-    setOpenSwipeId((current) => (current === id ? null : current));
+    const remaining = wallets.filter((wallet) => wallet.id !== id);
+    const fallback =
+      remaining.find((wallet) => wallet.type === 'BANK')?.id ?? remaining[0]?.id ?? '';
+    setWallets(remaining);
+    // Drafts that pointed at the removed wallet move to the default one.
+    setIncomeTemplates((prev) =>
+      prev.map((income) =>
+        income.walletId === id ? { ...income, walletId: fallback } : income,
+      ),
+    );
+    setExpenseTemplates((prev) =>
+      prev.map((expense) =>
+        expense.walletId === id ? { ...expense, walletId: fallback } : expense,
+      ),
+    );
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-foreground text-lg font-semibold">
-          ¿Dónde guardas tu dinero?
-        </h3>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          Agrega tus métodos de pago como plantillas: nombre, tipo y banco o
-          empresa. Necesitas al menos una de Efectivo y una de Débito, ambas con
-          nombre, para continuar. Puedes corregir detalles después en Billeteras.
-        </p>
-      </div>
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-3" role="list">
+        {wallets.map((wallet) => {
+          const nameId = `wallet-name-${wallet.id}`;
+          const bankId = `wallet-bank-${wallet.id}`;
+          const nameMissing = wallet.name.trim() === '';
+          const missingHint = walletMissingHint(wallet);
 
-      {wallets.length === 0 ? (
-        <div className="space-y-3">
-          <div
-            className="rounded-lg border border-dashed border-border/60 px-4 py-8 text-center"
-            role="status"
-          >
-            <p className="text-muted-foreground text-sm">
-              Aún no hay billeteras. Elige una plantilla para empezar.
-            </p>
-          </div>
+          return (
+            <li key={wallet.id} className="flex flex-col gap-1.5">
+              <OnboardingItemCard
+                leading={<WalletLeading wallet={wallet} />}
+                title={wallet.name}
+                subtitle={WALLET_TYPE_LABEL[wallet.type]}
+                canDelete={canDelete(wallet)}
+                itemNoun="billetera"
+                onDelete={() => handleRemove(wallet.id)}
+              >
+                <GroupedRow label="Nombre" htmlFor={nameId}>
+                  <Input
+                    id={nameId}
+                    value={wallet.name}
+                    onChange={(event) =>
+                      updateWallet(wallet.id, { name: event.target.value })
+                    }
+                    placeholder={NAME_PLACEHOLDER[wallet.type]}
+                    autoComplete="off"
+                    aria-invalid={nameMissing || undefined}
+                    className={OVERLAY_ROW_INPUT_CLASS}
+                  />
+                </GroupedRow>
+
+                {wallet.type !== 'CASH' ? (
+                  <GroupedRow label="Banco" htmlFor={bankId}>
+                    <Select
+                      value={wallet.providerIconKey ?? ''}
+                      onValueChange={(value) =>
+                        updateWallet(wallet.id, {
+                          providerIconKey: value === NO_BANK ? null : value,
+                        })
+                      }
+                    >
+                      <SelectTrigger id={bankId} className={OVERLAY_ROW_TRIGGER_CLASS}>
+                        <SelectValue placeholder="Elige tu banco (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_BANK}>Otro o no aparece</SelectItem>
+                        {BANK_OPTIONS.map((provider) => (
+                          <SelectItem key={provider.key} value={provider.key}>
+                            <span className="flex items-center gap-2">
+                              <WalletProviderIcon
+                                providerIconKey={provider.key}
+                                className="size-5 rounded-md border-0"
+                                showTooltipLabel={false}
+                              />
+                              {provider.label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </GroupedRow>
+                ) : null}
+
+                {wallet.type === 'CREDIT' ? (
+                  <>
+                    <AmountRow
+                      id={`wallet-limit-${wallet.id}`}
+                      label="Línea de crédito"
+                      value={wallet.creditLimit || ''}
+                      onChange={(value) =>
+                        updateWallet(wallet.id, {
+                          creditLimit: Number.isFinite(value) && value > 0 ? value : 0,
+                        })
+                      }
+                    />
+                    {(
+                      [
+                        ['cutoffDay', 'Día corte', 'Día de corte'],
+                        ['dueDay', 'Día pago', 'Día de pago'],
+                      ] as const
+                    ).map(([field, label, ariaLabel]) => {
+                      const inputId = `wallet-${field}-${wallet.id}`;
+                      return (
+                        <GroupedRow key={field} label={label} htmlFor={inputId}>
+                          <Input
+                            id={inputId}
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={31}
+                            step={1}
+                            placeholder="1–31"
+                            aria-label={ariaLabel}
+                            value={wallet[field] ?? ''}
+                            onChange={(event) => {
+                              const raw = event.target.value;
+                              const day = raw === '' ? null : Math.trunc(Number(raw));
+                              updateWallet(wallet.id, {
+                                [field]:
+                                  day != null && day >= 1 && day <= 31 ? day : null,
+                              });
+                            }}
+                            className={OVERLAY_ROW_NUMBER_INPUT_CLASS}
+                          />
+                        </GroupedRow>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <AmountRow
+                    id={`wallet-balance-${wallet.id}`}
+                    label="Saldo hoy (opcional)"
+                    value={wallet.initialBalance || ''}
+                    onChange={(value) =>
+                      updateWallet(wallet.id, {
+                        initialBalance: Number.isFinite(value) && value > 0 ? value : 0,
+                      })
+                    }
+                  />
+                )}
+              </OnboardingItemCard>
+              {missingHint ? (
+                <OverlayHint role="status">{missingHint}</OverlayHint>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+
+      <OverlayHint>
+        El saldo es opcional. Con él tu panel muestra tu liquidez real desde el
+        primer día.
+      </OverlayHint>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             type="button"
-            className="h-11 w-full"
-            aria-label="Agregar mi primera billetera"
-            onClick={() => handleAddPreset('CASH')}
+            variant="ghost"
+            className={`${OVERLAY_SECONDARY_BUTTON_CLASS} text-primary-text`}
           >
-            Agregar mi primera billetera
+            <Plus className="size-4" aria-hidden />
+            Agregar billetera
           </Button>
-        </div>
-      ) : (
-        <ul className="flex flex-col gap-3" role="list">
-          {wallets.map((wallet) => {
-            const card = (
-              <WalletCardBody
-                wallet={wallet}
-                canDelete={canDelete}
-                onNameChange={(name) => handleNameChange(wallet.id, name)}
-                onTypeChange={(type) => handleTypeChange(wallet.id, type)}
-                onProviderChange={(key) =>
-                  handleProviderChange(wallet.id, key)
-                }
-                onDelete={() => handleRemove(wallet.id)}
-              />
-            );
-
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" className="w-56">
+          {ADD_OPTIONS.map((type) => {
+            const Icon = TYPE_ICONS[type];
             return (
-              <motion.li
-                key={wallet.id}
-                role="listitem"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                {canDelete ? (
-                  <SwipeableOnboardingCard
-                    swipeEnabled={swipeEnabled}
-                    isOpen={swipeEnabled && openSwipeId === wallet.id}
-                    onOpenChange={(open) =>
-                      setOpenSwipeId(open ? wallet.id : null)
-                    }
-                    onDelete={() => handleRemove(wallet.id)}
-                    deleteAriaLabel={`Eliminar billetera ${wallet.name || 'sin nombre'}`}
-                  >
-                    {card}
-                  </SwipeableOnboardingCard>
-                ) : (
-                  card
-                )}
-              </motion.li>
+              <DropdownMenuItem key={type} onSelect={() => handleAdd(type)}>
+                <Icon className="size-4 text-muted-foreground" aria-hidden />
+                {WALLET_TYPE_LABEL[type]}
+              </DropdownMenuItem>
             );
           })}
-        </ul>
-      )}
-
-      <div
-        className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"
-        role="group"
-        aria-label="Agregar plantilla de billetera"
-      >
-        {WALLET_PRESETS.map((preset) => (
-          <Button
-            key={preset.type}
-            type="button"
-            variant="outline"
-            onClick={() => handleAddPreset(preset.type)}
-            className="w-full sm:w-auto sm:flex-1"
-            aria-label={preset.ariaLabel}
-          >
-            {preset.label}
-          </Button>
-        ))}
-      </div>
-      {!canContinue ? (
-        <p className="text-sm text-status-pending">
-          Para continuar, agrega al menos una billetera de Efectivo y una de
-          Débito, ambas con nombre.
-        </p>
-      ) : null}
-      {canDelete ? (
-        <p className="text-muted-foreground text-xs leading-relaxed sm:hidden">
-          Desliza una billetera hacia la izquierda para eliminarla.
-        </p>
-      ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

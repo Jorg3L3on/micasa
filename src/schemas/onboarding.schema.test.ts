@@ -82,6 +82,23 @@ describe('onboardingCompleteSchema', () => {
     ).toBe(false);
   });
 
+  it('requires a credit line and statement days for credit cards', () => {
+    const credit = { ...wallet('w3', 'CREDIT') };
+    expect(
+      onboardingCompleteSchema.safeParse({ ...base, wallets: [...base.wallets, credit] })
+        .success,
+    ).toBe(false);
+    expect(
+      onboardingCompleteSchema.safeParse({
+        ...base,
+        wallets: [
+          ...base.wallets,
+          { ...credit, creditLimit: 20000, cutoffDay: 5, dueDay: 25 },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
   it('rejects an invalid start date', () => {
     expect(
       onboardingCompleteSchema.safeParse({ ...base, startDate: '2026-02-30' }).success,
