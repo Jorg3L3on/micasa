@@ -5,6 +5,7 @@ import FortnightColumn from '@/components/FortnightColumn';
 import WalletBalanceStrip from '@/components/WalletBalanceStrip';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { MonthlyPaymentsCalendar } from '@/components/monthly/MonthlyPaymentsCalendar';
+import { WalletCarouselPanel } from '@/components/monthly/WalletCarouselPanel';
 import { useRegisterMonthlyPanelRefresh } from '@/components/monthly/monthly-panel-refresh';
 import {
   MONTHLY_PANEL_CONTENT_GRID_CLASS,
@@ -364,8 +365,17 @@ export default function MonthlyFortnightView({
     );
   }
 
+  const walletCarousel = !ownerPending ? (
+    <WalletCarouselPanel
+      wallets={stripWallets}
+      ownerKey={ownerKey}
+      onRefresh={refreshPanelData}
+    />
+  ) : null;
+
   const budgetSidebar = (
     <div className={cn(MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS, 'space-y-4')}>
+      {walletCarousel}
       {panelBudget ? (
         <MonthlyBudgetSidebar
           panel={panelBudget}
@@ -393,6 +403,9 @@ export default function MonthlyFortnightView({
     <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
       <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
         <div className="space-y-4">
+          {walletCarousel ? (
+            <div className="xl:hidden">{walletCarousel}</div>
+          ) : null}
           {walletStripSection}
           {columnReady && activeSummary ? (
             <FortnightColumn
