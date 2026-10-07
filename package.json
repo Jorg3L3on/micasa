@@ -69,6 +69,7 @@
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
     "unpdf": "^1.8.1",
+    "vaul": "^1.1.2",
     "zod": "^4.6.5"
   },
   "optionalDependencies": {

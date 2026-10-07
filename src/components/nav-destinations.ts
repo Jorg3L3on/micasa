@@ -5,7 +5,6 @@ import {
   HandCoins,
   PiggyBank,
   Receipt,
-  Settings,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -18,7 +17,6 @@ export type NavDestinationId =
   | 'liquidity'
   | 'loans'
   | 'transactions'
-  | 'settings';
 
 export type NavDestination = {
   id: NavDestinationId;
@@ -73,13 +71,6 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
     getHref: () => '/transactions',
     icon: Receipt,
     isActive: (pathname) => matchesSection(pathname, '/transactions'),
-  },
-  {
-    id: 'settings',
-    title: 'Configuración',
-    getHref: () => '/settings',
-    icon: Settings,
-    isActive: (pathname) => matchesSection(pathname, '/settings'),
   },
 ];
 
@@ -148,12 +139,6 @@ export const MOBILE_DOCK_ITEMS: readonly MobileDockItem[] = [
     icon: PiggyBank,
     isActive: isBudgetsPath,
   },
-  destinationDockItem(
-    'settings',
-    (pathname) =>
-      getNavDestination('settings').isActive(pathname) &&
-      !isBudgetsPath(pathname),
-  ),
 ];
 
 const MOBILE_DOCK_DESTINATION_IDS = new Set<string>(

@@ -4,7 +4,6 @@ import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 
 import { AlertsBell } from '@/components/AlertsBell';
-import { NavHelpLink } from '@/components/nav-account-menu';
 import { NAV_DESTINATIONS } from '@/components/nav-destinations';
 import {
   NAV_PILL_SHELL_CLASS,
@@ -55,7 +54,6 @@ const FloatingNavRailInner = () => {
             accountHref={hrefWithOwnerQuery('/settings/account', ownerQuery)}
           />
         </Suspense>
-        <ThemeToggle className={RAIL_ICON_CLASS} />
       </div>
 
       <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
@@ -72,11 +70,8 @@ const FloatingNavRailInner = () => {
       </div>
 
       <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
+        <ThemeToggle className={RAIL_ICON_CLASS} />
         <AlertsBell className={RAIL_ICON_CLASS} />
-        <NavHelpLink
-          href={hrefWithOwnerQuery('/settings', ownerQuery)}
-          tooltipSide="right"
-        />
       </div>
     </div>
   );

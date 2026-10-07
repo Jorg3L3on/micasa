@@ -576,17 +576,17 @@ export const WalletCarouselPanel = ({
               type="button"
               variant="outline"
               size="sm"
-              className="flex-1 gap-1 px-2"
+              className="flex-1 gap-1 px-2 cursor-pointer"
               onClick={() => openAction(plan.topUp)}
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
-              Saldo
+              Ajustar
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="flex-1 gap-1 px-2"
+              className="flex-1 gap-1 px-2 cursor-pointer"
               onClick={() => openAction(plan.addExpense)}
             >
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -596,7 +596,7 @@ export const WalletCarouselPanel = ({
               type="button"
               variant="outline"
               size="sm"
-              className="flex-1 gap-1 px-2"
+              className="flex-1 gap-1 px-2 cursor-pointer"
               onClick={() => openAction(plan.request)}
             >
               <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden />

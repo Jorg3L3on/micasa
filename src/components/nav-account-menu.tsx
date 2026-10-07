@@ -1,23 +1,22 @@
 'use client';
 
-import { CircleHelp } from 'lucide-react';
+import { LogOut, UserRound } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 
-import { NavPillLink } from '@/components/nav-pill';
+import { navPillIconClass } from '@/components/nav-pill';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 type TooltipSide = 'right' | 'top';
 
-/** In-app help. There is no docs route; Configuración is the settings hub. */
-export const NavHelpLink = ({
-  href,
-  tooltipSide = 'right',
-}: {
-  href: string;
-  tooltipSide?: TooltipSide;
-}) => (
-  <NavPillLink
-    href={href}
-    label="Ayuda"
-    icon={CircleHelp}
-    tooltipSide={tooltipSide}
-  />
-);
+
