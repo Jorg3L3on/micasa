@@ -20,13 +20,17 @@ import { cn } from '@/lib/utils';
 
 const RAIL_ICON_CLASS = navPillIconClass(false);
 
+const RAIL_GROUP_CLASS = cn(
+  NAV_PILL_SHELL_CLASS,
+  'pointer-events-auto flex-col',
+);
+
 const RailFallback = () => (
-  <div className="flex w-full flex-col items-center gap-3" aria-hidden>
-    <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
-      <span className="size-10 animate-pulse rounded-full bg-muted" />
+  <>
+    <div className={cn(RAIL_GROUP_CLASS, 'self-start')} aria-hidden>
       <span className="size-10 animate-pulse rounded-full bg-muted" />
     </div>
-    <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
+    <div className={cn(RAIL_GROUP_CLASS, 'self-center')} aria-hidden>
       {NAV_DESTINATIONS.map((destination) => (
         <span
           key={destination.id}
@@ -34,20 +38,21 @@ const RailFallback = () => (
         />
       ))}
     </div>
-    <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
+    <div className={cn(RAIL_GROUP_CLASS, 'self-end')} aria-hidden>
       <span className="size-10 animate-pulse rounded-full bg-muted" />
       <span className="size-10 animate-pulse rounded-full bg-muted" />
     </div>
-  </div>
+  </>
 );
 
+/** Three groups pinned top, middle and bottom of the rail (grid rows in FloatingNavRail). */
 const FloatingNavRailInner = () => {
   const pathname = usePathname();
   const ownerQuery = useNavOwnerQuery();
 
   return (
-    <div className="flex w-full flex-col items-center gap-3">
-      <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
+    <>
+      <div className={cn(RAIL_GROUP_CLASS, 'self-start')}>
         <Suspense fallback={<TeamSwitcherShell variant="rail" />}>
           <TeamSwitcher
             variant="rail"
@@ -56,7 +61,7 @@ const FloatingNavRailInner = () => {
         </Suspense>
       </div>
 
-      <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
+      <div className={cn(RAIL_GROUP_CLASS, 'self-center')}>
         {NAV_DESTINATIONS.map((destination) => (
           <NavPillLink
             key={destination.id}
@@ -69,16 +74,16 @@ const FloatingNavRailInner = () => {
         ))}
       </div>
 
-      <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
+      <div className={cn(RAIL_GROUP_CLASS, 'self-end')}>
         <ThemeToggle className={RAIL_ICON_CLASS} />
         <AlertsBell className={RAIL_ICON_CLASS} />
       </div>
-    </div>
+    </>
   );
 };
 
 /**
- * Desktop icon rail: three floating pills on the canvas.
+ * Desktop icon rail: three floating pills (top, middle, bottom) on the canvas.
  * Hidden below `md`. Unmounts after hydration on phones so chrome isn't doubled.
  */
 export const FloatingNavRail = () => {
@@ -90,9 +95,10 @@ export const FloatingNavRail = () => {
     <nav
       aria-label="Navegación principal"
       data-testid="floating-nav-rail"
-      className="pointer-events-none fixed inset-y-0 left-3 z-40 hidden w-14 items-center md:flex"
+      className="pointer-events-none fixed inset-y-0 left-3 z-40 hidden w-14 md:block"
     >
-      <div className="pointer-events-auto flex max-h-[calc(100svh-6.5rem)] w-full flex-col items-center overflow-y-auto scrollbar-hide">
+      {/* No overflow clipping here: it would crop the pill shadows into a tinted band. */}
+      <div className="grid h-full w-full grid-rows-[1fr_auto_1fr] justify-items-center pb-4 pt-[calc(4rem+env(safe-area-inset-top)+0.75rem)]">
         <Suspense fallback={<RailFallback />}>
           <FloatingNavRailInner />
         </Suspense>
