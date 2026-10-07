@@ -15,7 +15,6 @@ describe('NAV_DESTINATIONS', () => {
       'Préstamos',
       'Análisis',
       'Operaciones',
-      'Configuración',
     ]);
   });
 
@@ -41,21 +40,11 @@ describe('NAV_DESTINATIONS', () => {
     expect(wallets.isActive('/credit-cards/3')).toBe(true);
   });
 
-  it('marks Configuración active on settings sub-pages', () => {
-    const settings = getNavDestination('settings');
-    expect(settings.getHref()).toBe('/settings');
-    expect(settings.isActive('/settings/account')).toBe(true);
-    expect(settings.isActive('/settings/budgets')).toBe(true);
-    expect(settings.isActive('/settings/metas/9')).toBe(true);
-    expect(settings.isActive('/settingsx')).toBe(false);
-  });
-
   it('does not list a stale top-level Presupuestos or Liquidez y análisis item', () => {
     const titles = NAV_DESTINATIONS.map((item) => item.title);
     expect(titles).not.toContain('Presupuestos');
     expect(titles).not.toContain('Liquidez y análisis');
     expect(titles).toContain('Análisis');
-    expect(titles).toContain('Configuración');
   });
 });
 
@@ -67,7 +56,6 @@ describe('mobile dock', () => {
       'Tarjetas',
       'Préstamos',
       'Presupuestos',
-      'Configuración',
     ]);
   });
 
@@ -101,12 +89,5 @@ describe('mobile dock', () => {
     const dock = Object.fromEntries(
       getMobileDockItems().map((item) => [item.id, item]),
     );
-    expect(getNavDestination('settings').isActive('/settings/budgets')).toBe(
-      true,
-    );
-    expect(dock.settings.isActive('/settings/budgets')).toBe(false);
-    expect(dock.budgets.isActive('/settings/budgets')).toBe(true);
-    expect(dock.settings.isActive('/settings/account')).toBe(true);
-    expect(dock.budgets.isActive('/settings/account')).toBe(false);
   });
 });

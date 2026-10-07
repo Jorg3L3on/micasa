@@ -568,9 +568,6 @@ export const WalletCarouselPanel = ({
 
       {activeWallet && plan ? (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">
-            Acciones rápidas
-          </p>
           <div className="flex items-center gap-2">
             <Button
               type="button"
