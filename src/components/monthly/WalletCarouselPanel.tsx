@@ -422,9 +422,15 @@ export const WalletCarouselPanel = ({
                   count === 0 && !selected && 'opacity-50',
                 )}
               >
+                {selected ? (
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                  />
+                ) : null}
                 {WALLET_CAROUSEL_TAB_LABELS[type]}
-                <span className="tabular-nums text-caption opacity-70">
-                  {count}
+                <span className="sr-only">
+                  {count === 1 ? ', 1 billetera' : `, ${count} billeteras`}
                 </span>
               </button>
             );
