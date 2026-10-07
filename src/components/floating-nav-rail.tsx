@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 
 import { AlertsBell } from '@/components/AlertsBell';
-import { NavAccountMenu, NavHelpLink } from '@/components/nav-account-menu';
+import { NavHelpLink } from '@/components/nav-account-menu';
 import { NAV_DESTINATIONS } from '@/components/nav-destinations';
 import {
   NAV_PILL_SHELL_CLASS,
@@ -38,7 +38,6 @@ const RailFallback = () => (
     <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
       <span className="size-10 animate-pulse rounded-full bg-muted" />
       <span className="size-10 animate-pulse rounded-full bg-muted" />
-      <span className="size-10 animate-pulse rounded-full bg-muted" />
     </div>
   </div>
 );
@@ -51,7 +50,10 @@ const FloatingNavRailInner = () => {
     <div className="flex w-full flex-col items-center gap-3">
       <div className={cn(NAV_PILL_SHELL_CLASS, 'flex-col')}>
         <Suspense fallback={<TeamSwitcherShell variant="rail" />}>
-          <TeamSwitcher variant="rail" />
+          <TeamSwitcher
+            variant="rail"
+            accountHref={hrefWithOwnerQuery('/settings/account', ownerQuery)}
+          />
         </Suspense>
         <ThemeToggle className={RAIL_ICON_CLASS} />
       </div>
@@ -73,10 +75,6 @@ const FloatingNavRailInner = () => {
         <AlertsBell className={RAIL_ICON_CLASS} />
         <NavHelpLink
           href={hrefWithOwnerQuery('/settings', ownerQuery)}
-          tooltipSide="right"
-        />
-        <NavAccountMenu
-          accountHref={hrefWithOwnerQuery('/settings/account', ownerQuery)}
           tooltipSide="right"
         />
       </div>

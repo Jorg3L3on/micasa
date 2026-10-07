@@ -2,7 +2,14 @@
 
 import { startTransition, useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ChevronsUpDown, Home, LogOut, Plus, User } from 'lucide-react';
+import {
+  ChevronsUpDown,
+  Home,
+  LogOut,
+  Plus,
+  User,
+  UserRound,
+} from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 import { useFinanceContext } from '@/context/finance-context';
 import {
@@ -86,8 +93,11 @@ const TEAM_SWITCHER_TRIGGER_CLASS = [
 
 export function TeamSwitcher({
   variant = 'default',
+  accountHref,
 }: {
   variant?: 'default' | 'rail';
+  /** When set, the menu lists "Cuenta" above "Cerrar sesión". */
+  accountHref?: string;
 }) {
   const [clientReady, setClientReady] = useState(false);
   const { isMobile } = useSidebar();
@@ -214,6 +224,12 @@ export function TeamSwitcher({
       </DropdownMenuItem>
 
       <DropdownMenuSeparator />
+      {accountHref ? (
+        <DropdownMenuItem onClick={() => router.push(accountHref)}>
+          <UserRound data-icon="inline-start" />
+          Cuenta
+        </DropdownMenuItem>
+      ) : null}
       <DropdownMenuItem
         variant="destructive"
         onClick={() => signOut({ callbackUrl: '/login' })}
