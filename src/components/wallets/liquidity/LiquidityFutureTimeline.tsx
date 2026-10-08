@@ -314,7 +314,7 @@ const BRUSH_STYLE_CLASS = cn(
   '[&_.recharts-brush-slide]:[rx:8px]',
   '[&_.recharts-brush-slide]:cursor-grab',
   '[&_.recharts-brush-texts_text]:[fill:var(--muted-foreground)]',
-  '[&_.recharts-brush-texts_text]:text-[10px]',
+  '[&_.recharts-brush-texts_text]:text-caption',
   '[&_.recharts-brush-texts_text]:font-medium',
 );
 

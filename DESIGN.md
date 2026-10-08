@@ -7,7 +7,7 @@ Encode the UI in **tokens, recipes, and live screenshots of this codebase**. Do 
 | Surface | Route | Code |
 | --- | --- | --- |
 | Marketing landing | `/` | `src/components/landing/*`. Same Geist + Manrope and light/dark theme as the app. |
-| Login | `/login` | `src/components/login/*` |
+| Login and signup | `/login`, `/register` | `src/components/auth/*` (`AuthStage`, `auth-form-kit`) |
 | Panel financiero | `/monthly/{year}/{month}` | `src/components/monthly/*`, `src/app/(app)/monthly/` |
 
 Runtime tokens live in `src/app/globals.css` (`.dark` for the app, `.landing-root` for marketing). Default theme is **dark** (`ThemeProvider` `defaultTheme="dark"`). **Light mode is a supported secondary theme** (toggle / `d` hotkey); new work must look correct in **both**, with dark still the primary product look.
@@ -71,7 +71,7 @@ The landing follows the signed-in theme. `ThemeProvider` (`attribute="class"`, `
 - **`--primary` is electric blue** — icon pills, focus rings, toggle ON, active nav, semantic “selected”.
 - **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. In dark this matches `--foreground` (`#f7f8ff`). Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
 - **Primary labeled buttons** use **electric blue** (`#3a37fc` in dark) with a violet ring (`Button` `variant="default"`), including the landing. Do not invent a second primary fill.
-- **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login has its own aurora (`login-stage`).
+- **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login and signup share their own aurora (`AuthStage` in `src/components/auth/auth-stage.tsx`); both forms use `auth-form-kit.tsx` for fields, hints, the primary, and footer links.
 - **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page. Do **not** put a grid overlay on these cards.
 
 ```
@@ -148,7 +148,7 @@ Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy su
 
 ### Out of scope
 
-Login, admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing uses the shared `Button` and the same light and dark tokens as the app.
+Login and signup (one shared auth stage), admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing uses the shared `Button` and the same light and dark tokens as the app.
 
 ---
 
@@ -385,7 +385,7 @@ Three surfaces. Radius does not change with the theme.
 
 **Alertas.** The bell sits in the sidebar footer. Below `md` it opens a `ResponsiveOverlay` sheet titled Alertas and closes the sidebar. From `md` it opens a menu to the right of the footer so the panel wallet strip stays visible. Severity uses status tokens (`overdue`, `pending`, `info`). Empty, error, and loading use `EmptyState`, `ErrorBanner`, and skeletons.
 
-**Onboarding** sits outside the `(app)` layout, so it draws `AppAtmosphere` itself and uses the planner glass shell, the type scale, and one progress bar. Create copy starts with **Agregar**.
+**Onboarding** sits outside the `(app)` layout, so it draws `AppAtmosphere` itself and uses the planner glass shell, the type scale, and one progress bar. Four steps (Billeteras, Ingresos, Gastos, Todo listo), each with one `h1` (the question) and one description line; the header names the next step. The card is capped to the viewport and its body scrolls, so header and footer never clip. Each draft is an `OnboardingItemCard`: the overlay kit's grouped card (`GroupedRow`, `AmountRow`) with a header and the viewport delete rule. Defaults are pre-filled (Efectivo, Cuenta de débito, Sueldo), so the minimum path is one amount. Gastos is optional. Create copy starts with **Agregar**.
 
 Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
 

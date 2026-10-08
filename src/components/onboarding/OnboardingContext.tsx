@@ -9,12 +9,21 @@ import {
   type ReactNode,
 } from 'react';
 import { createClientId } from '@/lib/polyfills';
+import { todayCalendarDate } from '@/lib/calendar-dates';
+
+export type WalletDraftType = 'CASH' | 'BANK' | 'CREDIT';
 
 export type WalletDraft = {
   id: string;
   name: string;
-  type: 'CASH' | 'BANK' | 'CREDIT';
+  type: WalletDraftType;
   providerIconKey: string | null;
+  /** Current balance (CASH / BANK). Optional; 0 when unknown. */
+  initialBalance: number;
+  /** CREDIT only: line of credit (> 0) and statement days (1–31). */
+  creditLimit: number;
+  cutoffDay: number | null;
+  dueDay: number | null;
 };
 
 export type IncomeTemplateDraft = {
@@ -60,20 +69,62 @@ type OnboardingContextValue = {
   setExpenseTemplates: React.Dispatch<
     React.SetStateAction<ExpenseTemplateDraft[]>
   >;
-  startDate: string | null;
-  setStartDate: (value: string | null) => void;
+  startDate: string;
+  /** Wallet that new incomes and expenses default to (first debit wallet). */
+  defaultWalletId: string;
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
-/** Welcome → Wallets → Income → Expenses → Fortnights (categories are seeded at register). */
-const TOTAL_STEPS = 5;
+/** Billeteras → Ingresos → Gastos → Resumen (categories are seeded at register). */
+export const ONBOARDING_TOTAL_STEPS = 4;
 
-const getCurrentMonthFirstDayIso = (): string => {
-  const now = new Date();
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  firstOfMonth.setHours(0, 0, 0, 0);
-  return firstOfMonth.toISOString().slice(0, 10);
+export const WALLET_TYPE_LABEL: Record<WalletDraftType, string> = {
+  CASH: 'Efectivo',
+  BANK: 'Tarjeta de débito',
+  CREDIT: 'Tarjeta de crédito',
+};
+
+export const createWalletDraft = (
+  type: WalletDraftType,
+  name = '',
+): WalletDraft => ({
+  id: createClientId(),
+  name,
+  type,
+  providerIconKey: type === 'CASH' ? 'CASH_GENERIC' : null,
+  initialBalance: 0,
+  creditLimit: 0,
+  cutoffDay: null,
+  dueDay: null,
+});
+
+/** First day of the current month in Mexico City (`YYYY-MM-01`). */
+const currentMonthStart = (): string => `${todayCalendarDate().slice(0, 7)}-01`;
+
+type InitialDraft = {
+  wallets: WalletDraft[];
+  incomeTemplates: IncomeTemplateDraft[];
+};
+
+/** The two required wallets and the salary arrive pre-filled. */
+const createInitialDraft = (): InitialDraft => {
+  const cash = createWalletDraft('CASH', 'Efectivo');
+  const debit = createWalletDraft('BANK', 'Cuenta de débito');
+  return {
+    wallets: [cash, debit],
+    incomeTemplates: [
+      {
+        id: createClientId(),
+        name: 'Sueldo',
+        amount: 0,
+        walletId: debit.id,
+        source: '',
+        appliesFirstFortnight: true,
+        appliesSecondFortnight: true,
+      },
+    ],
+  };
 };
 
 type OnboardingProviderProps = {
@@ -81,32 +132,27 @@ type OnboardingProviderProps = {
 };
 
 export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
+  const [initial] = useState(createInitialDraft);
   const [currentStep, setCurrentStep] = useState(0);
   const [isStepLoading, setStepLoading] = useState(false);
   const [canProceed, setCanProceed] = useState(true);
-  const [wallets, setWallets] = useState<WalletDraft[]>([]);
+  const [wallets, setWallets] = useState<WalletDraft[]>(initial.wallets);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateDraft[]>(
-    [
-      {
-        id: createClientId(),
-        name: 'Sueldo',
-        amount: 0,
-        walletId: '',
-        source: '',
-        appliesFirstFortnight: true,
-        appliesSecondFortnight: true,
-      },
-    ],
+    initial.incomeTemplates,
   );
   const [expenseTemplates, setExpenseTemplates] = useState<
     ExpenseTemplateDraft[]
   >([]);
-  const [startDate, setStartDate] = useState<string | null>(
-    getCurrentMonthFirstDayIso,
-  );
+  const [startDate] = useState(currentMonthStart);
+
+  const defaultWalletId =
+    wallets.find((wallet) => wallet.type === 'BANK')?.id ??
+    wallets.find((wallet) => wallet.type === 'CASH')?.id ??
+    wallets[0]?.id ??
+    '';
 
   const goNext = useCallback(() => {
-    setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS - 1));
+    setCurrentStep((prev) => Math.min(prev + 1, ONBOARDING_TOTAL_STEPS - 1));
   }, []);
 
   const goBack = useCallback(() => {
@@ -116,11 +162,11 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
   const value = useMemo<OnboardingContextValue>(
     () => ({
       currentStep,
-      totalSteps: TOTAL_STEPS,
+      totalSteps: ONBOARDING_TOTAL_STEPS,
       goNext,
       goBack,
       isFirstStep: currentStep === 0,
-      isLastStep: currentStep === TOTAL_STEPS - 1,
+      isLastStep: currentStep === ONBOARDING_TOTAL_STEPS - 1,
       isStepLoading,
       setStepLoading,
       canProceed,
@@ -132,7 +178,7 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
       expenseTemplates,
       setExpenseTemplates,
       startDate,
-      setStartDate,
+      defaultWalletId,
     }),
     [
       currentStep,
@@ -144,6 +190,7 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
       incomeTemplates,
       expenseTemplates,
       startDate,
+      defaultWalletId,
     ],
   );
 
