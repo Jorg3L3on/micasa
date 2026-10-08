@@ -8,11 +8,19 @@ import { cn } from '@/lib/utils';
  * The stage forces `.dark`, so these tokens resolve to the Orion palette.
  */
 export const AUTH_INPUT_CLASS = cn(
-  'h-auto rounded-xl border-white/[0.09] bg-white/[0.04] px-3.5 py-3 text-sm text-foreground shadow-none',
+  // 16px below md: iOS Safari zooms into any focused field under 16px.
+  'h-auto rounded-xl border-white/[0.09] bg-white/[0.04] px-3.5 py-3 text-base text-foreground shadow-none md:text-sm',
   'placeholder:text-muted-foreground/60',
   'focus-visible:border-ring/55 focus-visible:bg-white/[0.055] focus-visible:ring-[4px] focus-visible:ring-ring/15',
   'aria-invalid:border-destructive/70',
 );
+
+/**
+ * Grows a small inline link's hit area to about 44px without changing how it
+ * looks (an invisible pseudo-element around the text).
+ */
+export const AUTH_TAP_TARGET_CLASS =
+  "relative after:absolute after:-inset-x-2 after:-inset-y-3.5 after:content-['']";
 
 export const AUTH_LABEL_CLASS = 'mb-2 block text-xs font-medium text-muted-foreground';
 
@@ -23,7 +31,7 @@ export const AuthFormHeader = ({
   eyebrow: string;
   title: string;
 }) => (
-  <div className="mb-8">
+  <div className="mb-6 sm:mb-8">
     <p className="mb-1.5 text-xs text-muted-foreground">{eyebrow}</p>
     <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
   </div>
@@ -92,7 +100,10 @@ export const AuthSwitchPrompt = ({
       {question}{' '}
       <Link
         href={href}
-        className="font-medium text-foreground no-underline [border-bottom:1px_solid_rgba(255,255,255,0.25)] hover:border-foreground"
+        className={cn(
+          AUTH_TAP_TARGET_CLASS,
+          'font-medium text-foreground no-underline [border-bottom:1px_solid_rgba(255,255,255,0.25)] hover:border-foreground',
+        )}
       >
         {linkLabel}
       </Link>
@@ -101,12 +112,18 @@ export const AuthSwitchPrompt = ({
 );
 
 export const AuthLegalLinks = () => (
-  <div className="mt-auto flex justify-center gap-2 pt-6 text-caption text-muted-foreground/70">
-    <Link href="/privacy" className="no-underline hover:text-muted-foreground">
+  <div className="mt-auto flex justify-center gap-4 pt-6 text-caption text-muted-foreground/70">
+    <Link
+      href="/privacy"
+      className={cn(AUTH_TAP_TARGET_CLASS, 'no-underline after:-inset-y-4 hover:text-muted-foreground')}
+    >
       Aviso de privacidad
     </Link>
     <span aria-hidden>·</span>
-    <Link href="/terms" className="no-underline hover:text-muted-foreground">
+    <Link
+      href="/terms"
+      className={cn(AUTH_TAP_TARGET_CLASS, 'no-underline after:-inset-y-4 hover:text-muted-foreground')}
+    >
       Términos de uso
     </Link>
   </div>

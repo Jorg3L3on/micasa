@@ -15,6 +15,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import {
   AUTH_INPUT_CLASS,
   AUTH_LABEL_CLASS,
+  AUTH_TAP_TARGET_CLASS,
   AuthFieldHint,
   AuthFormHeader,
   AuthLegalLinks,
@@ -178,7 +179,7 @@ export function RegisterForm({
             {apiError.kind === 'existing-account' ? (
               <>
                 {GENERIC_REGISTER_ERROR_MESSAGE}{' '}
-                <Link href={loginHref} className="font-medium underline underline-offset-2">
+                <Link href={loginHref} className={cn(AUTH_TAP_TARGET_CLASS, 'font-medium underline underline-offset-2')}>
                   Iniciar sesión
                 </Link>
               </>
@@ -186,7 +187,7 @@ export function RegisterForm({
             {apiError.kind === 'sign-in-failed' ? (
               <>
                 Tu cuenta está creada, pero no pudimos entrar automáticamente.{' '}
-                <Link href={loginHref} className="font-medium underline underline-offset-2">
+                <Link href={loginHref} className={cn(AUTH_TAP_TARGET_CLASS, 'font-medium underline underline-offset-2')}>
                   Iniciar sesión
                 </Link>
               </>

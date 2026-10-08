@@ -73,7 +73,7 @@ export const AuthStage = ({
             }}
           />
 
-          <aside className="relative flex flex-col border-b border-white/[0.09] bg-linear-to-b from-primary/[0.08] to-[#ee477a]/[0.06] px-7 pt-8 pb-7 max-[780px]:gap-7 min-[781px]:justify-between min-[781px]:border-r min-[781px]:border-b-0 min-[781px]:px-10 min-[781px]:py-12">
+          <aside className="relative flex flex-col border-b border-white/[0.09] bg-linear-to-b from-primary/[0.08] to-[#ee477a]/[0.06] px-6 pt-6 pb-5 max-[780px]:gap-3 min-[781px]:justify-between min-[781px]:border-r min-[781px]:border-b-0 min-[781px]:px-10 min-[781px]:py-12">
             <Link
               href="/"
               className="inline-flex items-center gap-2.5 font-semibold tracking-tight text-foreground"
@@ -84,18 +84,19 @@ export const AuthStage = ({
             </Link>
 
             <div className="min-[781px]:mt-10">
-              <p className="eyebrow mb-3.5 tracking-[0.14em] text-muted-foreground/70">
+              <p className="eyebrow mb-3.5 tracking-[0.14em] text-muted-foreground/70 max-[780px]:hidden">
                 {eyebrow}
               </p>
-              <p className="max-w-[260px] text-[26px] leading-[1.25] font-semibold tracking-tight text-foreground">
+              <p className="max-w-[260px] text-xl leading-[1.25] font-semibold tracking-tight text-foreground max-[780px]:max-w-none min-[781px]:text-[26px]">
                 {headline}
               </p>
             </div>
 
-            <FortnightPulse className="max-[780px]:mt-0 min-[781px]:mt-10" />
+            {/* Phones: brand line only, so the form fits in the first screen. */}
+            <FortnightPulse className="max-[780px]:hidden min-[781px]:mt-10" />
           </aside>
 
-          <div className="relative flex flex-col px-7 py-8 sm:px-11 sm:py-12 max-[780px]:pt-8">
+          <div className="relative flex flex-col px-6 py-6 sm:px-11 sm:py-12">
             {children}
           </div>
         </div>
