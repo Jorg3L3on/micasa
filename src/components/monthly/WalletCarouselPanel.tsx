@@ -20,8 +20,14 @@ import CreditCardPaymentDialog, {
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { SegmentedControl } from '@/components/segmented-control';
+import {
+  AURA_TAB_INDICATOR_CLASS,
+  GLASS_TAB_ACTIVE_LABEL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
 import { Button } from '@/components/ui/button';
 import { useFinanceContext } from '@/context/finance-context';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import {
   PAYMENT_METHOD_SHORT_LABELS,
@@ -72,7 +78,10 @@ type WalletCarouselPanelProps = {
 
 type ActiveDialog = WalletCarouselQuickAction | 'create' | null;
 
-const CARD_WIDTH_RATIO = 0.74;
+/** Card sizing follows a physical card (taller than wide-screen strips), capped so it stays narrow. */
+const CARD_WIDTH_RATIO = 0.62;
+const CARD_MAX_WIDTH_PX = 272;
+const CARD_ASPECT_RATIO = 1.45;
 const CARD_GAP_PX = 12;
 
 const WalletFace = ({
@@ -188,7 +197,15 @@ export const WalletCarouselPanel = ({
     return () => observer.disconnect();
   }, []);
 
-  const list = groups[tab];
+  const isMobile = useIsMobile();
+  // Mobile hides the type tabs, so the carousel shows every wallet, grouped by type.
+  const list = useMemo(
+    () =>
+      isMobile
+        ? WALLET_CAROUSEL_TYPES.flatMap((type) => groups[type])
+        : groups[tab],
+    [groups, isMobile, tab],
+  );
   const activeIndex = clampCarouselIndex(index, list.length);
   const activeWallet: WalletListItem | undefined = list[activeIndex];
 
@@ -208,12 +225,18 @@ export const WalletCarouselPanel = ({
   const move = useCallback(
     (delta: number) =>
       setIndex((current) =>
-        clampCarouselIndex(current + delta, groups[tab].length),
+        clampCarouselIndex(current + delta, list.length),
       ),
-    [groups, tab],
+    [list.length],
   );
 
-  const cardWidth = Math.round(width * CARD_WIDTH_RATIO);
+  const cardWidth = Math.min(
+    Math.round(width * CARD_WIDTH_RATIO),
+    CARD_MAX_WIDTH_PX,
+  );
+  const cardHeight = cardWidth
+    ? Math.round(cardWidth / CARD_ASPECT_RATIO)
+    : 180;
   const trackX = width
     ? (width - cardWidth) / 2 - activeIndex * (cardWidth + CARD_GAP_PX)
     : 0;
@@ -375,12 +398,12 @@ export const WalletCarouselPanel = ({
   const [pendingFocusId, setPendingFocusId] = useState<number | null>(null);
   useEffect(() => {
     if (pendingFocusId == null) return;
-    const found = groups[tab].findIndex((w) => w.id === pendingFocusId);
+    const found = list.findIndex((w) => w.id === pendingFocusId);
     if (found >= 0) {
       setIndex(found);
       setPendingFocusId(null);
     }
-  }, [groups, pendingFocusId, tab]);
+  }, [list, pendingFocusId]);
 
   const plan = activeWallet
     ? getWalletCarouselActionPlan(activeWallet.type)
@@ -398,48 +421,46 @@ export const WalletCarouselPanel = ({
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div
-          role="tablist"
-          aria-label="Tipo de billetera"
-          className="inline-flex min-w-0 items-center rounded-full border border-border/60 bg-background/60 p-0.5"
-        >
-          {WALLET_CAROUSEL_TYPES.map((type) => {
-            const count = groups[type].length;
-            const selected = type === tab;
-            return (
-              <button
-                key={type}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => selectTab(type)}
-                className={cn(
-                  'flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-                  selected
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground',
-                  count === 0 && !selected && 'opacity-50',
-                )}
-              >
-                {selected ? (
-                  <span
-                    aria-hidden
-                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
-                  />
-                ) : null}
-                {WALLET_CAROUSEL_TAB_LABELS[type]}
-                <span className="sr-only">
-                  {count === 1 ? ', 1 billetera' : `, ${count} billeteras`}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {!isMobile ? (
+          <SegmentedControl
+            value={tab}
+            onValueChange={(value) => selectTab(value as WalletCarouselType)}
+            ariaLabel="Tipo de billetera"
+            options={WALLET_CAROUSEL_TYPES.map((type) => ({
+              value: type,
+              ariaLabel: `${WALLET_CAROUSEL_TAB_LABELS[type]}, ${groups[type].length} ${
+                groups[type].length === 1 ? 'billetera' : 'billeteras'
+              }`,
+              label: (
+                <span
+                  className={cn(
+                    'flex items-center gap-1.5',
+                    groups[type].length === 0 && type !== tab && 'opacity-50',
+                  )}
+                >
+                  {type === tab ? (
+                    <span
+                      aria-hidden
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                    />
+                  ) : null}
+                  {WALLET_CAROUSEL_TAB_LABELS[type]}
                 </span>
-              </button>
-            );
-          })}
-        </div>
+              ),
+            }))}
+            className="min-w-[14rem] flex-1"
+            listClassName="w-full"
+            stretch
+            triggerClassName="px-2"
+            indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+            activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+          />
+        ) : null}
         <Button
           type="button"
           size="sm"
-          className="shrink-0 gap-1"
+          className="ml-auto shrink-0 gap-1"
           onClick={() => {
             setDialogWalletId(null);
             setDialog('create');
@@ -451,9 +472,14 @@ export const WalletCarouselPanel = ({
       </div>
 
       {list.length === 0 ? (
-        <div className="flex h-[168px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 text-center">
+        <div
+          className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 text-center"
+          style={{ height: cardHeight }}
+        >
           <p className="text-sm text-muted-foreground">
-            Sin billeteras de tipo {WALLET_CAROUSEL_TAB_LABELS[tab].toLowerCase()}
+            {isMobile
+              ? 'Aún no tienes billeteras'
+              : `Sin billeteras de tipo ${WALLET_CAROUSEL_TAB_LABELS[tab].toLowerCase()}`}
           </p>
           <Button
             type="button"
@@ -474,7 +500,11 @@ export const WalletCarouselPanel = ({
             className="relative overflow-hidden"
             role="group"
             aria-roledescription="carrusel"
-            aria-label={`Billeteras de ${WALLET_CAROUSEL_TAB_LABELS[tab]}`}
+            aria-label={
+              isMobile
+                ? 'Billeteras'
+                : `Billeteras de ${WALLET_CAROUSEL_TAB_LABELS[tab]}`
+            }
             tabIndex={0}
             onKeyDown={(event) => {
               if (event.key === 'ArrowLeft') move(-1);
@@ -482,8 +512,8 @@ export const WalletCarouselPanel = ({
             }}
           >
             <motion.div
-              className="flex h-[168px] cursor-grab touch-pan-y active:cursor-grabbing"
-              style={{ gap: CARD_GAP_PX }}
+              className="flex cursor-grab touch-pan-y active:cursor-grabbing"
+              style={{ gap: CARD_GAP_PX, height: cardHeight }}
               drag={list.length > 1 ? 'x' : false}
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.2}
@@ -508,7 +538,7 @@ export const WalletCarouselPanel = ({
                   <motion.div
                     key={wallet.id}
                     className="h-full shrink-0"
-                    style={{ width: cardWidth || '74%' }}
+                    style={{ width: cardWidth || '62%' }}
                     animate={{
                       scale: active || reduceMotion ? 1 : 0.9,
                       opacity: active ? 1 : 0.55,
