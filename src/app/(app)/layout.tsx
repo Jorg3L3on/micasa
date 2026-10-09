@@ -63,7 +63,7 @@ export default async function AppLayout({
                 <AppHeaderToolbarDynamic />
               </header>
               <div
-                className={`relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 dark:bg-transparent ${DOCK_CLEARANCE_PADDING_MOBILE_CLASS}`}
+                className={`relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 md:pl-[4.75rem] dark:bg-transparent ${DOCK_CLEARANCE_PADDING_MOBILE_CLASS}`}
               >
                 <div className="container mx-auto min-w-0 overflow-x-clip">
                   <Suspense fallback={<AppLoading />}>

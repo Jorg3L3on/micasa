@@ -4,8 +4,9 @@ import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActionSwapIcon } from '@/components/motion/action-swap-icon';
 import { useThemeToggle } from '@/components/motion/theme-toggle';
+import { cn } from '@/lib/utils';
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const { isDark, mounted, toggle } = useThemeToggle({
     variant: 'circle',
     start: 'bottom-left',
@@ -22,7 +23,7 @@ export function ThemeToggle() {
       type="button"
       variant="ghost"
       size="icon"
-      className="size-9"
+      className={cn('size-9', className)}
       aria-label={label}
       onClick={toggle}
       disabled={!mounted}

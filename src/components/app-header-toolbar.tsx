@@ -15,7 +15,6 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, MoreHorizontal, Plus, Search } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -478,15 +477,7 @@ export default function AppHeaderToolbar() {
               ref={leftClusterRef}
               className="z-10 flex min-w-0 shrink-0 items-center gap-0.5"
             >
-              <SidebarTrigger
-                className={cn(TOOLBAR_GLASS_ICON, 'max-md:hidden')}
-              />
               {leadingAction ? (
-                <>
-                  <Separator
-                    orientation="vertical"
-                    className="mx-1.5 shrink-0 bg-border/50 data-[orientation=vertical]:h-5 max-md:hidden dark:bg-white/15"
-                  />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -509,7 +500,6 @@ export default function AppHeaderToolbar() {
                       {leadingAction.label}
                     </TooltipContent>
                   </Tooltip>
-                </>
               ) : null}
               {!showBack ? null : (
                 <>

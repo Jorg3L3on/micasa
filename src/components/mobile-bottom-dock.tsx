@@ -1,222 +1,33 @@
 'use client';
 
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from 'react';
-import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  type Transition,
-} from 'framer-motion';
-import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  MoreHorizontal,
-  Plus,
-  type LucideIcon,
-} from 'lucide-react';
+import { Suspense } from 'react';
+import { usePathname } from 'next/navigation';
+import { MoreHorizontal } from 'lucide-react';
 
-import { getDockDestinations } from '@/components/nav-destinations';
-import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
 import {
-  GLASS_MENU_ICON_PILL_CLASS,
-  GLASS_MENU_ITEM_CLASS,
-  GLASS_MENU_PANEL_CLASS,
-  TOOLBAR_GLASS_ICON,
-} from '@/components/toolbar-glass';
+  getMobileDockItems,
+  getOverflowDestinations,
+} from '@/components/nav-destinations';
+import {
+  NAV_PILL_SHELL_CLASS,
+  NavPillButton,
+  NavPillLink,
+  hrefWithOwnerQuery,
+  useNavOwnerQuery,
+} from '@/components/nav-pill';
 import { useSidebar } from '@/components/ui/sidebar';
 import { DOCK_FLOAT_PADDING_CLASS } from '@/lib/ui/dock-clearance';
 import { cn } from '@/lib/utils';
 
-const PILL_SPRING: Transition = {
-  type: 'spring',
-  stiffness: 360,
-  damping: 32,
-  mass: 0.6,
-};
-
-const MENU_TRANSITION: Transition = {
-  type: 'spring',
-  stiffness: 420,
-  damping: 28,
-  mass: 0.7,
-};
-
-export const MOBILE_DOCK_SHELL_CLASS = cn(
-  'relative grid h-(--dock-bar-height) grid-cols-5 items-center overflow-hidden rounded-full',
-  'border border-black/10 bg-background/70 shadow-panel',
-  'supports-[backdrop-filter]:bg-background/45 backdrop-blur-2xl backdrop-saturate-180',
-  'dark:border-white/[0.12] dark:bg-[rgb(9_14_29/0.6)] dark:supports-[backdrop-filter]:bg-[rgb(9_14_29/0.4)] dark:shadow-panel',
-  'before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-black/20 before:to-transparent',
-  'dark:before:via-white/40',
-);
-
-type DockTab = {
-  title: string;
-  href: string;
-  icon: LucideIcon;
-  isActive: (pathname: string) => boolean;
-};
-
-const getDockTabs = (): DockTab[] =>
-  getDockDestinations().map((destination) => ({
-    title: destination.dockTitle ?? destination.title,
-    href: destination.getHref(),
-    icon: destination.icon,
-    isActive: destination.isActive,
-  }));
-
-const DOCK_ITEM_ACTIVE_CLASS = 'text-foreground';
-const DOCK_ITEM_IDLE_CLASS = 'text-muted-foreground hover:text-foreground';
-
-const hrefWithOwnerParams = (url: string, queryString: string) =>
-  queryString ? `${url}?${queryString}` : url;
-
-type DockTabLinkProps = {
-  title: string;
-  href: string;
-  icon: LucideIcon;
-  active: boolean;
-  layoutId: string;
-  reduceMotion: boolean | null;
-};
-
-const DockTabLink = ({
-  title,
-  href,
-  icon: Icon,
-  active,
-  layoutId,
-  reduceMotion,
-}: DockTabLinkProps) => {
-  return (
-    <motion.div
-      className="relative isolate flex min-w-0 flex-1"
-      whileTap={reduceMotion ? undefined : { scale: 0.92 }}
-    >
-      <Link
-        href={href}
-        aria-current={active ? 'page' : undefined}
-        aria-label={title}
-        className={cn(
-          'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-caption font-medium transition-colors',
-          active ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
-        )}
-      >
-        {active ? (
-          <motion.span
-            layoutId={layoutId}
-            className="absolute inset-1 -z-10 rounded-full liquid-glass liquid-glass-pill"
-            transition={reduceMotion ? { duration: 0 } : PILL_SPRING}
-            aria-hidden
-          />
-        ) : null}
-        <Icon className="h-5 w-5 shrink-0" aria-hidden />
-        <span
-          className={cn(
-            'max-w-full text-center leading-none tracking-tight transition-opacity',
-            active ? 'opacity-100' : 'opacity-60',
-          )}
-        >
-          {title}
-        </span>
-      </Link>
-    </motion.div>
-  );
-};
-
-function MobileBottomDockInner() {
+const MobileBottomDockInner = () => {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { setOpenMobile } = useSidebar();
-  const quickCapture = useOptionalQuickCapture();
-  const reduceMotion = useReducedMotion();
-  const pillLayoutId = useId();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const plusRef = useRef<HTMLButtonElement>(null);
+  const ownerQuery = useNavOwnerQuery();
+  const { openMobile, setOpenMobile } = useSidebar();
 
-  const ownerParams = new URLSearchParams();
-  const ownerType = searchParams.get('ownerType');
-  const ownerId = searchParams.get('ownerId');
-  if (ownerType) ownerParams.set('ownerType', ownerType);
-  if (ownerId) ownerParams.set('ownerId', ownerId);
-  const queryString = ownerParams.toString();
-
-  const tabs = getDockTabs();
-  const activeTab = tabs.find((tab) => tab.isActive(pathname));
-  const moreActive = !activeTab;
-
-  const handleOpenMore = useCallback(() => {
-    setMenuOpen(false);
-    setOpenMobile(true);
-  }, [setOpenMobile]);
-
-  const handleToggleMenu = useCallback(() => {
-    setMenuOpen((open) => !open);
-  }, []);
-
-  const handleChooseExpense = useCallback(() => {
-    setMenuOpen(false);
-    quickCapture?.openExpense();
-  }, [quickCapture]);
-
-  const handleChooseIncome = useCallback(() => {
-    setMenuOpen(false);
-    quickCapture?.openIncome();
-  }, [quickCapture]);
-
-  const handleMoreKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      handleOpenMore();
-    }
-  };
-
-  const handlePlusKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      handleToggleMenu();
-    }
-  };
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (menuRef.current?.contains(target)) return;
-      if (plusRef.current?.contains(target)) return;
-      setMenuOpen(false);
-    };
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [menuOpen]);
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
+  const items = getMobileDockItems();
+  const moreActive = getOverflowDestinations().some((destination) =>
+    destination.isActive(pathname),
+  );
 
   return (
     <nav
@@ -227,166 +38,41 @@ function MobileBottomDockInner() {
         DOCK_FLOAT_PADDING_CLASS,
       )}
     >
-      <div className="pointer-events-auto relative mx-auto max-w-lg">
-        <AnimatePresence>
-          {menuOpen ? (
-            <motion.div
-              ref={menuRef}
-              role="menu"
-              aria-label="Agregar gasto o ingreso"
-              initial={
-                reduceMotion
-                  ? { opacity: 1, scale: 1 }
-                  : { opacity: 0, scale: 0.92, y: 8 }
-              }
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={
-                reduceMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, scale: 0.92, y: 8 }
-              }
-              transition={reduceMotion ? { duration: 0 } : MENU_TRANSITION}
-              className={cn(
-                'absolute bottom-[calc(100%+0.75rem)] left-1/2 z-10 w-[min(17.5rem,calc(100vw-1.5rem))] -translate-x-1/2',
-                GLASS_MENU_PANEL_CLASS,
-              )}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                aria-label="Agregar gasto"
-                className={GLASS_MENU_ITEM_CLASS}
-                onClick={handleChooseExpense}
-              >
-                <span className={GLASS_MENU_ICON_PILL_CLASS}>
-                  <ArrowDownCircle aria-hidden />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">Gasto</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Planear o marcar como pagado
-                  </span>
-                </span>
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                aria-label="Agregar ingreso"
-                className={GLASS_MENU_ITEM_CLASS}
-                onClick={handleChooseIncome}
-              >
-                <span className={GLASS_MENU_ICON_PILL_CLASS}>
-                  <ArrowUpCircle aria-hidden />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">Ingreso</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Solo esta quincena
-                  </span>
-                </span>
-              </button>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
-        <div className={MOBILE_DOCK_SHELL_CLASS}>
-          <DockTabLink
-            title={tabs[0].title}
-            href={hrefWithOwnerParams(tabs[0].href, queryString)}
-            icon={tabs[0].icon}
-            active={tabs[0].isActive(pathname)}
-            layoutId={pillLayoutId}
-            reduceMotion={reduceMotion}
+      <div className="pointer-events-auto mx-auto max-w-lg">
+        <div
+          className={cn(
+            NAV_PILL_SHELL_CLASS,
+            'h-(--dock-bar-height) w-full flex-row items-stretch gap-0 px-1',
+          )}
+        >
+          {items.map((item) => (
+            <NavPillLink
+              key={item.id}
+              href={hrefWithOwnerQuery(item.getHref(), ownerQuery)}
+              label={item.title}
+              icon={item.icon}
+              active={item.isActive(pathname)}
+              tooltipSide="top"
+              layout="slot"
+            />
+          ))}
+          <NavPillButton
+            label="Más opciones de navegación"
+            icon={MoreHorizontal}
+            active={moreActive}
+            tooltipSide="top"
+            layout="slot"
+            expanded={openMobile}
+            onClick={() => setOpenMobile(true)}
           />
-          <DockTabLink
-            title={tabs[1].title}
-            href={hrefWithOwnerParams(tabs[1].href, queryString)}
-            icon={tabs[1].icon}
-            active={tabs[1].isActive(pathname)}
-            layoutId={pillLayoutId}
-            reduceMotion={reduceMotion}
-          />
-
-          <div className="relative flex min-w-0 flex-1 items-center justify-center">
-            <motion.button
-              ref={plusRef}
-              type="button"
-              aria-label="Agregar gasto o ingreso"
-              aria-expanded={menuOpen}
-              aria-haspopup="menu"
-              tabIndex={0}
-              onClick={handleToggleMenu}
-              onKeyDown={handlePlusKeyDown}
-              whileTap={reduceMotion ? undefined : { scale: 0.9 }}
-              className={cn(
-                TOOLBAR_GLASS_ICON,
-                'flex size-12 items-center justify-center active:scale-100',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-              )}
-            >
-              <motion.span
-                animate={{ rotate: menuOpen ? 45 : 0 }}
-                transition={reduceMotion ? { duration: 0 } : PILL_SPRING}
-                className="flex"
-              >
-                <Plus className="size-6" aria-hidden />
-              </motion.span>
-            </motion.button>
-          </div>
-
-          <DockTabLink
-            title={tabs[2].title}
-            href={hrefWithOwnerParams(tabs[2].href, queryString)}
-            icon={tabs[2].icon}
-            active={tabs[2].isActive(pathname)}
-            layoutId={pillLayoutId}
-            reduceMotion={reduceMotion}
-          />
-
-          <motion.div
-            className="relative isolate flex min-w-0 flex-1"
-            whileTap={reduceMotion ? undefined : { scale: 0.92 }}
-          >
-            <button
-              type="button"
-              aria-label="Más opciones de navegación"
-              tabIndex={0}
-              onClick={handleOpenMore}
-              onKeyDown={handleMoreKeyDown}
-              className={cn(
-                'relative z-0 flex h-14 min-h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-caption font-medium transition-colors',
-                moreActive ? DOCK_ITEM_ACTIVE_CLASS : DOCK_ITEM_IDLE_CLASS,
-              )}
-            >
-              {moreActive ? (
-                <motion.span
-                  layoutId={pillLayoutId}
-                  className="absolute inset-1 -z-10 rounded-full liquid-glass liquid-glass-pill"
-                  transition={reduceMotion ? { duration: 0 } : PILL_SPRING}
-                  aria-hidden
-                />
-              ) : null}
-              <MoreHorizontal className="h-5 w-5 shrink-0" aria-hidden />
-              <span
-                className={cn(
-                  'max-w-full text-center leading-none tracking-tight transition-opacity',
-                  moreActive ? 'opacity-100' : 'opacity-60',
-                )}
-              >
-                Más
-              </span>
-            </button>
-          </motion.div>
         </div>
       </div>
     </nav>
   );
-}
+};
 
-export function MobileBottomDock() {
-  return (
-    <Suspense fallback={null}>
-      <MobileBottomDockInner />
-    </Suspense>
-  );
-}
+export const MobileBottomDock = () => (
+  <Suspense fallback={null}>
+    <MobileBottomDockInner />
+  </Suspense>
+);
