@@ -10,6 +10,7 @@ import {
   ChevronRight,
   History,
   Plus,
+  Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import WalletForm from '@/components/WalletForm';
@@ -23,9 +24,14 @@ import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { SegmentedControl } from '@/components/segmented-control';
 import {
   AURA_TAB_INDICATOR_CLASS,
-  GLASS_TAB_ACTIVE_LABEL_CLASS,
+  GLASS_TAB_ACTIVE_LABEL_CLASS, MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { Button } from '@/components/ui/button';
+import { RippleButton } from '@/components/ui/ripple-button';
+import { InteractiveGridPattern } from '@/components/ui/interactive-grid-pattern';
+import { ShineBorder } from '@/components/ui/shine-border';
+import { getAuraBarStyle, getAuraWalletColor } from '@/lib/ui/aura-palette';
+import { SectionHeader } from '@/components/section-header';
 import { useFinanceContext } from '@/context/finance-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
@@ -42,6 +48,7 @@ import { createWalletIncome } from '@/lib/api/incomes';
 import { createWallet } from '@/lib/api/wallets';
 import {
   getProviderCardStyle,
+  getWalletAuraColors,
   isProviderCardDarkSurface,
 } from '@/lib/provider-card-style';
 import {
@@ -94,31 +101,85 @@ const WalletFace = ({
   const scheme = useProviderCardScheme();
   const credit = isCreditCarouselType(wallet.type);
   const summary = credit ? getWalletCreditSummary(wallet) : null;
+  const usedPercent =
+    summary?.limit != null && summary.limit > 0
+      ? Math.min(
+          100,
+          Math.max(0, Math.round((summary.used / summary.limit) * 100)),
+        )
+      : 0;
+  const brandColor = getAuraWalletColor(
+    wallet.provider_icon_key,
+    wallet.type,
+    'primary',
+  );
   const style = getProviderCardStyle(
     wallet.provider_icon_key,
     wallet.type,
-    'subtle',
+    'aura',
     scheme,
   );
-  const dark = isProviderCardDarkSurface('subtle', scheme);
+  const auraColors = getWalletAuraColors(wallet.provider_icon_key, wallet.type);
+  const dark = Boolean(style) && isProviderCardDarkSurface('aura', scheme);
 
   return (
     <div
       className={cn(
-        'relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border p-4',
-        'border-white/10 bg-gradient-to-br from-white/10 via-transparent to-black/20 shadow-lg backdrop-blur',
+        'relative isolate flex h-full flex-col justify-between overflow-hidden rounded-2xl border p-4 backdrop-blur-sm',
+        'ring-1 ring-inset',
+        dark ? 'ring-white/5' : 'ring-black/5',
+        !style && 'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
+        style && 'shadow-face',
+        style && (dark ? 'border-white/25' : 'border-border/70'),
         dark ? 'text-white' : 'text-foreground',
         !isActive && 'pointer-events-none',
       )}
       style={style}
     >
-      <div className="flex items-start justify-between gap-2">
+      {style ? (
+        <>
+          <span
+            aria-hidden
+            className={cn(
+              'pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full blur-2xl',
+              dark ? 'bg-white/8' : 'bg-white/70',
+            )}
+          />
+          <span
+            aria-hidden
+            className={cn(
+              'pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full blur-2xl',
+              dark ? 'bg-black/20' : 'bg-black/5',
+            )}
+          />
+        </>
+      ) : null}
+      <InteractiveGridPattern
+        width={14}
+        height={14}
+        squares={[20, 14]}
+        className="-z-10 border-0 [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]"
+        squaresClassName={
+          dark ? 'stroke-white/[0.08]' : 'stroke-foreground/[0.08]'
+        }
+      />
+      {auraColors ? (
+        <ShineBorder
+          shineColor={auraColors.shine}
+          borderWidth={1.5}
+          duration={11}
+          style={{ animationDelay: `-${(wallet.id % 7) * 1.6}s` }}
+        />
+      ) : null}
+      <div className="pointer-events-none flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <WalletProviderIcon
             providerIconKey={wallet.provider_icon_key}
             showTooltipLabel={false}
           />
-          <span className="truncate text-sm font-semibold">{wallet.name}</span>
+          <span className="truncate text-sm font-semibold" title={wallet.name}>
+            {wallet.name}
+          </span>
         </div>
         <span className="shrink-0 text-xs opacity-70">
           {PAYMENT_METHOD_SHORT_LABELS[wallet.type as PaymentMethodType] ??
@@ -126,29 +187,48 @@ const WalletFace = ({
         </span>
       </div>
 
-      <div>
+      <div className="pointer-events-none">
         <p className="text-xs opacity-70">
           {credit ? 'Saldo utilizado' : 'Saldo'}
         </p>
         <p className="text-2xl font-semibold tabular-nums">
           {formatCurrency(wallet.amount)}
         </p>
-        {summary?.limit != null ? (
-          <p className="mt-0.5 text-xs opacity-70 tabular-nums">
-            Disponible {formatCurrency(summary.available ?? 0)} de{' '}
-            {formatCurrency(summary.limit)}
-          </p>
+        {summary?.limit != null && summary.limit > 0 ? (
+          <div
+            className={cn(
+              'mt-2 h-1.5 overflow-hidden rounded-full',
+              dark ? 'bg-white/15' : 'bg-foreground/10',
+            )}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={usedPercent}
+            aria-label={`Disponible ${formatCurrency(summary.available ?? 0)} de ${formatCurrency(summary.limit)}`}
+            title={`Disponible ${formatCurrency(summary.available ?? 0)} de ${formatCurrency(summary.limit)}`}
+          >
+            <div
+              className="h-full rounded-full transition-[width] duration-500"
+              style={{
+                width: `${usedPercent}%`,
+                ...getAuraBarStyle(brandColor),
+              }}
+            />
+          </div>
         ) : null}
       </div>
 
       {credit && (wallet.cutoff_day != null || wallet.due_day != null) ? (
-        <p className="text-xs opacity-70">
-          {wallet.cutoff_day != null ? `Corte día ${wallet.cutoff_day}` : null}
-          {wallet.cutoff_day != null && wallet.due_day != null ? ' · ' : null}
-          {wallet.due_day != null ? `Vence día ${wallet.due_day}` : null}
+        <p className="pointer-events-none flex items-center justify-between gap-2 text-xs opacity-70">
+          <span>
+            {wallet.cutoff_day != null ? `Corte día ${wallet.cutoff_day}` : null}
+          </span>
+          <span className="text-right">
+            {wallet.due_day != null ? `Vence día ${wallet.due_day}` : null}
+          </span>
         </p>
       ) : (
-        <span aria-hidden className="h-4" />
+        <span aria-hidden className="pointer-events-none h-4" />
       )}
     </div>
   );
@@ -186,27 +266,25 @@ export const WalletCarouselPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on owner change
   }, [ownerKey]);
 
+  const isMobile = useIsMobile();
+  const list = groups[tab];
+  const activeIndex = clampCarouselIndex(index, list.length);
+
+  // The viewport only exists while there are wallets to show, so measure it
+  // whenever it (re)mounts. A mount-only effect left width at 0 and the cards
+  // stuck at the left edge.
+  const hasViewport = list.length > 0;
   useEffect(() => {
     const el = viewportRef.current;
-    if (!el) return;
+    if (!hasViewport || !el) return;
     const observer = new ResizeObserver(([entry]) => {
       setWidth(entry.contentRect.width);
     });
     observer.observe(el);
     setWidth(el.getBoundingClientRect().width);
     return () => observer.disconnect();
-  }, []);
+  }, [hasViewport]);
 
-  const isMobile = useIsMobile();
-  // Mobile hides the type tabs, so the carousel shows every wallet, grouped by type.
-  const list = useMemo(
-    () =>
-      isMobile
-        ? WALLET_CAROUSEL_TYPES.flatMap((type) => groups[type])
-        : groups[tab],
-    [groups, isMobile, tab],
-  );
-  const activeIndex = clampCarouselIndex(index, list.length);
   const activeWallet: WalletListItem | undefined = list[activeIndex];
 
   const selectTab = useCallback(
@@ -413,63 +491,56 @@ export const WalletCarouselPanel = ({
     : null;
   const dialogSummary = dialogWallet ? getWalletCreditSummary(dialogWallet) : null;
 
+  if (isMobile) return null;
+
   return (
-    <section
-      aria-label="Billeteras"
+    <aside
       className={cn(
-        'min-w-0 space-y-3 rounded-xl border border-border/60 bg-card/60 p-3',
+        MONTHLY_LIQUID_PANEL_CLASS,
+        'space-y-3 p-3 sm:space-y-4 sm:p-4',
         className,
       )}
+      aria-label="Billeteras"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {!isMobile ? (
-          <SegmentedControl
-            value={tab}
-            onValueChange={(value) => selectTab(value as WalletCarouselType)}
-            ariaLabel="Tipo de billetera"
-            options={WALLET_CAROUSEL_TYPES.map((type) => ({
-              value: type,
-              ariaLabel: `${WALLET_CAROUSEL_TAB_LABELS[type]}, ${groups[type].length} ${
-                groups[type].length === 1 ? 'billetera' : 'billeteras'
-              }`,
-              label: (
-                <span
-                  className={cn(
-                    'flex items-center gap-1.5',
-                    groups[type].length === 0 && type !== tab && 'opacity-50',
-                  )}
-                >
-                  {type === tab ? (
-                    <span
-                      aria-hidden
-                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
-                    />
-                  ) : null}
-                  {WALLET_CAROUSEL_TAB_LABELS[type]}
-                </span>
-              ),
-            }))}
-            className="min-w-[14rem] flex-1"
-            listClassName="w-full"
-            stretch
-            triggerClassName="px-2"
-            indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-            activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-          />
-        ) : null}
-        <Button
-          type="button"
-          size="sm"
-          className="ml-auto shrink-0 gap-1"
-          onClick={() => {
-            setDialogWalletId(null);
-            setDialog('create');
-          }}
-        >
-          <Plus className="h-3.5 w-3.5" aria-hidden />
-          Agregar billetera
-        </Button>
-      </div>
+      <SectionHeader
+        icon={Wallet}
+        title="Billeteras"
+        subtitle="Saldos y tarjetas por tipo"
+        actions={
+          <RippleButton
+            type="button"
+            rippleColor="rgba(255,255,255,0.6)"
+            className="h-9 shrink-0 flex-row gap-1.5 whitespace-nowrap rounded-lg border-0 bg-primary px-3 text-sm font-medium text-primary-foreground shadow-[0_0_10px_-2px_var(--primary)] hover:bg-primary/90 dark:ring-1 dark:ring-primary/35"
+            onClick={() => {
+              setDialogWalletId(null);
+              setDialog('create');
+            }}
+          >
+            <span className="flex items-center gap-1.5">
+              <Plus className="h-4 w-4 shrink-0" aria-hidden />
+              <span>Agregar billetera</span>
+            </span>
+          </RippleButton>
+        }
+      />
+      <SegmentedControl
+        value={tab}
+        onValueChange={(value) => selectTab(value as WalletCarouselType)}
+        ariaLabel="Tipo de billetera"
+        options={WALLET_CAROUSEL_TYPES.map((type) => ({
+          value: type,
+          ariaLabel: `${WALLET_CAROUSEL_TAB_LABELS[type]}, ${groups[type].length} ${
+            groups[type].length === 1 ? 'billetera' : 'billeteras'
+          }`,
+          label: <span>{WALLET_CAROUSEL_TAB_LABELS[type]}</span>,
+        }))}
+        listClassName="w-full"
+        stretch
+        variant="segment"
+        triggerClassName="px-2"
+        indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+        activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+      />
 
       {list.length === 0 ? (
         <div
@@ -477,9 +548,7 @@ export const WalletCarouselPanel = ({
           style={{ height: cardHeight }}
         >
           <p className="text-sm text-muted-foreground">
-            {isMobile
-              ? 'Aún no tienes billeteras'
-              : `Sin billeteras de tipo ${WALLET_CAROUSEL_TAB_LABELS[tab].toLowerCase()}`}
+            {`Sin billeteras de tipo ${WALLET_CAROUSEL_TAB_LABELS[tab].toLowerCase()}`}
           </p>
           <Button
             type="button"
@@ -497,14 +566,10 @@ export const WalletCarouselPanel = ({
         <div className="space-y-2">
           <div
             ref={viewportRef}
-            className="relative overflow-hidden"
+            className="relative overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             role="group"
             aria-roledescription="carrusel"
-            aria-label={
-              isMobile
-                ? 'Billeteras'
-                : `Billeteras de ${WALLET_CAROUSEL_TAB_LABELS[tab]}`
-            }
+            aria-label={`Billeteras de ${WALLET_CAROUSEL_TAB_LABELS[tab]}`}
             tabIndex={0}
             onKeyDown={(event) => {
               if (event.key === 'ArrowLeft') move(-1);
@@ -512,10 +577,13 @@ export const WalletCarouselPanel = ({
             }}
           >
             <motion.div
-              className="flex cursor-grab touch-pan-y active:cursor-grabbing"
+              className={cn(
+                'flex touch-pan-y',
+                list.length > 1 && 'cursor-grab active:cursor-grabbing',
+              )}
               style={{ gap: CARD_GAP_PX, height: cardHeight }}
               drag={list.length > 1 ? 'x' : false}
-              dragConstraints={{ left: 0, right: 0 }}
+              dragConstraints={{ left: trackX, right: trackX }}
               dragElastic={0.2}
               animate={{ x: trackX }}
               transition={
@@ -554,96 +622,103 @@ export const WalletCarouselPanel = ({
             </motion.div>
           </div>
 
-          {list.length > 1 ? (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                type="button"
-                aria-label="Billetera anterior"
-                className="hidden rounded-full p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 sm:inline-flex"
-                disabled={activeIndex === 0}
-                onClick={() => move(-1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <div className="flex items-center gap-1.5">
-                {list.map((wallet, i) => (
-                  <button
-                    key={wallet.id}
-                    type="button"
-                    aria-label={`Ver ${wallet.name}`}
-                    aria-current={i === activeIndex}
-                    onClick={() => setIndex(i)}
-                    className={cn(
-                      'h-1.5 rounded-full transition-all',
-                      i === activeIndex
-                        ? 'w-4 bg-foreground'
-                        : 'w-1.5 bg-muted-foreground/40',
-                    )}
-                  />
-                ))}
-              </div>
-              <button
-                type="button"
-                aria-label="Billetera siguiente"
-                className="hidden rounded-full p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 sm:inline-flex"
-                disabled={activeIndex === list.length - 1}
-                onClick={() => move(1)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
+          <p className="sr-only" aria-live="polite">
+            {activeWallet
+              ? `${activeWallet.name}, ${activeIndex + 1} de ${list.length}`
+              : null}
+          </p>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              type="button"
+              aria-label="Billetera anterior"
+              className={cn(
+                'hidden rounded-full p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 sm:inline-flex',
+                list.length <= 1 && 'invisible',
+              )}
+              disabled={activeIndex === 0}
+              onClick={() => move(-1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-1.5">
+              {list.map((wallet, i) => (
+                <button
+                  key={wallet.id}
+                  type="button"
+                  aria-label={`Ver ${wallet.name}`}
+                  aria-current={i === activeIndex}
+                  onClick={() => setIndex(i)}
+                  className={cn(
+                    'relative h-1.5 rounded-full transition-all after:absolute after:-inset-x-1 after:-inset-y-2 after:content-[""]',
+                    i === activeIndex
+                      ? 'w-4 bg-foreground'
+                      : 'w-1.5 bg-muted-foreground/40',
+                  )}
+                />
+              ))}
             </div>
-          ) : null}
+            <button
+              type="button"
+              aria-label="Billetera siguiente"
+              className={cn(
+                'hidden rounded-full p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 sm:inline-flex',
+                list.length <= 1 && 'invisible',
+              )}
+              disabled={activeIndex === list.length - 1}
+              onClick={() => move(1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 
       {activeWallet && plan ? (
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1 px-2 cursor-pointer"
-              onClick={() => openAction(plan.topUp)}
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1 gap-1 px-2 cursor-pointer"
+            onClick={() => openAction(plan.topUp)}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Ajustar
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1 gap-1 px-2 cursor-pointer"
+            onClick={() => openAction(plan.addExpense)}
+          >
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+            Gasto
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1 gap-1 px-2 cursor-pointer"
+            onClick={() => openAction(plan.request)}
+          >
+            <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden />
+            {plan.requestLabel}
+          </Button>
+          <Button
+            asChild
+            type="button"
+            variant="outline"
+            size="icon"
+            className="shrink-0"
+          >
+            <Link
+              href={`/wallets/${activeWallet.id}`}
+              aria-label={`Historial de ${activeWallet.name}`}
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              Ajustar
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1 px-2 cursor-pointer"
-              onClick={() => openAction(plan.addExpense)}
-            >
-              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-              Gasto
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1 px-2 cursor-pointer"
-              onClick={() => openAction(plan.request)}
-            >
-              <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden />
-              {plan.requestLabel}
-            </Button>
-            <Button
-              asChild
-              type="button"
-              variant="outline"
-              size="icon"
-              className="shrink-0"
-            >
-              <Link
-                href={`/wallets/${activeWallet.id}`}
-                aria-label={`Historial de ${activeWallet.name}`}
-              >
-                <History className="h-4 w-4" aria-hidden />
-              </Link>
-            </Button>
-          </div>
+              <History className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
         </div>
       ) : null}
 
@@ -713,7 +788,7 @@ export const WalletCarouselPanel = ({
         defaultValues={{ type: tab }}
         error={createError && dialog === 'create' ? createError : null}
       />
-    </section>
+    </aside>
   );
 };
 

@@ -403,9 +403,6 @@ export default function MonthlyFortnightView({
     <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
       <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
         <div className="space-y-4">
-          {walletCarousel ? (
-            <div className="xl:hidden">{walletCarousel}</div>
-          ) : null}
           {walletStripSection}
           {columnReady && activeSummary ? (
             <FortnightColumn

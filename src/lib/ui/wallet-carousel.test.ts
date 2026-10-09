@@ -52,8 +52,13 @@ describe('groupWalletsByCarouselType', () => {
         groupWalletsByCarouselType([{ type: 'CASH' }]),
       ),
     ).toBe('CASH');
+    expect(
+      firstCarouselTypeWithWallets(
+        groupWalletsByCarouselType([{ type: 'CREDIT_CARD' }]),
+      ),
+    ).toBe('CREDIT_CARD');
     expect(firstCarouselTypeWithWallets(groupWalletsByCarouselType([]))).toBe(
-      'DEBIT_CARD',
+      'CASH',
     );
   });
 });

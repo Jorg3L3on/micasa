@@ -2,10 +2,10 @@ import { isGoalWalletType } from '@/domain/payment-method';
 
 /** Wallet types the Panel financiero carousel can show, in tab order. */
 export const WALLET_CAROUSEL_TYPES = [
+  'CASH',
   'DEBIT_CARD',
   'CREDIT_CARD',
   'DEPARTMENT_STORE_CARD',
-  'CASH',
 ] as const;
 
 export type WalletCarouselType = (typeof WALLET_CAROUSEL_TYPES)[number];

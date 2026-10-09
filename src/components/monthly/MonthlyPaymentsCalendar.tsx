@@ -767,6 +767,7 @@ export const MonthlyPaymentsCalendar = ({
         onValueChange={handleViewModeChange}
         ariaLabel="Vista del calendario"
         options={[...VIEW_MODE_OPTIONS]}
+        variant="segment"
         className={cn(
           'w-full',
           (!createdMonths || loadingMonth) && 'pointer-events-none opacity-60',

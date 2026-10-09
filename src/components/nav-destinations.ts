@@ -84,7 +84,7 @@ export const getNavDestination = (id: NavDestinationId): NavDestination => {
 export const isCreditCardPath = (pathname: string): boolean =>
   pathname === '/credit-cards' || pathname.startsWith('/credit-cards/');
 
-/** Presupuestos stays under Configuración; the dock can highlight it on its own. */
+/** Presupuestos lives under `/settings`; the dock highlights it on its own. */
 export const isBudgetsPath = (pathname: string): boolean =>
   matchesSection(pathname, '/settings/budgets');
 

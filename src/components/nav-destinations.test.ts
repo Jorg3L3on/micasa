@@ -85,9 +85,12 @@ describe('mobile dock', () => {
     expect(dock['credit-cards'].isActive('/wallets')).toBe(false);
   });
 
-  it('highlights Presupuestos without clearing the desktop Configuración rule', () => {
+  it('highlights Presupuestos only on its own page', () => {
     const dock = Object.fromEntries(
       getMobileDockItems().map((item) => [item.id, item]),
     );
+    expect(dock.budgets.isActive('/settings/budgets')).toBe(true);
+    expect(dock.budgets.isActive('/settings/categories')).toBe(false);
+    expect(dock.budgets.isActive('/wallets')).toBe(false);
   });
 });
