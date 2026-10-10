@@ -21,6 +21,8 @@ import { cn } from '@/lib/utils';
 type LiquidityMonthDebtTabsProps = {
   items: MonthDebtItem[];
   outstandingTotal?: number;
+  /** Month the items belong to (YYYY-MM). */
+  monthKey: string;
 };
 
 const TAB_LABEL_CLASS = 'inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5';
@@ -37,6 +39,7 @@ const countOutstanding = (items: readonly MonthDebtItem[]): number =>
 export const LiquidityMonthDebtTabs = ({
   items,
   outstandingTotal,
+  monthKey,
 }: LiquidityMonthDebtTabsProps) => {
   const paymentCount = useMemo(() => countPayments(items), [items]);
   const outstandingCount = useMemo(() => countOutstanding(items), [items]);
@@ -51,9 +54,10 @@ export const LiquidityMonthDebtTabs = ({
       stretch
       frameClassName={cn(
         MONTHLY_LIQUID_PANEL_CLASS,
-        'mb-1.5 flex min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
+        'mb-1.5 flex w-full min-w-0 items-center gap-1 p-1 sm:mb-3.5 sm:gap-1.5 sm:p-1.5',
       )}
       wrapperClassName="min-w-0 flex-1"
+      listClassName="w-full"
       indicatorClassName={AURA_TAB_INDICATOR_CLASS}
       activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
       options={[
@@ -98,6 +102,7 @@ export const LiquidityMonthDebtTabs = ({
         <LiquidityMonthDebtItemsList
           items={items}
           mode="payment"
+          monthKey={monthKey}
           totalLabel="Total del mes"
           totalOverride={paymentsTotal}
           emptyMessage="Ese mes no tienes pagos programados de deudas."
@@ -107,6 +112,7 @@ export const LiquidityMonthDebtTabs = ({
         <LiquidityMonthDebtItemsList
           items={items}
           mode="remaining"
+          monthKey={monthKey}
           totalLabel="Total adeudo"
           totalOverride={resolvedOutstandingTotal}
           emptyMessage="Ese mes no hay adeudo de tarjetas, tiendas ni préstamos."

@@ -7,7 +7,7 @@ Encode the UI in **tokens, recipes, and live screenshots of this codebase**. Do 
 | Surface | Route | Code |
 | --- | --- | --- |
 | Marketing landing | `/` | `src/components/landing/*`. Same Geist + Manrope and light/dark theme as the app. |
-| Login | `/login` | `src/components/login/*` |
+| Login and signup | `/login`, `/register` | `src/components/auth/*` (`AuthStage`, `auth-form-kit`) |
 | Panel financiero | `/monthly/{year}/{month}` | `src/components/monthly/*`, `src/app/(app)/monthly/` |
 
 Runtime tokens live in `src/app/globals.css` (`.dark` for the app, `.landing-root` for marketing). Default theme is **dark** (`ThemeProvider` `defaultTheme="dark"`). **Light mode is a supported secondary theme** (toggle / `d` hotkey); new work must look correct in **both**, with dark still the primary product look.
@@ -44,7 +44,7 @@ Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** acce
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): display the optimized `public/brand/mark-160.png` through `next/image`. Do not redraw it. Icon scripts still read the source `public/brand/mark.png` and plate it on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
+Brand mark (`MicasaMark`): a rounded roof over an "M", filled with a diagonal gradient `#2563EB → #8B3FD9`. Display the exported `public/brand/mark.svg` (gradient on transparent). The plated versions are `public/brand/icon-rounded.svg` and `icon-square.svg` (white mark on the gradient). Do not redraw them: to change the artwork, re-export it and run `npm run import:brand-assets <export-dir>`, which also refreshes the favicons and PWA icons. `BrandLoader`'s comet trail follows the mark gradient. Route progress (`NextTopLoader`): `#3a37fc`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 
@@ -71,7 +71,7 @@ The landing follows the signed-in theme. `ThemeProvider` (`attribute="class"`, `
 - **`--primary` is electric blue** — icon pills, focus rings, toggle ON, active nav, semantic “selected”.
 - **`--primary-text` (`text-primary-text`)** — dates, links, Cancelar, and money accents on the canvas. In dark this matches `--foreground` (`#f7f8ff`). Do not use `text-primary` for small copy on navy; `#3a37fc` is a fill color and is too dark to read.
 - **Primary labeled buttons** use **electric blue** (`#3a37fc` in dark) with a violet ring (`Button` `variant="default"`), including the landing. Do not invent a second primary fill.
-- **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login has its own aurora (`login-stage`).
+- **Atmosphere:** `AppAtmosphere` in `(app)/layout.tsx` (blue / pink / violet blurs). Login and signup share their own aurora (`AuthStage` in `src/components/auth/auth-stage.tsx`); both forms use `auth-form-kit.tsx` for fields, hints, the primary, and footer links.
 - **Glass shells:** `MONTHLY_PANEL_SHELL_CLASS` in `src/components/monthly/monthly-panel-shell.ts` (adds `.orion-panel-glass`). Reuse it for planner chrome, summaries, and similar panels — do not invent a new glass recipe per page. Do **not** put a grid overlay on these cards.
 
 ```
@@ -105,7 +105,7 @@ Every logged-in route is one of four archetypes:
 
 | Archetype | Purpose | Routes | Surface |
 | --- | --- | --- | --- |
-| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Liquidez / Plan), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
+| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Proyección / Deudas / Plan), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
 | **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell. Operaciones below `md` is a row list, not a table |
 | **Detail** | One object, back to its collection | Billetera, estado de cuenta (tarjeta), meta | Same as collection; card faces stay solid |
 | **Settings** | Quiet catalogs and account | Configuración (cuenta, categorías, plantillas, usuarios, conexiones) | Calm `bg-card` cards — **never** glass |
@@ -115,7 +115,8 @@ The quincena route stays for deep links and adopts planner chrome. It is **not**
 ### Chrome (toolbar-first)
 
 - The **app header** owns the route title, search, filters, and the **one primary action** — register them with `useRegisterToolbarActions` (`src/context/toolbar-actions-context.tsx`). Rare actions go in the header overflow (`overflow` / `useRegisterToolbarOverflow`).
-- **Create actions.** The header primary is an icon button in the glass group: `variant="ghost"`, `size="icon"`, `TOOLBAR_GLASS_GROUP_ITEM`. `aria-label` and the tooltip carry the verb (`Agregar meta`, `Ahorrar`, …). No visible label, in light and dark, including at 390px. Each page registers its own alta with `useRegisterToolbarActions`; the map lives in `src/lib/ui/page-create-action.ts`. Pages without their own alta use **Agregar gasto o ingreso**. The dock **+** stays a separate control and always opens **Agregar gasto o ingreso**.
+- **Create actions.** The header primary is an icon button in the glass group: `variant="ghost"`, `size="icon"`, `TOOLBAR_GLASS_GROUP_ITEM`. `aria-label` and the tooltip carry the verb (`Agregar meta`, `Ahorrar`, …). No visible label, in light and dark, including at 390px. Each page registers its own alta with `useRegisterToolbarActions`; the map lives in `src/lib/ui/page-create-action.ts`. Pages without their own alta use **Agregar gasto o ingreso**. On mobile, **Más** in the dock also offers **Agregar gasto** and **Agregar ingreso**, so that action stays available when the header primary is a page alta.
+- **Desktop navigation** is a floating icon rail: three glass pills on the canvas (context + theme, the canonical destinations, alerts + ayuda + cuenta). Inactive icons are muted line icons. The active destination is a solid `bg-primary` circle. Tooltips and `aria-label` carry the names. Light and dark use Orion tokens (`bg-card` / `bg-secondary`, `border-border`, `shadow-panel`), not a light-only palette.
 - Do **not** repeat the header title with an in-page heading. Do **not** add an in-page sticky action bar.
 - Page rhythm under the header is **`space-y-5`**.
 - The month name in the planner glass band stays — that band is the period control, not a second page title.
@@ -124,11 +125,11 @@ The quincena route stays for deep links and adopts planner chrome. It is **not**
 
 ### Mobile map
 
-- **Dock** stays five slots: **Panel**, **Billeteras**, **Análisis**, the **plus** button, **Más**. The dock **+** opens **Agregar gasto o ingreso**.
-- The third tab is labeled **Análisis** and opens the same page as the sidebar item **Análisis**.
-- **Más** opens the sidebar sheet.
-- **Sidebar order** (canonical): Panel financiero, Billeteras, Préstamos, Análisis, Metas, Operaciones, then Configuración (Presupuestos lives under Configuración). Configuración is in that list **and** stays in the team switcher.
-- The active dock label uses readable foreground text (`text-foreground`), not the electric-blue fill color.
+- **Dock** is one floating icon pill: **Panel financiero**, **Billeteras**, **Tarjetas**, **Préstamos**, **Presupuestos**, **Configuración**, then **Más**. All six primaries stay in the pill.
+- **Tarjetas** opens Billeteras (credit cards have no separate list; `/credit-cards` redirects there) and is the active icon on `/credit-cards/…`. **Presupuestos** opens `/settings/budgets`. Neither is a new destination.
+- **Más** opens the overflow sheet: **Análisis**, **Operaciones**, the context switcher, theme, alerts, ayuda, cuenta, and **Agregar gasto o ingreso**.
+- **Desktop rail order** (canonical): Panel financiero, Billeteras, Préstamos, Análisis, Operaciones, Configuración. Presupuestos lives under Configuración. Configuración stays in that list; the context switcher is the top pill.
+- The active dock icon is a solid primary circle. Inactive icons stay muted. There is no visible label in the pill; the name is the tooltip and `aria-label`.
 
 ### Motion allow-list
 
@@ -148,7 +149,7 @@ Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy su
 
 ### Out of scope
 
-Login, admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing uses the shared `Button` and the same light and dark tokens as the app.
+Login and signup (one shared auth stage), admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing uses the shared `Button` and the same light and dark tokens as the app.
 
 ---
 
@@ -369,7 +370,7 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 ## Filters
 
 - `FilterChip` (`src/components/filter-chip.tsx`) is a single on/off filter: Billeteras, Metas, Operaciones, and the Configuración mobile nav. It sets `aria-pressed` (or `aria-current="page"` when it is a link), can show a count, and uses a 44px target on mobile (`min-h-11`, `sm:min-h-9`) with a visible focus ring.
-- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Plan horizon and strategy, Presupuestos, and Análisis (Liquidez / Plan).
+- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Plan horizon and strategy, Presupuestos, and Análisis (Proyección / Deudas / Plan).
 
 ## Surfaces
 
@@ -383,9 +384,9 @@ Three surfaces. Radius does not change with the theme.
 
 **Billeteras layout.** Below `md`, Billeteras is a stacked deck of `wow` card faces, not calm rows. Each collapsed card shows a strip with the provider icon, the name, the type or cycle, and the primary amount (saldo or deuda). The next card overlaps only the bottom padding of that strip, so the amount stays readable. Touch, focus, Enter, and Space expand the card to the full face (Disponible, Límite, Utilización, the masked number, the temporary-limit chip, the holder, and “Fuera de la liquidez” when they apply). The following card moves down so it does not cover the expanded face. The last card is always fully visible. The deck springs open with `SPRING_LAYOUT`; `prefers-reduced-motion` skips the spring and snaps. From `md` up, the same wallets are card faces in a grid with no overlap. That face uses the `wow` tone: dark plastic in light and dark, like a physical card, not a theme surface (`isProviderCardDarkSurface`). Do not paint a light-theme version of the face. The Panel wallet strip may still use the theme-adaptive `aura` tone. The Prestamistas chip stays off this page.
 
-**Alertas.** The bell sits in the sidebar footer. Below `md` it opens a `ResponsiveOverlay` sheet titled Alertas and closes the sidebar. From `md` it opens a menu to the right of the footer so the panel wallet strip stays visible. Severity uses status tokens (`overdue`, `pending`, `info`). Empty, error, and loading use `EmptyState`, `ErrorBanner`, and skeletons.
+**Alertas.** The bell sits in the desktop rail’s bottom pill. Below `md` it sits in the overflow sheet (Más). Opening it on a phone closes that sheet and shows a `ResponsiveOverlay` titled Alertas. From `md` it opens a menu to the right of the pill. Severity uses status tokens (`overdue`, `pending`, `info`). Empty, error, and loading use `EmptyState`, `ErrorBanner`, and skeletons.
 
-**Onboarding** sits outside the `(app)` layout, so it draws `AppAtmosphere` itself and uses the planner glass shell, the type scale, and one progress bar. Create copy starts with **Agregar**.
+**Onboarding** sits outside the `(app)` layout, so it draws `AppAtmosphere` itself and uses the planner glass shell, the type scale, and one progress bar. Four steps (Billeteras, Ingresos, Gastos, Todo listo), each with one `h1` (the question) and one description line; the header names the next step. The card is capped to the viewport and its body scrolls, so header and footer never clip. Each draft is an `OnboardingItemCard`: the overlay kit's grouped card (`GroupedRow`, `AmountRow`) with a header and the viewport delete rule. Defaults are pre-filled (Efectivo, Cuenta de débito, Sueldo), so the minimum path is one amount. Gastos is optional. Create copy starts with **Agregar**.
 
 Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
 
@@ -414,7 +415,7 @@ Use these names in the UI, in `PageTitle`, and in the browser tab. The document 
 | Ellipsis | **…** | `...` |
 | Analysis section | **Análisis** | Liquidez y análisis, as a nav item |
 
-**Análisis** is the section (nav, document title, header). Its two views are the tabs **Liquidez** and **Plan**. The tab list is named Análisis.
+**Análisis** is the section (nav, document title, header). Its three views are the tabs **Proyección**, **Deudas**, and **Plan**. The tab list is named Análisis.
 
 Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` in Spanish (`Comida`, not `Food`). Existing rows already stored as `Food` are not migrated in code.
 

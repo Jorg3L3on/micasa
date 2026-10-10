@@ -3,6 +3,8 @@
 import { useEffect, useMemo } from 'react';
 import { Check, LineChart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { LiquidityRangeToggle } from '@/components/wallets/liquidity/LiquidityChartControls';
 import {
   LIQUIDITY_PANEL_CLASS,
   LiquidityPanelHeader,
@@ -14,6 +16,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -31,9 +34,11 @@ import type {
 import {
   formatMonthYearLabel,
   formatShortMonthLabel,
+  type LiquidityChartRangeId,
   type LiquidityCustomChartRange,
 } from '@/components/wallets/liquidity/liquidity-personalization';
 import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
+import type { LiquidityChartPresetId } from '@/lib/finance/liquidity-chart-range';
 
 type LiquidityFutureTimelineProps = {
   /** Every projected month; the range slider can reach all of them. */
@@ -42,6 +47,10 @@ type LiquidityFutureTimelineProps = {
   /** Months currently drawn in the chart. */
   visibleRange: LiquidityCustomChartRange | null;
   onVisibleRangeChange: (range: LiquidityCustomChartRange) => void;
+  chartRange: LiquidityChartRangeId;
+  customRange: LiquidityCustomChartRange | null;
+  lastPreset: LiquidityChartPresetId;
+  onChartRangeChange: (range: LiquidityChartRangeId) => void;
   selectedMonthKey: string;
   onSelectMonth: (monthKey: string) => void;
   isRefreshing?: boolean;
@@ -56,36 +65,111 @@ type ChartPoint = {
   monthlyRemaining: number;
   eventCount: number;
   eventTitle: string;
+  /** Payoff names without the "Terminas de pagar" prefix, for the tooltip list. */
+  eventNames: string[];
 };
 
 
-const DebtMonthTooltip = ({
-  active,
-  payload,
-}: {
+const stripPayoffPrefix = (title: string): string =>
+  title.replace(/^Terminas de pagar\s+/i, '');
+
+type DebtMonthTooltipProps = {
   active?: boolean;
   payload?: Array<{ payload: ChartPoint }>;
-}) => {
+  /** Every chart row, so the tooltip can compare with the previous month. */
+  rows: readonly ChartPoint[];
+  selectedMonthKey: string;
+};
+
+const DebtMonthTooltip = ({ active, payload, rows, selectedMonthKey }: DebtMonthTooltipProps) => {
   if (!active || !payload?.[0]) return null;
   const point = payload[0].payload;
+  const index = rows.findIndex((row) => row.monthKey === point.monthKey);
+  const previous = index > 0 ? rows[index - 1] : undefined;
+  const outstandingDelta = previous ? point.outstandingDebt - previous.outstandingDebt : 0;
+  const isSelected = point.monthKey === selectedMonthKey;
+  const visibleNames = point.eventNames.slice(0, 2);
+  const hiddenCount = point.eventNames.length - visibleNames.length;
+
   return (
     <ChartTooltip active>
-      <p className="text-xs font-semibold text-foreground">
-        {formatMonthYearLabel(point.monthKey)}
-      </p>
-      <p className="mt-2 font-sans text-sm font-bold tabular-nums text-foreground">
-        {formatCurrency(point.monthDebt)}
-      </p>
-      <p className="text-caption text-muted-foreground">pagos del mes</p>
-      <p className="mt-2 font-sans text-sm font-bold tabular-nums text-status-pending">
-        {formatCurrency(point.outstandingDebt)}
-      </p>
-      <p className="text-caption text-muted-foreground">adeudo total al cierre</p>
-      {point.eventCount > 0 ? (
-        <p className="mt-2 max-w-[220px] text-caption font-medium text-status-success">
-          {point.eventTitle}
-        </p>
-      ) : null}
+      <div className="w-[13.5rem] max-w-[calc(100vw-3rem)]">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-sm font-semibold text-foreground">
+            {formatMonthYearLabel(point.monthKey)}
+          </p>
+          {isSelected ? (
+            <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-primary/40 bg-primary/15 px-1.5 eyebrow text-foreground">
+              En detalle
+            </span>
+          ) : null}
+        </div>
+
+        <dl className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+              <span
+                className="h-1.5 w-3.5 shrink-0 rounded-full bg-linear-to-r from-chart-1 to-chart-2"
+                aria-hidden
+              />
+              <span className="truncate">Pagos del mes</span>
+            </dt>
+            <dd className="shrink-0 font-sans text-sm font-semibold tabular-nums text-foreground">
+              {formatCurrency(point.monthDebt)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+              <span
+                className="h-0 w-3.5 shrink-0 border-t-2 border-dashed border-status-pending"
+                aria-hidden
+              />
+              <span className="truncate">Adeudo al cierre</span>
+            </dt>
+            <dd className="shrink-0 font-sans text-sm font-semibold tabular-nums text-status-pending">
+              {formatCurrency(point.outstandingDebt)}
+            </dd>
+          </div>
+        </dl>
+
+        {previous && Math.abs(outstandingDelta) >= 0.005 ? (
+          <p
+            className={cn(
+              'mt-1 text-right tabular-nums',
+              outstandingDelta < 0 ? 'text-status-success' : 'text-status-expense',
+            )}
+          >
+            {outstandingDelta < 0 ? '↓' : '↑'} {formatCurrency(Math.abs(outstandingDelta))}{' '}
+            <span className="text-muted-foreground">
+              {outstandingDelta < 0 ? 'menos que' : 'más que'} {previous.label}
+            </span>
+          </p>
+        ) : null}
+
+        {point.eventCount > 0 ? (
+          <div className="mt-2 border-t border-border/60 pt-2">
+            <p className="flex items-center gap-1.5 font-medium text-status-success">
+              <span
+                className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-status-success"
+                aria-hidden
+              >
+                <Check className="h-2 w-2 text-background" />
+              </span>
+              {point.eventCount === 1
+                ? 'Terminas de pagar 1 cuenta'
+                : `Terminas de pagar ${point.eventCount} cuentas`}
+            </p>
+            <p className="mt-0.5 truncate pl-5 text-muted-foreground">
+              {visibleNames.join(', ')}
+              {hiddenCount > 0 ? ` +${hiddenCount}` : ''}
+            </p>
+          </div>
+        ) : null}
+
+        {!isSelected ? (
+          <p className="mt-2 text-muted-foreground">Toca para ver su detalle abajo.</p>
+        ) : null}
+      </div>
     </ChartTooltip>
   );
 };
@@ -180,30 +264,59 @@ type BrushHandleProps = {
 };
 
 const BrushHandle = ({ x = 0, y = 0, width = 0, height = 0 }: BrushHandleProps) => {
+  // Slim pill with a two-line grip; the hit area stays the full traveller width.
+  const pillWidth = 6;
+  const pillX = x + (width - pillWidth) / 2;
+  const inset = 5;
+  const pillY = y + inset;
+  const pillHeight = Math.max(0, height - inset * 2);
   const centerX = x + width / 2;
   const centerY = y + height / 2;
   return (
-    <g>
-      <rect x={x} y={y} width={width} height={height} rx={4} fill={CHART_COLOR.primary} />
-      <line
-        x1={centerX - 1.5}
-        x2={centerX - 1.5}
-        y1={centerY - 5}
-        y2={centerY + 5}
-        stroke="var(--primary-foreground)"
-        strokeWidth={1}
+    <g className="cursor-ew-resize">
+      <rect x={x} y={y} width={width} height={height} fill="transparent" />
+      <rect
+        x={pillX}
+        y={pillY}
+        width={pillWidth}
+        height={pillHeight}
+        rx={pillWidth / 2}
+        fill={CHART_COLOR.primary}
+        stroke={CHART_COLOR.background}
+        strokeWidth={1.5}
+        className="drop-shadow-[0_0_6px_color-mix(in_srgb,var(--primary)_55%,transparent)]"
       />
-      <line
-        x1={centerX + 1.5}
-        x2={centerX + 1.5}
-        y1={centerY - 5}
-        y2={centerY + 5}
-        stroke="var(--primary-foreground)"
-        strokeWidth={1}
-      />
+      {[-1.25, 1.25].map((offset) => (
+        <line
+          key={offset}
+          x1={centerX + offset}
+          x2={centerX + offset}
+          y1={centerY - 3}
+          y2={centerY + 3}
+          stroke="var(--primary-foreground)"
+          strokeOpacity={0.9}
+          strokeWidth={0.9}
+          strokeLinecap="round"
+        />
+      ))}
     </g>
   );
 };
+
+/** Orion styling for the recharts brush: muted rounded track, tinted window, quiet drag labels. */
+const BRUSH_STYLE_CLASS = cn(
+  '[&_.recharts-brush>rect:first-child]:[stroke:none]',
+  '[&_.recharts-brush>rect:first-child]:[fill:color-mix(in_srgb,var(--foreground)_5%,transparent)]',
+  '[&_.recharts-brush>rect:first-child]:[rx:10px]',
+  '[&_.recharts-brush-slide]:[fill:color-mix(in_srgb,var(--primary)_16%,transparent)]',
+  '[&_.recharts-brush-slide]:[fill-opacity:1]',
+  '[&_.recharts-brush-slide]:[stroke:color-mix(in_srgb,var(--primary)_45%,transparent)]',
+  '[&_.recharts-brush-slide]:[rx:8px]',
+  '[&_.recharts-brush-slide]:cursor-grab',
+  '[&_.recharts-brush-texts_text]:[fill:var(--muted-foreground)]',
+  '[&_.recharts-brush-texts_text]:text-caption',
+  '[&_.recharts-brush-texts_text]:font-medium',
+);
 
 const resolveVisibleIndexes = (
   rows: readonly ChartPoint[],
@@ -222,10 +335,17 @@ export const LiquidityFutureTimeline = ({
   events,
   visibleRange,
   onVisibleRangeChange,
+  chartRange,
+  customRange,
+  lastPreset,
+  onChartRangeChange,
   selectedMonthKey,
   onSelectMonth,
   isRefreshing = false,
 }: LiquidityFutureTimelineProps) => {
+  // The brush is a desktop power feature; on phones the pills are the only range
+  // control, so the chart gets the visible slice directly instead of brushing it.
+  const isMobile = useIsMobile();
   const eventsByMonth = useMemo(() => {
     const map = new Map<string, LiquidityProjectionEvent[]>();
     for (const event of events) {
@@ -259,6 +379,7 @@ export const LiquidityFutureTimeline = ({
           monthlyRemaining: month.monthly_remaining,
           eventCount: monthEvents.length,
           eventTitle,
+          eventNames: monthEvents.map((event) => stripPayoffPrefix(event.title)),
         };
       }),
     [eventsByMonth, months],
@@ -292,6 +413,8 @@ export const LiquidityFutureTimeline = ({
     );
   }
 
+  const selectedLabel = visibleRows.find((row) => row.monthKey === selectedMonthKey)?.label;
+
   const handleBrushChange = (next: { startIndex?: number; endIndex?: number }) => {
     const nextStart = next.startIndex ?? startIndex;
     const nextEnd = next.endIndex ?? endIndex;
@@ -305,7 +428,7 @@ export const LiquidityFutureTimeline = ({
   return (
     <section
       className={cn(LIQUIDITY_PANEL_CLASS, 'space-y-3', isRefreshing && 'pointer-events-none')}
-      aria-labelledby="liquidity-chart-heading"
+      aria-label="Deudas por mes"
       aria-busy={isRefreshing}
     >
       {isRefreshing ? (
@@ -319,14 +442,14 @@ export const LiquidityFutureTimeline = ({
         </div>
       ) : null}
 
-      <LiquidityPanelHeader
-        id="liquidity-chart-heading"
-        title="Deudas por mes"
-        subtitle="Toca un mes en la gráfica para ver su detalle."
-        icon={LineChart}
-      />
-
       <div className={cn('space-y-3', isRefreshing && 'opacity-40 transition-opacity')}>
+        <LiquidityRangeToggle
+          chartRange={chartRange}
+          customRange={customRange}
+          lastPreset={lastPreset}
+          onChartRangeChange={onChartRangeChange}
+        />
+
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span className="flex items-center gap-1.5">
             <span className="h-1.5 w-4 rounded-full bg-linear-to-r from-chart-1 to-chart-2" aria-hidden />
@@ -344,11 +467,11 @@ export const LiquidityFutureTimeline = ({
           </span>
         </div>
 
-        <div className="-mx-1 h-72 sm:h-80 xl:h-[22rem] [&_.recharts-brush>rect:first-child]:stroke-border [&_.recharts-brush>rect:first-child]:[rx:8px]">
+        <div className={cn('-mx-1 h-72 sm:h-80 xl:h-[22rem]', BRUSH_STYLE_CLASS)}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
-              data={chartRows}
-              margin={{ top: 28, right: 16, left: 0, bottom: 4 }}
+              data={isMobile ? visibleRows : chartRows}
+              margin={{ top: 28, right: 16, left: 0, bottom: isMobile ? 4 : 10 }}
               onClick={(state) => {
                 const monthKey = (state?.activePayload?.[0]?.payload as ChartPoint | undefined)
                   ?.monthKey;
@@ -372,6 +495,7 @@ export const LiquidityFutureTimeline = ({
               />
               <XAxis
                 dataKey="label"
+                scale="band"
                 tick={CHART_AXIS_TICK}
                 tickLine={false}
                 axisLine={false}
@@ -394,16 +518,34 @@ export const LiquidityFutureTimeline = ({
                 width={42}
               />
               <Tooltip
-                content={<DebtMonthTooltip />}
+                content={<DebtMonthTooltip rows={chartRows} selectedMonthKey={selectedMonthKey} />}
                 cursor={{ stroke: 'color-mix(in srgb, var(--foreground) 18%, transparent)' }}
+                // On phones a tap must set the tooltip (hover never fires), and a
+                // cursor-following card hides the lines, so pin it to the top.
+                trigger={isMobile ? 'click' : 'hover'}
+                position={isMobile ? { y: 0 } : undefined}
+                offset={14}
+                wrapperStyle={{ outline: 'none', zIndex: 20 }}
               />
-              {selectedMonthKey ? (
-                <ReferenceLine
-                  yAxisId="payments"
-                  x={visibleRows.find((row) => row.monthKey === selectedMonthKey)?.label}
-                  stroke="color-mix(in srgb, var(--foreground) 28%, transparent)"
-                  strokeDasharray="3 4"
-                />
+              {selectedLabel ? (
+                <>
+                  <ReferenceArea
+                    yAxisId="payments"
+                    x1={selectedLabel}
+                    x2={selectedLabel}
+                    fill={CHART_COLOR.primary}
+                    fillOpacity={0.14}
+                    stroke="none"
+                    radius={10}
+                    ifOverflow="visible"
+                  />
+                  <ReferenceLine
+                    yAxisId="payments"
+                    x={selectedLabel}
+                    stroke="color-mix(in srgb, var(--foreground) 28%, transparent)"
+                    strokeDasharray="3 4"
+                  />
+                </>
               ) : null}
               <Area
                 type="monotone"
@@ -465,30 +607,34 @@ export const LiquidityFutureTimeline = ({
                 }}
                 isAnimationActive
               />
-              <Brush
-                dataKey="label"
-                startIndex={startIndex}
-                endIndex={endIndex}
-                onChange={handleBrushChange}
-                height={32}
-                travellerWidth={12}
-                stroke={CHART_COLOR.slices[0]}
-                fill="color-mix(in srgb, var(--foreground) 4%, transparent)"
-                traveller={<BrushHandle />}
-                ariaLabel="Arrastra los extremos para elegir qué meses ver"
-              >
-                <AreaChart data={chartRows}>
-                  <Area
-                    type="monotone"
-                    dataKey="outstandingDebt"
-                    stroke={CHART_COLOR.pending}
-                    strokeOpacity={0.5}
-                    fill={CHART_COLOR.pending}
-                    fillOpacity={0.08}
-                    isAnimationActive={false}
-                  />
-                </AreaChart>
-              </Brush>
+              {isMobile ? null : (
+                <Brush
+                  dataKey="label"
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  onChange={handleBrushChange}
+                  height={28}
+                  travellerWidth={16}
+                  gap={1}
+                  stroke={CHART_COLOR.primary}
+                  fill="transparent"
+                  traveller={<BrushHandle />}
+                  ariaLabel="Arrastra los extremos para elegir qué meses ver"
+                >
+                  <AreaChart data={chartRows} margin={{ top: 6, right: 0, bottom: 4, left: 0 }}>
+                    <Area
+                      type="monotone"
+                      dataKey="monthDebt"
+                      stroke={CHART_COLOR.primary}
+                      strokeOpacity={0.55}
+                      strokeWidth={1.25}
+                      fill={CHART_COLOR.primary}
+                      fillOpacity={0.12}
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </Brush>
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>

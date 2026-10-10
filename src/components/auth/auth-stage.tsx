@@ -1,20 +1,44 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 
 import { FortnightPulse } from '@/components/auth/fortnight-pulse';
 import { MicasaMark } from '@/components/brand/micasa-mark';
 import { cn } from '@/lib/utils';
 
-type LoginStageProps = {
-  children: React.ReactNode;
+type AuthStageProps = {
+  children: ReactNode;
+  /** Small uppercase line above the headline in the brand aside. */
+  eyebrow: string;
+  /** Brand headline; defaults to the quincena tagline. */
+  headline?: ReactNode;
   className?: string;
 };
 
-/** Dark aurora shell + two-column glass panel for the login experience. */
-export const LoginStage = ({ children, className }: LoginStageProps) => {
+const DefaultHeadline = () => (
+  <>
+    Tu dinero,{' '}
+    <em className="bg-linear-to-br from-[#3a37fc] to-[#ee477a] bg-clip-text not-italic text-transparent">
+      quincena
+    </em>{' '}
+    tras quincena.
+  </>
+);
+
+/**
+ * Dark aurora shell + two-column glass panel shared by login and signup.
+ * Always dark (`.dark` on the root) so tokens resolve to the Orion palette in
+ * either app theme.
+ */
+export const AuthStage = ({
+  children,
+  eyebrow,
+  headline = <DefaultHeadline />,
+  className,
+}: AuthStageProps) => {
   return (
     <div
       className={cn(
-        'dark relative flex min-h-svh items-center justify-center overflow-x-hidden bg-[#060914] px-5 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] text-[#f7f8ff]',
+        'dark relative flex min-h-svh items-center justify-center overflow-x-hidden bg-background px-5 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] text-foreground',
         className,
       )}
     >
@@ -49,10 +73,10 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
             }}
           />
 
-          <aside className="relative flex flex-col border-b border-white/[0.09] bg-linear-to-b from-[#3a37fc]/[0.08] to-[#ee477a]/[0.06] px-7 pt-8 pb-7 max-[780px]:gap-7 min-[781px]:justify-between min-[781px]:border-r min-[781px]:border-b-0 min-[781px]:px-10 min-[781px]:py-12">
+          <aside className="relative flex flex-col border-b border-white/[0.09] bg-linear-to-b from-primary/[0.08] to-[#ee477a]/[0.06] px-6 pt-6 pb-5 max-[780px]:gap-3 min-[781px]:justify-between min-[781px]:border-r min-[781px]:border-b-0 min-[781px]:px-10 min-[781px]:py-12">
             <Link
               href="/"
-              className="inline-flex items-center gap-2.5 font-semibold tracking-tight text-[#f4f3f8]"
+              className="inline-flex items-center gap-2.5 font-semibold tracking-tight text-foreground"
               aria-label="MiCasa inicio"
             >
               <MicasaMark className="size-8" />
@@ -60,22 +84,19 @@ export const LoginStage = ({ children, className }: LoginStageProps) => {
             </Link>
 
             <div className="min-[781px]:mt-10">
-              <p className="mb-3.5 text-caption font-semibold tracking-[0.14em] text-[#55535f] uppercase">
-                Bienvenido de vuelta
+              <p className="eyebrow mb-3.5 tracking-[0.14em] text-muted-foreground/70 max-[780px]:hidden">
+                {eyebrow}
               </p>
-              <p className="max-w-[260px] text-[26px] leading-[1.25] font-semibold tracking-tight text-[#f4f3f8]">
-                Tu dinero,{' '}
-                <em className="bg-linear-to-br from-[#3a37fc] to-[#ee477a] bg-clip-text not-italic text-transparent">
-                  quincena
-                </em>{' '}
-                tras quincena.
+              <p className="max-w-[260px] text-xl leading-[1.25] font-semibold tracking-tight text-foreground max-[780px]:max-w-none min-[781px]:text-[26px]">
+                {headline}
               </p>
             </div>
 
-            <FortnightPulse className="max-[780px]:mt-0 min-[781px]:mt-10" />
+            {/* Phones: brand line only, so the form fits in the first screen. */}
+            <FortnightPulse className="max-[780px]:hidden min-[781px]:mt-10" />
           </aside>
 
-          <div className="relative flex flex-col px-7 py-8 sm:px-11 sm:py-12 max-[780px]:pt-8">
+          <div className="relative flex flex-col px-6 py-6 sm:px-11 sm:py-12">
             {children}
           </div>
         </div>

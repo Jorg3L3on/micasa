@@ -25,7 +25,6 @@ export const LiquidityDebtSummaryStrip = ({
       <div
         className={cn(
           METRIC_STRIP_CLASS,
-          'border-l-[3px] border-l-status-expense',
           className,
         )}
         role="alert"
@@ -56,7 +55,6 @@ export const LiquidityDebtSummaryStrip = ({
     <div
       className={cn(
         METRIC_STRIP_CLASS,
-        'border-l-[3px] border-l-status-expense',
         className,
       )}
       role="region"

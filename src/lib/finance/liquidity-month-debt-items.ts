@@ -1,5 +1,20 @@
 export type MonthDebtItemKind = 'card' | 'msi' | 'loan';
 
+/** One loan contract inside a lender row, as of a given month. */
+export type MonthDebtContract = {
+  loan_id: number;
+  name: string;
+  is_payroll: boolean;
+  /** Balance still owed from this month on (this month's payment included). */
+  remaining: number;
+  /** Due in this month. */
+  payment_amount: number;
+  /** Scheduled payments left from this month on. */
+  remaining_payments: number;
+  /** Earliest due date in this month, or the next one after it. */
+  next_due_date?: string;
+};
+
 export type MonthDebtItem = {
   id: string;
   kind: MonthDebtItemKind;
@@ -16,6 +31,8 @@ export type MonthDebtItem = {
   lender_icon_key?: string | null;
   /** Wallet provider icon (cards and compras a meses). */
   wallet_icon_key?: string | null;
+  /** Loans only: the contracts behind a lender row. */
+  contracts?: MonthDebtContract[];
 };
 
 type ObligationLike = {
@@ -53,6 +70,12 @@ type DebtTrackLike = {
   wallet_name?: string;
   lender_name?: string;
   lender_icon_key?: string | null;
+  contracts?: Array<{
+    loan_id: number;
+    name: string;
+    is_payroll: boolean;
+    schedule: Array<{ month_key: string; amount: number; due_date: string }>;
+  }>;
 };
 
 /** @deprecated Payroll rows are folded into loan tracks with schedules. */
@@ -87,6 +110,28 @@ const paymentDueInMonth = (
       .filter((entry) => entry.month_key === monthKey)
       .reduce((sum, entry) => sum + entry.amount, 0),
   );
+
+/** Contract figures for one month; drops contracts already paid off by then. */
+export const contractsForMonth = (
+  contracts: NonNullable<DebtTrackLike['contracts']>,
+  monthKey: string,
+): MonthDebtContract[] =>
+  contracts
+    .map((contract) => {
+      const ahead = contract.schedule.filter((entry) => entry.month_key >= monthKey);
+      const next = ahead[0];
+      return {
+        loan_id: contract.loan_id,
+        name: contract.name,
+        is_payroll: contract.is_payroll,
+        remaining: roundMoney(ahead.reduce((sum, entry) => sum + entry.amount, 0)),
+        payment_amount: paymentDueInMonth(contract.schedule, monthKey),
+        remaining_payments: ahead.length,
+        ...(next ? { next_due_date: next.due_date } : {}),
+      };
+    })
+    .filter((contract) => contract.remaining > 0)
+    .sort((a, b) => b.remaining - a.remaining || a.name.localeCompare(b.name, 'es'));
 
 const scheduleForTrack = (track: DebtTrackLike): TrackScheduleEntry[] => {
   if (track.schedule && track.schedule.length > 0) {
@@ -193,6 +238,9 @@ export const buildMonthDebtItems = (
             ? { lender_name: track.lender_name, lender_icon_key: track.lender_icon_key ?? null }
             : {}
           : { wallet_icon_key: walletIconKeyFor(track.wallet_id) }),
+        ...(kind === 'loan' && track.contracts && track.contracts.length > 0
+          ? { contracts: contractsForMonth(track.contracts, key) }
+          : {}),
       });
     }
   }

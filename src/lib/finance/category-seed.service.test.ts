@@ -25,7 +25,7 @@ type Row = {
 };
 
 function createMemoryTx(initial: Row[] = []) {
-  let rows = [...initial];
+  const rows = [...initial];
   let nextId = Math.max(0, ...rows.map((r) => r.id)) + 1;
 
   const matchesOwner = (
@@ -48,8 +48,36 @@ function createMemoryTx(initial: Row[] = []) {
     return true;
   };
 
+  const calls = { create: 0, createMany: 0, createManyAndReturn: 0 };
+
+  const insert = (data: Partial<Row>): Row => {
+    const row: Row = {
+      id: nextId++,
+      name: data.name!,
+      icon: data.icon ?? null,
+      active: data.active ?? true,
+      sort_order: data.sort_order ?? 0,
+      parent_id: data.parent_id ?? null,
+      user_id: data.user_id ?? null,
+      house_id: data.house_id ?? null,
+      kind: data.kind ?? 'EXPENSE',
+    };
+    rows.push(row);
+    return row;
+  };
+
   return {
+    calls,
     category: {
+      async createMany({ data }: { data: Partial<Row>[] }) {
+        calls.createMany += 1;
+        data.forEach(insert);
+        return { count: data.length };
+      },
+      async createManyAndReturn({ data }: { data: Partial<Row>[] }) {
+        calls.createManyAndReturn += 1;
+        return data.map(insert);
+      },
       async count({ where }: { where: Record<string, unknown> }) {
         return rows.filter((r) =>
           matchesOwner(r, where as Parameters<typeof matchesOwner>[1]),
@@ -75,19 +103,8 @@ function createMemoryTx(initial: Row[] = []) {
         });
       },
       async create({ data }: { data: Partial<Row> }) {
-        const row: Row = {
-          id: nextId++,
-          name: data.name!,
-          icon: data.icon ?? null,
-          active: data.active ?? true,
-          sort_order: data.sort_order ?? 0,
-          parent_id: data.parent_id ?? null,
-          user_id: data.user_id ?? null,
-          house_id: data.house_id ?? null,
-          kind: data.kind ?? 'EXPENSE',
-        };
-        rows.push(row);
-        return row;
+        calls.create += 1;
+        return insert(data);
       },
       async update({
         where,
@@ -121,6 +138,30 @@ describe('seedDefaultCategoriesForOwner', () => {
     expect(tx.getRows().filter((r) => r.kind === 'INCOME')).toHaveLength(
       countDefaultIncomeCatalogCategories(),
     );
+  });
+
+  it('seeds in batches: no per-row creates, two batch writes per kind', async () => {
+    const tx = createMemoryTx();
+    await seedDefaultCategoriesForOwner(tx as never, owner);
+    expect(tx.calls.create).toBe(0);
+    expect(tx.calls.createManyAndReturn).toBe(2);
+    expect(tx.calls.createMany).toBeLessThanOrEqual(2);
+  });
+
+  it('links every seeded child to its own root', async () => {
+    const tx = createMemoryTx();
+    await seedDefaultCategoriesForOwner(tx as never, owner);
+    const rows = tx.getRows();
+    for (const root of DEFAULT_CATEGORY_CATALOG) {
+      const parent = rows.find(
+        (r) => r.name === root.name && r.parent_id === null && r.kind === 'EXPENSE',
+      )!;
+      const childNames = rows
+        .filter((r) => r.parent_id === parent.id)
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((r) => r.name);
+      expect(childNames).toEqual(root.children.map((c) => c.name));
+    }
   });
 
   it('seeds only missing kind when the other already exists', async () => {

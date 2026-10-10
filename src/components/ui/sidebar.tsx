@@ -168,13 +168,24 @@ function Sidebar({
   collapsible = "offcanvas",
   className,
   children,
+  mobileOnly = false,
+  mobileTitle = "Menú",
+  mobileDescription = "Muestra el menú lateral en móvil.",
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
+  /** Skip the desktop panel. The mobile sheet still opens from `setOpenMobile`. */
+  mobileOnly?: boolean
+  mobileTitle?: string
+  mobileDescription?: string
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+
+  if (mobileOnly && !isMobile) {
+    return null
+  }
 
   if (collapsible === "none") {
     return (
@@ -211,8 +222,8 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Menú</SheetTitle>
-            <SheetDescription>Muestra el menú lateral en móvil.</SheetDescription>
+            <SheetTitle>{mobileTitle}</SheetTitle>
+            <SheetDescription>{mobileDescription}</SheetDescription>
           </SheetHeader>
           <MobileSidebarSheetBody>
             {children}

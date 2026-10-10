@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE } from '@/schemas/auth.schema';
 
 export const adminSetTempPasswordSchema = z
   .object({
     temporaryPassword: z
       .string()
-      .min(6, 'La contraseña debe tener al menos 6 caracteres'),
+      .min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE),
     confirmPassword: z.string().min(1, 'Confirma la contraseña'),
   })
   .refine((data) => data.temporaryPassword === data.confirmPassword, {

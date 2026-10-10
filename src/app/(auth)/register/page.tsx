@@ -1,5 +1,8 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+
+import { AuthStage } from '@/components/auth/auth-stage';
+import { AuthFormSkeleton } from '@/components/auth/auth-form-kit';
 import { RegisterForm } from '@/components/register-form';
 
 export const metadata: Metadata = {
@@ -8,12 +11,10 @@ export const metadata: Metadata = {
 
 export default function RegisterPage() {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <Suspense fallback={<div className="h-[320px] animate-pulse rounded-md bg-muted" />}>
-          <RegisterForm />
-        </Suspense>
-      </div>
-    </div>
+    <AuthStage eyebrow="Empieza hoy">
+      <Suspense fallback={<AuthFormSkeleton />}>
+        <RegisterForm />
+      </Suspense>
+    </AuthStage>
   );
 }

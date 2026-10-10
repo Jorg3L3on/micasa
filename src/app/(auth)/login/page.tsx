@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 
-import { LoginStage } from '@/components/auth/login-stage';
+import { AuthStage } from '@/components/auth/auth-stage';
+import { AuthFormSkeleton } from '@/components/auth/auth-form-kit';
 import { LoginForm } from '@/components/login-form';
 
 export const metadata: Metadata = {
@@ -10,17 +11,10 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <LoginStage>
-      <Suspense
-        fallback={
-          <div
-            className="h-[280px] animate-pulse rounded-xl bg-white/[0.04]"
-            aria-hidden
-          />
-        }
-      >
+    <AuthStage eyebrow="Bienvenido de vuelta">
+      <Suspense fallback={<AuthFormSkeleton />}>
         <LoginForm />
       </Suspense>
-    </LoginStage>
+    </AuthStage>
   );
 }

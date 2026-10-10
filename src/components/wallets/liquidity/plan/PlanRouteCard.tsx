@@ -28,8 +28,7 @@ export const PlanRouteCard = ({
   <article
     className={cn(
       MONTHLY_PANEL_SHELL_CLASS,
-      'border-l-[3px] px-4 py-4 sm:px-5',
-      featured ? 'border-l-primary/70' : 'border-l-border',
+      'px-4 py-4 sm:px-5',
     )}
   >
     <div className="flex flex-wrap items-start justify-between gap-3">

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE } from '@/schemas/auth.schema';
 
 export const updateAccountSchema = z
   .object({
@@ -10,7 +11,7 @@ export const updateAccountSchema = z
     currentPassword: z.string().optional().or(z.literal('')),
     newPassword: z
       .string()
-      .min(6, 'La contraseña debe tener al menos 6 caracteres')
+      .min(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE)
       .optional()
       .or(z.literal('')),
     confirmPassword: z.string().optional().or(z.literal('')),

@@ -57,7 +57,7 @@ export const LandingHeader = () => {
             <Link href="/login">Iniciar sesión</Link>
           </Button>
           <Button asChild>
-            <Link href="/register">Empezar</Link>
+            <Link href="/register">Crear cuenta</Link>
           </Button>
           <Button
             type="button"
