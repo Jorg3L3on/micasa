@@ -217,6 +217,8 @@ Fix these when touching light parity (do not leave new hardcoded dark-only chrom
 
 ---
 
+**Wallet card faces** (Billeteras list, mobile deck, long-press enlarged card and the Panel financiero carousel) are the exception to "no grid overlay": they share `WalletCardDecor` (`src/components/wallets/WalletCardDecor.tsx`: corner glows, `InteractiveGridPattern`, shine border). On mobile a tap opens the wallet and a long press opens `WalletCardPreview` (enlarged face with Abrir detalle, Transferir, Editar, Eliminar; closes on outside tap or swipe down). Billeteras mobile has no swipe-to-delete.
+
 ## Overlays (Dialog / Sheet)
 
 **Every** multi-field create or edit uses the shared **`ResponsiveOverlay`** (`src/components/overlay/responsive-overlay.tsx`): centered dialog from 768px up, bottom sheet below. Hand-rolled `isMobile ? <Sheet> : <Dialog>` forks are folded into it; Dialog-only multi-field forms gain the mobile sheet by moving onto it. Read-only drill-ins (e.g. the liquidez account detail) follow the same breakpoint split with a single **Cerrar**.

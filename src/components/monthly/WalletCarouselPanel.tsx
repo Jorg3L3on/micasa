@@ -24,12 +24,12 @@ import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { SegmentedControl } from '@/components/segmented-control';
 import {
   AURA_TAB_INDICATOR_CLASS,
-  GLASS_TAB_ACTIVE_LABEL_CLASS, MONTHLY_LIQUID_PANEL_CLASS,
+  GLASS_TAB_ACTIVE_LABEL_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { Button } from '@/components/ui/button';
 import { RippleButton } from '@/components/ui/ripple-button';
-import { InteractiveGridPattern } from '@/components/ui/interactive-grid-pattern';
-import { ShineBorder } from '@/components/ui/shine-border';
+import { WalletCardDecor } from '@/components/wallets/WalletCardDecor';
 import { getAuraBarStyle, getAuraWalletColor } from '@/lib/ui/aura-palette';
 import { SectionHeader } from '@/components/section-header';
 import { useFinanceContext } from '@/context/finance-context';
@@ -48,7 +48,6 @@ import { createWalletIncome } from '@/lib/api/incomes';
 import { createWallet } from '@/lib/api/wallets';
 import {
   getProviderCardStyle,
-  getWalletAuraColors,
   isProviderCardDarkSurface,
 } from '@/lib/provider-card-style';
 import {
@@ -119,7 +118,6 @@ const WalletFace = ({
     'aura',
     scheme,
   );
-  const auraColors = getWalletAuraColors(wallet.provider_icon_key, wallet.type);
   const dark = Boolean(style) && isProviderCardDarkSurface('aura', scheme);
 
   return (
@@ -128,7 +126,8 @@ const WalletFace = ({
         'relative isolate flex h-full flex-col justify-between overflow-hidden rounded-2xl border p-4 backdrop-blur-sm',
         'ring-1 ring-inset',
         dark ? 'ring-white/5' : 'ring-black/5',
-        !style && 'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
+        !style &&
+          'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
         style && 'shadow-face',
         style && (dark ? 'border-white/25' : 'border-border/70'),
         dark ? 'text-white' : 'text-foreground',
@@ -136,41 +135,13 @@ const WalletFace = ({
       )}
       style={style}
     >
-      {style ? (
-        <>
-          <span
-            aria-hidden
-            className={cn(
-              'pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full blur-2xl',
-              dark ? 'bg-white/8' : 'bg-white/70',
-            )}
-          />
-          <span
-            aria-hidden
-            className={cn(
-              'pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full blur-2xl',
-              dark ? 'bg-black/20' : 'bg-black/5',
-            )}
-          />
-        </>
-      ) : null}
-      <InteractiveGridPattern
-        width={14}
-        height={14}
-        squares={[20, 14]}
-        className="-z-10 border-0 [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]"
-        squaresClassName={
-          dark ? 'stroke-white/[0.08]' : 'stroke-foreground/[0.08]'
-        }
+      <WalletCardDecor
+        walletId={wallet.id}
+        providerIconKey={wallet.provider_icon_key}
+        walletType={wallet.type}
+        dark={dark}
+        glows={Boolean(style)}
       />
-      {auraColors ? (
-        <ShineBorder
-          shineColor={auraColors.shine}
-          borderWidth={1.5}
-          duration={11}
-          style={{ animationDelay: `-${(wallet.id % 7) * 1.6}s` }}
-        />
-      ) : null}
       <div className="pointer-events-none flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <WalletProviderIcon
@@ -221,7 +192,9 @@ const WalletFace = ({
       {credit && (wallet.cutoff_day != null || wallet.due_day != null) ? (
         <p className="pointer-events-none flex items-center justify-between gap-2 text-xs opacity-70">
           <span>
-            {wallet.cutoff_day != null ? `Corte día ${wallet.cutoff_day}` : null}
+            {wallet.cutoff_day != null
+              ? `Corte día ${wallet.cutoff_day}`
+              : null}
           </span>
           <span className="text-right">
             {wallet.due_day != null ? `Vence día ${wallet.due_day}` : null}
@@ -292,7 +265,10 @@ export const WalletCarouselPanel = ({
       setTab(next);
       setIndex(0);
       try {
-        window.localStorage.setItem(walletCarouselTabStorageKey(ownerKey), next);
+        window.localStorage.setItem(
+          walletCarouselTabStorageKey(ownerKey),
+          next,
+        );
       } catch {
         /* storage unavailable */
       }
@@ -302,9 +278,7 @@ export const WalletCarouselPanel = ({
 
   const move = useCallback(
     (delta: number) =>
-      setIndex((current) =>
-        clampCarouselIndex(current + delta, list.length),
-      ),
+      setIndex((current) => clampCarouselIndex(current + delta, list.length)),
     [list.length],
   );
 
@@ -456,9 +430,9 @@ export const WalletCarouselPanel = ({
         isCreditCarouselType(data.type) ? 'Tarjeta creada' : 'Billetera creada',
       );
       closeDialog();
-      const nextTab = (
-        WALLET_CAROUSEL_TYPES as readonly string[]
-      ).includes(data.type)
+      const nextTab = (WALLET_CAROUSEL_TYPES as readonly string[]).includes(
+        data.type,
+      )
         ? (data.type as WalletCarouselType)
         : tab;
       selectTab(nextTab);
@@ -489,7 +463,9 @@ export const WalletCarouselPanel = ({
   const dialogPlan = dialogWallet
     ? getWalletCarouselActionPlan(dialogWallet.type)
     : null;
-  const dialogSummary = dialogWallet ? getWalletCreditSummary(dialogWallet) : null;
+  const dialogSummary = dialogWallet
+    ? getWalletCreditSummary(dialogWallet)
+    : null;
 
   if (isMobile) return null;
 
@@ -744,7 +720,10 @@ export const WalletCarouselPanel = ({
               open={dialog === 'expense' || dialog === 'income'}
               onOpenChange={(open) => !open && closeDialog()}
               defaultTab={dialog === 'income' ? 'income' : 'expense'}
-              expenseDefaults={{ paymentMethodId: dialogWallet.id, isPaid: true }}
+              expenseDefaults={{
+                paymentMethodId: dialogWallet.id,
+                isPaid: true,
+              }}
               incomeDefaults={{ walletId: dialogWallet.id }}
               onSaveExpense={handleCreateExpense}
               onSaveIncome={handleCreateIncome}
