@@ -22,7 +22,7 @@
     "validate:metric-strips": "node scripts/validate-metric-strips.mjs",
     "validate:calendar-dates": "node scripts/validate-calendar-dates.mjs",
     "validate:prisma-imports": "node scripts/validate-prisma-imports.mjs",
-    "generate:brand-icons": "node scripts/generate-brand-icons.mjs",
+    "import:brand-assets": "node scripts/import-brand-assets.mjs",
     "generate:ios-splash": "node scripts/generate-ios-splash.mjs",
     "ci": "npm run validate:metric-strips && npm run validate:prisma-imports && npm run validate:calendar-dates && prisma generate && npm run test:coverage && npm run test:isolation && npm run build"
   },
