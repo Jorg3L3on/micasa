@@ -44,7 +44,7 @@ Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** acce
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): display the optimized `public/brand/mark-160.png` through `next/image`. Do not redraw it. Icon scripts still read the source `public/brand/mark.png` and plate it on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
+Brand mark (`MicasaMark`): a rounded roof over an "M", filled with a diagonal gradient `#2563EB → #8B3FD9`. Display the exported `public/brand/mark.svg` (gradient on transparent). The plated versions are `public/brand/icon-rounded.svg` and `icon-square.svg` (white mark on the gradient). Do not redraw them: to change the artwork, re-export it and run `npm run import:brand-assets <export-dir>`, which also refreshes the favicons and PWA icons. `BrandLoader`'s comet trail follows the mark gradient. Route progress (`NextTopLoader`): `#3a37fc`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 

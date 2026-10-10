@@ -9,7 +9,6 @@ const CACHE_NAME = `micasa-static-${VERSION}`;
 const OFFLINE_URL = '/offline';
 
 const PRECACHE_URLS = [
-  '/brand/mark-160.png',
   '/brand/mark.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
