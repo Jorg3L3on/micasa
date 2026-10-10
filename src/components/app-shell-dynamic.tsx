@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
+import dynamic from 'next/dynamic';
 
-import { AppSidebar } from "@/components/app-sidebar";
-import { AppHeaderToolbarSkeleton } from "@/components/app-header-toolbar-skeleton";
+import { AppSidebar } from '@/components/app-sidebar';
+import { AppHeaderToolbarSkeleton } from '@/components/app-header-toolbar-skeleton';
 
 const HeaderToolbarClient = dynamic(
-  () => import("@/components/app-header-toolbar"),
+  () => import('@/components/app-header-toolbar'),
   {
     ssr: false,
     loading: () => <AppHeaderToolbarSkeleton />,
@@ -15,7 +15,7 @@ const HeaderToolbarClient = dynamic(
 
 const MobileBottomDockClient = dynamic(
   () =>
-    import("@/components/mobile-bottom-dock").then((mod) => ({
+    import('@/components/mobile-bottom-dock').then((mod) => ({
       default: mod.MobileBottomDock,
     })),
   { ssr: false },

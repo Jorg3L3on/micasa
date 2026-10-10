@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import {
   buildWalletDeckSlots,
   WALLET_DECK_OVERLAP_CLASS,
-} from "@/lib/ui/wallet-deck";
-import type { WalletListItem } from "@/types/catalog";
+} from '@/lib/ui/wallet-deck';
+import type { WalletListItem } from '@/types/catalog';
 
 /** Wallet ids whose card shows the full face in the mobile deck. */
 const WalletDeckContext = createContext<ReadonlySet<number>>(new Set());
@@ -50,9 +50,9 @@ export const WalletCardsList = ({
     <WalletDeckContext.Provider value={expandedIds}>
       <ul
         className={cn(
-          "isolate flex w-full list-none flex-col p-0",
-          "md:grid md:grid-cols-2 md:gap-5 md:py-1",
-          "@min-[1045px]:!grid-cols-3",
+          'isolate flex w-full list-none flex-col p-0',
+          'md:grid md:grid-cols-2 md:gap-5 md:py-1',
+          '@min-[1045px]:!grid-cols-3',
           className,
         )}
         role="list"
@@ -64,9 +64,9 @@ export const WalletCardsList = ({
             <li
               key={wallet.id}
               data-wallet-card-id={wallet.id}
-              data-expanded={slot?.expanded ? "true" : "false"}
+              data-expanded={slot?.expanded ? 'true' : 'false'}
               className={cn(
-                "relative min-w-0 md:mt-0",
+                'relative min-w-0 md:mt-0',
                 slot?.overlapPrevious && WALLET_DECK_OVERLAP_CLASS,
               )}
               style={{ zIndex: slot?.zIndex ?? index + 1 }}

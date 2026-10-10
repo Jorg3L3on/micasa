@@ -1,7 +1,7 @@
-import { InteractiveGridPattern } from "@/components/ui/interactive-grid-pattern";
-import { ShineBorder } from "@/components/ui/shine-border";
-import { getWalletAuraColors } from "@/lib/provider-card-style";
-import { cn } from "@/lib/utils";
+import { InteractiveGridPattern } from '@/components/ui/interactive-grid-pattern';
+import { ShineBorder } from '@/components/ui/shine-border';
+import { getWalletAuraColors } from '@/lib/provider-card-style';
+import { cn } from '@/lib/utils';
 
 type WalletCardDecorProps = {
   walletId: number;
@@ -11,6 +11,11 @@ type WalletCardDecorProps = {
   dark: boolean;
   /** Corner glows; only meaningful on a branded surface. */
   glows?: boolean;
+  /**
+   * Lift the grid above the card's click-through link so squares react to
+   * hover; clicking a square calls `onActivate` (open the card).
+   */
+  onActivate?: () => void;
 };
 
 /**
@@ -25,6 +30,7 @@ export const WalletCardDecor = ({
   walletType,
   dark,
   glows = true,
+  onActivate,
 }: WalletCardDecorProps) => {
   const auraColors = getWalletAuraColors(providerIconKey, walletType);
   return (
@@ -34,15 +40,15 @@ export const WalletCardDecor = ({
           <span
             aria-hidden
             className={cn(
-              "pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full blur-2xl",
-              dark ? "bg-white/8" : "bg-white/70",
+              'pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full blur-2xl',
+              dark ? 'bg-white/8' : 'bg-white/70',
             )}
           />
           <span
             aria-hidden
             className={cn(
-              "pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full blur-2xl",
-              dark ? "bg-black/20" : "bg-black/5",
+              'pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full blur-2xl',
+              dark ? 'bg-black/20' : 'bg-black/5',
             )}
           />
         </>
@@ -51,9 +57,13 @@ export const WalletCardDecor = ({
         width={14}
         height={14}
         squares={[20, 14]}
-        className="-z-10 border-0 [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]"
+        className={cn(
+          onActivate ? 'z-[1] cursor-pointer' : '-z-10',
+          'border-0 [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]',
+        )}
+        onClick={onActivate}
         squaresClassName={
-          dark ? "stroke-white/[0.08]" : "stroke-foreground/[0.08]"
+          dark ? 'stroke-white/[0.08]' : 'stroke-foreground/[0.08]'
         }
       />
       {auraColors ? (

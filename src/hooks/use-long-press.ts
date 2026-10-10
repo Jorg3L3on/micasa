@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, type PointerEvent } from 'react';
 
 export const LONG_PRESS_MS = 450;
 /** Finger travel (px) that turns a press into a scroll or swipe. */
@@ -39,13 +39,13 @@ export const useLongPress = ({
 
   const onPointerDown = useCallback(
     (event: PointerEvent) => {
-      if (!enabled || event.pointerType === "mouse") return;
+      if (!enabled || event.pointerType === 'mouse') return;
       fired.current = false;
       origin.current = { x: event.clientX, y: event.clientY };
       timer.current = setTimeout(() => {
         timer.current = null;
         fired.current = true;
-        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
           navigator.vibrate?.(10);
         }
         callback.current();

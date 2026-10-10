@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import type { ReactNode } from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeftRight, ExternalLink, Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import type { ReactNode } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ArrowLeftRight, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type WalletCardPreviewProps = {
   open: boolean;
@@ -72,7 +72,7 @@ export const WalletCardPreview = ({
             }}
             initial={reduceMotion ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 320, damping: 30 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
             onClick={(event) => {
               // Taps in the gaps around the card dismiss like a backdrop tap.
               if (event.target === event.currentTarget) close();
@@ -80,7 +80,7 @@ export const WalletCardPreview = ({
           >
             <motion.div
               layoutId={reduceMotion ? undefined : layoutId}
-              transition={{ type: "spring", stiffness: 320, damping: 32 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               className="origin-center scale-[1.04] rounded-face"
             >
               {children}
@@ -110,7 +110,7 @@ export const WalletCardPreview = ({
                 type="button"
                 variant="secondary"
                 className={
-                  onTransfer ? "h-11 rounded-xl" : "col-span-2 h-11 rounded-xl"
+                  onTransfer ? 'h-11 rounded-xl' : 'col-span-2 h-11 rounded-xl'
                 }
                 onClick={run(onEdit)}
               >

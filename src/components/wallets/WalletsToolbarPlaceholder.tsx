@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { LineChart, Plus } from "lucide-react";
-import { PAGE_CREATE_ACTION } from "@/lib/ui/page-create-action";
-import { useRegisterToolbarActions } from "@/context/toolbar-actions-context";
+import { useMemo } from 'react';
+import { LineChart, Plus } from 'lucide-react';
+import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
+import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 
 const noop = () => {};
 
@@ -23,7 +23,7 @@ export const WalletsToolbarPlaceholder = () => {
   );
 
   useRegisterToolbarActions({
-    search: { value: "", onChange: noop, placeholder: "Buscar por nombre" },
+    search: { value: '', onChange: noop, placeholder: 'Buscar por nombre' },
     filters: { open: false, onOpenChange: noop, activeCount: 0 },
     primaryAction: {
       label: PAGE_CREATE_ACTION.wallet.label,
@@ -31,8 +31,8 @@ export const WalletsToolbarPlaceholder = () => {
       icon: primaryActionIcon,
     },
     leadingAction: {
-      label: "Proyección de liquidez",
-      href: "/wallets/liquidity",
+      label: 'Proyección de liquidez',
+      href: '/wallets/liquidity',
       icon: leadingActionIcon,
     },
   });
