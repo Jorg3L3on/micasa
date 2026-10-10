@@ -28,8 +28,7 @@ import {
 } from '@/components/monthly/monthly-panel-shell';
 import { Button } from '@/components/ui/button';
 import { RippleButton } from '@/components/ui/ripple-button';
-import { InteractiveGridPattern } from '@/components/ui/interactive-grid-pattern';
-import { ShineBorder } from '@/components/ui/shine-border';
+import { WalletCardDecor } from '@/components/wallets/WalletCardDecor';
 import { getAuraBarStyle, getAuraWalletColor } from '@/lib/ui/aura-palette';
 import { SectionHeader } from '@/components/section-header';
 import { useFinanceContext } from '@/context/finance-context';
@@ -48,7 +47,6 @@ import { createWalletIncome } from '@/lib/api/incomes';
 import { createWallet } from '@/lib/api/wallets';
 import {
   getProviderCardStyle,
-  getWalletAuraColors,
   isProviderCardDarkSurface,
 } from '@/lib/provider-card-style';
 import {
@@ -119,7 +117,6 @@ const WalletFace = ({
     'aura',
     scheme,
   );
-  const auraColors = getWalletAuraColors(wallet.provider_icon_key, wallet.type);
   const dark = Boolean(style) && isProviderCardDarkSurface('aura', scheme);
 
   return (
@@ -136,41 +133,13 @@ const WalletFace = ({
       )}
       style={style}
     >
-      {style ? (
-        <>
-          <span
-            aria-hidden
-            className={cn(
-              'pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full blur-2xl',
-              dark ? 'bg-white/8' : 'bg-white/70',
-            )}
-          />
-          <span
-            aria-hidden
-            className={cn(
-              'pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full blur-2xl',
-              dark ? 'bg-black/20' : 'bg-black/5',
-            )}
-          />
-        </>
-      ) : null}
-      <InteractiveGridPattern
-        width={14}
-        height={14}
-        squares={[20, 14]}
-        className="-z-10 border-0 [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]"
-        squaresClassName={
-          dark ? 'stroke-white/[0.08]' : 'stroke-foreground/[0.08]'
-        }
+      <WalletCardDecor
+        walletId={wallet.id}
+        providerIconKey={wallet.provider_icon_key}
+        walletType={wallet.type}
+        dark={dark}
+        glows={Boolean(style)}
       />
-      {auraColors ? (
-        <ShineBorder
-          shineColor={auraColors.shine}
-          borderWidth={1.5}
-          duration={11}
-          style={{ animationDelay: `-${(wallet.id % 7) * 1.6}s` }}
-        />
-      ) : null}
       <div className="pointer-events-none flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <WalletProviderIcon

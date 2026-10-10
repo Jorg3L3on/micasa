@@ -1,10 +1,14 @@
 import { SkeletonExit } from '@/components/view-transition/SuspenseReveal';
+import { WalletsToolbarPlaceholder } from '@/components/wallets/WalletsToolbarPlaceholder';
 import { WalletsListSkeleton } from '@/components/wallets/WalletsListSkeleton';
 
 export default function WalletsLoading() {
   return (
-    <SkeletonExit>
-      <WalletsListSkeleton />
-    </SkeletonExit>
+    <>
+      <WalletsToolbarPlaceholder />
+      <SkeletonExit>
+        <WalletsListSkeleton />
+      </SkeletonExit>
+    </>
   );
 }
