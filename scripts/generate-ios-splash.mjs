@@ -1,7 +1,7 @@
 /**
  * Build iOS PWA startup images (apple-touch-startup-image) that match the
- * streamed BrandLoader splash in src/app/loading.tsx, plus the small mark
- * the loader uses. Devices: src/lib/pwa/ios-splash-devices.json.
+ * streamed BrandLoader splash in src/app/loading.tsx, drawn from
+ * public/brand/mark.svg. Devices: src/lib/pwa/ios-splash-devices.json.
  *
  *   node scripts/generate-ios-splash.mjs
  */
@@ -13,7 +13,7 @@ import { Resvg } from '@resvg/resvg-js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CANVAS = '#060914';
-const TRAIL_COLORS = ['#3a37fc', '#4935f7', '#5833f1', '#6831ec', '#782fe7', '#8a2be2'];
+const TRAIL_COLORS = ['#2563eb', '#395ce7', '#4e55e4', '#624de0', '#7746dd', '#8b3fd9'];
 
 /*
  * Mirrors src/app/loading.tsx in CSS px so the iOS image and the streamed
@@ -26,8 +26,8 @@ const TEXT_GAP = 6;
 const CAPTION_LINE = 16;
 const GROUP_HEIGHT = LOADER + GAP + WORDMARK_LINE + TEXT_GAP + CAPTION_LINE;
 
-const markPng = await readFile(path.join(root, 'public', 'brand', 'mark.png'));
-const markHref = `data:image/png;base64,${markPng.toString('base64')}`;
+const markSvg = await readFile(path.join(root, 'public', 'brand', 'mark.svg'));
+const markHref = `data:image/svg+xml;base64,${markSvg.toString('base64')}`;
 const devices = JSON.parse(
   await readFile(path.join(root, 'src', 'lib', 'pwa', 'ios-splash-devices.json'), 'utf8'),
 );
@@ -69,7 +69,7 @@ const splashSvg = ({ width, height }) => {
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <filter id="tileGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#3a37fc" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#2563eb" flood-opacity="0.45"/>
     </filter>
   </defs>
   <rect width="${width}" height="${height}" fill="${CANVAS}"/>
@@ -108,15 +108,4 @@ for (const device of devices) {
   }
 }
 
-const smallMarkSvg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
-  <image href="${markHref}" width="160" height="160" preserveAspectRatio="xMidYMid meet"/>
-</svg>`;
-await writeFile(
-  path.join(root, 'public', 'brand', 'mark-160.png'),
-  new Resvg(smallMarkSvg, { fitTo: { mode: 'width', value: 160 }, background: 'rgba(0,0,0,0)' })
-    .render()
-    .asPng(),
-);
-
-console.log(`Wrote ${written} splash images and brand/mark-160.png`);
+console.log(`Wrote ${written} splash images`);
