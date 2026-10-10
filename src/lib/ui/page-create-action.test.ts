@@ -20,6 +20,11 @@ const PAGE_REGISTRATIONS: {
 }[] = [
   { file: 'src/app/(app)/wallets/page.tsx', route: '/wallets', key: 'wallet' },
   {
+    file: 'src/components/wallets/WalletsToolbarPlaceholder.tsx',
+    route: '/wallets',
+    key: 'wallet',
+  },
+  {
     file: 'src/app/(app)/wallets/[id]/page.tsx',
     route: '/wallets/12',
     key: 'walletMovement',

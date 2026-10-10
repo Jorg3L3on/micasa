@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import { useMemo, type KeyboardEvent, type MouseEvent } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ViewTransition } from 'react';
+import { useMemo, useState, type MouseEvent } from "react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ViewTransition } from "react";
 import {
   ArrowLeftRight,
   BookmarkIcon,
@@ -11,50 +12,51 @@ import {
   Pencil,
   SlidersHorizontal,
   Trash2,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
   isCreditOrStoreCardWalletType,
-} from '@/domain/payment-method';
+} from "@/domain/payment-method";
 import {
   getProviderBrandColor,
   getProviderCardStyle,
   getWalletBrandCssVars,
-} from '@/lib/provider-card-style';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+} from "@/lib/provider-card-style";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { SwipeDeleteRow } from '@/components/ui/swipe-delete-row';
+} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { useFinanceContext } from '@/context/finance-context';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { cn, formatCurrency } from '@/lib/utils';
-import type { WalletListItem } from '@/types/catalog';
-import { useWalletDeckCard } from '@/components/wallets/WalletCardsList';
-import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+} from "@/components/ui/tooltip";
+import { useFinanceContext } from "@/context/finance-context";
+import { useLongPress } from "@/hooks/use-long-press";
+import { cn, formatCurrency } from "@/lib/utils";
+import type { WalletListItem } from "@/types/catalog";
+import { useWalletDeckCard } from "@/components/wallets/WalletCardsList";
+import { WalletProviderIcon } from "@/components/wallets/WalletProviderIcon";
+import { WalletCardDecor } from "@/components/wallets/WalletCardDecor";
+import { WalletCardPreview } from "@/components/wallets/WalletCardPreview";
 import {
   WALLET_DECK_ALERT_RING_CLASS,
   WALLET_DECK_AMOUNT_TEXT_CLASS,
   WALLET_DECK_COLLAPSED_PADDING_CLASS,
   WALLET_DECK_EXCEEDED_TEXT_CLASS,
-} from '@/lib/ui/wallet-deck';
+} from "@/lib/ui/wallet-deck";
 import {
   navigateWithTransitionType,
   stashWalletCardVtSnapshot,
   walletCardViewTransitionName,
   WALLET_LIST_CARD_SHELL_CLASS,
-} from '@/lib/ui/wallet-card-view-transition';
-import { prefetchWalletDetailApis } from '@/lib/ui/wallet-detail-prefetch';
+} from "@/lib/ui/wallet-card-view-transition";
+import { prefetchWalletDetailApis } from "@/lib/ui/wallet-detail-prefetch";
 
 const getEffectiveCreditLimit = ({
   credit_limit,
@@ -77,6 +79,8 @@ type WalletListCardProps = {
   onTransfer?: (wallet: WalletListItem) => void;
   onDelete: (wallet: WalletListItem) => void;
   onOpenBalance: (wallet: WalletListItem) => void;
+  /** Enlarged long-press rendering: static face, no links or menus. */
+  preview?: boolean;
 };
 
 export const WalletListCard = ({
@@ -87,27 +91,28 @@ export const WalletListCard = ({
   onTransfer,
   onDelete,
   onOpenBalance,
+  preview = false,
 }: WalletListCardProps) => {
   const router = useRouter();
-  const isMobile = useIsMobile();
+  const [previewOpen, setPreviewOpen] = useState(false);
   const deck = useWalletDeckCard(wallet.id);
   const { context } = useFinanceContext();
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
-  const isFunding = wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD';
+  const isFunding = wallet.type === "CASH" || wallet.type === "DEBIT_CARD";
   const canTransfer =
-    wallet.type === 'CASH' ||
-    wallet.type === 'DEBIT_CARD' ||
-    wallet.type === 'GOAL';
+    wallet.type === "CASH" ||
+    wallet.type === "DEBIT_CARD" ||
+    wallet.type === "GOAL";
   const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
 
   const brandColor = useMemo(
     () =>
-      getProviderBrandColor(wallet.provider_icon_key, wallet.type) ?? '#6366f1',
+      getProviderBrandColor(wallet.provider_icon_key, wallet.type) ?? "#6366f1",
     [wallet.provider_icon_key, wallet.type],
   );
   const cardStyle = useMemo(
     () => ({
-      ...getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'wow'),
+      ...getProviderCardStyle(wallet.provider_icon_key, wallet.type, "wow"),
       ...getWalletBrandCssVars(brandColor),
     }),
     [wallet.provider_icon_key, wallet.type, brandColor],
@@ -154,6 +159,20 @@ export const WalletListCard = ({
     prefetchWalletDetailApis(wallet.id, isCard, context);
   };
 
+  const vtSnapshot = {
+    id: wallet.id,
+    name: wallet.name,
+    typeLabel,
+    amount: amountNumber,
+    isCredit: isCard,
+    providerIconKey: wallet.provider_icon_key ?? null,
+    cycleLabel,
+    availableCredit,
+    creditLimit: hasCreditLimit ? effectiveLimit : null,
+    utilizationPct: usagePercent,
+    style: cardStyle,
+  };
+
   const handleOpenDetail = (event: MouseEvent<HTMLAnchorElement>) => {
     if (
       event.defaultPrevented ||
@@ -166,22 +185,10 @@ export const WalletListCard = ({
       return;
     }
     event.preventDefault();
-    stashWalletCardVtSnapshot({
-      id: wallet.id,
-      name: wallet.name,
-      typeLabel,
-      amount: amountNumber,
-      isCredit: isCard,
-      providerIconKey: wallet.provider_icon_key ?? null,
-      cycleLabel,
-      availableCredit,
-      creditLimit: hasCreditLimit ? effectiveLimit : null,
-      utilizationPct: usagePercent,
-      style: cardStyle,
-    });
+    stashWalletCardVtSnapshot(vtSnapshot);
     // Kick APIs immediately on tap (hover may not fire on mobile).
     prefetchWalletDetailApis(wallet.id, isCard, context);
-    navigateWithTransitionType(detailHref, 'nav-forward', (href) =>
+    navigateWithTransitionType(detailHref, "nav-forward", (href) =>
       router.push(href),
     );
   };
@@ -195,7 +202,7 @@ export const WalletListCard = ({
 
   const assigneeMetric =
     isFunding && isHouseContext
-      ? (wallet.assignee?.name ?? 'Compartida')
+      ? (wallet.assignee?.name ?? "Compartida")
       : null;
 
   const showTemporaryTope =
@@ -205,7 +212,7 @@ export const WalletListCard = ({
     wallet.temporary_credit_limit > wallet.credit_limit;
 
   const articleLabel = hasAlert
-    ? `${wallet.name}, ${isOverLimit ? 'límite excedido' : 'saldo negativo'}`
+    ? `${wallet.name}, ${isOverLimit ? "límite excedido" : "saldo negativo"}`
     : !wallet.active
       ? `${wallet.name}, inactiva`
       : wallet.name;
@@ -238,261 +245,221 @@ export const WalletListCard = ({
     </>
   );
 
-  const handleDeckKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    deck.onKeyboardToggle();
-  };
+  const amountLabel = isCard ? "Deuda total" : "Saldo disponible";
 
-  const amountLabel = isCard ? 'Deuda total' : 'Saldo disponible';
+  const faceExpanded = preview || deck.expanded;
+  const walletFaceLayoutId = `wallet-face-${wallet.id}`;
+  const longPress = useLongPress({
+    onLongPress: () => setPreviewOpen(true),
+    enabled: !preview,
+  });
+
+  const mobileFace = (
+    <motion.div
+      layoutId={walletFaceLayoutId}
+      {...(preview ? {} : longPress)}
+      className={cn(
+        "relative isolate w-full min-w-0 overflow-hidden rounded-face border border-white/15 text-white",
+        !preview && "select-none [-webkit-touch-callout:none]",
+        "shadow-face",
+        "transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none",
+        faceExpanded ? "p-4 pb-5" : WALLET_DECK_COLLAPSED_PADDING_CLASS,
+        hasAlert && WALLET_DECK_ALERT_RING_CLASS,
+      )}
+      style={cardStyle}
+    >
+      <WalletCardDecor
+        walletId={wallet.id}
+        providerIconKey={wallet.provider_icon_key}
+        walletType={wallet.type}
+        dark
+      />
+      {preview ? null : (
+        <Link
+          href={detailHref}
+          onClick={handleOpenDetail}
+          onPointerEnter={handlePrefetchDetail}
+          onFocus={handlePrefetchDetail}
+          className="peer absolute inset-0 z-0 rounded-face focus-visible:outline-none"
+          aria-label={`Abrir ${wallet.name}`}
+        />
+      )}
+      <div className="pointer-events-none relative z-10">
+        <div data-wallet-deck-strip>
+          <div className="flex items-start justify-between gap-2 pr-8">
+            <div className="flex min-w-0 items-center gap-2">
+              <WalletProviderIcon
+                providerIconKey={wallet.provider_icon_key}
+                className="h-8 w-8 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
+                iconClassName="h-4 w-4"
+                showTooltipLabel={false}
+              />
+              <div className="min-w-0">
+                <p
+                  className="truncate text-sm font-semibold leading-tight opacity-95"
+                  title={wallet.name}
+                >
+                  {wallet.name}
+                </p>
+                <p className="eyebrow opacity-60">{cycleLabel ?? typeLabel}</p>
+              </div>
+            </div>
+            {!wallet.active ? (
+              <Badge
+                variant="outline"
+                className="pointer-events-none h-6 shrink-0 gap-0.5 border-white/30 bg-black/20 px-1.5 text-caption text-white"
+              >
+                <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
+                Inactivo
+              </Badge>
+            ) : isCard ? (
+              <span className="font-mono text-caption tracking-[0.2em] opacity-50">
+                •••• ••••
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-2">
+            <p className="eyebrow opacity-70">{amountLabel}</p>
+            <p
+              className={cn(
+                "font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight",
+                WALLET_DECK_AMOUNT_TEXT_CLASS,
+              )}
+            >
+              {formatCurrency(amountNumber)}
+            </p>
+          </div>
+        </div>
+        {faceExpanded &&
+        (isCard || assigneeMetric || !wallet.include_in_liquidity) ? (
+          <div className="mt-3 space-y-3">
+            {isCard ? (
+              <>
+                <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
+                  <div>
+                    <p className="eyebrow opacity-70">Disponible</p>
+                    <p
+                      className={cn(
+                        "font-sans text-sm font-semibold tabular-nums leading-snug",
+                        WALLET_DECK_AMOUNT_TEXT_CLASS,
+                      )}
+                    >
+                      {availableCredit == null
+                        ? "Sin línea"
+                        : formatCurrency(availableCredit)}
+                    </p>
+                  </div>
+                  {hasCreditLimit && effectiveLimit != null ? (
+                    <div className="text-right">
+                      <p className="eyebrow opacity-70">Límite</p>
+                      <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
+                        {formatCurrency(effectiveLimit)}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+                {usagePercent != null && hasCreditLimit ? (
+                  <div className="space-y-1">
+                    <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
+                      <span className="shrink-0 whitespace-normal">
+                        Utilización
+                      </span>
+                      <span
+                        className={cn(
+                          "font-sans tabular-nums",
+                          isOverLimit && WALLET_DECK_EXCEEDED_TEXT_CLASS,
+                        )}
+                      >
+                        {isOverLimit ? "Excedido" : `${usagePercent}%`}
+                      </span>
+                    </div>
+                    <div
+                      className="h-1.5 w-full overflow-hidden rounded-full bg-white/20"
+                      role="meter"
+                      aria-label="Porcentaje de línea usado"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={usagePercent}
+                    >
+                      <div
+                        className="h-full rounded-full bg-white/85 transition-all motion-reduce:transition-none"
+                        style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+                {showTemporaryTope ? (
+                  <span className="inline-flex rounded-full border border-white/25 bg-black/25 px-2 py-0.5 text-caption font-medium tracking-wide text-white/90">
+                    Tope temporal
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <>
+                {assigneeMetric ? (
+                  <p className="truncate text-body font-medium leading-tight text-white/80">
+                    {assigneeMetric}
+                  </p>
+                ) : null}
+                {!wallet.include_in_liquidity ? (
+                  <p className="truncate text-caption text-white/55">
+                    Fuera de la liquidez
+                  </p>
+                ) : null}
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[15] rounded-face opacity-0 ring-2 ring-inset ring-white/90 peer-focus-visible:opacity-100"
+      />
+      {preview ? null : (
+        <div className="absolute top-2.5 right-2.5 z-20">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="size-8 rounded-full text-white hover:bg-white/15 hover:text-white focus-visible:ring-white/70"
+                aria-label={`Más opciones para ${wallet.name}`}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {actionMenuItems}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+    </motion.div>
+  );
+
+  if (preview) return mobileFace;
 
   return (
     <article
       className={cn(
-        '@container w-full min-w-0 max-w-full',
-        !wallet.active && 'opacity-80',
+        "@container w-full min-w-0 max-w-full",
+        !wallet.active && "opacity-80",
       )}
       aria-label={articleLabel}
     >
-      <div
-        className="md:hidden"
-        onFocusCapture={() => deck.onFocus()}
-      >
-        <SwipeDeleteRow
-          enabled={isMobile}
-          onRequestDelete={handleRequestDelete}
-          deleteAriaLabel={`Eliminar ${wallet.name}`}
-          className="rounded-face"
-          railClassName="items-start"
-          actionClassName="h-28"
-        >
-          <div
-            className={cn(
-              'relative w-full min-w-0 overflow-hidden rounded-face border border-white/15 text-white',
-              'shadow-face',
-              'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
-              deck.expanded ? 'p-4 pb-5' : WALLET_DECK_COLLAPSED_PADDING_CLASS,
-              hasAlert && WALLET_DECK_ALERT_RING_CLASS,
-            )}
-            style={cardStyle}
-          >
-            {deck.collapsible ? (
-              <button
-                type="button"
-                className="peer absolute inset-0 z-0 rounded-face focus-visible:outline-none"
-                aria-expanded={deck.expanded}
-              aria-label={
-                deck.expanded
-                  ? `Contraer ${wallet.name}`
-                  : `Expandir ${wallet.name}. ${amountLabel} ${formatCurrency(amountNumber)}`
-              }
-                onPointerDown={() => deck.onPointerDown()}
-                onClick={(event) => {
-                  if (event.detail === 0) return;
-                  deck.onPointerToggle();
-                }}
-                onKeyDown={handleDeckKeyDown}
-              />
-            ) : (
-              <Link
-                href={detailHref}
-                onClick={handleOpenDetail}
-                onPointerEnter={handlePrefetchDetail}
-                onFocus={handlePrefetchDetail}
-                className="peer absolute inset-0 z-0 rounded-face focus-visible:outline-none"
-                aria-label={`Abrir ${wallet.name}`}
-              />
-            )}
-            <div className="pointer-events-none relative z-10">
-              <div data-wallet-deck-strip>
-                <div className="flex items-start justify-between gap-2 pr-8">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <WalletProviderIcon
-                      providerIconKey={wallet.provider_icon_key}
-                      className="h-8 w-8 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
-                      iconClassName="h-4 w-4"
-                      showTooltipLabel={false}
-                    />
-                    <div className="min-w-0">
-                      {deck.collapsible && deck.expanded ? (
-                        <Link
-                          href={detailHref}
-                          onClick={handleOpenDetail}
-                          onPointerEnter={handlePrefetchDetail}
-                          onFocus={handlePrefetchDetail}
-                          className="pointer-events-auto relative z-20 block truncate text-sm font-semibold leading-tight text-white/95 no-underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                          title={wallet.name}
-                        >
-                          {wallet.name}
-                        </Link>
-                      ) : (
-                        <p
-                          className="truncate text-sm font-semibold leading-tight opacity-95"
-                          title={wallet.name}
-                        >
-                          {wallet.name}
-                        </p>
-                      )}
-                      <p className="eyebrow opacity-60">
-                        {cycleLabel ?? typeLabel}
-                      </p>
-                    </div>
-                  </div>
-                  {!wallet.active ? (
-                    <Badge
-                      variant="outline"
-                      className="pointer-events-none h-6 shrink-0 gap-0.5 border-white/30 bg-black/20 px-1.5 text-caption text-white"
-                    >
-                      <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
-                      Inactivo
-                    </Badge>
-                  ) : isCard ? (
-                    <span className="font-mono text-caption tracking-[0.2em] opacity-50">
-                      •••• ••••
-                    </span>
-                  ) : null}
-                </div>
-                <div className="mt-2">
-                  <p className="eyebrow opacity-70">{amountLabel}</p>
-                  <p
-                    className={cn(
-                      'font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight',
-                      WALLET_DECK_AMOUNT_TEXT_CLASS,
-                    )}
-                  >
-                    {formatCurrency(amountNumber)}
-                  </p>
-                </div>
-              </div>
-              {deck.expanded &&
-              (isCard || assigneeMetric || !wallet.include_in_liquidity) ? (
-                <div className="mt-3 space-y-3">
-                  {isCard ? (
-                    <>
-                      <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
-                        <div>
-                          <p className="eyebrow opacity-70">Disponible</p>
-                          <p
-                            className={cn(
-                              'font-sans text-sm font-semibold tabular-nums leading-snug',
-                              WALLET_DECK_AMOUNT_TEXT_CLASS,
-                            )}
-                          >
-                            {availableCredit == null
-                              ? 'Sin línea'
-                              : formatCurrency(availableCredit)}
-                          </p>
-                        </div>
-                        {hasCreditLimit && effectiveLimit != null ? (
-                          <div className="text-right">
-                            <p className="eyebrow opacity-70">Límite</p>
-                            <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
-                              {formatCurrency(effectiveLimit)}
-                            </p>
-                          </div>
-                        ) : null}
-                      </div>
-                      {usagePercent != null && hasCreditLimit ? (
-                        <div className="space-y-1">
-                          <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
-                            <span className="shrink-0 whitespace-normal">
-                              Utilización
-                            </span>
-                            <span
-                              className={cn(
-                                'font-sans tabular-nums',
-                                isOverLimit && WALLET_DECK_EXCEEDED_TEXT_CLASS,
-                              )}
-                            >
-                              {isOverLimit ? 'Excedido' : `${usagePercent}%`}
-                            </span>
-                          </div>
-                          <div
-                            className="h-1.5 w-full overflow-hidden rounded-full bg-white/20"
-                            role="meter"
-                            aria-label="Porcentaje de línea usado"
-                            aria-valuemin={0}
-                            aria-valuemax={100}
-                            aria-valuenow={usagePercent}
-                          >
-                            <div
-                              className="h-full rounded-full bg-white/85 transition-all motion-reduce:transition-none"
-                              style={{ width: `${Math.min(usagePercent, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      ) : null}
-                      {showTemporaryTope ? (
-                        <span className="inline-flex rounded-full border border-white/25 bg-black/25 px-2 py-0.5 text-caption font-medium tracking-wide text-white/90">
-                          Tope temporal
-                        </span>
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      {assigneeMetric ? (
-                        <p className="truncate text-body font-medium leading-tight text-white/80">
-                          {assigneeMetric}
-                        </p>
-                      ) : null}
-                      {!wallet.include_in_liquidity ? (
-                        <p className="truncate text-caption text-white/55">
-                          Fuera de la liquidez
-                        </p>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              ) : null}
-            </div>
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 z-[15] rounded-face opacity-0 ring-2 ring-inset ring-white/90 peer-focus-visible:opacity-100"
-            />
-            <div className="absolute top-2.5 right-2.5 z-20">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="size-8 rounded-full text-white hover:bg-white/15 hover:text-white focus-visible:ring-white/70"
-                    aria-label={`Más opciones para ${wallet.name}`}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  {actionMenuItems}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </SwipeDeleteRow>
-      </div>
+      <div className="md:hidden">{mobileFace}</div>
 
       <div className="hidden md:block">
-      <SwipeDeleteRow
-        enabled={false}
-        onRequestDelete={handleRequestDelete}
-        deleteAriaLabel={`Eliminar ${wallet.name}`}
-        className="rounded-face"
-        railClassName="items-start"
-        actionClassName="h-28"
-      >
-        <ViewTransition
-          name={viewTransitionName}
-          share="morph"
-          default="none"
-        >
+        <ViewTransition name={viewTransitionName} share="morph" default="none">
           <div
             className={cn(
-              'relative w-full min-w-0 overflow-hidden rounded-face border border-white/15 text-white',
-              'shadow-face',
-              'transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none',
-              'active:scale-[0.985]',
+              "relative w-full min-w-0 overflow-hidden rounded-face border border-white/15 text-white",
+              "shadow-face",
+              "transition-[box-shadow,filter] duration-200 ease-out motion-reduce:transition-none",
+              "active:scale-[0.985]",
               WALLET_LIST_CARD_SHELL_CLASS,
-              hasAlert && 'ring-2 ring-inset ring-status-expense/70',
+              hasAlert && "ring-2 ring-inset ring-status-expense/70",
             )}
             style={cardStyle}
             data-wallet-vt={viewTransitionName}
@@ -545,9 +512,7 @@ export const WalletListCard = ({
 
                 <div className="space-y-3">
                   <div>
-                    <p className="eyebrow opacity-70">
-                      Deuda total
-                    </p>
+                    <p className="eyebrow opacity-70">Deuda total</p>
                     <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
                       {formatCurrency(amountNumber)}
                     </p>
@@ -555,20 +520,16 @@ export const WalletListCard = ({
 
                   <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
                     <div>
-                      <p className="eyebrow opacity-70">
-                        Disponible
-                      </p>
+                      <p className="eyebrow opacity-70">Disponible</p>
                       <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         {availableCredit == null
-                          ? 'Sin línea'
+                          ? "Sin línea"
                           : formatCurrency(availableCredit)}
                       </p>
                     </div>
                     {hasCreditLimit && effectiveLimit != null ? (
                       <div className="text-right">
-                        <p className="eyebrow opacity-70">
-                          Límite
-                        </p>
+                        <p className="eyebrow opacity-70">Límite</p>
                         <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                           {formatCurrency(effectiveLimit)}
                         </p>
@@ -579,14 +540,16 @@ export const WalletListCard = ({
                   {usagePercent != null && hasCreditLimit ? (
                     <div className="space-y-1">
                       <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
-                        <span className="shrink-0 whitespace-normal">Utilización</span>
+                        <span className="shrink-0 whitespace-normal">
+                          Utilización
+                        </span>
                         <span
                           className={cn(
-                            'font-sans tabular-nums',
-                            isOverLimit && 'text-status-expense',
+                            "font-sans tabular-nums",
+                            isOverLimit && "text-status-expense",
                           )}
                         >
-                          {isOverLimit ? 'Excedido' : `${usagePercent}%`}
+                          {isOverLimit ? "Excedido" : `${usagePercent}%`}
                         </span>
                       </div>
                       <div
@@ -599,8 +562,8 @@ export const WalletListCard = ({
                       >
                         <div
                           className={cn(
-                            'h-full rounded-full transition-all',
-                            isOverLimit ? 'bg-status-expense' : 'bg-white/85',
+                            "h-full rounded-full transition-all",
+                            isOverLimit ? "bg-status-expense" : "bg-white/85",
                           )}
                           style={{ width: `${Math.min(usagePercent, 100)}%` }}
                         />
@@ -633,9 +596,7 @@ export const WalletListCard = ({
                         >
                           {wallet.name}
                         </p>
-                        <p className="eyebrow opacity-60">
-                          {typeLabel}
-                        </p>
+                        <p className="eyebrow opacity-60">{typeLabel}</p>
                       </div>
                     </div>
                     {!wallet.active ? (
@@ -666,9 +627,7 @@ export const WalletListCard = ({
                 */}
                 <div className="space-y-3">
                   <div>
-                    <p className="eyebrow opacity-70">
-                      Saldo disponible
-                    </p>
+                    <p className="eyebrow opacity-70">Saldo disponible</p>
                     <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
                       {formatCurrency(amountNumber)}
                     </p>
@@ -679,9 +638,7 @@ export const WalletListCard = ({
                     aria-hidden
                   >
                     <div>
-                      <p className="eyebrow">
-                        Disponible
-                      </p>
+                      <p className="eyebrow">Disponible</p>
                       <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                         $0.00
                       </p>
@@ -696,7 +653,9 @@ export const WalletListCard = ({
 
                   <div className="invisible space-y-1" aria-hidden>
                     <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug">
-                      <span className="shrink-0 whitespace-normal">Utilización</span>
+                      <span className="shrink-0 whitespace-normal">
+                        Utilización
+                      </span>
                       <span className="font-sans tabular-nums">0%</span>
                     </div>
                     <div className="h-1.5 w-full rounded-full" />
@@ -740,8 +699,36 @@ export const WalletListCard = ({
             </div>
           </div>
         </ViewTransition>
-      </SwipeDeleteRow>
       </div>
+      <WalletCardPreview
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        walletName={wallet.name}
+        layoutId={walletFaceLayoutId}
+        onOpenDetail={() => {
+          stashWalletCardVtSnapshot(vtSnapshot);
+          prefetchWalletDetailApis(wallet.id, isCard, context);
+          navigateWithTransitionType(detailHref, "nav-forward", (href) =>
+            router.push(href),
+          );
+        }}
+        onTransfer={
+          canTransfer && onTransfer ? () => onTransfer(wallet) : undefined
+        }
+        onEdit={() => onEdit(wallet)}
+        onDelete={handleRequestDelete}
+      >
+        <WalletListCard
+          wallet={wallet}
+          ownerQueryString={ownerQueryString}
+          isHouseContext={isHouseContext}
+          onEdit={onEdit}
+          onTransfer={onTransfer}
+          onDelete={onDelete}
+          onOpenBalance={onOpenBalance}
+          preview
+        />
+      </WalletCardPreview>
     </article>
   );
 };
