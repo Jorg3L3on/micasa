@@ -41,6 +41,7 @@ export const metadata: Metadata = {
     'Gestión financiera y planeación por quincenas. Controla ingresos, gastos y operaciones.',
   icons: {
     icon: [
+      { url: '/brand/mark.svg', type: 'image/svg+xml' },
       { url: '/icons/icon-32.png', type: 'image/png', sizes: '32x32' },
       { url: '/favicon.ico', sizes: 'any' },
     ],

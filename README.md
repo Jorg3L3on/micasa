@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/brand/mark-160.png" alt="Isotipo de MiCasa" width="96" height="96" />
+  <img src="public/brand/mark.svg" alt="Isotipo de MiCasa" width="96" height="96" />
 </p>
 
 <h1 align="center">MiCasa</h1>
@@ -16,7 +16,7 @@
   <a href="./CHANGELOG.md">Changelog</a>
 </p>
 
-El isotipo es `public/brand/mark-160.png`, el mismo archivo que muestra `MicasaMark` (`src/components/brand/micasa-mark.tsx`).
+El isotipo es `public/brand/mark.svg`, el mismo archivo que muestra `MicasaMark` (`src/components/brand/micasa-mark.tsx`). Los favicons y los íconos de la PWA salen del mismo export: `npm run import:brand-assets <carpeta-del-export>`.
 
 ## Producto
 
