@@ -159,3 +159,10 @@ export const MONTHLY_PANEL_MAIN_COLUMN_CLASS =
 
 export const MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS =
   'hidden min-w-0 flex-col gap-5 xl:flex';
+
+/**
+ * Hides main-column content that the sidebar repeats (e.g. the wallet strip vs
+ * the Billeteras card). Same breakpoint as MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS:
+ * change both together.
+ */
+export const MONTHLY_PANEL_SIDEBAR_DUPLICATE_CLASS = 'xl:hidden';
