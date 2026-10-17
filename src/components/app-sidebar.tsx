@@ -46,7 +46,7 @@ export function AppSidebar() {
       <Sidebar
         mobileOnly
         mobileTitle="Más"
-        mobileDescription="Análisis, operaciones, contexto y cuenta."
+        mobileDescription="Préstamos, operaciones, presupuestos, contexto y cuenta."
         collapsible="offcanvas"
       >
         <MobileOverflowNav />
