@@ -43,8 +43,9 @@ import { InteractiveGridPattern } from '@/components/ui/interactive-grid-pattern
 import { ShineBorder } from '@/components/ui/shine-border';
 import { getAuraBarStyle, getAuraWalletColor } from '@/lib/ui/aura-palette';
 import { SectionHeader } from '@/components/section-header';
+import EmptyState from '@/components/EmptyState';
+import { Badge } from '@/components/ui/badge';
 import { useFinanceContext } from '@/context/finance-context';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import {
   PAYMENT_METHOD_SHORT_LABELS,
@@ -103,6 +104,8 @@ type ActiveDialog = WalletCarouselQuickAction | null;
 /** Card sizing follows a physical card (taller than wide-screen strips), capped so it stays narrow. */
 const CARD_WIDTH_RATIO = 0.62;
 const CARD_MAX_WIDTH_PX = 272;
+/** Below `sm` the side cards must peek, so the face caps lower. */
+const CARD_MAX_WIDTH_PX_MOBILE = 240;
 const CARD_ASPECT_RATIO = 1.45;
 const CARD_GAP_PX = 12;
 
@@ -218,10 +221,13 @@ const WalletFace = memo(function WalletFace({
             {wallet.name}
           </span>
         </div>
-        <span className="shrink-0 text-xs opacity-70">
+        <Badge
+          variant="secondary"
+          className="h-5 shrink-0 rounded-full bg-white/10 px-2 text-caption font-medium text-current opacity-90"
+        >
           {PAYMENT_METHOD_SHORT_LABELS[wallet.type as PaymentMethodType] ??
             wallet.type}
-        </span>
+        </Badge>
       </div>
 
       <div className="pointer-events-none">
@@ -279,7 +285,6 @@ export const WalletCarouselPanel = ({
 }: WalletCarouselPanelProps) => {
   const { context } = useFinanceContext();
   const reduceMotion = useReducedMotion();
-  const isMobile = useIsMobile();
 
   // The strip's drag order (saved per owner on tablet/mobile) orders cards
   // inside each type. Read through useSyncExternalStore so SSR sees no order.
@@ -332,7 +337,7 @@ export const WalletCarouselPanel = ({
 
   const cardWidth = Math.min(
     Math.round(width * CARD_WIDTH_RATIO),
-    CARD_MAX_WIDTH_PX,
+    width > 0 && width < 480 ? CARD_MAX_WIDTH_PX_MOBILE : CARD_MAX_WIDTH_PX,
   );
   const cardHeight = cardWidth
     ? Math.round(cardWidth / CARD_ASPECT_RATIO)
@@ -520,8 +525,13 @@ export const WalletCarouselPanel = ({
     : null;
   const dialogSummary = dialogWallet ? getWalletCreditSummary(dialogWallet) : null;
 
-  if (isMobile) return null;
-
+  const availableFunding = track.reduce(
+    (total, wallet) =>
+      wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD'
+        ? total + Number(wallet.amount)
+        : total,
+    0,
+  );
   const ownerQuery = buildOwnerQuery(context).toString();
   const walletsHref = ownerQuery ? `/wallets?${ownerQuery}` : '/wallets';
   const typeLabel = WALLET_CAROUSEL_TAB_LABELS[activeType];
@@ -539,7 +549,30 @@ export const WalletCarouselPanel = ({
       <SectionHeader
         icon={Wallet}
         title="Billeteras"
-        subtitle="Saldos y tarjetas por tipo"
+        subtitle={`${track.length} ${track.length === 1 ? 'billetera' : 'billeteras'} · ${formatCurrency(availableFunding)} disponibles`}
+        actions={
+          activeWallet ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  asChild
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Link
+                    href={`/wallets/${activeWallet.id}`}
+                    aria-label={`Ver detalle de ${activeWallet.name}`}
+                  >
+                    <ReceiptText className="h-4 w-4" aria-hidden />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Ver detalle</TooltipContent>
+            </Tooltip>
+          ) : null
+        }
       />
       <SegmentedControl
         value={activeType}
@@ -562,15 +595,13 @@ export const WalletCarouselPanel = ({
       />
 
       {track.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 text-center"
-          style={{ height: cardHeight }}
-        >
-          <p className="text-sm text-muted-foreground">Sin billeteras</p>
-          <Button asChild type="button" size="sm" variant="outline">
-            <Link href={walletsHref}>Ir a Billeteras</Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={Wallet}
+          message="Sin billeteras"
+          description="Crea la primera para ver saldos aquí."
+          className="py-8"
+          action={{ label: 'Ir a Billeteras', href: walletsHref, variant: 'outline' }}
+        />
       ) : (
         <div className="space-y-2">
           {/* Native horizontal scroll: trackpad swipes, shift+wheel and touch snap to one card. */}
@@ -717,25 +748,6 @@ export const WalletCarouselPanel = ({
             <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden />
             {plan.requestLabel}
           </Button>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                asChild
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-              >
-                <Link
-                  href={`/wallets/${activeWallet.id}`}
-                  aria-label={`Ver detalle de ${activeWallet.name}`}
-                >
-                  <ReceiptText className="h-4 w-4" aria-hidden />
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Ver detalle</TooltipContent>
-          </Tooltip>
         </div>
       ) : null}
 

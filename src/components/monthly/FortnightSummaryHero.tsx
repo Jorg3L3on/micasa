@@ -145,7 +145,7 @@ const AccountMetricBody = ({
         <Badge
           variant="outline"
           className={cn(
-            'h-5 shrink-0 rounded-full border-transparent px-2 text-caption font-semibold',
+            'hidden h-5 shrink-0 rounded-full border-transparent px-2 text-caption font-semibold sm:inline-flex',
             STATUS_SOFT_CLASS[badge.tone],
           )}
         >

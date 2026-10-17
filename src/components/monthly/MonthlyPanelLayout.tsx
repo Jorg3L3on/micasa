@@ -158,7 +158,7 @@ export const MONTHLY_PANEL_MAIN_COLUMN_CLASS =
   'mx-auto min-w-0 w-full max-w-4xl xl:max-w-none';
 
 export const MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS =
-  'hidden min-w-0 flex-col gap-5 xl:flex';
+  'flex min-w-0 flex-col gap-5';
 
 /**
  * Hides main-column content that the sidebar repeats (e.g. the wallet strip vs
