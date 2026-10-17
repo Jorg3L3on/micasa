@@ -485,14 +485,16 @@ export default function AppHeaderToolbar() {
               className="z-10 flex min-w-0 shrink-0 items-center gap-0.5"
             >
               {/* Desktop only: mobile keeps the switcher in the Más sheet. */}
-              <div className="mr-1.5 hidden min-w-0 md:flex">
-                <Suspense fallback={<TeamSwitcherShell variant="header" />}>
-                  <TeamSwitcher
-                    variant="header"
-                    accountHref={accountHref}
-                  />
-                </Suspense>
-              </div>
+              {isMobile ? null : (
+                <div className="mr-1.5 hidden min-w-0 md:flex">
+                  <Suspense fallback={<TeamSwitcherShell variant="header" />}>
+                    <TeamSwitcher
+                      variant="header"
+                      accountHref={accountHref}
+                    />
+                  </Suspense>
+                </div>
+              )}
               {leadingAction ? (
                   <Tooltip>
                     <TooltipTrigger asChild>

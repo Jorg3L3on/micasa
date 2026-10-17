@@ -83,39 +83,62 @@ export const groupWalletsByCarouselType = <T extends WithType>(
   return groups;
 };
 
-/** First tab with wallets (in tab order); falls back to the first tab. */
-export const firstCarouselTypeWithWallets = (
-  groups: Record<WalletCarouselType, readonly unknown[]>,
-): WalletCarouselType =>
-  WALLET_CAROUSEL_TYPES.find((type) => groups[type].length > 0) ??
-  WALLET_CAROUSEL_TYPES[0];
+/**
+ * One continuous track: every carousel wallet grouped in tab order, keeping the
+ * order of `ordered` inside each type (pass the strip's saved order there).
+ */
+export const orderWalletsForCarousel = <T extends WithType>(
+  ordered: readonly T[],
+): T[] => {
+  const groups = groupWalletsByCarouselType(ordered);
+  return WALLET_CAROUSEL_TYPES.flatMap((type) => groups[type]);
+};
 
-export const walletCarouselTabStorageKey = (ownerKey: string): string =>
-  `micasa:wallet-carousel-tab:${ownerKey}`;
+/** Index of the first wallet of `type` in the track, or -1. */
+export const firstCarouselIndexOfType = (
+  track: readonly WithType[],
+  type: WalletCarouselType,
+): number => track.findIndex((wallet) => wallet.type === type);
 
-export const parseWalletCarouselTab = (
+/** Start (inclusive) and end (exclusive) of the active wallet's type run. */
+export const carouselTypeRange = (
+  track: readonly WithType[],
+  index: number,
+): { start: number; end: number } => {
+  if (track.length === 0) return { start: 0, end: 0 };
+  const i = clampCarouselIndex(index, track.length);
+  const type = track[i].type;
+  let start = i;
+  while (start > 0 && track[start - 1].type === type) start -= 1;
+  let end = i + 1;
+  while (end < track.length && track[end].type === type) end += 1;
+  return { start, end };
+};
+
+export const walletCarouselActiveStorageKey = (ownerKey: string): string =>
+  `micasa:wallet-carousel-active:${ownerKey}`;
+
+/** Stored active wallet id → its index in the track (0 when missing or gone). */
+export const resolveStoredCarouselIndex = (
+  track: readonly { id: number }[],
   raw: string | null | undefined,
-): WalletCarouselType | null => (isWalletCarouselType(raw) ? raw : null);
+): number => {
+  const id = Number(raw);
+  if (!raw || !Number.isInteger(id)) return 0;
+  const found = track.findIndex((wallet) => wallet.id === id);
+  return found >= 0 ? found : 0;
+};
 
 export const clampCarouselIndex = (index: number, count: number): number =>
   count <= 0 ? 0 : Math.min(Math.max(index, 0), count - 1);
 
-/** Swipe resolution: a long drag or a fast flick moves one card. */
-export const resolveCarouselSwipe = ({
-  offsetX,
-  velocityX,
-  threshold = 60,
-  velocityThreshold = 400,
-}: {
-  offsetX: number;
-  velocityX: number;
-  threshold?: number;
-  velocityThreshold?: number;
-}): -1 | 0 | 1 => {
-  if (offsetX <= -threshold || velocityX <= -velocityThreshold) return 1;
-  if (offsetX >= threshold || velocityX >= velocityThreshold) return -1;
-  return 0;
-};
+/** Card nearest the viewport center for a centered, padded scroll track. */
+export const carouselIndexFromScroll = (
+  scrollLeft: number,
+  step: number,
+  count: number,
+): number =>
+  step > 0 ? clampCarouselIndex(Math.round(scrollLeft / step), count) : 0;
 
 /** Used and available credit for a credit/store wallet (limit = max(contract, temporary)). */
 export const getWalletCreditSummary = (wallet: {

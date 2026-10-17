@@ -7,6 +7,7 @@ export type SegmentedOption = {
   label: ReactNode;
   ariaLabel?: string;
   title?: string;
+  disabled?: boolean;
 };
 
 type SegmentedControlProps = {
@@ -71,6 +72,7 @@ export const SegmentedControl = ({
           stretch={stretch}
           aria-label={option.ariaLabel}
           title={option.title}
+          disabled={option.disabled}
           indicatorClassName={indicatorClassName}
           activeLabelClassName={activeLabelClassName}
           className={cn('min-h-11 sm:min-h-9', triggerClassName)}
