@@ -124,6 +124,30 @@ Stable semantic mapping — re-use these gradients across pages so users learn t
 
 ---
 
+## Panel financiero card kit
+
+Every card on the planner (`/monthly/{year}/{month}`) uses one anatomy. Full contract: `DESIGN.md` → "Panel financiero card kit".
+
+```tsx
+import { SectionHeader } from '@/components/section-header';
+import { MONTHLY_LIQUID_PANEL_CLASS, PANEL_INSET_CLASS } from '@/components/monthly/monthly-panel-shell';
+
+<section className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'space-y-4 p-3 sm:p-4')}>
+  <SectionHeader icon={Receipt} title="Gastos de la quincena" subtitle="4 pendientes" actions={<SortMenu />} />
+  <div className={cn(PANEL_INSET_CLASS, 'p-3')}>…</div>
+</section>
+```
+
+- **Shell:** `MONTHLY_LIQUID_PANEL_CLASS` at `p-3 sm:p-4`, header is always `SectionHeader` (glass icon pill, title, caption subtitle, actions slot).
+- **Inside a card:** `PANEL_INSET_CLASS` for tiles and grouped rows, or `border-t` hairlines for lists. Never `METRIC_STRIP_CLASS`, `bg-card/40`, or a glass card per row.
+- **Lists:** one card holds the tabs and the list (`ExpenseTable variant="list" foldPaid`, `FortnightCardPaymentsPanel` / `FortnightLoanPaymentsPanel variant="list"`).
+- **Money:** hero `text-2xl font-semibold`, stat `text-lg font-bold`, row `text-sm font-semibold`. **Bars:** `h-2` totals, `h-1.5` sub-bars.
+- **States:** `EmptyState` inside the card for empty and error (error gets a "Reintentar" action); `PanelCardSkeleton` (`src/components/loading/page-skeletons.tsx`) while loading.
+- **Aside:** Billeteras → Presupuesto → Calendario flow after the main column below `xl`. Render each card once, in the same order at every width.
+- **Unchanged by the kit:** the period bar, the header toolbar, the mobile dock, the tab pill, the row check button, the wallet · date line with its "en Nd" badge, and the wallet faces.
+
+---
+
 ## Card vs table
 
 | Choose | When |
@@ -260,7 +284,7 @@ Use `STATUS_*_CLASS` from `src/lib/status-tone.ts` (`success`, `pending`, `overd
 ## Loading and error states
 
 - **Loading (whole page)**: the archetype skeleton in `src/components/loading/page-skeletons.tsx` (collection table, collection cards, planner, detail, settings). Do not center a `Loader2`.
-- **Loading (in-card)**: `<Skeleton/>` rows matching the eventual content.
+- **Loading (in-card)**: `<Skeleton/>` rows matching the eventual content. On Panel financiero, use `PanelCardSkeleton` (the card silhouette).
 - **Error**: `<Alert variant="destructive">` with `<AlertTitle>` + `<AlertDescription>`. For a top-of-page banner: `mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive`.
 - **Toasts** (`sonner`): for transient success/failure of mutations. Don't use toasts to communicate persistent state.
 
@@ -282,12 +306,12 @@ Read these files — they are the source of truth this skill summarizes:
 - Visual contract: `DESIGN.md`
 - Tokens: `src/app/globals.css` (`.dark`, `.landing-root`)
 - Layout shell: `src/app/(app)/layout.tsx`
-- Glass panel: `src/components/monthly/monthly-panel-shell.ts`
+- Glass panel + inset: `src/components/monthly/monthly-panel-shell.ts` (`MONTHLY_LIQUID_PANEL_CLASS`, `PANEL_INSET_CLASS`)
 - Hero money: `src/components/money.tsx`
 - Metric strip constant: `src/components/ui/metric-strip.ts`
 - Empty state: `src/components/EmptyState.tsx`
 - Toolbar registration: `src/context/toolbar-actions-context.tsx` (reference page: `src/app/(app)/wallets/page.tsx`)
 - Responsive overlay: `src/components/overlay/responsive-overlay.tsx`
-- Metric-strip reference: `src/app/(app)/monthly/[year]/[month]/page.tsx`
+- Planner card kit reference: `src/components/FortnightColumn.tsx` (Gastos de la quincena) and `src/components/monthly/MonthlyBudgetSidebar.tsx`
 - Card-grid list reference: `src/app/(app)/loans/page.tsx`
 - Currency util: `formatCurrency` in `src/lib/utils.ts`
