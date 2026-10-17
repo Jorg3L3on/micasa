@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -100,13 +101,25 @@ const CARD_MAX_WIDTH_PX = 272;
 const CARD_ASPECT_RATIO = 1.45;
 const CARD_GAP_PX = 12;
 
-const WalletFace = ({
+/**
+ * Static stand-in for InteractiveGridPattern on side cards: same 14px lines,
+ * painted once by CSS instead of 280 SVG rects per card.
+ */
+const STATIC_GRID_CLASS =
+  'pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] bg-[size:14px_14px] [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]';
+
+/**
+ * Only the centered card gets the interactive grid and the animated shine
+ * border: on every card they kept the track re-rastering, so fast trackpad
+ * flicks outran painting and showed blank cards.
+ */
+const WalletFace = memo(function WalletFace({
   wallet,
   isActive,
 }: {
   wallet: WalletListItem;
   isActive: boolean;
-}) => {
+}) {
   const scheme = useProviderCardScheme();
   const credit = isCreditCarouselType(wallet.type);
   const summary = credit ? getWalletCreditSummary(wallet) : null;
@@ -134,7 +147,7 @@ const WalletFace = ({
   return (
     <div
       className={cn(
-        'relative isolate flex h-full flex-col justify-between overflow-hidden rounded-2xl border p-4 backdrop-blur-sm',
+        'relative isolate flex h-full flex-col justify-between overflow-hidden rounded-2xl border p-4',
         'ring-1 ring-inset',
         dark ? 'ring-white/5' : 'ring-black/5',
         !style && 'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
@@ -163,16 +176,26 @@ const WalletFace = ({
           />
         </>
       ) : null}
-      <InteractiveGridPattern
-        width={14}
-        height={14}
-        squares={[20, 14]}
-        className="-z-10 border-0 [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]"
-        squaresClassName={
-          dark ? 'stroke-white/[0.08]' : 'stroke-foreground/[0.08]'
-        }
-      />
-      {auraColors ? (
+      {isActive ? (
+        <InteractiveGridPattern
+          width={14}
+          height={14}
+          squares={[20, 14]}
+          className="-z-10 border-0 [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]"
+          squaresClassName={
+            dark ? 'stroke-white/[0.08]' : 'stroke-foreground/[0.08]'
+          }
+        />
+      ) : (
+        <span
+          aria-hidden
+          className={cn(
+            STATIC_GRID_CLASS,
+            dark ? 'text-white/[0.08]' : 'text-foreground/[0.08]',
+          )}
+        />
+      )}
+      {isActive && auraColors ? (
         <ShineBorder
           shineColor={auraColors.shine}
           borderWidth={1.5}
@@ -241,7 +264,7 @@ const WalletFace = ({
       )}
     </div>
   );
-};
+});
 
 export const WalletCarouselPanel = ({
   wallets,
@@ -582,7 +605,9 @@ export const WalletCarouselPanel = ({
                 <motion.div
                   key={wallet.id}
                   className={cn(
-                    'h-full shrink-0 snap-center snap-always',
+                    // Own compositor layer per card: scrolling moves layers
+                    // instead of repainting the track.
+                    'h-full shrink-0 snap-center snap-always will-change-transform',
                     !active && 'cursor-pointer',
                   )}
                   style={{ width: cardWidth || '62%' }}
