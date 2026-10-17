@@ -9,13 +9,14 @@ import { kpiMetricCardShellClass, type KpiMetricTone } from '@/components/financ
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { AuraSurface } from '@/components/aura/aura-surface';
-import { AURA_TONE_HEX, type AuraTone } from '@/lib/ui/aura-palette';
+import { AURA_TONE_HEX, getAuraBloomImage, type AuraTone } from '@/lib/ui/aura-palette';
+import { Badge } from '@/components/ui/badge';
+import { STATUS_SOFT_CLASS, type StatusTone } from '@/lib/status-tone';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Money } from '@/components/money';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Banknote, Info, Wallet } from 'lucide-react';
@@ -57,52 +58,46 @@ const remainderToneClass: Record<
   gap: 'text-status-pending',
 };
 
-type DueToPayLabelProps = {
+type CompositionInfoProps = {
   compositionRows: DueToPayCompositionRow[];
 };
 
-const DueToPayLabel = ({ compositionRows }: DueToPayLabelProps) => {
-  if (compositionRows.length === 0) {
-    return <span>Toca pagar</span>;
-  }
-
+/** Info tooltip listing what the pending commitment includes. */
+const CompositionInfo = ({ compositionRows }: CompositionInfoProps) => {
+  if (compositionRows.length === 0) return null;
   return (
-    <span className="inline-flex items-center gap-1">
-      <span>Toca pagar</span>
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
-            aria-label="Qué incluye toca pagar"
-          >
-            <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          sideOffset={6}
-          className="max-w-[16rem] space-y-1.5 px-3 py-2 text-left"
+    <Tooltip delayDuration={0}>
+      <TooltipTrigger asChild>
+        <span
+          role="img"
+          aria-label="Qué incluye pendiente"
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
         >
-          <p className="eyebrow text-background/70">
-            Qué incluye
-          </p>
-          <ul className="space-y-1">
-            {compositionRows.map((row) => (
-              <li
-                key={row.label}
-                className="flex items-baseline justify-between gap-3 text-xs"
-              >
-                <span className="text-background/85">{row.label}</span>
-                <span className="font-sans tabular-nums">
-                  {formatCurrency(row.amount)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </TooltipContent>
-      </Tooltip>
-    </span>
+          <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="max-w-[16rem] space-y-1.5 px-3 py-2 text-left"
+      >
+        <p className="eyebrow text-background/70">
+          Qué incluye
+        </p>
+        <ul className="space-y-1">
+          {compositionRows.map((row) => (
+            <li
+              key={row.label}
+              className="flex items-baseline justify-between gap-3 text-xs"
+            >
+              <span className="text-background/85">{row.label}</span>
+              <span className="font-sans tabular-nums">
+                {formatCurrency(row.amount)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -118,6 +113,8 @@ type AccountMetricProps = {
   pillClassName: string;
   icon: typeof Banknote;
   amountClassName: string;
+  /** Health chip at the end of the eyebrow row (glass tiles). */
+  badge?: { label: string; tone: StatusTone };
 };
 
 const AccountMetricBody = ({
@@ -127,25 +124,42 @@ const AccountMetricBody = ({
   pillClassName,
   icon: Icon,
   amountClassName,
+  badge,
 }: AccountMetricProps) => (
   <>
-    <div className="mb-1.5 flex items-center gap-1.5">
-      <span
-        className={cn(
-          'flex h-5 w-5 shrink-0 items-center justify-center rounded-md',
-          pillClassName,
-        )}
-      >
-        <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
+    <div className="mb-1.5 flex items-center justify-between gap-1.5">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          className={cn(
+            'flex h-5 w-5 shrink-0 items-center justify-center rounded-md',
+            pillClassName,
+          )}
+        >
+          <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
+        </span>
+        <span className="eyebrow truncate text-muted-foreground">
+          {label}
+        </span>
       </span>
-      <span className="eyebrow text-muted-foreground">
-        {label}
-      </span>
+      {badge ? (
+        <Badge
+          variant="outline"
+          className={cn(
+            'h-5 shrink-0 rounded-full border-transparent px-2 text-caption font-semibold',
+            STATUS_SOFT_CLASS[badge.tone],
+          )}
+        >
+          {badge.label}
+        </Badge>
+      ) : null}
     </div>
     <p className="whitespace-nowrap">
       <CurrencyTicker
         value={amount}
-        className={cn('text-lg font-bold sm:text-xl', amountClassName)}
+        className={cn(
+          badge ? 'text-2xl font-semibold tabular-nums' : 'text-lg font-bold sm:text-xl',
+          amountClassName,
+        )}
       />
     </p>
     <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
@@ -164,16 +178,28 @@ export const AccountMetric = (props: AccountMetricProps) => {
     );
   }
 
+  if (props.glassSurface) {
+    return (
+      <div
+        className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-3 sm:p-4')}
+        style={{
+          backgroundImage: getAuraBloomImage(
+            AURA_TONE_HEX[props.auraTone ?? 'primary'],
+          ),
+        }}
+        role="region"
+        aria-label={props.label}
+      >
+        <AccountMetricBody {...props} />
+      </div>
+    );
+  }
+
   return (
     <AuraSurface
       color={AURA_TONE_HEX[props.auraTone ?? 'primary']}
       animated
-      grid={!props.glassSurface}
-      style={props.glassSurface ? { backgroundImage: 'none' } : undefined}
-      className={cn(
-        props.glassSurface ? MONTHLY_LIQUID_PANEL_CLASS : METRIC_STRIP_CLASS,
-        'rounded-xl px-3 py-2.5',
-      )}
+      className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
     >
       <AccountMetricBody {...props} />
     </AuraSurface>
@@ -195,7 +221,7 @@ export const FortnightAccountMetrics = ({
   const liquidityNegative = fundingLiquidity < 0;
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4">
       <AccountMetric
         label="Balance actual"
         amount={fundingInAccounts}
@@ -209,6 +235,11 @@ export const FortnightAccountMetrics = ({
         }
         icon={Banknote}
         amountClassName="text-foreground"
+        badge={
+          fundingInAccounts < 0
+            ? { label: 'Negativo', tone: 'expense' }
+            : { label: 'Saludable', tone: 'success' }
+        }
       />
       <AccountMetric
         label="Liquidez actual"
@@ -225,6 +256,11 @@ export const FortnightAccountMetrics = ({
         amountClassName={
           liquidityNegative ? 'text-foreground' : 'text-status-income'
         }
+        badge={
+          liquidityNegative
+            ? { label: 'Déficit', tone: 'expense' }
+            : { label: 'Saludable', tone: 'success' }
+        }
       />
     </div>
   );
@@ -233,7 +269,6 @@ export const FortnightAccountMetrics = ({
 export const FortnightSummaryHero = ({
   periodIncome,
   incomeRemainder,
-  dueToPay,
   showIncomeRemainderBreakdown = true,
   paidAmount,
   pendingAmount,
@@ -248,9 +283,7 @@ export const FortnightSummaryHero = ({
 }: FortnightSummaryHeroProps) => {
   const copy = getFortnightRemainderCopy(incomeRemainder, { obligationGapCount });
   const remainderAbs = Math.abs(incomeRemainder);
-  const showLeftover = leftoverAmount > 0;
   const remainderClass = remainderToneClass[copy.tone];
-  const dueToPayCash = dueToPay - leftoverAmount;
   const paidSubtitle =
     expenseCount > 0
       ? `${paidExpenseCount} de ${expenseCount} gastos`
@@ -268,106 +301,31 @@ export const FortnightSummaryHero = ({
 
   return (
     <div className="@container min-w-0">
-      <div className="flex min-w-0 flex-col gap-4 @3xl:flex-row @3xl:items-start @3xl:gap-6">
-      <div className="min-w-0 flex-1">
-        <CommitmentMeter
-          periodIncome={periodIncome}
-          paidAmount={paidAmount}
-          pendingAmount={pendingAmount}
-          cashCommittedAmount={cashCommittedAmount}
-          leftoverAmount={leftoverAmount}
-          paidSubtitle={paidSubtitle}
-          pendingSubtitle={pendingSubtitle}
-          showFree={!showIncomeRemainderBreakdown}
-        />
-      </div>
-
-      {showIncomeRemainderBreakdown ? (
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <dl className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-body text-muted-foreground">Entra</dt>
-              <dd>
-                <CurrencyTicker
-                  value={periodIncome}
-                  className="text-body font-medium text-foreground"
-                />
-              </dd>
-            </div>
-
-            <div className="flex items-baseline justify-between gap-4">
-              <dt className="flex min-w-0 items-center gap-1 text-body text-muted-foreground">
-                <span
-                  className="font-medium text-muted-foreground/80"
-                  aria-hidden
-                >
-                  −
-                </span>
-                <DueToPayLabel compositionRows={compositionRows} />
-              </dt>
-              <dd>
-                <CurrencyTicker
-                  value={dueToPayCash}
-                  className="text-body font-medium text-foreground"
-                />
-              </dd>
-            </div>
-
-            {showLeftover ? (
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="flex min-w-0 items-center gap-1 text-body text-muted-foreground">
-                  <span
-                    className="shrink-0 font-medium text-muted-foreground/80"
-                    aria-hidden
-                  >
-                    −
-                  </span>
-                  <span className="min-w-0 truncate">Presupuesto</span>
-                </dt>
-                <dd className="shrink-0">
-                  <Money value={leftoverAmount} size="row" tone="neutral" />
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-
-          <AuraSurface
-            color={
-              AURA_TONE_HEX[
-                copy.tone === 'shortfall'
-                  ? 'destructive'
-                  : copy.gapNote
-                    ? 'amber'
-                    : 'emerald'
-              ]
-            }
-            grid={false}
-            style={{ backgroundImage: 'none' }}
-            className="rounded-xl border bg-transparent px-3 py-2.5"
-          >
-            <div className="flex items-baseline justify-between gap-3">
-              <span
-                className={cn(
-                  'eyebrow',
-                  remainderClass,
-                )}
-              >
-                {copy.rowLabel}
-              </span>
-              <CurrencyTicker
-                value={remainderAbs}
-                className={cn('text-lg font-bold', remainderClass)}
-              />
-            </div>
-            {copy.gapNote ? (
-              <p className="mt-1 text-caption font-medium text-status-pending">
-                {copy.gapNote}
-              </p>
-            ) : null}
-          </AuraSurface>
-        </div>
-      ) : null}
-    </div>
+      <CommitmentMeter
+        periodIncome={periodIncome}
+        paidAmount={paidAmount}
+        pendingAmount={pendingAmount}
+        cashCommittedAmount={cashCommittedAmount}
+        leftoverAmount={leftoverAmount}
+        paidSubtitle={paidSubtitle}
+        pendingSubtitle={pendingSubtitle}
+        showFree={!showIncomeRemainderBreakdown}
+        showHeader={false}
+        remainderEntry={
+          showIncomeRemainderBreakdown
+            ? {
+                label: copy.rowLabel,
+                amount: remainderAbs,
+                amountClassName: cn(
+                  copy.tone === 'shortfall' && 'text-destructive',
+                  copy.tone === 'surplus' && remainderClass,
+                ),
+                subtitle: copy.gapNote ?? 'Del ingreso',
+              }
+            : undefined
+        }
+        pendingAdornment={<CompositionInfo compositionRows={compositionRows} />}
+      />
     </div>
   );
 };

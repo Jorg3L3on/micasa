@@ -96,6 +96,7 @@ import type { LoanDuePaymentItem } from '@/types/loans';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import type { PaymentsCalendarItem } from '@/types/payments-calendar';
 import { MonthlyPaymentsCalendar } from '@/components/monthly/MonthlyPaymentsCalendar';
+import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
 
@@ -1045,9 +1046,15 @@ export default function FortnightColumn({
           )}
           onEditIncome={handleOpenOverrideDialog}
           onEditIncomeSource={handleOpenEditIncomeSource}
-          budgetPanel={budgetPanel}
-          budgetOwnerQuery={budgetOwnerQuery || ownerQueryString}
         />
+
+        {budgetPanel ? (
+          <MonthlyBudgetSidebar
+            panel={budgetPanel}
+            ownerQuery={budgetOwnerQuery || ownerQueryString}
+            className="xl:hidden"
+          />
+        ) : null}
 
         <MonthlyPaymentsCalendar
           year={year}
