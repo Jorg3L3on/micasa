@@ -3,8 +3,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CircleHelp, LogOut, UserRound } from 'lucide-react';
-import { signOut } from 'next-auth/react';
+import { UserRound } from 'lucide-react';
 
 import { AlertsBell } from '@/components/AlertsBell';
 import { NavMain, type NavMainItem } from '@/components/nav-main';
@@ -32,7 +31,6 @@ const MobileOverflowNavInner = () => {
     isActive: destination.isActive(pathname),
   }));
 
-  const helpHref = hrefWithOwnerQuery('/settings', ownerQuery);
   const accountHref = hrefWithOwnerQuery('/settings/account', ownerQuery);
 
   return (
@@ -45,22 +43,10 @@ const MobileOverflowNavInner = () => {
       <SidebarContent>
         <NavMain groupLabel="Otras secciones" items={items} />
         <div className="flex flex-col gap-1 px-2">
-          <Link href={helpHref} className={sheetRowClass}>
-            <CircleHelp className="size-4 text-muted-foreground" aria-hidden />
-            Ayuda
-          </Link>
           <Link href={accountHref} className={sheetRowClass}>
             <UserRound className="size-4 text-muted-foreground" aria-hidden />
             Cuenta
           </Link>
-          <button
-            type="button"
-            className={sheetRowClass}
-            onClick={() => signOut({ callbackUrl: '/login' })}
-          >
-            <LogOut className="size-4 text-destructive" aria-hidden />
-            Cerrar sesión
-          </button>
         </div>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border py-3">
