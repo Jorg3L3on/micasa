@@ -1,14 +1,12 @@
 'use client';
 
 import { Suspense } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserRound } from 'lucide-react';
 
 import { AlertsBell } from '@/components/AlertsBell';
 import { NavMain, type NavMainItem } from '@/components/nav-main';
 import { getOverflowDestinations } from '@/components/nav-destinations';
-import { hrefWithOwnerQuery, useNavOwnerQuery } from '@/components/nav-pill';
 import { TeamSwitcher, TeamSwitcherShell } from '@/components/team-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
@@ -17,21 +15,24 @@ import {
   SidebarHeader,
 } from '@/components/ui/sidebar';
 
-const sheetRowClass =
-  'flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm font-medium text-foreground hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60';
-
 const MobileOverflowNavInner = () => {
   const pathname = usePathname();
-  const ownerQuery = useNavOwnerQuery();
 
-  const items: NavMainItem[] = getOverflowDestinations().map((destination) => ({
-    title: destination.title,
-    url: destination.getHref(),
-    icon: destination.icon,
-    isActive: destination.isActive(pathname),
-  }));
-
-  const accountHref = hrefWithOwnerQuery('/settings/account', ownerQuery);
+  const accountPath = '/settings/account';
+  const items: NavMainItem[] = [
+    ...getOverflowDestinations().map((destination) => ({
+      title: destination.title,
+      url: destination.getHref(),
+      icon: destination.icon,
+      isActive: destination.isActive(pathname),
+    })),
+    {
+      title: 'Cuenta',
+      url: accountPath,
+      icon: UserRound,
+      isActive: pathname === accountPath,
+    },
+  ];
 
   return (
     <>
@@ -41,13 +42,7 @@ const MobileOverflowNavInner = () => {
         </Suspense>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain groupLabel="Otras secciones" items={items} />
-        <div className="flex flex-col gap-1 px-2">
-          <Link href={accountHref} className={sheetRowClass}>
-            <UserRound className="size-4 text-muted-foreground" aria-hidden />
-            Cuenta
-          </Link>
-        </div>
+        <NavMain groupLabel="" items={items} />
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border py-3">
         <div className="flex items-center justify-around px-1">
