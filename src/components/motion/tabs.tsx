@@ -408,6 +408,7 @@ export const TabsTrigger = ({
   stretch = false,
   'aria-label': ariaLabel,
   title,
+  disabled = false,
 }: {
   value: string;
   children: ReactNode;
@@ -419,6 +420,7 @@ export const TabsTrigger = ({
   stretch?: boolean;
   'aria-label'?: string;
   title?: string;
+  disabled?: boolean;
 }) => {
   const { value: current, setValue, layoutId, variant } = useTabs();
   const active = current === value;
@@ -436,12 +438,14 @@ export const TabsTrigger = ({
         title={title}
         tabIndex={active ? 0 : -1}
         data-tabs-value={value}
+        disabled={disabled}
         onClick={() => setValue(value)}
         className={cn(
           'relative isolate -mb-px inline-flex min-h-[44px] shrink-0 items-center whitespace-nowrap px-3 pb-2.5 pt-1 text-sm font-medium transition-colors',
           active
             ? 'text-foreground'
             : 'text-muted-foreground hover:text-foreground',
+          'disabled:pointer-events-none disabled:opacity-40',
           className,
         )}
       >
@@ -485,11 +489,12 @@ export const TabsTrigger = ({
         title={title}
         tabIndex={active ? 0 : -1}
         data-tabs-value={value}
+        disabled={disabled}
         data-state={active ? 'active' : 'inactive'}
         onClick={() => setValue(value)}
         className={cn(
           'group relative z-10 inline-flex items-center justify-center whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium outline-none',
-          'text-muted-foreground hover:text-foreground',
+          'text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40',
           'focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           radius,
           stretch && 'w-full',

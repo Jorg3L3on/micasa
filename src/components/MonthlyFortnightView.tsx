@@ -11,6 +11,7 @@ import {
   MONTHLY_PANEL_CONTENT_GRID_CLASS,
   MONTHLY_PANEL_MAIN_COLUMN_CLASS,
   MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS,
+  MONTHLY_PANEL_SIDEBAR_DUPLICATE_CLASS,
 } from '@/components/monthly/MonthlyPanelLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
@@ -326,6 +327,12 @@ export default function MonthlyFortnightView({
     setSummaryFundingRefreshNonce((n) => n + 1);
   }, []);
 
+  /** Billeteras card: also refetch the column's Balance/Liquidez summary, like the strip. */
+  const refreshPanelAndFunding = useCallback(async () => {
+    await refreshPanelData();
+    handleWalletBalancesPersisted();
+  }, [refreshPanelData, handleWalletBalancesPersisted]);
+
   /** Goals live under Metas — panel strip is billeteras only. */
   const stripWallets = useMemo(
     () => panelWallets.filter((w) => !isGoalWalletType(w.type)),
@@ -334,7 +341,9 @@ export default function MonthlyFortnightView({
 
   const walletStripSection =
     !ownerPending && stripWallets.length > 0 ? (
-      <div className="mb-7 min-w-0">
+      <div
+        className={cn('mb-7 min-w-0', MONTHLY_PANEL_SIDEBAR_DUPLICATE_CLASS)}
+      >
         <WalletBalanceStrip
           wallets={stripWallets}
           onBalancesPersisted={handleWalletBalancesPersisted}
@@ -369,7 +378,7 @@ export default function MonthlyFortnightView({
     <WalletCarouselPanel
       wallets={stripWallets}
       ownerKey={ownerKey}
-      onRefresh={refreshPanelData}
+      onRefresh={refreshPanelAndFunding}
     />
   ) : null;
 

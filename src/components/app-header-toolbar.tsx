@@ -7,6 +7,7 @@ import {
   useCallback,
   useMemo,
   useState,
+  Suspense,
   type FocusEvent,
   type ReactNode,
   type CSSProperties,
@@ -54,6 +55,7 @@ import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import { navigateWithTransitionType } from '@/lib/ui/wallet-card-view-transition';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { TeamSwitcher, TeamSwitcherShell } from '@/components/team-switcher';
 
 const takeoverTransition = {
   duration: 0.28,
@@ -209,6 +211,11 @@ export default function AppHeaderToolbar() {
     });
     return () => window.cancelAnimationFrame(id);
   }, [searchActive]);
+
+  const ownerQueryString = buildOwnerQuery(context).toString();
+  const accountHref = ownerQueryString
+    ? `/settings/account?${ownerQueryString}`
+    : '/settings/account';
 
   const handleBack = () => {
     if (hierarchicalBackHref) {
@@ -477,6 +484,17 @@ export default function AppHeaderToolbar() {
               ref={leftClusterRef}
               className="z-10 flex min-w-0 shrink-0 items-center gap-0.5"
             >
+              {/* Desktop only: mobile keeps the switcher in the Más sheet. */}
+              {isMobile ? null : (
+                <div className="mr-1.5 hidden min-w-0 md:flex">
+                  <Suspense fallback={<TeamSwitcherShell variant="header" />}>
+                    <TeamSwitcher
+                      variant="header"
+                      accountHref={accountHref}
+                    />
+                  </Suspense>
+                </div>
+              )}
               {leadingAction ? (
                   <Tooltip>
                     <TooltipTrigger asChild>

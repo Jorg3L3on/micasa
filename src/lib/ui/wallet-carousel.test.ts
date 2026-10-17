@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  carouselIndexFromScroll,
+  carouselTypeRange,
   clampCarouselIndex,
-  firstCarouselTypeWithWallets,
+  firstCarouselIndexOfType,
   getWalletCarouselActionPlan,
   getWalletCreditSummary,
   groupWalletsByCarouselType,
-  parseWalletCarouselTab,
-  resolveCarouselSwipe,
+  orderWalletsForCarousel,
+  resolveStoredCarouselIndex,
 } from './wallet-carousel';
 
 describe('getWalletCarouselActionPlan', () => {
@@ -45,42 +47,62 @@ describe('groupWalletsByCarouselType', () => {
     expect(groups.CASH.map((w) => w.id)).toEqual([3]);
     expect(groups.CREDIT_CARD).toEqual([]);
   });
+});
 
-  it('picks the first non-empty tab, falling back to the first tab', () => {
-    expect(
-      firstCarouselTypeWithWallets(
-        groupWalletsByCarouselType([{ type: 'CASH' }]),
-      ),
-    ).toBe('CASH');
-    expect(
-      firstCarouselTypeWithWallets(
-        groupWalletsByCarouselType([{ type: 'CREDIT_CARD' }]),
-      ),
-    ).toBe('CREDIT_CARD');
-    expect(firstCarouselTypeWithWallets(groupWalletsByCarouselType([]))).toBe(
-      'CASH',
-    );
+const track = [
+  { id: 1, type: 'CASH' },
+  { id: 2, type: 'CASH' },
+  { id: 3, type: 'DEBIT_CARD' },
+  { id: 4, type: 'DEPARTMENT_STORE_CARD' },
+  { id: 5, type: 'DEPARTMENT_STORE_CARD' },
+];
+
+describe('continuous track', () => {
+  it('groups in tab order, keeps the given order inside a type, drops goals', () => {
+    const ordered = orderWalletsForCarousel([
+      { id: 9, type: 'DEPARTMENT_STORE_CARD' },
+      { id: 8, type: 'GOAL' },
+      { id: 7, type: 'DEBIT_CARD' },
+      { id: 6, type: 'CASH' },
+      { id: 5, type: 'DEBIT_CARD' },
+      { id: 4, type: 'CREDIT_CARD' },
+    ]);
+    expect(ordered.map((w) => w.id)).toEqual([6, 7, 5, 4, 9]);
+  });
+
+  it('finds the first card of a type', () => {
+    expect(firstCarouselIndexOfType(track, 'DEBIT_CARD')).toBe(2);
+    expect(firstCarouselIndexOfType(track, 'DEPARTMENT_STORE_CARD')).toBe(3);
+    expect(firstCarouselIndexOfType(track, 'CREDIT_CARD')).toBe(-1);
+  });
+
+  it('returns the run of the active card type', () => {
+    expect(carouselTypeRange(track, 1)).toEqual({ start: 0, end: 2 });
+    expect(carouselTypeRange(track, 2)).toEqual({ start: 2, end: 3 });
+    expect(carouselTypeRange(track, 9)).toEqual({ start: 3, end: 5 });
+    expect(carouselTypeRange([], 0)).toEqual({ start: 0, end: 0 });
+  });
+
+  it('restores the stored wallet, falling back to the first card', () => {
+    expect(resolveStoredCarouselIndex(track, '4')).toBe(3);
+    expect(resolveStoredCarouselIndex(track, '99')).toBe(0);
+    expect(resolveStoredCarouselIndex(track, 'abc')).toBe(0);
+    expect(resolveStoredCarouselIndex(track, null)).toBe(0);
+  });
+
+  it('maps scroll position to the centered card', () => {
+    expect(carouselIndexFromScroll(0, 284, 5)).toBe(0);
+    expect(carouselIndexFromScroll(300, 284, 5)).toBe(1);
+    expect(carouselIndexFromScroll(5000, 284, 5)).toBe(4);
+    expect(carouselIndexFromScroll(300, 0, 5)).toBe(0);
   });
 });
 
 describe('carousel helpers', () => {
-  it('parses only known stored tabs', () => {
-    expect(parseWalletCarouselTab('CASH')).toBe('CASH');
-    expect(parseWalletCarouselTab('GOAL')).toBeNull();
-    expect(parseWalletCarouselTab(null)).toBeNull();
-  });
-
   it('clamps the index', () => {
     expect(clampCarouselIndex(5, 3)).toBe(2);
     expect(clampCarouselIndex(-1, 3)).toBe(0);
     expect(clampCarouselIndex(2, 0)).toBe(0);
-  });
-
-  it('resolves swipes by distance or velocity', () => {
-    expect(resolveCarouselSwipe({ offsetX: -80, velocityX: 0 })).toBe(1);
-    expect(resolveCarouselSwipe({ offsetX: 80, velocityX: 0 })).toBe(-1);
-    expect(resolveCarouselSwipe({ offsetX: 10, velocityX: -900 })).toBe(1);
-    expect(resolveCarouselSwipe({ offsetX: 10, velocityX: 10 })).toBe(0);
   });
 
   it('summarises credit using the larger of contract and temporary limit', () => {
