@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/motion/tabs';
 import { SegmentedControl } from '@/components/segmented-control';
+import { SectionHeader } from '@/components/section-header';
+import EmptyState from '@/components/EmptyState';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
@@ -94,7 +96,7 @@ import type { LoanDuePaymentItem } from '@/types/loans';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import type { PaymentsCalendarItem } from '@/types/payments-calendar';
 import { MonthlyPaymentsCalendar } from '@/components/monthly/MonthlyPaymentsCalendar';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
 
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
@@ -910,6 +912,89 @@ export default function FortnightColumn({
     compactTabs && 'h-4 min-w-4 px-1 xl:h-4 xl:min-w-4 xl:px-1',
   );
 
+  const unpaidExpensesAmount = useMemo(
+    () =>
+      sortedTransactions.reduce(
+        (total, row) => (row.is_paid ? total : total + Number(row.amount)),
+        0,
+      ),
+    [sortedTransactions],
+  );
+
+  const listSortMenu = (
+    <div className="flex shrink-0 items-center">
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
+                        aria-label={`Ordenar: ${plannerListSortDisplayLabel(listSortMode, listSortDir)}`}
+                      >
+                        <ArrowUpDown className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>
+                    Ordenar ·{' '}
+                    {plannerListSortDisplayLabel(listSortMode, listSortDir)}
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="min-w-44">
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                    {columnTab === 'cards'
+                      ? 'Ordenar tarjetas'
+                      : columnTab === 'loans'
+                        ? 'Ordenar préstamos'
+                        : 'Ordenar gastos'}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {(
+                    Object.keys(
+                      PLANNER_LIST_SORT_FIELD_LABELS,
+                    ) as PlannerListSortMode[]
+                  ).map((mode) => {
+                    const isActive = listSortMode === mode;
+                    return (
+                      <DropdownMenuItem
+                        key={mode}
+                        className="gap-2"
+                        onSelect={() => handleListSortClick(mode)}
+                      >
+                        {isActive ? (
+                          listSortDir === 'desc' ? (
+                            <ArrowDown
+                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                              aria-hidden
+                            />
+                          ) : (
+                            <ArrowUp
+                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                              aria-hidden
+                            />
+                          )
+                        ) : (
+                          <span className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
+                        )}
+                        {PLANNER_LIST_SORT_FIELD_LABELS[mode]}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+    </div>
+  );
+
+  const listSubtitle =
+    columnTab === 'cards'
+      ? `${pendingCardPaymentsCount} ${pendingCardPaymentsCount === 1 ? 'pago de tarjeta pendiente' : 'pagos de tarjeta pendientes'}`
+      : columnTab === 'loans'
+        ? `${pendingLoanPaymentsCount} ${pendingLoanPaymentsCount === 1 ? 'pago de préstamo pendiente' : 'pagos de préstamo pendientes'}`
+        : `${unpaidExpenseCount} ${unpaidExpenseCount === 1 ? 'pendiente' : 'pendientes'} · ${formatCurrency(unpaidExpensesAmount)} por pagar`;
+
   return (
     <>
       <div className="flex flex-col space-y-3 sm:space-y-4">
@@ -973,17 +1058,27 @@ export default function FortnightColumn({
           className="xl:hidden"
         />
 
+        <section
+          className={cn(
+            MONTHLY_LIQUID_PANEL_CLASS,
+            'space-y-3 p-3 sm:space-y-4 sm:p-4',
+          )}
+          aria-label="Gastos de la quincena"
+        >
+        <SectionHeader
+          icon={Receipt}
+          title="Gastos de la quincena"
+          subtitle={listSubtitle}
+          actions={listSortMenu}
+        />
         <SegmentedControl
           value={columnTab}
           onValueChange={handleColumnTabChange}
           ariaLabel="Secciones de la quincena"
           className="w-full min-w-0"
           stretch
-          frameClassName={cn(
-            MONTHLY_LIQUID_PANEL_CLASS,
-            'mb-1.5 flex min-w-0 flex-wrap items-center gap-1 p-1 sm:mb-3.5 sm:flex-nowrap sm:gap-1.5 sm:p-1.5',
-          )}
-          wrapperClassName="min-w-0 w-full flex-1 sm:w-auto"
+          frameClassName="flex min-w-0 items-center"
+          wrapperClassName="min-w-0 w-full flex-1"
           listClassName="min-w-full"
           indicatorClassName={AURA_TAB_INDICATOR_CLASS}
           activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
@@ -1031,72 +1126,6 @@ export default function FortnightColumn({
               ),
             },
           ]}
-          accessory={(
-            <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 sm:pl-0.5">
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
-                        aria-label={`Ordenar: ${plannerListSortDisplayLabel(listSortMode, listSortDir)}`}
-                      >
-                        <ArrowUpDown className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={4}>
-                    Ordenar ·{' '}
-                    {plannerListSortDisplayLabel(listSortMode, listSortDir)}
-                  </TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end" className="min-w-44">
-                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                    {columnTab === 'cards'
-                      ? 'Ordenar tarjetas'
-                      : columnTab === 'loans'
-                        ? 'Ordenar préstamos'
-                        : 'Ordenar gastos'}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {(
-                    Object.keys(
-                      PLANNER_LIST_SORT_FIELD_LABELS,
-                    ) as PlannerListSortMode[]
-                  ).map((mode) => {
-                    const isActive = listSortMode === mode;
-                    return (
-                      <DropdownMenuItem
-                        key={mode}
-                        className="gap-2"
-                        onSelect={() => handleListSortClick(mode)}
-                      >
-                        {isActive ? (
-                          listSortDir === 'desc' ? (
-                            <ArrowDown
-                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                              aria-hidden
-                            />
-                          ) : (
-                            <ArrowUp
-                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                              aria-hidden
-                            />
-                          )
-                        ) : (
-                          <span className="inline-block h-3.5 w-3.5 shrink-0" aria-hidden />
-                        )}
-                        {PLANNER_LIST_SORT_FIELD_LABELS[mode]}
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
         >
 
           <TabsContent value="expenses" className="mt-0 outline-none">
@@ -1114,8 +1143,22 @@ export default function FortnightColumn({
                 pinTotalsToBottom
                 sortMode={listSortMode}
                 sortDir={listSortDir}
+                variant="list"
+                foldPaid
               />
-            ) : null}
+            ) : (
+              <EmptyState
+                icon={Receipt}
+                message="Sin gastos en esta quincena"
+                description="Agrega uno o regenera desde plantillas."
+                className="py-8"
+                action={{
+                  label: 'Agregar gasto',
+                  variant: 'outline',
+                  onClick: () => setAddExpenseDialogOpen(true),
+                }}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="cards" className="mt-0 outline-none">
@@ -1130,6 +1173,7 @@ export default function FortnightColumn({
               isCompact={tableDensity === 'compact'}
               sortMode={listSortMode}
               sortDir={listSortDir}
+              variant="list"
               onPayCard={
                 context.id !== 0 ? handlePlannerOpenPayCard : undefined
               }
@@ -1145,10 +1189,12 @@ export default function FortnightColumn({
               isCompact={tableDensity === 'compact'}
               sortMode={listSortMode}
               sortDir={listSortDir}
+              variant="list"
               onUpdated={refreshData}
             />
           </TabsContent>
         </SegmentedControl>
+        </section>
       </div>
 
       {/* Receive Payroll Dialog */}
