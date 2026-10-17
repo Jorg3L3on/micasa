@@ -16,8 +16,8 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
-  History,
   Plus,
+  ReceiptText,
   Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -34,6 +34,11 @@ import {
   GLASS_TAB_ACTIVE_LABEL_CLASS, MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { InteractiveGridPattern } from '@/components/ui/interactive-grid-pattern';
 import { ShineBorder } from '@/components/ui/shine-border';
 import { getAuraBarStyle, getAuraWalletColor } from '@/lib/ui/aura-palette';
@@ -712,20 +717,25 @@ export const WalletCarouselPanel = ({
             <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden />
             {plan.requestLabel}
           </Button>
-          <Button
-            asChild
-            type="button"
-            variant="outline"
-            size="icon"
-            className="shrink-0"
-          >
-            <Link
-              href={`/wallets/${activeWallet.id}`}
-              aria-label={`Historial de ${activeWallet.name}`}
-            >
-              <History className="h-4 w-4" aria-hidden />
-            </Link>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                asChild
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+              >
+                <Link
+                  href={`/wallets/${activeWallet.id}`}
+                  aria-label={`Ver detalle de ${activeWallet.name}`}
+                >
+                  <ReceiptText className="h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Ver detalle</TooltipContent>
+          </Tooltip>
         </div>
       ) : null}
 
