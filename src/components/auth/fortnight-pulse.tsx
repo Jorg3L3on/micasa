@@ -59,8 +59,8 @@ export const FortnightPulse = ({
   return (
     <div className={cn(className)} role="img" aria-label={`Hoy: ${todayLabel}`}>
       <div className="mb-3.5 flex items-baseline justify-between">
-        <span className="text-xs text-[#8b899a]">Este mes</span>
-        <span className="font-[family-name:var(--font-geist-mono)] text-xs font-medium text-[#f4f3f8]">
+        <span className="text-xs text-muted-foreground">Este mes</span>
+        <span className="font-[family-name:var(--font-geist-mono)] text-xs font-medium text-foreground">
           {todayLabel}
         </span>
       </div>
@@ -130,9 +130,9 @@ export const FortnightPulse = ({
         />
       </svg>
       <div className="mt-1.5 flex justify-between">
-        <span className="text-caption text-[#55535f]">1</span>
-        <span className="text-caption text-[#55535f]">16</span>
-        <span className="text-caption text-[#55535f]">{daysInMonth}</span>
+        <span className="text-caption text-muted-foreground/70">1</span>
+        <span className="text-caption text-muted-foreground/70">16</span>
+        <span className="text-caption text-muted-foreground/70">{daysInMonth}</span>
       </div>
     </div>
   );

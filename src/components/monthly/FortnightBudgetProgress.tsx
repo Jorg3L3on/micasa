@@ -28,7 +28,7 @@ export const FortnightBudgetProgress = ({
       aria-label="Presupuesto de la quincena"
     >
       <div
-        className="h-2.5 rounded-full bg-muted/50"
+        className="h-2 rounded-full bg-muted/40 dark:bg-white/[0.08]"
         role="progressbar"
         aria-valuenow={usedPercent}
         aria-valuemin={0}
@@ -40,20 +40,15 @@ export const FortnightBudgetProgress = ({
           style={{ width: `${usedPercent}%`, ...progressFillStyle }}
         />
       </div>
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>
-          <span className="font-sans font-semibold tabular-nums text-foreground">
-            {formatCurrency(spent)}
-          </span>{' '}
-          usado de{' '}
-          <span className="font-sans font-semibold tabular-nums text-foreground">
-            {formatCurrency(totalBudget)}
-          </span>
-        </span>
+      <p className="text-sm text-muted-foreground">
         <span className="font-sans font-semibold tabular-nums text-foreground">
-          {rawUsedPercent}% usado
+          {formatCurrency(spent)}
+        </span>{' '}
+        usado de{' '}
+        <span className="font-sans font-semibold tabular-nums text-foreground">
+          {formatCurrency(totalBudget)}
         </span>
-      </div>
+      </p>
     </div>
   );
 };

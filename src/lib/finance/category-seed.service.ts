@@ -46,43 +46,45 @@ async function seedCatalogForOwner(
     return { created: 0, skipped: true };
   }
 
-  let created = 0;
-  let rootOrder = 0;
+  if (catalog.length === 0) return { created: 0, skipped: false };
 
-  for (const root of catalog) {
-    const parent = await tx.category.create({
-      data: {
-        name: root.name,
-        icon: root.icon,
-        active: true,
-        sort_order: rootOrder,
-        parent_id: null,
-        kind,
-        ...ownerCreateData(owner),
-      },
-    });
-    created += 1;
-    rootOrder += 1;
+  // Two round-trips per catalog (roots, then children) instead of one per row:
+  // signup runs this inside an interactive transaction against a remote DB.
+  const roots = await tx.category.createManyAndReturn({
+    data: catalog.map((root, rootOrder) => ({
+      name: root.name,
+      icon: root.icon,
+      active: true,
+      sort_order: rootOrder,
+      parent_id: null,
+      kind,
+      ...ownerCreateData(owner),
+    })),
+    select: { id: true, name: true },
+  });
 
-    let childOrder = 0;
-    for (const child of root.children) {
-      await tx.category.create({
-        data: {
-          name: child.name,
-          icon: child.icon,
-          active: true,
-          sort_order: childOrder,
-          parent_id: parent.id,
-          kind,
-          ...ownerCreateData(owner),
-        },
-      });
-      created += 1;
-      childOrder += 1;
+  const rootIdByName = new Map(roots.map((root) => [root.name, root.id]));
+  const children = catalog.flatMap((root) => {
+    const parentId = rootIdByName.get(root.name);
+    if (parentId == null) {
+      throw new Error(`Category seed: root "${root.name}" was not created`);
     }
+    return root.children.map((child, childOrder) => ({
+      name: child.name,
+      icon: child.icon,
+      active: true,
+      sort_order: childOrder,
+      parent_id: parentId,
+      kind,
+      ...ownerCreateData(owner),
+    }));
+  });
+
+  if (children.length > 0) {
+    await tx.category.createMany({ data: children });
   }
 
-  return { created, skipped: false };
+  return { created: roots.length + children.length, skipped: false };
 }
 
 /** Seed only expense defaults when the owner has zero expense categories. */

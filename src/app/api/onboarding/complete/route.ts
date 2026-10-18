@@ -1,62 +1,22 @@
-import {
-  isValidCalendarDateString,
-} from '@/lib/calendar-dates';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { resolveTemplateDueDay } from '@/lib/finance/expense-template-due';
 import { WALLET_PROVIDER_ICON_KEYS } from '@/lib/wallet-provider-icons';
-import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
 import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
 import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
+import { generateOnboardingFortnights } from '@/lib/finance/onboarding-fortnights';
+import {
+  onboardingCompleteSchema,
+  type OnboardingCompletePayload,
+} from '@/schemas/onboarding.schema';
 
-type WalletPayload = {
-  id: string;
-  name: string;
-  type?: 'CASH' | 'BANK' | 'CREDIT';
-  providerIconKey?: string | null;
-};
-
-type IncomeTemplatePayload = {
-  id: string;
-  name: string;
-  amount: number;
-  walletId: string;
-  source?: string;
-  appliesFirstFortnight?: boolean;
-  appliesSecondFortnight?: boolean;
-};
-
-type ExpenseTemplatePayload = {
-  id: string;
-  name: string;
-  amount: number;
-  categoryId: string;
-  walletId: string;
-  isRecurring?: boolean;
-  appliesFirstFortnight?: boolean;
-  appliesSecondFortnight?: boolean;
-};
-
-type OnboardingPayload = {
-  wallets: WalletPayload[];
-  categories?: unknown;
-  incomeTemplates: IncomeTemplatePayload[];
-  expenseTemplates: ExpenseTemplatePayload[];
-  // Temporarily optional until the frontend wiring is complete.
-  startDate?: string | null;
-};
+type WalletPayload = OnboardingCompletePayload['wallets'][number];
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
 
-type GeneratedFortnight = {
-  startDate: Date;
-  endDate: Date;
-  label: string;
-  month: number;
-  year: number;
-  period: FortnightPeriod;
-};
+/** Seeding ~10 wallets/templates plus 4 fortnights against a remote DB. */
+const ONBOARDING_TRANSACTION_OPTIONS = { maxWait: 5_000, timeout: 20_000 };
 
 const WALLET_PROVIDER_ICON_KEY_SET = new Set<string>(WALLET_PROVIDER_ICON_KEYS);
 
@@ -69,35 +29,6 @@ function normalizeProviderIconKey(
   return WALLET_PROVIDER_ICON_KEY_SET.has(providerIconKey)
     ? providerIconKey
     : null;
-}
-
-function generateFortnights(startYmd: string, count: number): GeneratedFortnight[] {
-  if (!isValidCalendarDateString(startYmd)) return [];
-
-  const result: GeneratedFortnight[] = [];
-  const [baseYear, baseMonth] = startYmd.split('-').map(Number);
-
-  // count is number of fortnights; two per month (payday-aligned FIRST/SECOND)
-  for (let i = 0; i < count; i++) {
-    const monthOffset = Math.floor(i / 2);
-    const period: FortnightPeriod = i % 2 === 0 ? 'FIRST' : 'SECOND';
-
-    const absoluteMonth = baseMonth + monthOffset;
-    const year = baseYear + Math.floor((absoluteMonth - 1) / 12);
-    const month = ((absoluteMonth - 1) % 12) + 1;
-    const bounds = getCanonicalFortnightBounds(year, month, period);
-
-    result.push({
-      startDate: bounds.start_date,
-      endDate: bounds.end_date,
-      label: formatFortnightPeriodTitle(period, month, year),
-      month,
-      year,
-      period,
-    });
-  }
-
-  return result;
 }
 
 export async function POST(request: Request) {
@@ -128,31 +59,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const payload = body as OnboardingPayload;
-
-    if (
-      !payload ||
-      !Array.isArray(payload.wallets) ||
-      !Array.isArray(payload.incomeTemplates) ||
-      !Array.isArray(payload.expenseTemplates)
-    ) {
+    const parsed = onboardingCompleteSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, message: 'Payload de onboarding inválido' },
+        {
+          success: false,
+          message: parsed.error.issues[0]?.message ?? 'Datos de configuración inválidos',
+        },
         { status: 400 },
       );
     }
 
-    let startYmd: string | null = null;
-    if (typeof payload.startDate === 'string' && payload.startDate.trim() !== '') {
-      const trimmed = payload.startDate.trim();
-      if (!isValidCalendarDateString(trimmed)) {
-        return NextResponse.json(
-          { success: false, message: 'Fecha de inicio inválida' },
-          { status: 400 },
-        );
-      }
-      startYmd = trimmed;
-    }
+    const payload = parsed.data;
+    const startYmd = payload.startDate ?? null;
 
     await prisma.$transaction(async (tx) => {
       // Maps from client-side IDs (UUIDs) to database IDs (ints)
@@ -189,7 +108,11 @@ export async function POST(request: Request) {
         const created = await tx.wallet.create({
           data: {
             name: wallet.name,
-            amount: 0,
+            amount: wallet.type === 'CREDIT' ? 0 : wallet.initialBalance,
+            // Credit cards must carry a line and statement days (DB check).
+            credit_limit: wallet.type === 'CREDIT' ? wallet.creditLimit : null,
+            cutoff_day: wallet.type === 'CREDIT' ? wallet.cutoffDay : null,
+            due_day: wallet.type === 'CREDIT' ? wallet.dueDay : null,
             type: prismaType,
             provider_icon_key: normalizeProviderIconKey(
               wallet.type,
@@ -209,7 +132,7 @@ export async function POST(request: Request) {
           data: payload.incomeTemplates.map((income) => ({
             name: income.name,
             suggested_amount: income.amount,
-            source: income.source ?? null,
+            source: income.source || null,
             applies_first_fortnight: !!income.appliesFirstFortnight,
             applies_second_fortnight: !!income.appliesSecondFortnight,
             active: true,
@@ -254,7 +177,12 @@ export async function POST(request: Request) {
 
       // 5. Fortnights (first 4 cycles) — only if we have a valid start date
       if (startYmd) {
-        const generatedFortnights = generateFortnights(startYmd, 4);
+        const generatedFortnights = generateOnboardingFortnights(startYmd).map(
+          (f) => ({
+            ...f,
+            label: formatFortnightPeriodTitle(f.period, f.month, f.year),
+          }),
+        );
 
         if (generatedFortnights.length > 0) {
           await tx.fortnight.createMany({
@@ -418,14 +346,17 @@ export async function POST(request: Request) {
         where: { id: userId },
         data: { onboarding_completed: true },
       });
-    });
+    }, ONBOARDING_TRANSACTION_OPTIONS);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('Onboarding completion failed:', error);
 
     return NextResponse.json(
-      { success: false, message: 'Onboarding failed' },
+      {
+        success: false,
+        message: 'No pudimos crear tu panel. Inténtalo de nuevo.',
+      },
       { status: 500 },
     );
   }

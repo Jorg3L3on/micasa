@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/brand/mark-160.png" alt="Isotipo de MiCasa" width="96" height="96" />
+  <img src="public/brand/mark.svg" alt="Isotipo de MiCasa" width="96" height="96" />
 </p>
 
 <h1 align="center">MiCasa</h1>
@@ -16,7 +16,7 @@
   <a href="./CHANGELOG.md">Changelog</a>
 </p>
 
-El isotipo es `public/brand/mark-160.png`, el mismo archivo que muestra `MicasaMark` (`src/components/brand/micasa-mark.tsx`).
+El isotipo es `public/brand/mark.svg`, el mismo archivo que muestra `MicasaMark` (`src/components/brand/micasa-mark.tsx`). Los favicons y los íconos de la PWA salen del mismo export: `npm run import:brand-assets <carpeta-del-export>`.
 
 ## Producto
 
@@ -68,9 +68,9 @@ Efectivo, débito y tarjeta. Cada billetera muestra el dinero que sí se puede u
   </tr>
 </table>
 
-### Análisis · Liquidez
+### Análisis · Proyección
 
-La sección se llama **Análisis**. La pestaña Liquidez proyecta el efectivo hacia adelante, con cortes y préstamos ya contemplados.
+La sección se llama **Análisis**. La pestaña Proyección muestra tus deudas mes a mes, con cortes y préstamos ya contemplados.
 
 <table>
   <tr>
@@ -78,16 +78,16 @@ La sección se llama **Análisis**. La pestaña Liquidez proyecta el efectivo ha
     <th>Escritorio · claro</th>
   </tr>
   <tr>
-    <td><img src="public/landing/liquidez-desktop-dark.webp" alt="Análisis, pestaña Liquidez, en escritorio y tema oscuro" width="640" /></td>
-    <td><img src="public/landing/liquidez-desktop-light.webp" alt="Análisis, pestaña Liquidez, en escritorio y tema claro" width="640" /></td>
+    <td><img src="public/landing/liquidez-desktop-dark.webp" alt="Análisis, pestaña Proyección, en escritorio y tema oscuro" width="640" /></td>
+    <td><img src="public/landing/liquidez-desktop-light.webp" alt="Análisis, pestaña Proyección, en escritorio y tema claro" width="640" /></td>
   </tr>
   <tr>
     <th>Móvil · oscuro</th>
     <th>Móvil · claro</th>
   </tr>
   <tr>
-    <td><img src="public/landing/liquidez-mobile-dark.webp" alt="Análisis, pestaña Liquidez, en móvil y tema oscuro" width="260" /></td>
-    <td><img src="public/landing/liquidez-mobile-light.webp" alt="Análisis, pestaña Liquidez, en móvil y tema claro" width="260" /></td>
+    <td><img src="public/landing/liquidez-mobile-dark.webp" alt="Análisis, pestaña Proyección, en móvil y tema oscuro" width="260" /></td>
+    <td><img src="public/landing/liquidez-mobile-light.webp" alt="Análisis, pestaña Proyección, en móvil y tema claro" width="260" /></td>
   </tr>
 </table>
 
@@ -211,7 +211,7 @@ Cuando miras una quincena que no es la de hoy, el panel marca lo que toca pagar.
 - **Quincenas.** La unidad de planeación. La primera va del último día del mes anterior al 14. La segunda, del 15 al penúltimo. El último día del mes pertenece a la primera quincena del mes siguiente. Las fechas de negocio usan `America/Mexico_City` (`src/lib/calendar-dates.ts`).
 - **Panel.** Inicio de la app: `/monthly/{año}/{mes}`. Resume la quincena, las billeteras y las obligaciones del periodo.
 - **Billeteras y tarjetas.** Efectivo y débito son dinero que sale al pagar. El crédito se sigue por el ciclo del estado de cuenta: pagar con tarjeta aumenta el crédito usado, no el efectivo gastado. Una cuota a meses no se vuelve a sumar en los agregados de la quincena.
-- **Análisis.** La navegación, el título y la pestaña del navegador dicen Análisis. Dentro hay dos vistas: **Liquidez** y **Plan**.
+- **Análisis.** La navegación, el título y la pestaña del navegador dicen Análisis. Dentro hay tres vistas: **Proyección**, **Deudas** y **Plan**.
 - **Préstamos.** Calendario de cuotas, ligado a la quincena. Una cuota pagada con billetera puede quedar registrada como gasto.
 - **Metas.** Billetera con monto objetivo y avance.
 - **Operaciones.** Así se llama la sección, el título y la pestaña. Cada registro es un movimiento.
@@ -274,7 +274,7 @@ Geist para la interfaz, Manrope (`--font-display`) en `h1`–`h3`. Nada más chi
 | `EmptyState` | `src/components/EmptyState.tsx` |
 | `ErrorBanner` | `src/components/error-banner.tsx`. En overlays, `OverlayErrorBanner` |
 | `FilterChip` | `src/components/filter-chip.tsx`. Un filtro on/off |
-| `SegmentedControl` | `src/components/segmented-control.tsx`. Una de dos o tres vistas (quincena, Liquidez / Plan) |
+| `SegmentedControl` | `src/components/segmented-control.tsx`. Una de dos o tres vistas (quincena, Proyección / Deudas / Plan) |
 | Overlays | `ResponsiveOverlay`: diálogo centrado desde 768px, hoja inferior por debajo. Confirms con `ConfirmDeleteDialog` |
 
 ### Superficies
@@ -383,4 +383,4 @@ MIT. Ver [`LICENSE`](./LICENSE).
 
 [Live demo](https://micasa-three.vercel.app) · [Design system](./DESIGN.md) · [Changelog](./CHANGELOG.md)
 
-The screenshots above are the fictional house **Hogar** (desktop and mobile, dark and light). Sections follow the glossary: Panel, Billeteras, Análisis (Liquidez / Plan), Préstamos, Metas, and Operaciones. A record in Operaciones is a movimiento. Also included: “toca pagar” on a fortnight that is not today, shared houses, and an installable PWA. On a card, Más → Estado de cuenta opens Importar estado de cuenta: upload a PDF, review the movimientos, and confirm. There is no bank connection. The app on its own is enough. An agent is optional and, from Configuración → Conexiones (`/settings/connections`), reads the same records. Setup, stack, and license are in the Spanish sections above.
+The screenshots above are the fictional house **Hogar** (desktop and mobile, dark and light). Sections follow the glossary: Panel, Billeteras, Análisis (Proyección / Deudas / Plan), Préstamos, Metas, and Operaciones. A record in Operaciones is a movimiento. Also included: “toca pagar” on a fortnight that is not today, shared houses, and an installable PWA. On a card, Más → Estado de cuenta opens Importar estado de cuenta: upload a PDF, review the movimientos, and confirm. There is no bank connection. The app on its own is enough. An agent is optional and, from Configuración → Conexiones (`/settings/connections`), reads the same records. Setup, stack, and license are in the Spanish sections above.

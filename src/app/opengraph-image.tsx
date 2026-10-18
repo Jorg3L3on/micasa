@@ -10,13 +10,13 @@ const CANVAS = '#060914';
 
 export default async function OpenGraphImage() {
   const [mark, shot, manrope, geist] = await Promise.all([
-    readFile(path.join(process.cwd(), 'public/brand/mark-160.png')),
+    readFile(path.join(process.cwd(), 'public/brand/mark.svg')),
     readFile(path.join(process.cwd(), 'public/landing/og-panel.png')),
     readFile(path.join(process.cwd(), 'src/app/fonts/Manrope-Bold.ttf')),
     readFile(path.join(process.cwd(), 'src/app/fonts/Geist-Regular.ttf')),
   ]);
 
-  const markSrc = `data:image/png;base64,${mark.toString('base64')}`;
+  const markSrc = `data:image/svg+xml;base64,${mark.toString('base64')}`;
   const shotSrc = `data:image/png;base64,${shot.toString('base64')}`;
 
   return new ImageResponse(

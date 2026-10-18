@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, Receipt } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { CurrencyInput } from '@/components/ui/currency-input';
 import {
   Select,
   SelectContent,
@@ -13,241 +11,82 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import EmptyState from '@/components/EmptyState';
+import { ErrorBanner } from '@/components/error-banner';
+import { FilterChip } from '@/components/filter-chip';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  AmountRow,
+  GroupedRow,
+  OVERLAY_ROW_INPUT_CLASS,
+  OVERLAY_ROW_TRIGGER_CLASS,
+  OVERLAY_SECONDARY_BUTTON_CLASS,
+  OverlayHint,
+} from '@/components/overlay/overlay-form';
 import {
   useOnboarding,
   type ExpenseTemplateDraft,
 } from '@/components/onboarding/OnboardingContext';
-import { SwipeableOnboardingCard } from '@/components/onboarding/SwipeableOnboardingCard';
-import { createClientId } from '@/lib/polyfills';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
-import { clientFetchFromApi } from '@/lib/api/client-fetch';
-import type { CategoryOption } from '@/types/catalog';
-import { isSelectableInPicker } from '@/lib/finance/category-hierarchy';
+import { OnboardingItemCard } from '@/components/onboarding/OnboardingItemCard';
+import {
+  FORTNIGHT_FREQUENCY_OPTIONS,
+  flagsFromFrequency,
+  frequencyFromFlags,
+  type FortnightFrequency,
+} from '@/components/onboarding/fortnight-frequency';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
-
-/** Delete only when more templates exist than the continue minimum (2). */
-const MIN_WITHOUT_DELETE = 2;
+import { createClientId } from '@/lib/polyfills';
+import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { isSelectableInPicker } from '@/lib/finance/category-hierarchy';
+import type { CategoryOption } from '@/types/catalog';
 
 type ExpensePreset = {
-  name: string;
   label: string;
-  ariaLabel: string;
-  isRecurring: boolean;
-  appliesFirstFortnight: boolean;
-  appliesSecondFortnight: boolean;
+  name: string;
+  /** Seeded category name (DEFAULT_CATEGORY_CATALOG); empty when unknown. */
+  categoryName: string;
 };
 
+/** Common fixed costs. Each chip fills everything except the amount. */
 const EXPENSE_PRESETS: ExpensePreset[] = [
-  {
-    name: 'Renta',
-    label: '+ Renta',
-    ariaLabel: 'Agregar plantilla de renta',
-    isRecurring: true,
-    appliesFirstFortnight: true,
-    appliesSecondFortnight: true,
-  },
-  {
-    name: 'Internet',
-    label: '+ Internet',
-    ariaLabel: 'Agregar plantilla de internet',
-    isRecurring: true,
-    appliesFirstFortnight: true,
-    appliesSecondFortnight: true,
-  },
-  {
-    name: '',
-    label: '+ Otro',
-    ariaLabel: 'Agregar otra plantilla de gasto',
-    isRecurring: false,
-    appliesFirstFortnight: false,
-    appliesSecondFortnight: false,
-  },
+  { label: 'Renta', name: 'Renta', categoryName: 'Renta' },
+  { label: 'Internet', name: 'Internet', categoryName: 'Servicios del hogar' },
+  { label: 'Luz', name: 'Luz', categoryName: 'Servicios del hogar' },
+  { label: 'Súper', name: 'Súper', categoryName: 'Supermercado' },
+  { label: 'Transporte', name: 'Transporte', categoryName: 'Transporte' },
 ];
 
-const createExpense = (preset: ExpensePreset): ExpenseTemplateDraft => ({
-  id: createClientId(),
-  name: preset.name,
-  amount: 0,
-  categoryId: '',
-  walletId: '',
-  isRecurring: preset.isRecurring,
-  appliesFirstFortnight: preset.appliesFirstFortnight,
-  appliesSecondFortnight: preset.appliesSecondFortnight,
-});
+export const expensesAreValid = (expenses: ExpenseTemplateDraft[]): boolean =>
+  expenses.every(
+    (expense) =>
+      expense.name.trim() !== '' &&
+      Number.isFinite(expense.amount) &&
+      expense.amount > 0 &&
+      expense.categoryId !== '' &&
+      expense.walletId !== '',
+  );
 
-function frequencyFromExpense(
-  expense: ExpenseTemplateDraft,
-): 'NONE' | 'FIRST' | 'SECOND' | 'BOTH' {
-  if (expense.appliesFirstFortnight && expense.appliesSecondFortnight) {
-    return 'BOTH';
-  }
-  if (expense.appliesFirstFortnight) return 'FIRST';
-  if (expense.appliesSecondFortnight) return 'SECOND';
-  return 'NONE';
-}
-
-type ExpenseCardBodyProps = {
-  expense: ExpenseTemplateDraft;
-  canDelete: boolean;
-  categories: CategoryOption[];
-  wallets: { id: string; name: string }[];
-  onNameChange: (name: string) => void;
-  onAmountChange: (value: number) => void;
-  onCategoryChange: (categoryId: string) => void;
-  onWalletChange: (walletId: string) => void;
-  onRecurrenceChange: (frequency: 'NONE' | 'FIRST' | 'SECOND' | 'BOTH') => void;
-  onDelete: () => void;
+const missingFieldsHint = (expense: ExpenseTemplateDraft): string | null => {
+  const missing: string[] = [];
+  if (!(expense.amount > 0)) missing.push('el monto');
+  if (expense.name.trim() === '') missing.push('un nombre');
+  if (expense.categoryId === '') missing.push('una categoría');
+  if (missing.length === 0) return null;
+  const list =
+    missing.length === 1
+      ? missing[0]
+      : `${missing.slice(0, -1).join(', ')} y ${missing[missing.length - 1]}`;
+  return `Falta ${list}.`;
 };
 
-function ExpenseCardBody({
-  expense,
-  canDelete,
-  categories,
-  wallets,
-  onNameChange,
-  onAmountChange,
-  onCategoryChange,
-  onWalletChange,
-  onRecurrenceChange,
-  onDelete,
-}: ExpenseCardBodyProps) {
-  const frequency = frequencyFromExpense(expense);
-
-  return (
-    <div
-      className={cn(
-        'flex flex-col gap-3 rounded-lg border border-border/60 bg-card p-4 transition-colors',
-        'hover:bg-muted/30',
-      )}
-    >
-      <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <Label htmlFor={`expense-name-${expense.id}`}>Nombre</Label>
-          <Input
-            id={`expense-name-${expense.id}`}
-            type="text"
-            value={expense.name}
-            onChange={(e) => onNameChange(e.target.value)}
-            placeholder="Ej. Renta"
-            className="w-full"
-            aria-label={
-              expense.name.trim()
-                ? `Nombre del gasto: ${expense.name}`
-                : 'Nombre del gasto'
-            }
-          />
-        </div>
-        {canDelete ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onDelete}
-                aria-label={`Eliminar gasto ${expense.name || 'sin nombre'}`}
-                className="mb-0 hidden size-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive md:inline-flex"
-              >
-                <Trash2 className="size-4" data-icon="inline-start" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={4}>
-              Eliminar gasto
-            </TooltipContent>
-          </Tooltip>
-        ) : null}
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor={`expense-amount-${expense.id}`}>Monto</Label>
-          <CurrencyInput
-            id={`expense-amount-${expense.id}`}
-            value={expense.amount}
-            onChange={onAmountChange}
-            placeholder="0.00"
-            aria-label="Monto del gasto"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor={`expense-category-${expense.id}`}>Categoría</Label>
-          <CategoryGroupedSelect
-            categories={categories}
-            value={
-              expense.categoryId
-                ? Number.parseInt(expense.categoryId, 10)
-                : undefined
-            }
-            onValueChange={(id) => onCategoryChange(String(id))}
-            placeholder="Elige una categoría"
-            ariaLabel="Categoría del gasto"
-            triggerId={`expense-category-${expense.id}`}
-            triggerClassName="h-9 w-full max-w-none"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor={`expense-wallet-${expense.id}`}>Billetera</Label>
-          <Select
-            value={expense.walletId || undefined}
-            onValueChange={onWalletChange}
-          >
-            <SelectTrigger
-              id={`expense-wallet-${expense.id}`}
-              className="w-full"
-              size="default"
-              aria-label="Billetera de pago"
-            >
-              <SelectValue placeholder="Elige una billetera" />
-            </SelectTrigger>
-            <SelectContent>
-              {wallets.map((wallet) => (
-                <SelectItem key={wallet.id} value={wallet.id}>
-                  {wallet.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor={`expense-recurrence-${expense.id}`}>
-            Recurrencia
-          </Label>
-          <Select
-            value={frequency}
-            onValueChange={(value) =>
-              onRecurrenceChange(value as 'NONE' | 'FIRST' | 'SECOND' | 'BOTH')
-            }
-          >
-            <SelectTrigger
-              id={`expense-recurrence-${expense.id}`}
-              className="w-full"
-              size="default"
-              aria-label="Recurrencia y quincenas"
-            >
-              <SelectValue placeholder="Recurrencia" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="NONE">No recurrente</SelectItem>
-              <SelectItem value="BOTH">Ambas quincenas</SelectItem>
-              <SelectItem value="FIRST">Solo primera quincena</SelectItem>
-              <SelectItem value="SECOND">Solo segunda quincena</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    </div>
-  );
-}
+const ExpenseLeading = () => (
+  <span
+    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-status-expense-soft text-status-expense"
+    aria-hidden
+  >
+    <Receipt className="size-4" />
+  </span>
+);
 
 export default function StepExpenseTemplates() {
   const {
@@ -255,40 +94,45 @@ export default function StepExpenseTemplates() {
     expenseTemplates,
     setExpenseTemplates,
     wallets,
+    defaultWalletId,
+    goNext,
   } = useOnboarding();
-  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const isMobile = useIsMobile();
+  const [focusId, setFocusId] = useState<string | null>(null);
+
+  // Bring a newly added card into view and put the cursor on its amount.
+  useEffect(() => {
+    if (!focusId) return;
+    const input = document.getElementById(`expense-amount-${focusId}`);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    input?.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    input?.focus({ preventScroll: true });
+  }, [focusId]);
+
+  const loadCategories = useCallback(async (signal?: { cancelled: boolean }) => {
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+    try {
+      const data = await clientFetchFromApi<CategoryOption[]>('/api/categories');
+      if (!signal?.cancelled) setCategories(data);
+    } catch {
+      if (!signal?.cancelled) {
+        setCategoriesError('No pudimos cargar tus categorías.');
+      }
+    } finally {
+      if (!signal?.cancelled) setCategoriesLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        setCategoriesLoading(true);
-        setCategoriesError(null);
-        const data = await clientFetchFromApi<CategoryOption[]>(
-          '/api/categories',
-        );
-        if (!cancelled) setCategories(data);
-      } catch (err) {
-        if (!cancelled) {
-          setCategoriesError(
-            err instanceof Error
-              ? err.message
-              : 'No se pudieron cargar las categorías',
-          );
-        }
-      } finally {
-        if (!cancelled) setCategoriesLoading(false);
-      }
-    };
-    void load();
+    const signal = { cancelled: false };
+    void loadCategories(signal);
     return () => {
-      cancelled = true;
+      signal.cancelled = true;
     };
-  }, []);
+  }, [loadCategories]);
 
   const selectableCategories = useMemo(() => {
     const rows = categories.map((c) => ({
@@ -298,227 +142,251 @@ export default function StepExpenseTemplates() {
     }));
     return categories.filter((c) =>
       isSelectableInPicker(
-        {
-          id: c.id,
-          parent_id: c.parentId ?? null,
-          active: c.active ?? true,
-        },
+        { id: c.id, parent_id: c.parentId ?? null, active: c.active ?? true },
         rows,
       ),
     );
   }, [categories]);
 
-  const hasMinimumRows = expenseTemplates.length >= 2;
-  const hasValidTemplates =
-    expenseTemplates.length > 0 &&
-    expenseTemplates.every((expense) => {
-      const hasName = expense.name.trim() !== '';
-      const hasAmount = Number.isFinite(expense.amount) && expense.amount > 0;
-      const hasCategory = expense.categoryId.trim() !== '';
-      const hasWallet = expense.walletId.trim() !== '';
-      const hasValidRecurrence =
-        !expense.isRecurring ||
-        expense.appliesFirstFortnight ||
-        expense.appliesSecondFortnight;
-      return (
-        hasName && hasAmount && hasCategory && hasWallet && hasValidRecurrence
-      );
+  const categoryIdByName = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const category of selectableCategories) {
+      if (!map.has(category.name)) map.set(category.name, category.id);
+    }
+    return map;
+  }, [selectableCategories]);
+
+  const categoriesReady = !categoriesLoading && !categoriesError;
+
+  // A preset tapped before categories loaded gets its category once they arrive.
+  useEffect(() => {
+    if (categoryIdByName.size === 0) return;
+    setExpenseTemplates((prev) => {
+      let changed = false;
+      const next = prev.map((expense) => {
+        if (expense.categoryId !== '') return expense;
+        const preset = EXPENSE_PRESETS.find((p) => p.name === expense.name);
+        const id = preset ? categoryIdByName.get(preset.categoryName) : undefined;
+        if (id == null) return expense;
+        changed = true;
+        return { ...expense, categoryId: String(id) };
+      });
+      return changed ? next : prev;
     });
-  const canContinue =
-    hasMinimumRows &&
-    hasValidTemplates &&
-    !categoriesLoading &&
-    !categoriesError &&
-    selectableCategories.length > 0;
-  const canDelete = expenseTemplates.length > MIN_WITHOUT_DELETE;
-  const swipeEnabled = canDelete && isMobile;
+  }, [categoryIdByName, setExpenseTemplates]);
 
   useEffect(() => {
-    setCanProceed(canContinue);
-  }, [canContinue, setCanProceed]);
+    setCanProceed(
+      expenseTemplates.length === 0 ||
+        (categoriesReady && expensesAreValid(expenseTemplates)),
+    );
+  }, [expenseTemplates, categoriesReady, setCanProceed]);
 
-  useEffect(() => {
-    if (!swipeEnabled) setOpenSwipeId(null);
-  }, [swipeEnabled]);
-
-  const handleNameChange = (id: string, name: string) => {
+  const updateExpense = (id: string, patch: Partial<ExpenseTemplateDraft>) => {
     setExpenseTemplates((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, name } : e)),
+      prev.map((expense) => (expense.id === id ? { ...expense, ...patch } : expense)),
     );
   };
 
-  const handleAmountChange = (id: string, value: number) => {
-    setExpenseTemplates((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, amount: value } : e)),
-    );
-  };
-
-  const handleCategoryChange = (id: string, categoryId: string) => {
-    setExpenseTemplates((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, categoryId } : e)),
-    );
-  };
-
-  const handleWalletChange = (id: string, walletId: string) => {
-    setExpenseTemplates((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, walletId } : e)),
-    );
-  };
-
-  const handleRecurrenceChange = (
-    id: string,
-    frequency: 'NONE' | 'FIRST' | 'SECOND' | 'BOTH',
-  ) => {
-    const isRecurring = frequency !== 'NONE';
-    setExpenseTemplates((prev) =>
-      prev.map((e) =>
-        e.id === id
-          ? {
-              ...e,
-              isRecurring,
-              appliesFirstFortnight:
-                frequency === 'FIRST' || frequency === 'BOTH',
-              appliesSecondFortnight:
-                frequency === 'SECOND' || frequency === 'BOTH',
-            }
-          : e,
-      ),
-    );
-  };
-
-  const handleAddPreset = (preset: ExpensePreset) => {
-    setExpenseTemplates((prev) => [...prev, createExpense(preset)]);
+  const handleAdd = (preset: ExpensePreset | null) => {
+    const categoryId = preset ? categoryIdByName.get(preset.categoryName) : undefined;
+    const id = createClientId();
+    setFocusId(id);
+    setExpenseTemplates((prev) => [
+      ...prev,
+      {
+        id,
+        name: preset?.name ?? '',
+        amount: 0,
+        categoryId: categoryId != null ? String(categoryId) : '',
+        walletId: defaultWalletId,
+        isRecurring: true,
+        appliesFirstFortnight: true,
+        appliesSecondFortnight: true,
+      },
+    ]);
   };
 
   const handleRemove = (id: string) => {
-    setExpenseTemplates((prev) => {
-      if (prev.length <= MIN_WITHOUT_DELETE) return prev;
-      return prev.filter((e) => e.id !== id);
-    });
-    setOpenSwipeId((current) => (current === id ? null : current));
+    setExpenseTemplates((prev) => prev.filter((expense) => expense.id !== id));
+  };
+
+  const handleSkip = () => {
+    setExpenseTemplates([]);
+    goNext();
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-foreground text-lg font-semibold">
-          ¿Qué gastos haces frecuentemente?
-        </h3>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          Agrega plantillas de gasto: nombre, monto, categoría, billetera y
-          recurrencia. Necesitas al menos dos completas para continuar. Puedes
-          ajustarlas después en Gastos.
-        </p>
+    <div className="flex flex-col gap-3">
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-label="Agregar un gasto frecuente"
+      >
+        {EXPENSE_PRESETS.map((preset) => (
+          <FilterChip
+            key={preset.label}
+            selected={false}
+            onClick={() => handleAdd(preset)}
+            ariaLabel={`Agregar ${preset.label}`}
+          >
+            <Plus className="size-3.5" aria-hidden />
+            {preset.label}
+          </FilterChip>
+        ))}
+        <FilterChip
+          selected={false}
+          onClick={() => handleAdd(null)}
+          ariaLabel="Agregar otro gasto"
+        >
+          <Plus className="size-3.5" aria-hidden />
+          Otro
+        </FilterChip>
       </div>
 
       {categoriesError ? (
-        <div
-          className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {categoriesError}. Recarga la página para reintentar.
-        </div>
+        <ErrorBanner>
+          <span>{categoriesError} </span>
+          <button
+            type="button"
+            onClick={() => void loadCategories()}
+            className="font-medium underline underline-offset-2"
+          >
+            Reintentar
+          </button>
+        </ErrorBanner>
       ) : null}
 
-      {categoriesLoading ? (
-        <p className="text-muted-foreground text-sm" role="status">
-          Cargando categorías…
-        </p>
+      {categoriesLoading && expenseTemplates.length > 0 ? (
+        <div className="flex flex-col gap-2" role="status" aria-label="Cargando categorías">
+          <Skeleton className="h-11 w-full rounded-xl" />
+          <Skeleton className="h-11 w-full rounded-xl" />
+        </div>
       ) : null}
 
       {expenseTemplates.length === 0 ? (
-        <div
-          className="rounded-lg border border-dashed border-border/60 px-4 py-8 text-center"
-          role="status"
-        >
-          <p className="text-muted-foreground text-sm">
-            Aún no hay gastos. Elige una plantilla para empezar.
-          </p>
-        </div>
+        <EmptyState
+          icon={Receipt}
+          message="Aún no agregas gastos."
+          description="Toca uno de arriba y escribe cuánto pagas. También puedes agregarlos después desde tu panel."
+          className="rounded-xl border border-dashed border-border/60 py-8"
+        />
       ) : (
         <ul className="flex flex-col gap-3" role="list">
           {expenseTemplates.map((expense) => {
-            const card = (
-              <ExpenseCardBody
-                expense={expense}
-                canDelete={canDelete}
-                categories={categories}
-                wallets={wallets}
-                onNameChange={(name) => handleNameChange(expense.id, name)}
-                onAmountChange={(value) =>
-                  handleAmountChange(expense.id, value)
-                }
-                onCategoryChange={(categoryId) =>
-                  handleCategoryChange(expense.id, categoryId)
-                }
-                onWalletChange={(walletId) =>
-                  handleWalletChange(expense.id, walletId)
-                }
-                onRecurrenceChange={(frequency) =>
-                  handleRecurrenceChange(expense.id, frequency)
-                }
-                onDelete={() => handleRemove(expense.id)}
-              />
-            );
+            const nameId = `expense-name-${expense.id}`;
+            const categoryId = `expense-category-${expense.id}`;
+            const walletId = `expense-wallet-${expense.id}`;
+            const frequencyId = `expense-frequency-${expense.id}`;
+            const hint = missingFieldsHint(expense);
 
             return (
-              <motion.li
-                key={expense.id}
-                role="listitem"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                {canDelete ? (
-                  <SwipeableOnboardingCard
-                    swipeEnabled={swipeEnabled}
-                    isOpen={swipeEnabled && openSwipeId === expense.id}
-                    onOpenChange={(open) =>
-                      setOpenSwipeId(open ? expense.id : null)
+              <li key={expense.id} className="flex flex-col gap-1.5">
+                <OnboardingItemCard
+                  leading={<ExpenseLeading />}
+                  title={expense.name}
+                  subtitle="Gasto fijo"
+                  canDelete
+                  itemNoun="gasto"
+                  onDelete={() => handleRemove(expense.id)}
+                >
+                  <AmountRow
+                    id={`expense-amount-${expense.id}`}
+                    label="Monto por quincena"
+                    value={expense.amount || ''}
+                    onChange={(value) =>
+                      updateExpense(expense.id, {
+                        amount: Number.isFinite(value) ? value : 0,
+                      })
                     }
-                    onDelete={() => handleRemove(expense.id)}
-                    deleteAriaLabel={`Eliminar gasto ${expense.name || 'sin nombre'}`}
-                  >
-                    {card}
-                  </SwipeableOnboardingCard>
-                ) : (
-                  card
-                )}
-              </motion.li>
+                  />
+                  <GroupedRow label="Nombre" htmlFor={nameId}>
+                    <Input
+                      id={nameId}
+                      value={expense.name}
+                      onChange={(event) =>
+                        updateExpense(expense.id, { name: event.target.value })
+                      }
+                      placeholder="Ej. Colegiatura"
+                      autoComplete="off"
+                      className={OVERLAY_ROW_INPUT_CLASS}
+                    />
+                  </GroupedRow>
+                  <GroupedRow label="Categoría" htmlFor={categoryId}>
+                    <CategoryGroupedSelect
+                      categories={categories}
+                      value={
+                        expense.categoryId
+                          ? Number.parseInt(expense.categoryId, 10)
+                          : undefined
+                      }
+                      onValueChange={(id) =>
+                        updateExpense(expense.id, { categoryId: String(id) })
+                      }
+                      disabled={!categoriesReady}
+                      placeholder={categoriesLoading ? 'Cargando…' : 'Elige una categoría'}
+                      ariaLabel="Categoría del gasto"
+                      triggerId={categoryId}
+                      triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
+                    />
+                  </GroupedRow>
+                  <GroupedRow label="Billetera" htmlFor={walletId}>
+                    <Select
+                      value={expense.walletId}
+                      onValueChange={(value) =>
+                        updateExpense(expense.id, { walletId: value })
+                      }
+                    >
+                      <SelectTrigger id={walletId} className={OVERLAY_ROW_TRIGGER_CLASS}>
+                        <SelectValue placeholder="Con qué pagas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {wallets.map((wallet) => (
+                          <SelectItem key={wallet.id} value={wallet.id}>
+                            {wallet.name || 'Billetera sin nombre'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </GroupedRow>
+                  <GroupedRow label="Cuándo" htmlFor={frequencyId}>
+                    <Select
+                      value={frequencyFromFlags(expense)}
+                      onValueChange={(value) =>
+                        updateExpense(expense.id, {
+                          isRecurring: true,
+                          ...flagsFromFrequency(value as FortnightFrequency),
+                        })
+                      }
+                    >
+                      <SelectTrigger id={frequencyId} className={OVERLAY_ROW_TRIGGER_CLASS}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FORTNIGHT_FREQUENCY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </GroupedRow>
+                </OnboardingItemCard>
+                {hint ? <OverlayHint role="status">{hint}</OverlayHint> : null}
+              </li>
             );
           })}
         </ul>
       )}
 
-      <div
-        className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"
-        role="group"
-        aria-label="Agregar plantilla de gasto"
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={handleSkip}
+        className={`${OVERLAY_SECONDARY_BUTTON_CLASS} text-primary-text`}
       >
-        {EXPENSE_PRESETS.map((preset) => (
-          <Button
-            key={preset.label}
-            type="button"
-            variant="outline"
-            onClick={() => handleAddPreset(preset)}
-            className="w-full sm:w-auto sm:flex-1"
-            aria-label={preset.ariaLabel}
-          >
-            {preset.label}
-          </Button>
-        ))}
-      </div>
-      {!canContinue ? (
-        <p className="text-sm text-status-pending">
-          Para continuar, agrega al menos dos gastos con nombre, monto mayor a
-          0, categoría y billetera.
-        </p>
-      ) : null}
-      {canDelete ? (
-        <p className="text-muted-foreground text-xs leading-relaxed sm:hidden">
-          Desliza un gasto hacia la izquierda para eliminarlo.
-        </p>
-      ) : null}
+        Omitir por ahora
+      </Button>
     </div>
   );
 }

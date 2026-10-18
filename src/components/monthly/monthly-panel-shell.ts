@@ -10,6 +10,10 @@ export const MONTHLY_CHROME_PADDING_CLASS =
 /** Hero panels (chrome, resumen, presupuesto): planner glass plus a soft rim. */
 export const MONTHLY_LIQUID_PANEL_CLASS = cn(MONTHLY_PANEL_SHELL_CLASS, 'liquid-glass');
 
+/** Inset row or tile inside a planner card: faint glass, no solid fill. */
+export const PANEL_INSET_CLASS =
+  'rounded-xl border border-border/40 bg-white/[0.04] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)] dark:border-white/[0.08] dark:bg-white/[0.05]';
+
 /** Active tab indicator: glass pill (same recipe as the mobile dock). */
 export const GLASS_TAB_INDICATOR_CLASS = 'liquid-glass liquid-glass-pill';
 

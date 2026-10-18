@@ -61,7 +61,7 @@ function NavMainMenu({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>
+      {groupLabel ? <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel> : null}
       <SidebarMenu>
         {items.map((item) => {
           if (item.items && item.items.length > 0) {

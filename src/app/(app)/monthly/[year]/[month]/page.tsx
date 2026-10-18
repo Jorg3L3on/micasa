@@ -2,6 +2,9 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { ErrorBanner } from '@/components/error-banner';
 import { SectionHeader } from '@/components/section-header';
+import { Badge } from '@/components/ui/badge';
+import { STATUS_SOFT_CLASS } from '@/lib/status-tone';
+import { CalendarPlus } from 'lucide-react';
 import { getMonthlyPanelShellData } from '@/features/monthly/server/monthly.service';
 import { MonthlyPanelContentSuspense } from '@/features/monthly/server/MonthlyPanelContentSection';
 import { fortnightCalendarKey } from '@/features/monthly/server/monthly.queries';
@@ -26,6 +29,7 @@ import { cn } from '@/lib/utils';
 import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_PANEL_SHELL_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 
 export async function generateMetadata({
@@ -208,33 +212,65 @@ export default async function MonthlyPage({
           </div>
         </MonthlyPanelPreferencesProvider>
 
-        <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-5')}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <SectionHeader
-                title={`Falta crear la planeación de ${viewedMonthLabel}`}
-              />
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                Este mes no tiene las dos quincenas necesarias. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta para evitar datos incompletos.
-              </p>
-            </div>
+        <section
+          className={cn(
+            MONTHLY_LIQUID_PANEL_CLASS,
+            'space-y-3 p-3 sm:space-y-4 sm:p-4',
+          )}
+          aria-label={`Planeación de ${viewedMonthLabel}`}
+        >
+          <SectionHeader
+            icon={CalendarPlus}
+            title={viewedMonthLabel}
+            subtitle="Aún no tiene planeación"
+            actions={
+              <Badge
+                variant="outline"
+                className="h-5 rounded-full border-border/60 px-2 text-caption font-semibold text-muted-foreground"
+              >
+                Sin planear
+              </Badge>
+            }
+          />
+          <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60">
+              <CalendarPlus className="h-6 w-6 text-muted-foreground/60" aria-hidden />
+            </span>
+            <p className="text-sm font-medium text-foreground">
+              Falta crear la planeación de {viewedMonthLabel}
+            </p>
+            <p className="max-w-sm text-body text-muted-foreground">
+              Se generan las dos quincenas con tus plantillas de gastos e ingresos. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta.
+            </p>
             <CreatePlanningMonthButton
               year={year}
               month={month}
               monthLabel={viewedMonthLabel}
               canCreate
-              variant="hero"
+              variant="plain"
             />
+            <div className="mt-1 flex flex-wrap justify-center gap-1.5">
+              <Badge
+                variant="outline"
+                className={cn(
+                  'h-5 rounded-full border-transparent px-2 text-caption font-medium',
+                  firstFortnightInfo ? STATUS_SOFT_CLASS.success : 'bg-muted/60 text-muted-foreground',
+                )}
+              >
+                1ª quincena · {firstFortnightInfo ? 'creada' : 'pendiente'}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'h-5 rounded-full border-transparent px-2 text-caption font-medium',
+                  secondFortnightInfo ? STATUS_SOFT_CLASS.success : 'bg-muted/60 text-muted-foreground',
+                )}
+              >
+                2ª quincena · {secondFortnightInfo ? 'creada' : 'pendiente'}
+              </Badge>
+            </div>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="rounded-lg border border-border/60 px-2 py-1">
-              1a quincena: {firstFortnightInfo ? 'creada' : 'pendiente'}
-            </span>
-            <span className="rounded-lg border border-border/60 px-2 py-1">
-              2a quincena: {secondFortnightInfo ? 'creada' : 'pendiente'}
-            </span>
-          </div>
-        </div>
+        </section>
       </div>
     );
   }

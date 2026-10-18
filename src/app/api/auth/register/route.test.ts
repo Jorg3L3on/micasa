@@ -35,7 +35,6 @@ describe('POST /api/auth/register', () => {
           name: 'Test User',
           email: 'not-an-email',
           password: 'secret12',
-          confirmPassword: 'secret12',
         }),
       }) as Parameters<typeof POST>[0],
     );
@@ -44,7 +43,7 @@ describe('POST /api/auth/register', () => {
     expect(findUniqueUser).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when confirmPassword does not match', async () => {
+  it('returns 400 when the password is shorter than 8 characters', async () => {
     const response = await POST(
       new Request('http://localhost/api/auth/register', {
         method: 'POST',
@@ -52,8 +51,7 @@ describe('POST /api/auth/register', () => {
         body: JSON.stringify({
           name: 'Test User',
           email: 'new@example.com',
-          password: 'secret12',
-          confirmPassword: 'different',
+          password: 'short7c',
         }),
       }) as Parameters<typeof POST>[0],
     );
@@ -73,7 +71,6 @@ describe('POST /api/auth/register', () => {
           name: 'Test User',
           email: 'exists@example.com',
           password: 'secret12',
-          confirmPassword: 'secret12',
         }),
       }) as Parameters<typeof POST>[0],
     );
@@ -85,13 +82,23 @@ describe('POST /api/auth/register', () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  const categoryTxStub = () => ({
-    count: vi.fn(async () => 0),
-    create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
-      id: 1,
-      ...data,
-    })),
-  });
+  const categoryTxStub = () => {
+    let nextId = 1;
+    return {
+      count: vi.fn(async () => 0),
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+        id: nextId++,
+        ...data,
+      })),
+      createMany: vi.fn(async ({ data }: { data: unknown[] }) => ({
+        count: data.length,
+      })),
+      createManyAndReturn: vi.fn(
+        async ({ data }: { data: { name: string; user_id?: number | null }[] }) =>
+          data.map((row) => ({ id: nextId++, name: row.name })),
+      ),
+    };
+  };
 
   it('normalizes email before uniqueness check and persistence', async () => {
     findUniqueUser.mockResolvedValue(null);
@@ -122,7 +129,6 @@ describe('POST /api/auth/register', () => {
           name: 'New User',
           email: '  New@Example.COM  ',
           password: 'secret12',
-          confirmPassword: 'secret12',
         }),
       }) as Parameters<typeof POST>[0],
     );
@@ -168,7 +174,6 @@ describe('POST /api/auth/register', () => {
           name: 'New User',
           email: 'new@example.com',
           password: 'secret12',
-          confirmPassword: 'secret12',
         }),
       }) as Parameters<typeof POST>[0],
     );
@@ -180,6 +185,84 @@ describe('POST /api/auth/register', () => {
       name: 'New User',
       house: { id: 7, name: 'Casa de New User' },
     });
+  });
+
+  it('seeds only personal categories, in batches, with an explicit timeout', async () => {
+    findUniqueUser.mockResolvedValue(null);
+    const category = categoryTxStub();
+    transaction.mockImplementation(async (callback) =>
+      callback({
+        user: {
+          create: vi.fn(async () => ({
+            id: 42,
+            email: 'new@example.com',
+            name: 'New User',
+          })),
+        },
+        house: {
+          create: vi.fn(async () => ({ id: 7, name: 'Casa de New User' })),
+        },
+        houseMember: { create: vi.fn(async () => ({})) },
+        category,
+      }),
+    );
+
+    const response = await POST(
+      new Request('http://localhost/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-forwarded-for': '192.168.60.1',
+        },
+        body: JSON.stringify({
+          name: 'New User',
+          email: 'new@example.com',
+          password: 'secret12',
+        }),
+      }) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(201);
+    expect(category.create).not.toHaveBeenCalled();
+    // Expense + income catalogs for the user only; the house seeds lazily.
+    expect(category.createManyAndReturn).toHaveBeenCalledTimes(2);
+    for (const [args] of category.createManyAndReturn.mock.calls) {
+      expect(args.data.every((row) => row.user_id === 42)).toBe(true);
+    }
+    expect(transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ timeout: expect.any(Number) }),
+    );
+  });
+
+  it('returns 503 with a retry message when the transaction times out', async () => {
+    findUniqueUser.mockResolvedValue(null);
+    const { Prisma } = await import('@/generated/prisma/client');
+    transaction.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Transaction API error', {
+        code: 'P2028',
+        clientVersion: 'test',
+      }),
+    );
+
+    const response = await POST(
+      new Request('http://localhost/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-forwarded-for': '192.168.60.2',
+        },
+        body: JSON.stringify({
+          name: 'New User',
+          email: 'slow@example.com',
+          password: 'secret12',
+        }),
+      }) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(503);
+    const body = await response.json();
+    expect(body.error).toMatch(/tardó demasiado/);
   });
 
   it('returns 429 when registration rate limit is exceeded', async () => {
@@ -196,7 +279,6 @@ describe('POST /api/auth/register', () => {
           name: 'Test User',
           email: 'exists@example.com',
           password: 'secret12',
-          confirmPassword: 'secret12',
         }),
       }) as Parameters<typeof POST>[0];
 

@@ -34,6 +34,8 @@ type FortnightLoanPaymentsPanelProps = {
   items: LoanDuePaymentItem[];
   fortnightLabel: string;
   isCompact?: boolean;
+  /** `list`: rows inside a parent card, separated by hairlines. */
+  variant?: 'cards' | 'list';
   sortMode?: PlannerListSortMode;
   sortDir?: PlannerListSortDir;
   onUpdated?: () => Promise<void> | void;
@@ -67,7 +69,9 @@ export default function FortnightLoanPaymentsPanel({
   sortMode = 'amount',
   sortDir = 'desc',
   onUpdated,
+  variant = 'cards',
 }: FortnightLoanPaymentsPanelProps) {
+  const isList = variant === 'list';
   const todayYmd = useHydrationSafeTodayYmd();
   const { context } = useFinanceContext();
   const [managingItems, setManagingItems] = useState<LoanDuePaymentItem[]>(
@@ -189,7 +193,12 @@ export default function FortnightLoanPaymentsPanel({
 
   if (groups.length === 0) {
     return (
-      <EmptyState message="No hay pagos de préstamos en esta quincena." className="py-8" />
+      <EmptyState
+        icon={HandCoins}
+        message="Sin pagos de préstamos en esta quincena"
+        description="Las cuotas y deducciones de nómina programadas aparecen aquí."
+        className="py-8"
+      />
     );
   }
 
@@ -197,10 +206,10 @@ export default function FortnightLoanPaymentsPanel({
     <div
       role="region"
       aria-label={`Préstamos: ${fortnightLabel}`}
-      className="px-1 pb-1"
+      className={isList ? undefined : 'px-1 pb-1'}
     >
-      <ul role="list" className="flex flex-col gap-1.5">
-        {groups.map((group) => {
+      <ul role="list" className={cn('flex flex-col', isList ? 'gap-0' : 'gap-1.5')}>
+        {groups.map((group, index) => {
           const visual = group.items.reduce<VisualStatus>((current, item) => {
             const next = getVisualStatus(item, todayYmd);
             if (next === 'overdue' || current === 'overdue') return 'overdue';
@@ -225,13 +234,21 @@ export default function FortnightLoanPaymentsPanel({
             <li
               key={group.key}
               className={cn(
-                MONTHLY_PANEL_SHELL_CLASS,
-                'group/row overflow-hidden rounded-xl px-3',
+                isList
+                  ? cn(
+                      'group/row px-1',
+                      index > 0 &&
+                        'border-t border-border/60 dark:border-white/[0.06]',
+                    )
+                  : cn(
+                      MONTHLY_PANEL_SHELL_CLASS,
+                      'group/row overflow-hidden rounded-xl px-3',
+                    ),
                 isCompact ? 'py-2.5' : 'py-3',
                 visual === 'muted' && 'opacity-80',
               )}
             >
-              {rowTone ? (
+              {rowTone && !isList ? (
                 <AuraRowBloom
                   color={AURA_TONE_HEX[rowTone]}
                   subdued={visual === 'paid'}
@@ -308,7 +325,7 @@ export default function FortnightLoanPaymentsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-7 gap-1 px-2 text-caption"
+                      className="gap-1"
                       onClick={() =>
                         isPayroll
                           ? handleOpenManageGroup(group.items)
@@ -331,7 +348,7 @@ export default function FortnightLoanPaymentsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-7 gap-1 px-2 text-caption"
+                      className="gap-1"
                       onClick={() => handleOpenManage(scheduledItems)}
                       aria-label={
                         scheduledItems.length > 1
@@ -347,11 +364,11 @@ export default function FortnightLoanPaymentsPanel({
               </div>
 
               {group.items.length > 1 ? (
-                <ul className="mt-2 space-y-1 border-t border-border/40 pt-2">
+                <ul className="mt-2 space-y-1 border-l-2 border-border/60 pl-2.5 dark:border-white/[0.08]">
                   {group.items.map((item) => (
                     <li
                       key={item.id}
-                      className="flex items-center justify-between gap-2 text-caption text-muted-foreground"
+                      className="flex items-center justify-between gap-2 text-sm text-muted-foreground"
                     >
                       <button
                         type="button"
@@ -369,7 +386,6 @@ export default function FortnightLoanPaymentsPanel({
                             type="button"
                             size="sm"
                             variant="ghost"
-                            className="h-6 px-1.5 text-caption"
                             onClick={() => handleOpenManage(item)}
                             aria-label={`Gestionar ${item.loanName}`}
                           >

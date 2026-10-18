@@ -142,6 +142,11 @@ function MobileBottomDockInner() {
   const reduceMotion = useReducedMotion();
   const pillLayoutId = useId();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPathname, setMenuPathname] = useState(pathname);
+  if (menuPathname !== pathname) {
+    setMenuPathname(pathname);
+    setMenuOpen(false);
+  }
   const menuRef = useRef<HTMLDivElement>(null);
   const plusRef = useRef<HTMLButtonElement>(null);
 
@@ -213,10 +218,6 @@ function MobileBottomDockInner() {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [menuOpen]);
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
 
   return (
     <nav

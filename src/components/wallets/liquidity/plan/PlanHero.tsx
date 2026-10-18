@@ -102,7 +102,6 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
   const panelId = useId();
   const amount = Math.abs(gapAmount);
   const label = mode === 'surplus' ? PLAN_COPY.extraLabel : mode === 'shortfall' ? PLAN_COPY.gapLabel : PLAN_COPY.month;
-  const kpiTone = mode === 'shortfall' ? 'destructive' : mode === 'surplus' ? 'income' : 'neutral';
   const showBreakdown = mode !== 'balanced' && lines.length > 0;
 
   return (
@@ -119,7 +118,7 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
         <p className="text-sm text-muted-foreground">{PLAN_COPY.balancedBody}</p>
       ) : (
         <div className="space-y-2">
-          <div className={kpiMetricCardShellClass(kpiTone)}>
+          <div className={kpiMetricCardShellClass('neutral')}>
             <p className="eyebrow text-muted-foreground">{label}</p>
             <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
               <CurrencyTicker value={amount} />

@@ -14,6 +14,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { ContentEnter } from '@/components/view-transition/SuspenseReveal';
 import { QuickCaptureHost } from '@/components/quick-capture/QuickCaptureHost';
 import { PwaLifecycle } from '@/components/pwa/PwaLifecycle';
+import { OnboardingWelcomeToast } from '@/components/onboarding/OnboardingWelcomeToast';
 import AppLoading from './loading';
 import { DOCK_CLEARANCE_PADDING_MOBILE_CLASS } from '@/lib/ui/dock-clearance';
 
@@ -45,6 +46,9 @@ export default async function AppLayout({
           <SidebarInset className="relative min-w-0 dark:bg-transparent">
             <QuickCaptureHost>
               <PwaLifecycle />
+              <Suspense fallback={null}>
+                <OnboardingWelcomeToast />
+              </Suspense>
               <AppAtmosphere />
               <header
                 data-app-chrome
@@ -59,7 +63,7 @@ export default async function AppLayout({
                 <AppHeaderToolbarDynamic />
               </header>
               <div
-                className={`relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 dark:bg-transparent ${DOCK_CLEARANCE_PADDING_MOBILE_CLASS}`}
+                className={`relative z-10 flex min-w-0 flex-1 flex-col gap-4 bg-background p-6 md:pl-[4.75rem] dark:bg-transparent ${DOCK_CLEARANCE_PADDING_MOBILE_CLASS}`}
               >
                 <div className="container mx-auto min-w-0 overflow-x-clip">
                   <Suspense fallback={<AppLoading />}>

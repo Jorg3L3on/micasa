@@ -50,6 +50,24 @@ export const TOOLBAR_GLASS_ICON =
     'motion-reduce:transition-none motion-reduce:active:scale-100',
   ].join(' ');
 
+/** Text + icon capsule (context switcher) — same glass as TOOLBAR_GLASS_ICON. */
+export const TOOLBAR_GLASS_PILL =
+  [
+    'inline-flex h-10 min-w-0 shrink items-center gap-2 rounded-full pr-3 pl-3.5',
+    'border border-black/[0.08] bg-white/80 text-foreground/90',
+    'shadow-panel',
+    'backdrop-blur-xl backdrop-saturate-150',
+    'transition-[background-color,border-color,transform,opacity,color] duration-200 ease-out',
+    'hover:bg-white hover:text-foreground',
+    'active:scale-[0.98] active:opacity-90',
+    'outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+    'dark:border-white/20 dark:bg-white/[0.10] dark:text-foreground/95',
+    'dark:shadow-panel',
+    'dark:hover:bg-white/[0.16] dark:hover:border-white/28',
+    'data-[state=open]:bg-white dark:data-[state=open]:bg-white/[0.16]',
+    'motion-reduce:transition-none motion-reduce:active:scale-100',
+  ].join(' ');
+
 /** Filled primary (Add) with liquid-glass specular rim on the electric-blue CTA. */
 export const TOOLBAR_GLASS_PRIMARY_ICON =
   [

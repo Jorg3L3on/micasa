@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { LineChart, Route } from 'lucide-react';
+import { Landmark, LineChart, Route } from 'lucide-react';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { TabsContent } from '@/components/motion/tabs';
 import { SegmentedControl } from '@/components/segmented-control';
@@ -11,6 +11,7 @@ import {
   MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { LiquidityProjectionTab } from '@/components/wallets/liquidity/LiquidityProjectionTab';
+import { LiquidityDebtsTab } from '@/components/wallets/liquidity/LiquidityDebtsTab';
 import { CashPlanTab } from '@/components/wallets/liquidity/plan/CashPlanTab';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { useLiquidityProjection } from '@/components/wallets/liquidity/use-liquidity-projection';
@@ -48,9 +49,10 @@ export const LiquidityWorkspace = () => {
         stretch
         frameClassName={cn(
           MONTHLY_LIQUID_PANEL_CLASS,
-          'flex w-full min-w-0 items-center p-1 sm:max-w-sm sm:p-1.5',
+          'flex w-full min-w-0 items-center p-1 sm:p-1.5',
         )}
         wrapperClassName="min-w-0 flex-1"
+        listClassName="w-full"
         indicatorClassName={AURA_TAB_INDICATOR_CLASS}
         activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
         options={[
@@ -60,6 +62,15 @@ export const LiquidityWorkspace = () => {
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
                 <LineChart className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 {PLAN_COPY.tabLiquidity}
+              </span>
+            ),
+          },
+          {
+            value: 'deudas',
+            label: (
+              <span className={WORKSPACE_TAB_LABEL_CLASS}>
+                <Landmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                {PLAN_COPY.tabDebts}
               </span>
             ),
           },
@@ -82,7 +93,6 @@ export const LiquidityWorkspace = () => {
             onReload={() => void reload()}
             selectedMonthKey={selectedMonthKey}
             onSelectedMonthKeyChange={setSelectedMonthKey}
-            refreshToken={refreshToken}
           />
         </TabsContent>
         <TabsContent value="plan" className="mt-0 outline-none">
@@ -92,6 +102,15 @@ export const LiquidityWorkspace = () => {
             error={error}
             onReload={() => void reload()}
             selectedMonthKey={selectedMonthKey}
+          />
+        </TabsContent>
+        <TabsContent value="deudas" className="mt-0 outline-none">
+          <LiquidityDebtsTab
+            data={data}
+            loading={loading}
+            error={error}
+            onReload={() => void reload()}
+            refreshToken={refreshToken}
           />
         </TabsContent>
       </SegmentedControl>

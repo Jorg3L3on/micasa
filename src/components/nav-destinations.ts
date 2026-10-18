@@ -2,8 +2,8 @@ import {
   Calendar,
   ChartLine,
   HandCoins,
+  PiggyBank,
   Receipt,
-  Settings,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -16,7 +16,6 @@ export type NavDestinationId =
   | 'liquidity'
   | 'loans'
   | 'transactions'
-  | 'settings';
 
 export type NavDestination = {
   id: NavDestinationId;
@@ -31,7 +30,7 @@ export type NavDestination = {
 const matchesSection = (pathname: string, base: string) =>
   pathname === base || pathname.startsWith(`${base}/`);
 
-/** Canonical order shared by the sidebar (desktop + Más sheet) and the mobile dock. */
+/** Canonical order for the desktop rail. The mobile dock uses a subset plus shortcuts. */
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   {
     id: 'panel',
@@ -72,20 +71,6 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
     icon: Receipt,
     isActive: (pathname) => matchesSection(pathname, '/transactions'),
   },
-  {
-    id: 'settings',
-    title: 'Configuración',
-    getHref: () => '/settings',
-    icon: Settings,
-    isActive: (pathname) => matchesSection(pathname, '/settings'),
-  },
-];
-
-/** Link tabs in the mobile dock, in slot order (plus and Más sit between/after them). */
-export const DOCK_DESTINATION_IDS: readonly NavDestinationId[] = [
-  'panel',
-  'wallets',
-  'liquidity',
 ];
 
 export const getNavDestination = (id: NavDestinationId): NavDestination => {
@@ -94,5 +79,43 @@ export const getNavDestination = (id: NavDestinationId): NavDestination => {
   return destination;
 };
 
+/** Presupuestos lives under `/settings`; the Más sheet lists it on its own. */
+export const isBudgetsPath = (pathname: string): boolean =>
+  matchesSection(pathname, '/settings/budgets');
+
+/** Mobile dock tabs, in slot order around the center + button. */
+export const DOCK_DESTINATION_IDS: readonly NavDestinationId[] = [
+  'panel',
+  'wallets',
+  'liquidity',
+];
+
 export const getDockDestinations = (): NavDestination[] =>
   DOCK_DESTINATION_IDS.map(getNavDestination);
+
+export type OverflowNavItem = {
+  id: string;
+  title: string;
+  getHref: () => string;
+  icon: LucideIcon;
+  isActive: (pathname: string) => boolean;
+};
+
+/** Pages without a top-level destination that the Más sheet still links to. */
+const OVERFLOW_SHORTCUTS: readonly OverflowNavItem[] = [
+  {
+    id: 'budgets',
+    title: 'Presupuestos',
+    getHref: () => '/settings/budgets',
+    icon: PiggyBank,
+    isActive: isBudgetsPath,
+  },
+];
+
+/** Más sheet: destinations that are not dock tabs, then the shortcuts. */
+export const getOverflowDestinations = (): OverflowNavItem[] => [
+  ...NAV_DESTINATIONS.filter(
+    (destination) => !DOCK_DESTINATION_IDS.includes(destination.id),
+  ),
+  ...OVERFLOW_SHORTCUTS,
+];

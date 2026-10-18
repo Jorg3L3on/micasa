@@ -7,6 +7,7 @@ import {
   useCallback,
   useMemo,
   useState,
+  Suspense,
   type FocusEvent,
   type ReactNode,
   type CSSProperties,
@@ -15,7 +16,6 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, MoreHorizontal, Plus, Search } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +55,7 @@ import { buildOwnerQuery } from '@/lib/api/client-fetch';
 import { navigateWithTransitionType } from '@/lib/ui/wallet-card-view-transition';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { TeamSwitcher, TeamSwitcherShell } from '@/components/team-switcher';
 
 const takeoverTransition = {
   duration: 0.28,
@@ -210,6 +211,11 @@ export default function AppHeaderToolbar() {
     });
     return () => window.cancelAnimationFrame(id);
   }, [searchActive]);
+
+  const ownerQueryString = buildOwnerQuery(context).toString();
+  const accountHref = ownerQueryString
+    ? `/settings/account?${ownerQueryString}`
+    : '/settings/account';
 
   const handleBack = () => {
     if (hierarchicalBackHref) {
@@ -478,15 +484,18 @@ export default function AppHeaderToolbar() {
               ref={leftClusterRef}
               className="z-10 flex min-w-0 shrink-0 items-center gap-0.5"
             >
-              <SidebarTrigger
-                className={cn(TOOLBAR_GLASS_ICON, 'max-md:hidden')}
-              />
+              {/* Desktop only: mobile keeps the switcher in the Más sheet. */}
+              {isMobile ? null : (
+                <div className="mr-1.5 hidden min-w-0 md:flex">
+                  <Suspense fallback={<TeamSwitcherShell variant="header" />}>
+                    <TeamSwitcher
+                      variant="header"
+                      accountHref={accountHref}
+                    />
+                  </Suspense>
+                </div>
+              )}
               {leadingAction ? (
-                <>
-                  <Separator
-                    orientation="vertical"
-                    className="mx-1.5 shrink-0 bg-border/50 data-[orientation=vertical]:h-5 max-md:hidden dark:bg-white/15"
-                  />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -509,7 +518,6 @@ export default function AppHeaderToolbar() {
                       {leadingAction.label}
                     </TooltipContent>
                   </Tooltip>
-                </>
               ) : null}
               {!showBack ? null : (
                 <>

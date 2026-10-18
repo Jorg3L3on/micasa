@@ -29,10 +29,10 @@ const PRODUCTS: ProductSection[] = [
   },
   {
     id: 'liquidez',
-    eyebrow: 'Análisis · Liquidez',
+    eyebrow: 'Análisis · Proyección',
     title: 'Hasta dónde alcanza',
-    body: 'La pestaña Liquidez proyecta el efectivo hacia adelante, con cortes y préstamos ya contemplados.',
-    alt: 'Análisis, pestaña Liquidez: gráfica Deudas por mes con Préstamo del hogar, Tarjeta del hogar y Refrigerador.',
+    body: 'La pestaña Proyección muestra tus deudas mes a mes, con cortes y préstamos ya contemplados.',
+    alt: 'Análisis, pestaña Proyección: gráfica Deudas por mes con Préstamo del hogar, Tarjeta del hogar y Refrigerador.',
   },
   {
     id: 'plan',

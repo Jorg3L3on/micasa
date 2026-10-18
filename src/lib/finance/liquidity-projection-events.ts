@@ -28,6 +28,14 @@ export type LiquidityProjectionEvent = {
 
 export type LiquidityProjectionTrackKind = 'loan' | 'msi' | 'installment_plan';
 
+/** One loan inside a lender track, with its own remaining schedule. */
+export type LiquidityLoanContract = {
+  loan_id: number;
+  name: string;
+  is_payroll: boolean;
+  schedule: Array<{ month_key: string; amount: number; due_date: string }>;
+};
+
 export type LiquidityProjectionTrack = {
   id: string;
   kind: LiquidityProjectionTrackKind;
@@ -46,6 +54,8 @@ export type LiquidityProjectionTrack = {
   wallet_name?: string;
   lender_name?: string;
   lender_icon_key?: string | null;
+  /** Loan tracks only: each contract the lender row groups. */
+  contracts?: LiquidityLoanContract[];
 };
 
 export type LiquidityProjectionTimeline = {
@@ -163,6 +173,7 @@ const collectLoanTimeline = async (
     let startMonth: string | null = null;
     let visibleEnd: string | null = null;
     let finishesInHorizon = false;
+    const contracts: LiquidityLoanContract[] = [];
 
     for (const loan of groupLoans) {
       const firstDue = formatLoanDueYmd(loan.payments[0]!.due_date);
@@ -200,9 +211,12 @@ const collectLoanTimeline = async (
       finishesInHorizon = finishesInHorizon || loanFinishes;
 
       const isPayroll = loan.payment_source === 'PAYROLL_DEDUCTION';
+      const contractSchedule: LiquidityLoanContract['schedule'] = [];
       for (const payment of remainingPayments) {
-        const monthKey = toMonthKey(formatLoanDueYmd(payment.due_date));
+        const dueYmd = formatLoanDueYmd(payment.due_date);
+        const monthKey = toMonthKey(dueYmd);
         const amount = Number(payment.amount);
+        contractSchedule.push({ month_key: monthKey, amount, due_date: dueYmd });
         scheduleByMonth.set(monthKey, (scheduleByMonth.get(monthKey) ?? 0) + amount);
         if (isPayroll && monthKeySet.has(monthKey)) {
           payrollPaymentsByMonth.set(
@@ -217,6 +231,15 @@ const collectLoanTimeline = async (
             amount,
           });
         }
+      }
+
+      if (contractSchedule.length > 0) {
+        contracts.push({
+          loan_id: loan.id,
+          name: loan.name,
+          is_payroll: isPayroll,
+          schedule: contractSchedule,
+        });
       }
 
       if (loanFinishes && lastPayment.due_date >= asOf) {
@@ -261,6 +284,7 @@ const collectLoanTimeline = async (
       loan_id: groupLoans.length === 1 ? firstLoan.id : undefined,
       lender_name: firstLoan.lender_entity?.name ?? firstLoan.lender,
       lender_icon_key: firstLoan.lender_entity?.provider_icon_key ?? null,
+      contracts,
     });
   }
 

@@ -110,6 +110,8 @@ type FortnightCardPaymentsPanelProps = {
   plannerMonth: number;
   plannerPeriod: 'FIRST' | 'SECOND';
   isCompact?: boolean;
+  /** `list`: rows inside a parent card, separated by hairlines. */
+  variant?: 'cards' | 'list';
   sortMode?: PlannerListSortMode;
   sortDir?: PlannerListSortDir;
   onPayCard?: (item: DuePaymentItem) => void;
@@ -132,7 +134,9 @@ const FortnightCardPaymentsPanel = ({
   onPayCard,
   payingWalletId = null,
   onPlanUpdated,
+  variant = 'cards',
 }: FortnightCardPaymentsPanelProps) => {
+  const isList = variant === 'list';
   const { context } = useFinanceContext();
   const todayYmd = useHydrationSafeTodayYmd();
   const showRelativeDueTiming =
@@ -224,7 +228,9 @@ const FortnightCardPaymentsPanel = ({
   if (rows.length === 0) {
     return (
       <EmptyState
-        message="No hay tarjetas con fecha de pago en esta quincena."
+        icon={CreditCard}
+        message="Sin pagos de tarjeta en esta quincena"
+        description="Las tarjetas con fecha de pago dentro de la quincena aparecen aquí."
         className="py-8"
       />
     );
@@ -235,10 +241,10 @@ const FortnightCardPaymentsPanel = ({
       <div
         role="region"
         aria-label={`Pagos de tarjeta: ${fortnightLabel}`}
-        className="px-1 pb-1"
+        className={isList ? undefined : 'px-1 pb-1'}
       >
-        <ul role="list" className="flex flex-col gap-1.5">
-          {rows.map((item) => {
+        <ul role="list" className={cn('flex flex-col', isList ? 'gap-0' : 'gap-1.5')}>
+          {rows.map((item, index) => {
             const status = getPlannerCardPaymentStatus(item);
             const effectiveAmount =
               item.effectiveAmount ?? getEffectiveCardPaymentAmount(item);
@@ -277,13 +283,21 @@ const FortnightCardPaymentsPanel = ({
               <li
                 key={item.walletId}
                 className={cn(
-                  MONTHLY_PANEL_SHELL_CLASS,
-                  'group/row flex items-center gap-2.5 overflow-hidden rounded-xl px-3',
+                  isList
+                    ? cn(
+                        'group/row flex items-center gap-2.5 px-1',
+                        index > 0 &&
+                          'border-t border-border/60 dark:border-white/[0.06]',
+                      )
+                    : cn(
+                        MONTHLY_PANEL_SHELL_CLASS,
+                        'group/row flex items-center gap-2.5 overflow-hidden rounded-xl px-3',
+                      ),
                   isCompact ? 'py-2.5' : 'py-3',
                   status === 'sin_cargo' && 'opacity-80',
                 )}
               >
-                {rowTone ? (
+                {rowTone && !isList ? (
                   <AuraRowBloom
                     color={AURA_TONE_HEX[rowTone]}
                     subdued={status === 'pagado'}

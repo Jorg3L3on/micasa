@@ -7,6 +7,7 @@ export type SegmentedOption = {
   label: ReactNode;
   ariaLabel?: string;
   title?: string;
+  disabled?: boolean;
 };
 
 type SegmentedControlProps = {
@@ -23,6 +24,8 @@ type SegmentedControlProps = {
   indicatorClassName?: string;
   activeLabelClassName?: string;
   stretch?: boolean;
+  /** Tabs style. Defaults to the rounded pill. */
+  variant?: 'pill' | 'underline' | 'segment';
   /**
    * Render only the pill list. The parent must already be motion `Tabs`
    * so the triggers share that context (detail pages nest the list in a hero).
@@ -51,6 +54,7 @@ export const SegmentedControl = ({
   indicatorClassName,
   activeLabelClassName,
   stretch = false,
+  variant = 'pill',
   embedded = false,
   accessory,
   children,
@@ -68,6 +72,7 @@ export const SegmentedControl = ({
           stretch={stretch}
           aria-label={option.ariaLabel}
           title={option.title}
+          disabled={option.disabled}
           indicatorClassName={indicatorClassName}
           activeLabelClassName={activeLabelClassName}
           className={cn('min-h-11 sm:min-h-9', triggerClassName)}
@@ -101,7 +106,7 @@ export const SegmentedControl = ({
       value={value}
       defaultValue={defaultValue}
       onValueChange={onValueChange}
-      variant="pill"
+      variant={variant}
       className={className}
     >
       {framed}

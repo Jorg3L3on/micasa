@@ -9,19 +9,12 @@ import {
   LiquidityMonthMetrics,
 } from '@/components/wallets/liquidity/LiquidityMonthFocus';
 import { LiquidityMonthDebtTabs } from '@/components/wallets/liquidity/LiquidityMonthDebtTabs';
-import { LiquidityAccountsToday } from '@/components/wallets/liquidity/LiquidityAccountsToday';
-import { LiquiditySpendingCategories } from '@/components/wallets/liquidity/LiquiditySpendingCategories';
-import { LiquidityFundingWalletsMenu } from '@/components/wallets/liquidity/LiquidityFundingWalletsMenu';
-import { buildLiquidityPayoffProgress } from '@/components/wallets/liquidity/liquidity-payoff-progress';
 import {
   resolveInitialMonthKey,
   type LiquidityChartRangeId,
   type LiquidityCustomChartRange,
 } from '@/components/wallets/liquidity/liquidity-personalization';
-import {
-  MONTHLY_PANEL_CONTENT_GRID_CLASS,
-  MONTHLY_PANEL_MAIN_COLUMN_CLASS,
-} from '@/components/monthly/MonthlyPanelLayout';
+import { MONTHLY_PANEL_MAIN_COLUMN_CLASS } from '@/components/monthly/MonthlyPanelLayout';
 import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_LIQUID_PANEL_CLASS,
@@ -35,6 +28,7 @@ import {
   defaultCustomChartRange,
   resolveDebtPayoffMonthKey,
   resolveLiquidityChartRange,
+  type LiquidityChartPresetId,
 } from '@/lib/finance/liquidity-chart-range';
 import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
 import { cn } from '@/lib/utils';
@@ -46,9 +40,6 @@ const CHROME_SHELL_CLASS = cn(
   'mb-5',
 );
 
-/** Always-visible aside: stacks under the main column until `xl`, then docks right like Panel financiero. */
-const LIQUIDITY_ASIDE_CLASS = 'flex min-w-0 flex-col gap-5';
-
 export type LiquidityProjectionTabProps = {
   data: LiquidityProjectionResponse | null;
   loading: boolean;
@@ -56,8 +47,6 @@ export type LiquidityProjectionTabProps = {
   onReload: () => void;
   selectedMonthKey: string;
   onSelectedMonthKeyChange: (monthKey: string) => void;
-  /** Bumped after a pull-to-refresh so self-loading sections reload too. */
-  refreshToken?: number;
 };
 
 export function LiquidityProjectionTab({
@@ -67,14 +56,17 @@ export function LiquidityProjectionTab({
   onReload,
   selectedMonthKey,
   onSelectedMonthKeyChange,
-  refreshToken = 0,
 }: LiquidityProjectionTabProps) {
   const [chartRange, setChartRange] = useState<LiquidityChartRangeId>(
     DEFAULT_LIQUIDITY_CHART_RANGE,
   );
   const [customRange, setCustomRange] = useState<LiquidityCustomChartRange | null>(null);
+  const [lastPreset, setLastPreset] = useState<LiquidityChartPresetId>(
+    DEFAULT_LIQUIDITY_CHART_RANGE,
+  );
 
   const handleChartRangeChange = (next: LiquidityChartRangeId) => {
+    if (next !== 'custom') setLastPreset(next);
     setChartRange(next);
   };
 
@@ -110,55 +102,45 @@ export function LiquidityProjectionTab({
     return clampCustomChartRangeToAvailable(bounds, availableMonthKeys);
   }, [availableMonthKeys, chartRange, customRange, data, payoffMonthKey]);
 
-  const chartMonthKeys = useMemo(
-    () =>
-      new Set(
-        visibleRange
-          ? availableMonthKeys.filter(
-              (monthKey) =>
-                monthKey >= visibleRange.fromMonthKey && monthKey <= visibleRange.toMonthKey,
-            )
-          : [],
-      ),
-    [availableMonthKeys, visibleRange],
-  );
-
-  const chartMonths = useMemo(
-    () => data?.monthly_series.filter((month) => chartMonthKeys.has(month.month_key)) ?? [],
-    [chartMonthKeys, data?.monthly_series],
-  );
-
-  const monthKeys = useMemo(() => chartMonths.map((month) => month.month_key), [chartMonths]);
-
   useEffect(() => {
-    if (!data || monthKeys.length === 0) return;
-    if (selectedMonthKey && monthKeys.includes(selectedMonthKey)) return;
-    onSelectedMonthKeyChange(resolveInitialMonthKey(monthKeys, data.as_of));
-  }, [data, monthKeys, onSelectedMonthKeyChange, selectedMonthKey]);
+    if (!data || availableMonthKeys.length === 0) return;
+    if (selectedMonthKey && availableMonthKeys.includes(selectedMonthKey)) return;
+    onSelectedMonthKeyChange(resolveInitialMonthKey(availableMonthKeys, data.as_of));
+  }, [availableMonthKeys, data, onSelectedMonthKeyChange, selectedMonthKey]);
 
   const resolvedMonthKey =
-    selectedMonthKey && monthKeys.includes(selectedMonthKey)
+    selectedMonthKey && availableMonthKeys.includes(selectedMonthKey)
       ? selectedMonthKey
-      : resolveInitialMonthKey(monthKeys, data?.as_of ?? '');
+      : resolveInitialMonthKey(availableMonthKeys, data?.as_of ?? '');
   const selectedMonth =
-    chartMonths.find((month) => month.month_key === resolvedMonthKey) ?? null;
+    data?.monthly_series.find((month) => month.month_key === resolvedMonthKey) ?? null;
+
+  /**
+   * The month stepper walks every projected month. When the pick lands outside
+   * the chart window, the window grows to include it (as a custom range) so the
+   * user never has to change the range first.
+   */
+  const handleSelectMonth = (monthKey: string) => {
+    onSelectedMonthKeyChange(monthKey);
+    if (!visibleRange) return;
+    if (monthKey >= visibleRange.fromMonthKey && monthKey <= visibleRange.toMonthKey) return;
+    setCustomRange(
+      clampCustomChartRangeToAvailable(
+        {
+          fromMonthKey:
+            monthKey < visibleRange.fromMonthKey ? monthKey : visibleRange.fromMonthKey,
+          toMonthKey: monthKey > visibleRange.toMonthKey ? monthKey : visibleRange.toMonthKey,
+        },
+        availableMonthKeys,
+      ),
+    );
+    setChartRange('custom');
+  };
   const selectedEvents = (data?.projection_events ?? []).filter(
     (event) => event.month_key === resolvedMonthKey,
   );
-  const fundingTotal = data?.summary.funding_total ?? 0;
   const currentMonthKey = data?.as_of.slice(0, 7) ?? '';
   const isRefreshing = loading && data !== null;
-
-  const payoff = useMemo(
-    () =>
-      buildLiquidityPayoffProgress({
-        months: data?.monthly_series ?? [],
-        currentMonthKey,
-        selectedMonthKey: resolvedMonthKey,
-        payoffMonthKey,
-      }),
-    [currentMonthKey, data?.monthly_series, payoffMonthKey, resolvedMonthKey],
-  );
 
   return (
     <div>
@@ -177,32 +159,45 @@ export function LiquidityProjectionTab({
         <>
           <div className={CHROME_SHELL_CLASS}>
             <LiquidityChromeHeader
-              monthKeys={monthKeys}
+              monthKeys={availableMonthKeys}
               selectedMonthKey={resolvedMonthKey}
               currentMonthKey={currentMonthKey}
-              onSelectMonth={onSelectedMonthKeyChange}
-              chartRange={chartRange}
-              onChartRangeChange={handleChartRangeChange}
-              payoff={payoff}
+              onSelectMonth={handleSelectMonth}
             />
+            {selectedMonth ? (
+              <>
+                <div className="my-2.5 h-px w-full bg-border/50 sm:my-3" aria-hidden />
+                <LiquidityMonthMetrics
+                  month={selectedMonth}
+                  previousMonth={
+                    data.monthly_series[
+                      data.monthly_series.findIndex(
+                        (month) => month.month_key === selectedMonth.month_key,
+                      ) - 1
+                    ] ?? null
+                  }
+                />
+              </>
+            ) : null}
           </div>
 
-          <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
-            <div
-              className={cn(
-                MONTHLY_PANEL_MAIN_COLUMN_CLASS,
-                'space-y-4',
-                isRefreshing && 'opacity-60 transition-opacity',
-              )}
-              aria-busy={isRefreshing}
-            >
-              {selectedMonth ? <LiquidityMonthMetrics month={selectedMonth} /> : null}
-
+          <div
+            className={cn(
+              MONTHLY_PANEL_MAIN_COLUMN_CLASS,
+              'space-y-4',
+              isRefreshing && 'opacity-60 transition-opacity',
+            )}
+            aria-busy={isRefreshing}
+          >
               <LiquidityFutureTimeline
                 months={data.monthly_series}
                 events={data.projection_events ?? []}
                 visibleRange={visibleRange}
                 onVisibleRangeChange={handleCustomRangeChange}
+                chartRange={chartRange}
+                customRange={chartRange === 'custom' ? visibleRange : null}
+                lastPreset={lastPreset}
+                onChartRangeChange={handleChartRangeChange}
                 selectedMonthKey={resolvedMonthKey}
                 onSelectMonth={onSelectedMonthKeyChange}
               />
@@ -211,21 +206,11 @@ export function LiquidityProjectionTab({
 
               {selectedMonth ? (
                 <LiquidityMonthDebtTabs
+                  monthKey={selectedMonth.month_key}
                   items={selectedMonth.debt_items ?? []}
                   outstandingTotal={selectedMonth.outstanding_debt_total ?? 0}
                 />
               ) : null}
-            </div>
-
-            <aside className={LIQUIDITY_ASIDE_CLASS} aria-label="Cuentas y gastos">
-              <LiquidityAccountsToday
-                fundingTotal={fundingTotal}
-                onChanged={onReload}
-                actions={<LiquidityFundingWalletsMenu onChanged={onReload} />}
-                refreshToken={refreshToken}
-              />
-              <LiquiditySpendingCategories refreshToken={refreshToken} />
-            </aside>
           </div>
         </>
       ) : null}
