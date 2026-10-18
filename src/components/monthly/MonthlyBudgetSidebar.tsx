@@ -13,10 +13,11 @@ import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { cn, formatCurrency } from '@/lib/utils';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import {
-  MONTHLY_ICON_PILL_CLASS,
   MONTHLY_LIQUID_PANEL_CLASS,
+  PANEL_INSET_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import { Badge } from '@/components/ui/badge';
+import { STATUS_SOFT_CLASS } from '@/lib/status-tone';
 import {
   AURA_TONE_HEX,
   getAuraBarStyle,
@@ -31,94 +32,82 @@ type MonthlyBudgetSidebarProps = {
   panel: MonthlyBudgetPanelResult;
   ownerQuery: string;
   className?: string;
-  /** `embedded` nests inside the resumen desglose (no extra glass shell). */
-  variant?: 'panel' | 'embedded';
 };
 
-const budgetPanelShellClass = cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-4');
-const budgetEmbeddedShellClass = cn(METRIC_STRIP_CLASS, 'px-3 py-3');
+const budgetPanelShellClass = cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-3 sm:p-4');
 
-const BudgetSidebarHeader = ({
-  headingId,
-  subtitle,
-  headingAs = 'h2',
-}: {
-  headingId?: string;
-  subtitle: string;
-  headingAs?: 'h2' | 'h3';
-}) => {
-  const Heading = headingAs;
-  return (
-    <div className="flex min-w-0 items-start gap-2.5">
-      <span className={MONTHLY_ICON_PILL_CLASS} aria-hidden>
-        <PiggyBank className="h-4 w-4" />
-      </span>
-      <div className="min-w-0">
-        <Heading
-          id={headingId}
-          className="text-sm font-semibold leading-normal text-foreground"
-        >
-          Presupuesto de la quincena
-        </Heading>
-        <p className="mt-1 text-caption text-muted-foreground">{subtitle}</p>
-      </div>
-    </div>
-  );
-};
+const usedBadge = (percent: number) =>
+  percent > 100
+    ? { tone: 'expense' as const }
+    : percent >= 85
+      ? { tone: 'pending' as const }
+      : { tone: 'success' as const };
 
 export const MonthlyBudgetSidebar = ({
   panel,
   ownerQuery,
   className,
-  variant = 'panel',
 }: MonthlyBudgetSidebarProps) => {
   const { period } = useMonthlyPanelPreferences();
   const scope = period === 'FIRST' ? panel.first : panel.second;
   const { totalBudget, allocations } = scope;
   const periodLabel =
     period === 'FIRST' ? 'primera quincena' : 'segunda quincena';
-  const isEmbedded = variant === 'embedded';
-  const headingAs = isEmbedded ? 'h3' : 'h2';
-  const headingId = isEmbedded
-    ? 'monthly-budget-heading-embedded'
-    : 'monthly-budget-heading';
-  const allocationsHeadingId = isEmbedded
-    ? 'budget-allocations-heading-embedded'
-    : 'budget-allocations-heading';
-  const shellClass = isEmbedded ? budgetEmbeddedShellClass : budgetPanelShellClass;
-  const Frame = isEmbedded ? 'section' : 'aside';
+  const headingId = 'monthly-budget-heading';
+  const allocationsHeadingId = 'budget-allocations-heading';
+  const usedPercent =
+    totalBudget > 0 ? Math.round((scope.spent / totalBudget) * 100) : 0;
+  const overspentCount = allocations.filter((row) => row.remaining < 0).length;
 
   if (totalBudget <= 0 && allocations.length === 0) {
     return (
-      <Frame
-        className={cn(shellClass, className)}
+      <aside
+        className={cn(budgetPanelShellClass, 'space-y-3 sm:space-y-4', className)}
         aria-label="Presupuesto de la quincena"
       >
-        <BudgetSidebarHeader
-          headingAs={headingAs}
+        <SectionHeader
+          icon={PiggyBank}
+          title="Presupuesto de la quincena"
           subtitle={`Sin presupuesto activo en la ${periodLabel}`}
         />
         <EmptyState
-          message={`No hay presupuestos activos para la ${periodLabel}.`}
-          description="Crea uno en Presupuestos para ver el resumen aquí."
-          className="py-4"
+          icon={PiggyBank}
+          message="Sin presupuesto esta quincena"
+          description="Crea uno en Presupuestos para ver aquí lo gastado."
+          className="py-8"
+          action={{
+            label: 'Ir a presupuestos',
+            href: `/settings/budgets${ownerQuery}`,
+            variant: 'outline',
+          }}
         />
-        <Button variant="outline" size="sm" className="mt-4 w-full" asChild>
-          <Link href={`/settings/budgets${ownerQuery}`}>Ir a presupuestos</Link>
-        </Button>
-      </Frame>
+      </aside>
     );
   }
 
   return (
-    <Frame
-      className={cn(shellClass, 'space-y-5', className)}
+    <aside
+      className={cn(budgetPanelShellClass, 'space-y-3 sm:space-y-4', className)}
       aria-label="Presupuesto de la quincena y asignaciones"
     >
-      <BudgetSidebarHeader
-        headingId={headingId}
-        headingAs={headingAs}
-        subtitle="Categorías y billeteras asignadas"
+      <SectionHeader
+        id={headingId}
+        icon={PiggyBank}
+        title="Presupuesto de la quincena"
+        subtitle={`${allocations.length} ${allocations.length === 1 ? 'categoría' : 'categorías'}${overspentCount > 0 ? ` · ${overspentCount} ${overspentCount === 1 ? 'excedida' : 'excedidas'}` : ''}`}
+        actions={
+          totalBudget > 0 ? (
+            <Badge
+              variant="outline"
+              className={cn(
+                'h-5 rounded-full border-transparent px-2 text-caption font-semibold',
+                STATUS_SOFT_CLASS[usedBadge(usedPercent).tone],
+              )}
+            >
+              {usedPercent}% usado
+            </Badge>
+          ) : null
+        }
       />
 
       <FortnightBudgetProgress
@@ -134,7 +123,7 @@ export const MonthlyBudgetSidebar = ({
             className="sr-only"
             title="Asignaciones por categoría y billetera"
           />
-          <ul className="space-y-2.5" role="list">
+          <ul className="space-y-2" role="list">
             {allocations.map((row) => (
               <BudgetAllocationRow
                 key={`${row.walletId ?? 'any'}-${row.categoryId}`}
@@ -145,12 +134,13 @@ export const MonthlyBudgetSidebar = ({
         </section>
       ) : (
         <EmptyState
+          icon={PiggyBank}
           message={`No hay asignaciones de presupuesto en la ${periodLabel}.`}
-          className="py-4"
+          className="py-6"
         />
       )}
 
-      <Button variant="outline" className="w-full gap-2" asChild>
+      <Button variant="outline" size="sm" className="w-full gap-2" asChild>
         <Link
           href={`/settings/budgets${ownerQuery}`}
           aria-label="Ver reporte completo de presupuesto de la quincena"
@@ -159,7 +149,7 @@ export const MonthlyBudgetSidebar = ({
           Ver reporte completo
         </Link>
       </Button>
-    </Frame>
+    </aside>
   );
 };
 
@@ -183,7 +173,7 @@ function BudgetAllocationRow({
   return (
     <div
       role="listitem"
-      className="space-y-1.5 rounded-xl bg-card/40 px-3 py-2.5"
+      className={cn(PANEL_INSET_CLASS, 'space-y-1.5 px-3 py-2.5')}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -219,7 +209,7 @@ function BudgetAllocationRow({
         </div>
         <CurrencyTicker
           value={allocation.spent}
-          className="shrink-0 text-xs font-bold text-foreground"
+          className="shrink-0 text-sm font-semibold tabular-nums text-foreground"
         />
       </div>
       <div
@@ -235,22 +225,21 @@ function BudgetAllocationRow({
           style={{ width: `${barPercent}%`, ...getAuraBarStyle(barColor) }}
         />
       </div>
-      <div className="flex justify-between gap-2 text-caption text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 text-caption text-muted-foreground">
         <span>
           {allocation.budgeted > 0
             ? `${allocation.percentUsed}% de su presupuesto`
             : 'Sin monto asignado'}
         </span>
-        <span
+        <Badge
+          variant="outline"
           className={cn(
-            'font-sans font-semibold tabular-nums',
-            overspent
-              ? 'text-destructive'
-              : 'text-status-income',
+            'h-5 rounded-full border-transparent px-2 text-caption font-semibold tabular-nums',
+            STATUS_SOFT_CLASS[overspent ? 'expense' : 'success'],
           )}
         >
           {remainingLabel}
-        </span>
+        </Badge>
       </div>
     </div>
   );

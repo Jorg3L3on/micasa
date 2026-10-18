@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/motion/tabs';
 import { SegmentedControl } from '@/components/segmented-control';
+import { SectionHeader } from '@/components/section-header';
+import EmptyState from '@/components/EmptyState';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
@@ -91,10 +93,7 @@ import type {
 import type { ExpenseTableDensity } from '@/components/ExpenseTable';
 import type { WalletListItem } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
-import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
-import type { PaymentsCalendarItem } from '@/types/payments-calendar';
-import { MonthlyPaymentsCalendar } from '@/components/monthly/MonthlyPaymentsCalendar';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
 
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
@@ -156,12 +155,7 @@ type FortnightColumnProps = {
   preferenceScope?: string;
   /** Narrow column when both fortnights are shown side by side. */
   dualColumnLayout?: boolean;
-  budgetPanel?: MonthlyBudgetPanelResult | null;
-  budgetOwnerQuery?: string;
   /** Payments calendar for < xl (sidebar hosts it at xl+). */
-  paymentsCalendarItems?: PaymentsCalendarItem[];
-  todayYmd?: string;
-  calendarRefreshNonce?: number;
   /** Refetch panel data in place. Avoids router.refresh(), which remounts the page. */
   onPanelRefresh: () => Promise<void>;
 };
@@ -181,14 +175,8 @@ export default function FortnightColumn({
   summaryFundingRefreshNonce,
   preferenceScope = 'default',
   dualColumnLayout = false,
-  budgetPanel = null,
-  budgetOwnerQuery = '',
-  paymentsCalendarItems = [],
-  todayYmd: todayYmdProp,
-  calendarRefreshNonce = 0,
   onPanelRefresh,
 }: FortnightColumnProps) {
-  const todayYmd = todayYmdProp ?? todayCalendarDate();
   const { context } = useFinanceContext();
   const ownerQueryString = useMemo(() => {
     const q = buildOwnerQuery(context);
@@ -904,135 +892,23 @@ export default function FortnightColumn({
     'inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5',
     compactTabs && 'gap-1',
   );
-  const plannerTabIconClass = 'h-3.5 w-3.5 shrink-0';
+  const plannerTabIconClass = 'hidden h-3.5 w-3.5 shrink-0 sm:inline';
   const plannerTabBadgeClass = cn(
     'pointer-events-none h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-xs font-sans font-semibold tabular-nums shadow-none xl:h-5 xl:min-w-5.5 xl:px-1.5',
     compactTabs && 'h-4 min-w-4 px-1 xl:h-4 xl:min-w-4 xl:px-1',
   );
 
-  return (
-    <>
-      <div className="flex flex-col space-y-3 sm:space-y-4">
-        <SummaryBlock
-          tenemos={tenemos}
-          libre={libre}
-          pagado={pagado}
-          pendiente={pendiente}
-          pendingExpenseItems={pendingExpenseItems}
-          userIncome={currentFortnightUserIncome}
-          incomeItems={
-            summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
-            []
-          }
-          year={year}
-          month={month}
-          period={period}
-          expenseCount={summaryExpenseCount}
-          paidExpenseCount={summaryPaidExpenseCount}
-          unpaidExpenseCount={summaryUnpaidExpenseCount}
-          planningOrphanCardPayments={
-            summary.planningOrphanCardPayments ?? null
-          }
-          planningCardStatementDue={
-            summary.planningCardStatementDue ?? null
-          }
-          planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
-          planningPayrollLoanDeduction={
-            summary.planningPayrollLoanDeduction ?? null
-          }
-          planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
-          fundingWalletBalanceTotal={
-            summary.fundingWalletBalanceTotal ?? 0
-          }
-          fundingNetVsPendingExpense={
-            summary.fundingNetVsPendingExpense ?? 0
-          }
-          fundingWalletBreakdown={(summary.fundingWalletBreakdown ?? []).map(
-            (item) => {
-              const wallet = wallets.find((w) => w.id === item.id);
-              return {
-                ...item,
-                provider_icon_key:
-                  item.provider_icon_key ?? wallet?.provider_icon_key ?? null,
-                assignee: item.assignee ?? wallet?.assignee ?? null,
-              };
-            },
-          )}
-          onEditIncome={handleOpenOverrideDialog}
-          onEditIncomeSource={handleOpenEditIncomeSource}
-          budgetPanel={budgetPanel}
-          budgetOwnerQuery={budgetOwnerQuery || ownerQueryString}
-        />
+  const unpaidExpensesAmount = useMemo(
+    () =>
+      sortedTransactions.reduce(
+        (total, row) => (row.is_paid ? total : total + Number(row.amount)),
+        0,
+      ),
+    [sortedTransactions],
+  );
 
-        <MonthlyPaymentsCalendar
-          year={year}
-          month={month}
-          items={paymentsCalendarItems}
-          todayYmd={todayYmd}
-          refreshNonce={calendarRefreshNonce}
-          className="xl:hidden"
-        />
-
-        <SegmentedControl
-          value={columnTab}
-          onValueChange={handleColumnTabChange}
-          ariaLabel="Secciones de la quincena"
-          className="w-full min-w-0"
-          stretch
-          frameClassName={cn(
-            MONTHLY_LIQUID_PANEL_CLASS,
-            'mb-1.5 flex min-w-0 flex-wrap items-center gap-1 p-1 sm:mb-3.5 sm:flex-nowrap sm:gap-1.5 sm:p-1.5',
-          )}
-          wrapperClassName="min-w-0 w-full flex-1 sm:w-auto"
-          listClassName="min-w-full"
-          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
-          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-          options={[
-            {
-              value: 'expenses',
-              ariaLabel: `Gastos, ${unpaidExpenseCount} sin pagar`,
-              label: (
-                <span className={plannerTabLabelClass}>
-                  <Receipt className={plannerTabIconClass} aria-hidden />
-                  Gastos
-                  <Badge variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
-                    {unpaidExpenseCount}
-                  </Badge>
-                </span>
-              ),
-            },
-            {
-              value: 'cards',
-              ariaLabel: `Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`,
-              label: (
-                <span className={plannerTabLabelClass}>
-                  <CreditCard className={plannerTabIconClass} aria-hidden />
-                  Tarjetas
-                  <Badge variant={pendingCardPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
-                    {pendingCardPaymentsCount}
-                  </Badge>
-                </span>
-              ),
-            },
-            {
-              value: 'loans',
-              ariaLabel: `Préstamos, ${pendingLoanPaymentsCount} pendientes`,
-              label: (
-                <span className={plannerTabLabelClass}>
-                  <HandCoins className={plannerTabIconClass} aria-hidden />
-                  <span className={cn(!compactTabs && 'sm:hidden')}>Prest.</span>
-                  {!compactTabs ? (
-                    <span className="hidden sm:inline">Préstamos</span>
-                  ) : null}
-                  <Badge variant={pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
-                    {pendingLoanPaymentsCount}
-                  </Badge>
-                </span>
-              ),
-            },
-          ]}
-          accessory={(
-            <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 sm:pl-0.5">
+  const listSortMenu = (
+    <div className="flex shrink-0 items-center">
               <DropdownMenu>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1095,8 +971,136 @@ export default function FortnightColumn({
                   })}
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+    </div>
+  );
+
+  const listSubtitle =
+    columnTab === 'cards'
+      ? `${pendingCardPaymentsCount} ${pendingCardPaymentsCount === 1 ? 'pago de tarjeta pendiente' : 'pagos de tarjeta pendientes'}`
+      : columnTab === 'loans'
+        ? `${pendingLoanPaymentsCount} ${pendingLoanPaymentsCount === 1 ? 'pago de préstamo pendiente' : 'pagos de préstamo pendientes'}`
+        : `${unpaidExpenseCount} ${unpaidExpenseCount === 1 ? 'pendiente' : 'pendientes'} · ${formatCurrency(unpaidExpensesAmount)} por pagar`;
+
+  return (
+    <>
+      <div className="flex flex-col space-y-3 sm:space-y-4">
+        <SummaryBlock
+          tenemos={tenemos}
+          libre={libre}
+          pagado={pagado}
+          pendiente={pendiente}
+          pendingExpenseItems={pendingExpenseItems}
+          userIncome={currentFortnightUserIncome}
+          incomeItems={
+            summary.incomeItems?.filter((i) => i.fortnightId === fortnightId) ??
+            []
+          }
+          year={year}
+          month={month}
+          period={period}
+          expenseCount={summaryExpenseCount}
+          paidExpenseCount={summaryPaidExpenseCount}
+          unpaidExpenseCount={summaryUnpaidExpenseCount}
+          planningOrphanCardPayments={
+            summary.planningOrphanCardPayments ?? null
+          }
+          planningCardStatementDue={
+            summary.planningCardStatementDue ?? null
+          }
+          planningWalletLoanDue={summary.planningWalletLoanDue ?? null}
+          planningPayrollLoanDeduction={
+            summary.planningPayrollLoanDeduction ?? null
+          }
+          planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
+          fundingWalletBalanceTotal={
+            summary.fundingWalletBalanceTotal ?? 0
+          }
+          fundingNetVsPendingExpense={
+            summary.fundingNetVsPendingExpense ?? 0
+          }
+          fundingWalletBreakdown={(summary.fundingWalletBreakdown ?? []).map(
+            (item) => {
+              const wallet = wallets.find((w) => w.id === item.id);
+              return {
+                ...item,
+                provider_icon_key:
+                  item.provider_icon_key ?? wallet?.provider_icon_key ?? null,
+                assignee: item.assignee ?? wallet?.assignee ?? null,
+              };
+            },
           )}
+          onEditIncome={handleOpenOverrideDialog}
+          onEditIncomeSource={handleOpenEditIncomeSource}
+        />
+
+        <section
+          className={cn(
+            MONTHLY_LIQUID_PANEL_CLASS,
+            'space-y-3 p-3 sm:space-y-4 sm:p-4',
+          )}
+          aria-label="Gastos de la quincena"
+        >
+        <SectionHeader
+          icon={Receipt}
+          title="Gastos de la quincena"
+          subtitle={listSubtitle}
+          actions={listSortMenu}
+        />
+        <SegmentedControl
+          value={columnTab}
+          onValueChange={handleColumnTabChange}
+          ariaLabel="Secciones de la quincena"
+          className="w-full min-w-0"
+          stretch
+          frameClassName="flex min-w-0 items-center"
+          wrapperClassName="min-w-0 w-full flex-1"
+          listClassName="min-w-full"
+          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+          options={[
+            {
+              value: 'expenses',
+              ariaLabel: `Gastos, ${unpaidExpenseCount} sin pagar`,
+              label: (
+                <span className={plannerTabLabelClass}>
+                  <Receipt className={plannerTabIconClass} aria-hidden />
+                  Gastos
+                  <Badge variant={unpaidExpenseCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
+                    {unpaidExpenseCount}
+                  </Badge>
+                </span>
+              ),
+            },
+            {
+              value: 'cards',
+              ariaLabel: `Pagos tarjeta, ${pendingCardPaymentsCount} pendientes`,
+              label: (
+                <span className={plannerTabLabelClass}>
+                  <CreditCard className={plannerTabIconClass} aria-hidden />
+                  Tarjetas
+                  <Badge variant={pendingCardPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
+                    {pendingCardPaymentsCount}
+                  </Badge>
+                </span>
+              ),
+            },
+            {
+              value: 'loans',
+              ariaLabel: `Préstamos, ${pendingLoanPaymentsCount} pendientes`,
+              label: (
+                <span className={plannerTabLabelClass}>
+                  <HandCoins className={plannerTabIconClass} aria-hidden />
+                  <span className={cn(!compactTabs && 'sm:hidden')}>Prest.</span>
+                  {!compactTabs ? (
+                    <span className="hidden sm:inline">Préstamos</span>
+                  ) : null}
+                  <Badge variant={pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
+                    {pendingLoanPaymentsCount}
+                  </Badge>
+                </span>
+              ),
+            },
+          ]}
         >
 
           <TabsContent value="expenses" className="mt-0 outline-none">
@@ -1114,8 +1118,22 @@ export default function FortnightColumn({
                 pinTotalsToBottom
                 sortMode={listSortMode}
                 sortDir={listSortDir}
+                variant="list"
+                foldPaid
               />
-            ) : null}
+            ) : (
+              <EmptyState
+                icon={Receipt}
+                message="Sin gastos en esta quincena"
+                description="Agrega uno o regenera desde plantillas."
+                className="py-8"
+                action={{
+                  label: 'Agregar gasto',
+                  variant: 'outline',
+                  onClick: () => setAddExpenseDialogOpen(true),
+                }}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="cards" className="mt-0 outline-none">
@@ -1130,6 +1148,7 @@ export default function FortnightColumn({
               isCompact={tableDensity === 'compact'}
               sortMode={listSortMode}
               sortDir={listSortDir}
+              variant="list"
               onPayCard={
                 context.id !== 0 ? handlePlannerOpenPayCard : undefined
               }
@@ -1145,10 +1164,12 @@ export default function FortnightColumn({
               isCompact={tableDensity === 'compact'}
               sortMode={listSortMode}
               sortDir={listSortDir}
+              variant="list"
               onUpdated={refreshData}
             />
           </TabsContent>
         </SegmentedControl>
+        </section>
       </div>
 
       {/* Receive Payroll Dialog */}

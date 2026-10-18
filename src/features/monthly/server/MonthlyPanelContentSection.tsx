@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PanelCardSkeleton } from '@/components/loading/page-skeletons';
 import MonthlyFortnightView from '@/components/MonthlyFortnightView';
 import {
   MONTHLY_PANEL_CONTENT_GRID_CLASS,
@@ -151,10 +151,9 @@ export const MonthlyPanelContentFallback = ({
         />
       </div>
       <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
-        <div className="space-y-4">
-          <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
-          <Skeleton className="h-72 w-full rounded-xl border border-border/60" />
-        </div>
+        <PanelCardSkeleton bodyClassName="h-56" />
+        <PanelCardSkeleton bodyClassName="h-40" />
+        <PanelCardSkeleton bodyClassName="h-36" />
       </div>
     </div>
   </SkeletonExit>

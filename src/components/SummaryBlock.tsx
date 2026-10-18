@@ -12,17 +12,22 @@ import { SectionHeader } from '@/components/section-header';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
   Wallet,
-  CheckCircle2,
-  Clock,
   Pencil,
   Banknote,
+  TrendingUp,
 } from 'lucide-react';
 import {
   FortnightAccountMetrics,
   FortnightSummaryHero,
 } from '@/components/monthly/FortnightSummaryHero';
-import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
-import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
+import {
+  MONTHLY_LIQUID_PANEL_CLASS,
+  PANEL_INSET_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
+import { Badge } from '@/components/ui/badge';
+import { NumberTicker } from '@/components/motion/number-ticker';
+import { STATUS_SOFT_CLASS } from '@/lib/status-tone';
+import { getFortnightCommitmentBar } from '@/components/monthly/fortnight-income-commitment';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { WalletPaymentMethodTypeIcon } from '@/components/wallets/WalletPaymentMethodTypeIcon';
 import AssigneeAvatar from '@/components/assignee/AssigneeAvatar';
@@ -30,7 +35,6 @@ import {
   getDueToPayComposition,
   getFortnightSummaryHeader,
 } from '@/components/monthly/fortnight-summary-header';
-import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { getWalletProviderOption } from '@/lib/wallet-provider-icons';
 import type {
   FundingWalletBreakdownItem,
@@ -39,7 +43,6 @@ import type {
   PlannerPayrollLoanDeductionSummary,
   PlannerWalletLoanDueSummary,
 } from '@/types/catalog';
-import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 import {
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
@@ -93,9 +96,6 @@ type SummaryBlockProps = {
   fundingNetVsPendingExpense?: number;
   /** Desglose por billetera (solo resumen expandido). */
   fundingWalletBreakdown?: FundingWalletBreakdownItem[];
-  /** Presupuesto de la quincena; en móvil se muestra dentro del desglose. */
-  budgetPanel?: MonthlyBudgetPanelResult | null;
-  budgetOwnerQuery?: string;
   onEditIncome?: () => void;
   onEditIncomeSource?: (incomeId: number, amount: number, label: string) => void;
   /** Unpaid cash gastos, card cortes, and wallet cuotas inside the pending row. */
@@ -122,8 +122,6 @@ export default function SummaryBlock({
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
-  budgetPanel = null,
-  budgetOwnerQuery = '',
   onEditIncome,
   onEditIncomeSource,
   pendingExpenseItems = [],
@@ -185,6 +183,18 @@ export default function SummaryBlock({
   });
 
   const obligationGapCount = planningCardStatementDue?.obligationGapCount ?? 0;
+  const { totalCommittedPercent: commitmentPercent } = getFortnightCommitmentBar(
+    tenemos,
+    pagado,
+    cashCommitted,
+    budgetRemaining,
+  );
+  const commitmentBadge: { label: string; tone: 'success' | 'pending' | 'expense' } =
+    commitmentPercent > 100
+      ? { label: `${commitmentPercent - 100}% arriba`, tone: 'expense' }
+      : commitmentPercent >= 85
+        ? { label: 'Ajustado', tone: 'pending' }
+        : { label: 'Holgado', tone: 'success' };
   const fundingWalletTypeLabel = (t: string) => {
     if (t === 'CASH') return 'Efectivo';
     if (t === 'DEBIT_CARD') return 'Débito';
@@ -204,7 +214,30 @@ export default function SummaryBlock({
       role="region"
       aria-label={headerMeta?.title ?? 'Resumen de la quincena'}
     >
-      <CardContent className="space-y-4 px-3 py-3 sm:px-4 sm:py-4">
+      <CardContent className="space-y-4 p-3 sm:p-4">
+        <SectionHeader
+          icon={TrendingUp}
+          title="Compromiso de la quincena"
+          subtitle={`De ${formatCurrency(tenemos)} de ingreso`}
+          actions={
+            <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+              <NumberTicker
+                value={commitmentPercent}
+                suffix="%"
+                className="text-2xl font-semibold leading-none tabular-nums text-foreground"
+              />
+              <Badge
+                variant="outline"
+                className={cn(
+                  'h-5 rounded-full border-transparent px-2 text-caption font-semibold',
+                  STATUS_SOFT_CLASS[commitmentBadge.tone],
+                )}
+              >
+                {commitmentBadge.label}
+              </Badge>
+            </div>
+          }
+        />
         <FortnightSummaryHero
           periodIncome={tenemos}
           incomeRemainder={trasPagarPlaneado}
@@ -235,22 +268,14 @@ export default function SummaryBlock({
           <div className="flex flex-col gap-3">
             <Separator className="bg-border/50" />
 
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div
-                className={cn(
-                  METRIC_STRIP_CLASS,
-                  'px-2 py-2 sm:px-3 sm:py-3',
-                )}
+                className={cn(PANEL_INSET_CLASS, 'p-3')}
               >
-                <div className="mb-1.5 flex items-center justify-between gap-1 sm:mb-2">
-                  <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-status-income-soft ring-1 ring-status-income-border sm:h-6 sm:w-6">
-                      <Wallet
-                        className="h-3 w-3 text-status-income sm:h-3.5 sm:w-3.5"
-                        data-icon="inline-start"
-                      />
-                    </span>
-                    <span className="truncate eyebrow text-status-income">
+                <div className="mb-1.5 flex items-center justify-between gap-1.5">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="size-1.5 shrink-0 rounded-full bg-status-income" aria-hidden />
+                    <span className="truncate eyebrow text-muted-foreground">
                       Ingresos
                     </span>
                   </div>
@@ -273,7 +298,7 @@ export default function SummaryBlock({
                 <p className="leading-tight">
                   <CurrencyTicker
                     value={tenemos}
-                    className="text-sm font-black text-foreground sm:text-base"
+                    className="text-lg font-bold tabular-nums text-foreground"
                   />
                 </p>
                 {hasUserIncome || incomeItems.length > 0 ? (
@@ -286,26 +311,18 @@ export default function SummaryBlock({
               </div>
 
               <div
-                className={cn(
-                  METRIC_STRIP_CLASS,
-                  'px-2 py-2 sm:px-3 sm:py-3',
-                )}
+                className={cn(PANEL_INSET_CLASS, 'p-3')}
               >
-                <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-status-success-soft ring-1 ring-status-success-border sm:h-6 sm:w-6">
-                    <CheckCircle2
-                      className="h-3 w-3 text-status-success sm:h-3.5 sm:w-3.5"
-                      data-icon="inline-start"
-                    />
-                  </span>
-                  <span className="truncate eyebrow text-status-success">
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  <span className="size-1.5 shrink-0 rounded-full bg-status-success" aria-hidden />
+                  <span className="truncate eyebrow text-muted-foreground">
                     Pagado
                   </span>
                 </div>
                 <p className="leading-tight">
                   <CurrencyTicker
                     value={pagado}
-                    className="text-sm font-black text-foreground sm:text-base"
+                    className="text-lg font-bold tabular-nums text-foreground"
                   />
                 </p>
                 <p className="mt-0.5 text-caption text-muted-foreground">
@@ -316,26 +333,18 @@ export default function SummaryBlock({
               </div>
 
               <div
-                className={cn(
-                  METRIC_STRIP_CLASS,
-                  'px-2 py-2 sm:px-3 sm:py-3',
-                )}
+                className={cn(PANEL_INSET_CLASS, 'p-3')}
               >
-                <div className="mb-1.5 flex items-center gap-1 sm:mb-2 sm:gap-1.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-status-pending-soft ring-1 ring-status-pending-border sm:h-6 sm:w-6">
-                    <Clock
-                      className="h-3 w-3 text-status-pending sm:h-3.5 sm:w-3.5"
-                      data-icon="inline-start"
-                    />
-                  </span>
-                  <span className="truncate eyebrow text-status-pending">
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  <span className="size-1.5 shrink-0 rounded-full bg-status-pending" aria-hidden />
+                  <span className="truncate eyebrow text-muted-foreground">
                     Pendiente
                   </span>
                 </div>
                 <p className="leading-tight">
                   <CurrencyTicker
                     value={pendiente}
-                    className="text-sm font-black text-foreground sm:text-base"
+                    className="text-lg font-bold tabular-nums text-foreground"
                   />
                 </p>
                 <p className="mt-0.5 text-caption text-muted-foreground">
@@ -379,16 +388,6 @@ export default function SummaryBlock({
               </p>
             ) : null}
 
-            {budgetPanel != null ? (
-              <div className="xl:hidden">
-                <MonthlyBudgetSidebar
-                  panel={budgetPanel}
-                  ownerQuery={budgetOwnerQuery}
-                  variant="embedded"
-                />
-              </div>
-            ) : null}
-
             {planningOrphanCardPayments != null &&
             planningOrphanCardPayments.count > 0 ? (
               <p className="text-caption leading-snug text-muted-foreground">
@@ -401,7 +400,7 @@ export default function SummaryBlock({
 
             {incomeItems.length > 0 || hasUserIncome ? (
               <div
-                className={cn(METRIC_STRIP_CLASS, 'px-3 py-2.5')}
+                className={cn(PANEL_INSET_CLASS, 'px-3 py-2.5')}
                 role="region"
                 aria-label="Desglose de ingresos"
               >
@@ -424,7 +423,7 @@ export default function SummaryBlock({
                       return (
                         <div
                           key={item.id}
-                          className="group -mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
+                          className="group flex items-center justify-between gap-2 border-t border-border/60 py-2 first:border-t-0 dark:border-white/[0.06]"
                         >
                           <span className="min-w-0 truncate text-sm text-foreground/90">
                             {displayLabel}
@@ -462,7 +461,7 @@ export default function SummaryBlock({
                         {periodIncome.userIncome.map((userInc) => (
                           <div
                             key={userInc.userId}
-                            className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/40"
+                            className="flex items-center justify-between gap-2 border-t border-border/60 py-2 first:border-t-0 dark:border-white/[0.06]"
                           >
                             <span className="truncate text-sm text-foreground/90">
                               {userInc.userName}
@@ -481,7 +480,7 @@ export default function SummaryBlock({
 
             {fundingLiquidityApplies ? (
               <div
-                className={cn(METRIC_STRIP_CLASS, 'px-3 py-2.5')}
+                className={cn(PANEL_INSET_CLASS, 'px-3 py-2.5')}
                 role="region"
                 aria-label="Desglose de liquidez actual"
               >
@@ -492,7 +491,7 @@ export default function SummaryBlock({
                   title="Desglose de liquidez actual"
                 />
                 {fundingWalletBreakdown.length > 0 ? (
-                  <div className="space-y-1">
+                  <div>
                     {fundingWalletBreakdown.map((w) => {
                       const provider = getWalletProviderOption(
                         w.provider_icon_key,
@@ -502,7 +501,7 @@ export default function SummaryBlock({
                       return (
                         <div
                           key={w.id}
-                          className="-mx-1 flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-muted/40"
+                          className="flex items-center justify-between gap-2 border-t border-border/60 py-2 text-sm first:border-t-0 dark:border-white/[0.06]"
                         >
                           <span className="flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
                             {showProviderLogo ? (
@@ -539,7 +538,7 @@ export default function SummaryBlock({
                               </span>
                             </span>
                           </span>
-                          <span className="shrink-0 font-sans text-xs font-semibold tabular-nums text-foreground">
+                          <span className="shrink-0 font-sans text-sm font-semibold tabular-nums text-foreground">
                             {formatCurrency(w.amount)}
                           </span>
                         </div>
@@ -552,23 +551,23 @@ export default function SummaryBlock({
                     className="py-4"
                   />
                 )}
-                <Separator className="my-2 bg-status-income/15" />
+                <Separator className="my-2 bg-border/60 dark:bg-white/[0.06]" />
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center justify-between gap-2 text-sm">
                     <span className="text-muted-foreground">
                       Balance actual (efectivo + débito)
                     </span>
                     <CurrencyTicker
                       value={displayFundingWalletTotal}
-                      className="text-xs font-semibold text-foreground"
+                      className="text-sm font-semibold text-foreground"
                     />
                   </div>
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="text-muted-foreground">
                         Menos pendiente de la quincena (no pagado)
                       </span>
-                      <Money value={-displayPendienteFundingRow} size="caption" />
+                      <Money value={-displayPendienteFundingRow} size="row" />
                     </div>
                     {displayPendienteFundingRow > 0 &&
                     pendingExpenseItems.length > 0 ? (
@@ -593,29 +592,29 @@ export default function SummaryBlock({
                     ) : null}
                   </div>
                   {payrollLoanDeduction > 0 ? (
-                    <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="text-muted-foreground">
                         Menos deducciones de nómina (préstamos)
                       </span>
-                      <Money value={-payrollLoanDeduction} size="caption" />
+                      <Money value={-payrollLoanDeduction} size="row" />
                     </div>
                   ) : null}
                   {displayBudgetFundingRow > 0 ? (
-                    <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="text-muted-foreground">
                         Menos del presupuesto de la quincena
                       </span>
-                      <Money value={-displayBudgetFundingRow} size="caption" />
+                      <Money value={-displayBudgetFundingRow} size="row" />
                     </div>
                   ) : null}
-                  <div className="flex items-center justify-between gap-2 border-t border-status-income/20 pt-2 text-xs font-semibold">
+                  <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2 text-sm font-semibold dark:border-white/[0.06]">
                     <span className={displayFundingNet >= 0 ? 'text-status-income' : 'text-foreground'}>
                       = Liquidez actual
                     </span>
                     <CurrencyTicker
                       value={displayFundingNet}
                       className={cn(
-                        'text-xs font-semibold',
+                        'text-sm font-semibold',
                         displayFundingNet >= 0
                           ? 'text-status-income'
                           : 'text-foreground',
@@ -630,12 +629,12 @@ export default function SummaryBlock({
             },
           ]}
           classNames={{
-            item: 'bg-transparent',
+            item: '-mx-3 -mb-3 bg-transparent sm:-mx-4 sm:-mb-4',
             trigger:
-              'min-h-0 gap-2 rounded-lg px-0 py-0.5 text-sm text-muted-foreground hover:text-foreground focus-visible:bg-transparent',
-            title: 'text-sm font-normal text-muted-foreground',
+              'min-h-0 gap-2 border-t border-border/60 px-3 py-3 text-sm font-medium text-foreground hover:text-foreground/80 focus-visible:bg-transparent dark:border-white/[0.06] sm:px-4',
+            title: 'text-sm font-medium text-foreground',
             chevron: 'h-4 w-4',
-            body: 'px-0 pb-0 pt-3',
+            body: 'px-3 pb-3 pt-1 sm:px-4 sm:pb-4',
             description: 'text-foreground',
           }}
         />

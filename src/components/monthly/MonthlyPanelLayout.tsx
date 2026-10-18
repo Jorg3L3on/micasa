@@ -11,7 +11,7 @@ import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PanelCardSkeleton } from '@/components/loading/page-skeletons';
 import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
 import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import { useFinanceContext } from '@/context/finance-context';
@@ -140,13 +140,18 @@ const MonthlyOwnerSwitchFallback = () => (
   >
     <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
       <div className="space-y-4">
-        <Skeleton className="h-24 w-full rounded-lg border border-border/60" />
-        <Skeleton className="h-36 w-full rounded-lg border border-border/60" />
-        <Skeleton className="h-52 w-full rounded-lg border border-border/60" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <PanelCardSkeleton bodyClassName="h-8" />
+          <PanelCardSkeleton bodyClassName="h-8" />
+        </div>
+        <PanelCardSkeleton bodyClassName="h-28" />
+        <PanelCardSkeleton bodyClassName="h-64" />
       </div>
     </div>
     <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
-      <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
+      <PanelCardSkeleton bodyClassName="h-56" />
+      <PanelCardSkeleton bodyClassName="h-40" />
+      <PanelCardSkeleton bodyClassName="h-36" />
     </div>
   </div>
 );
@@ -158,7 +163,7 @@ export const MONTHLY_PANEL_MAIN_COLUMN_CLASS =
   'mx-auto min-w-0 w-full max-w-4xl xl:max-w-none';
 
 export const MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS =
-  'hidden min-w-0 flex-col gap-5 xl:flex';
+  'flex min-w-0 flex-col gap-5';
 
 /**
  * Hides main-column content that the sidebar repeats (e.g. the wallet strip vs

@@ -35,7 +35,7 @@ import {
 } from '@/components/motion/swipeable-list';
 import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-balance';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -253,7 +253,20 @@ type ExpenseTableProps = {
   /** How to order rows when syncing from props (default: mayor monto). */
   sortMode?: PlannerListSortMode;
   sortDir?: PlannerListSortDir;
+  /**
+   * `cards` (default): one glass card per row. `list`: rows inside a parent
+   * card, separated by hairlines (Panel financiero).
+   */
+  variant?: 'cards' | 'list';
+  /** List variant: paid rows go last behind a "Mostrar N pagados" toggle. */
+  foldPaid?: boolean;
 };
+
+const showPaidStorageKey = (
+  year: number | undefined,
+  month: number | undefined,
+  period: 'FIRST' | 'SECOND' | undefined,
+) => `micasa.planner.showPaid.${year ?? 0}-${month ?? 0}-${period ?? 'ALL'}`;
 
 export default function ExpenseTable({
   date,
@@ -268,8 +281,36 @@ export default function ExpenseTable({
   pinTotalsToBottom = false,
   sortMode = 'amount',
   sortDir = 'desc',
+  variant = 'cards',
+  foldPaid = false,
 }: ExpenseTableProps) {
   const isCompact = density === 'compact';
+  const isListVariant = variant === 'list';
+  const [showPaid, setShowPaid] = useState(false);
+  useEffect(() => {
+    if (!foldPaid) return;
+    try {
+      setShowPaid(
+        localStorage.getItem(showPaidStorageKey(year, month, period)) === '1',
+      );
+    } catch {
+      /* storage unavailable */
+    }
+  }, [foldPaid, year, month, period]);
+  const toggleShowPaid = useCallback(() => {
+    setShowPaid((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(
+          showPaidStorageKey(year, month, period),
+          next ? '1' : '0',
+        );
+      } catch {
+        /* storage unavailable */
+      }
+      return next;
+    });
+  }, [year, month, period]);
   const isMobile = useIsMobile();
   const { context } = useFinanceContext();
   const [dropdownMounted, setDropdownMounted] = useState(false);
@@ -631,33 +672,20 @@ export default function ExpenseTable({
     };
   }, [date, month, period, year]);
 
-  return (
-    <>
-      <div
-        className="px-1 pb-1"
-        role="region"
-        aria-label="Gastos de la quincena"
-      >
-        <ul
-          role="list"
-          className={cn(
-            'flex flex-col gap-1.5 [&>li]:shrink-0',
-            pinTotalsToBottom
-              ? 'pb-2'
-              : isCompact
-                ? 'max-h-[min(380px,55vh)] overflow-y-auto pb-2'
-                : 'max-h-[380px] overflow-y-auto pb-2',
-          )}
-        >
-          {localExpenses.length === 0 ? (
-            cashFlowRows == null ? (
-              <li>
-                <EmptyState message="Sin gastos" className="py-8" />
-              </li>
-            ) : null
-          ) : (
-            <>
-              {localExpenses.map((e) => {
+  const unpaidRows = useMemo(
+    () =>
+      isListVariant && foldPaid
+        ? localExpenses.filter((row) => !row.is_paid)
+        : localExpenses,
+    [isListVariant, foldPaid, localExpenses],
+  );
+  const paidRows = useMemo(
+    () =>
+      isListVariant && foldPaid ? localExpenses.filter((row) => row.is_paid) : [],
+    [isListVariant, foldPaid, localExpenses],
+  );
+
+  const renderExpenseRow = (e: TransactionRow, isFirst: boolean) => {
                 const isUpdating = updatingIds.has(e.id);
                 const isCardPay = isPlanningCardPaymentRow(e);
                 const isLoanPay = isPlanningLoanPaymentRow(e);
@@ -744,15 +772,26 @@ export default function ExpenseTable({
                       onOpenChange={setOpenSwipe}
                       className={swipeEnabled ? 'bg-transparent' : undefined}
                       surfaceClassName={cn(
-                        MONTHLY_PANEL_SHELL_CLASS,
-                        'group/row isolate flex w-full min-w-0 max-w-full flex-nowrap items-center gap-2.5 overflow-hidden rounded-xl px-3',
+                        isListVariant
+                          ? cn(
+                              'group/row isolate flex w-full min-w-0 max-w-full flex-nowrap items-center gap-2.5 px-1',
+                              !isFirst &&
+                                'border-t border-border/60 dark:border-white/[0.06]',
+                              swipeEnabled && 'overflow-hidden',
+                            )
+                          : cn(
+                              MONTHLY_PANEL_SHELL_CLASS,
+                              'group/row isolate flex w-full min-w-0 max-w-full flex-nowrap items-center gap-2.5 overflow-hidden rounded-xl px-3',
+                            ),
                         isCompact ? 'py-2.5' : 'py-3',
                       )}
                     >
-                    <AuraRowBloom
-                      color={rowStatusColor}
-                      subdued={e.is_paid}
-                    />
+                    {isListVariant ? null : (
+                      <AuraRowBloom
+                        color={rowStatusColor}
+                        subdued={e.is_paid}
+                      />
+                    )}
                     {/* Status / pay toggle */}
                     <div className="shrink-0">
                       {isReadOnlyStatus ? (
@@ -978,7 +1017,66 @@ export default function ExpenseTable({
                     </SwipeableRow>
                   </li>
                 );
-              })}
+  };
+
+  return (
+    <>
+      <div
+        className={isListVariant ? undefined : 'px-1 pb-1'}
+        role="region"
+        aria-label="Lista de gastos"
+      >
+        <ul
+          role="list"
+          className={cn(
+            'flex flex-col [&>li]:shrink-0',
+            isListVariant ? 'gap-0' : 'gap-1.5',
+            pinTotalsToBottom
+              ? isListVariant
+                ? 'pb-0'
+                : 'pb-2'
+              : isCompact
+                ? 'max-h-[min(380px,55vh)] overflow-y-auto pb-2'
+                : 'max-h-[380px] overflow-y-auto pb-2',
+          )}
+        >
+          {localExpenses.length === 0 ? (
+            cashFlowRows == null ? (
+              <li>
+                <EmptyState message="Sin gastos" className="py-8" />
+              </li>
+            ) : null
+          ) : (
+            <>
+              {unpaidRows.map((e, index) => renderExpenseRow(e, index === 0))}
+              {isListVariant && foldPaid && paidRows.length > 0 ? (
+                <li key="paid-toggle">
+                  <button
+                    type="button"
+                    onClick={toggleShowPaid}
+                    aria-expanded={showPaid}
+                    className={cn(
+                      'flex w-full items-center justify-center gap-1.5 py-3 text-sm font-medium text-foreground transition-colors hover:text-foreground/80',
+                      unpaidRows.length > 0 &&
+                        'border-t border-border/60 dark:border-white/[0.06]',
+                    )}
+                  >
+                    {showPaid
+                      ? 'Ocultar pagados'
+                      : `Mostrar ${paidRows.length} ${paidRows.length === 1 ? 'pagado' : 'pagados'}`}
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 transition-transform',
+                        showPaid && 'rotate-180',
+                      )}
+                      aria-hidden
+                    />
+                  </button>
+                </li>
+              ) : null}
+              {!isListVariant || !foldPaid || showPaid
+                ? paidRows.map((e) => renderExpenseRow(e, false))
+                : null}
             </>
           )}
         </ul>
