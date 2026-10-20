@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { logFinanceEvent } from '@/lib/observability/finance-log';
 import type { AgentScope } from '@/lib/server/resolve-agent-context';
 import {
   OAUTH_ACCESS_TOKEN_TTL_MS,
@@ -86,8 +87,12 @@ export const exchangeAuthorizationCode = async (input: {
     where: { code_hash: codeHash },
   });
 
-  if (!row || row.used_at != null) {
-    throw new OAuthInvalidGrantError(row ? 'other' : 'not_found');
+  if (!row) {
+    throw new OAuthInvalidGrantError('not_found');
+  }
+  if (row.used_at != null) {
+    await revokeGrantsForReusedCode(row);
+    throw new OAuthInvalidGrantError('code_reuse');
   }
   if (isOAuthExpiryPast(row.expires_at)) {
     throw new OAuthInvalidGrantError('expired');
@@ -115,10 +120,16 @@ export const exchangeAuthorizationCode = async (input: {
     throw new OAuthInvalidGrantError('resource');
   }
 
-  await prisma.mcpOAuthAuthorizationCode.update({
-    where: { id: row.id },
+  // Validation runs first so a malformed request does not burn the code.
+  // The conditional update is the single-use gate: of two concurrent
+  // exchanges only one sees count === 1.
+  const claimed = await prisma.mcpOAuthAuthorizationCode.updateMany({
+    where: { id: row.id, used_at: null },
     data: { used_at: new Date() },
   });
+  if (claimed.count === 0) {
+    throw new OAuthInvalidGrantError('other');
+  }
 
   const { loadAuthorizationCodeContexts } = await import(
     '@/lib/server/agent-allowed-contexts'
@@ -133,6 +144,24 @@ export const exchangeAuthorizationCode = async (input: {
     ),
     resource: normalizeMcpResourceUrl(row.resource),
     allowedContexts,
+    authorizationCodeId: row.id,
+  });
+};
+
+/** OAuth 2.1 §4.1.2: a replayed code revokes every grant issued from it. */
+const revokeGrantsForReusedCode = async (row: {
+  id: number;
+  client_id: string;
+  user_id: number;
+}) => {
+  const revoked = await prisma.mcpOAuthGrant.updateMany({
+    where: { authorization_code_id: row.id, revoked_at: null },
+    data: { revoked_at: new Date() },
+  });
+  logFinanceEvent('warn', 'oauth.code_reuse', {
+    client_id: row.client_id,
+    user_id: row.user_id,
+    revoked_grants: revoked.count,
   });
 };
 
@@ -142,6 +171,7 @@ export const issueGrant = async (input: {
   scopes: AgentScope[];
   resource: string;
   allowedContexts?: import('@/schemas/agent-context.schema').AgentContextEntry[];
+  authorizationCodeId?: number;
 }) => {
   const access = generateOAuthAccessToken();
   const refresh = generateOAuthRefreshToken();
@@ -157,6 +187,7 @@ export const issueGrant = async (input: {
       scopes: input.scopes,
       resource: input.resource,
       expires_at: oauthExpiresAtFromNow(OAUTH_ACCESS_TOKEN_TTL_MS),
+      authorization_code_id: input.authorizationCodeId ?? null,
     },
   });
 

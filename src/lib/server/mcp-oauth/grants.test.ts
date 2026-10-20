@@ -4,12 +4,14 @@ const prismaMock = vi.hoisted(() => ({
   mcpOAuthAuthorizationCode: {
     findUnique: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
   },
   mcpOAuthAuthorizationCodeContext: {
     findMany: vi.fn(),
   },
   mcpOAuthGrant: {
     create: vi.fn(),
+    updateMany: vi.fn(),
   },
   agentConnectionAllowedContext: {
     deleteMany: vi.fn(),
@@ -18,8 +20,14 @@ const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
 }));
 
+const logFinanceEventMock = vi.hoisted(() => vi.fn());
+
 vi.mock('@/lib/prisma', () => ({
   default: prismaMock,
+}));
+
+vi.mock('@/lib/observability/finance-log', () => ({
+  logFinanceEvent: logFinanceEventMock,
 }));
 
 vi.mock('@/lib/server/mcp-oauth/tokens', async (importOriginal) => {
@@ -77,6 +85,8 @@ beforeEach(() => {
   vi.stubEnv('NEXTAUTH_URL', 'https://micasa.example');
   prismaMock.mcpOAuthAuthorizationCode.findUnique.mockResolvedValue(baseCodeRow);
   prismaMock.mcpOAuthAuthorizationCode.update.mockResolvedValue({});
+  prismaMock.mcpOAuthAuthorizationCode.updateMany.mockResolvedValue({ count: 1 });
+  prismaMock.mcpOAuthGrant.updateMany.mockResolvedValue({ count: 0 });
   prismaMock.mcpOAuthAuthorizationCodeContext.findMany.mockResolvedValue([]);
   prismaMock.mcpOAuthGrant.create.mockResolvedValue({ id: 1 });
   prismaMock.agentConnectionAllowedContext.deleteMany.mockResolvedValue({ count: 0 });
@@ -192,11 +202,12 @@ describe('exchangeAuthorizationCode', () => {
     ).rejects.toMatchObject({ reason: 'pkce' } satisfies Partial<OAuthInvalidGrantError>);
   });
 
-  it('rejects already-used authorization codes with invalid_grant', async () => {
+  it('revokes every grant issued from a replayed code and logs oauth.code_reuse', async () => {
     prismaMock.mcpOAuthAuthorizationCode.findUnique.mockResolvedValue({
       ...baseCodeRow,
       used_at: new Date(),
     });
+    prismaMock.mcpOAuthGrant.updateMany.mockResolvedValue({ count: 1 });
 
     await expect(
       exchangeAuthorizationCode({
@@ -205,7 +216,73 @@ describe('exchangeAuthorizationCode', () => {
         redirectUri: REDIRECT,
         codeVerifier: VERIFIER,
       }),
-    ).rejects.toMatchObject({ reason: 'other' } satisfies Partial<OAuthInvalidGrantError>);
+    ).rejects.toMatchObject({
+      reason: 'code_reuse',
+    } satisfies Partial<OAuthInvalidGrantError>);
+
+    expect(prismaMock.mcpOAuthGrant.updateMany).toHaveBeenCalledWith({
+      where: { authorization_code_id: baseCodeRow.id, revoked_at: null },
+      data: { revoked_at: expect.any(Date) },
+    });
+    expect(logFinanceEventMock).toHaveBeenCalledWith('warn', 'oauth.code_reuse', {
+      client_id: INSTANCE_CIMD,
+      user_id: 42,
+      revoked_grants: 1,
+    });
+    expect(prismaMock.mcpOAuthGrant.create).not.toHaveBeenCalled();
+  });
+
+  it('issues exactly one grant when the same code is exchanged twice concurrently', async () => {
+    // Both requests read used_at: null; only the first conditional update wins.
+    prismaMock.mcpOAuthAuthorizationCode.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+
+    const exchange = () =>
+      exchangeAuthorizationCode({
+        code: CODE,
+        clientId: INSTANCE_CIMD,
+        redirectUri: REDIRECT,
+        codeVerifier: VERIFIER,
+      });
+    const results = await Promise.allSettled([exchange(), exchange()]);
+
+    const fulfilled = results.filter((r) => r.status === 'fulfilled');
+    const rejected = results.filter(
+      (r): r is PromiseRejectedResult => r.status === 'rejected',
+    );
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0].reason).toBeInstanceOf(OAuthInvalidGrantError);
+    expect(prismaMock.mcpOAuthGrant.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.mcpOAuthAuthorizationCode.updateMany).toHaveBeenCalledWith({
+      where: { id: baseCodeRow.id, used_at: null },
+      data: { used_at: expect.any(Date) },
+    });
+  });
+
+  it('does not burn the code when PKCE fails', async () => {
+    await expect(
+      exchangeAuthorizationCode({
+        code: CODE,
+        clientId: INSTANCE_CIMD,
+        redirectUri: REDIRECT,
+      }),
+    ).rejects.toMatchObject({ reason: 'pkce' } satisfies Partial<OAuthInvalidGrantError>);
+    expect(prismaMock.mcpOAuthAuthorizationCode.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('links the issued grant to its authorization code', async () => {
+    await exchangeAuthorizationCode({
+      code: CODE,
+      clientId: INSTANCE_CIMD,
+      redirectUri: REDIRECT,
+      codeVerifier: VERIFIER,
+    });
+
+    expect(prismaMock.mcpOAuthGrant.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ authorization_code_id: baseCodeRow.id }),
+    });
   });
 
   it('rejects expired authorization codes with reason expired', async () => {
@@ -236,7 +313,7 @@ describe('exchangeAuthorizationCode', () => {
     expect(response.token_type).toBe('bearer');
     expect(response.access_token).toContain('micasa_oauth_');
     expect(verifyPkceS256(VERIFIER, CHALLENGE)).toBe(true);
-    expect(prismaMock.mcpOAuthAuthorizationCode.update).toHaveBeenCalledWith(
+    expect(prismaMock.mcpOAuthAuthorizationCode.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: { used_at: expect.any(Date) },
       }),

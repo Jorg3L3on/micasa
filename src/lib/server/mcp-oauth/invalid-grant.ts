@@ -5,6 +5,7 @@ export type InvalidGrantReason =
   | 'pkce'
   | 'not_found'
   | 'resource'
+  | 'code_reuse'
   | 'other';
 
 export class OAuthInvalidGrantError extends Error {

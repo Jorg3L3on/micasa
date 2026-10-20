@@ -55,6 +55,7 @@ vi.mock('@/lib/server/mcp-oauth/token-attempt-log', async (importOriginal) => {
 });
 
 import { POST } from '@/app/api/oauth/token/route';
+import { OAuthInvalidGrantError } from '@/lib/server/mcp-oauth/invalid-grant';
 
 const CLIENT_ID = '11111111-2222-3333-4444-555555555555';
 const CIMD_CLIENT_ID = 'https://chatgpt.com/oauth/fixture-client/client.json';
@@ -214,6 +215,34 @@ describe('POST /api/oauth/token (PKCE)', () => {
       error: 'invalid_request',
       http_status: 400,
       invalid_grant_reason: null,
+    });
+  });
+
+  it('registra code_reuse en el intento cuando se reutiliza un código', async () => {
+    exchangeAuthorizationCodeMock.mockRejectedValue(
+      new OAuthInvalidGrantError('code_reuse'),
+    );
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: 'micasa_code_ya-usado',
+          redirect_uri: 'https://chatgpt.com/connector_platform/oauth/callback',
+          client_id: CLIENT_ID,
+          code_verifier: VERIFIER,
+        }),
+      }) as Parameters<typeof POST>[0],
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe('invalid_grant');
+    expect(finishTokenAttemptMock).toHaveBeenCalledWith(99, {
+      error: 'invalid_grant',
+      http_status: 400,
+      invalid_grant_reason: 'code_reuse',
     });
   });
 
