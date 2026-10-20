@@ -7,6 +7,8 @@ import {
 } from '@/lib/server/mcp-oauth/clients';
 import {
   getMcpResourceUrl,
+  getOAuthIssuer,
+  mcpResourcesMatch,
   normalizeMcpResourceUrl,
   parseScopeParam,
 } from '@/lib/server/mcp-oauth/config';
@@ -59,7 +61,36 @@ const buildOAuthCallbackUrl = (input: {
   return redirect;
 };
 
+const originOf = (value: string): string | null => {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Consent POST mints an authorization code, so it must come from our own
+ * consent page: Origin equal to the issuer (or this request's origin), or,
+ * without Origin, Sec-Fetch-Site same-origin. Anything else is a cross-site
+ * form post (CSRF) and gets 403.
+ */
+const isSameOriginRequest = (request: NextRequest): boolean => {
+  const allowed = new Set(
+    [originOf(getOAuthIssuer(request)), originOf(request.url)].filter(
+      (value): value is string => value != null,
+    ),
+  );
+  const origin = request.headers.get('origin');
+  if (origin) return allowed.has(origin);
+  return request.headers.get('sec-fetch-site') === 'same-origin';
+};
+
 export async function POST(request: NextRequest) {
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json({ error: 'Origen no permitido' }, { status: 403 });
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -82,7 +113,7 @@ export async function POST(request: NextRequest) {
       resource: scalarConsentField(fields, 'resource'),
       allow_write: scalarConsentField(fields, 'allow_write'),
     });
-    const client = await resolveOAuthClient(input.client_id);
+    const client = await resolveOAuthClient(input.client_id, request);
     if (!client) {
       return NextResponse.json({ error: 'Cliente inválido' }, { status: 400 });
     }
@@ -95,10 +126,18 @@ export async function POST(request: NextRequest) {
     }
     if (!scopes.includes('read')) scopes = ['read', ...scopes];
 
-    const resource = normalizeMcpResourceUrl(
-      input.resource ?? getMcpResourceUrl(request),
-      request,
-    );
+    // RFC 8707: absent resource means this MCP server; any other is rejected.
+    const mcpResource = getMcpResourceUrl(request);
+    if (input.resource && !mcpResourcesMatch(input.resource, mcpResource, request)) {
+      return NextResponse.json(
+        {
+          error: 'invalid_target',
+          error_description: 'resource debe ser la URL del servidor MCP de MiCasa',
+        },
+        { status: 400 },
+      );
+    }
+    const resource = normalizeMcpResourceUrl(input.resource ?? mcpResource, request);
 
     const parsedContexts = parseContextFieldsFromForm(fields);
     const allowedContexts = await validateSelectableContexts(userId, parsedContexts);
@@ -135,9 +174,8 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error interno' },
-      { status: 400 },
-    );
+    // Never echo internal messages (Prisma, etc.) to the browser.
+    console.error('OAuth consent error:', error);
+    return NextResponse.json({ error: 'No se pudo autorizar la conexión' }, { status: 400 });
   }
 }

@@ -29,6 +29,9 @@ type ConsentParams = {
 
 type OAuthConsentFormProps = {
   clientName: string;
+  /** Host of the CIMD client_id, or "Registro dinámico · <redirect host>". */
+  clientOrigin: string;
+  /** https client_uri only; null hides the link. */
   clientUri: string | null;
   requestedScope: string;
   consentParams: ConsentParams;
@@ -37,6 +40,7 @@ type OAuthConsentFormProps = {
 
 export default function OAuthConsentForm({
   clientName,
+  clientOrigin,
   clientUri,
   requestedScope,
   consentParams,
@@ -65,18 +69,25 @@ export default function OAuthConsentForm({
           <div className="space-y-1">
             <CardTitle className="text-base">Autorizar conexión MCP</CardTitle>
             <CardDescription>
-              <span className="font-medium text-foreground">{clientName}</span>
-              {clientUri ? (
-                <>
-                  {' '}
-                  (<a href={clientUri} className="underline" target="_blank" rel="noreferrer">
-                    {clientUri}
-                  </a>
-                  )
-                </>
-              ) : null}{' '}
+              <span className="font-medium text-foreground">{clientName}</span>{' '}
               solicita acceso a tu cuenta MiCasa.
             </CardDescription>
+            <p className="text-xs text-muted-foreground" data-testid="oauth-client-origin">
+              Origen: <span className="font-medium text-foreground">{clientOrigin}</span>
+              {clientUri ? (
+                <>
+                  {' · '}
+                  <a
+                    href={clientUri}
+                    className="underline"
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    {clientUri}
+                  </a>
+                </>
+              ) : null}
+            </p>
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">

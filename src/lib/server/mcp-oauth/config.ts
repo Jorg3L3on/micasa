@@ -13,8 +13,15 @@ export const OAUTH_REFRESH_TOKEN_PREFIX = 'micasa_refresh_';
 
 export const OAUTH_CODE_TTL_MS = 10 * 60 * 1000;
 
-export const OAUTH_ACCESS_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+/**
+ * OAuth access token lifetime: 24 h (decided by Jorge on MIC-I5-4, Oct 2026;
+ * was 90 days). Clients renew silently with the refresh token, so a short
+ * lifetime limits a leaked token without forcing a re-login. Manual Bearer
+ * keys (`micasa_…`) are not affected.
+ */
+export const OAUTH_ACCESS_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** Refresh token lifetime: 365 days, renewed on every rotation. */
 export const OAUTH_REFRESH_TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
 export const OAUTH_TOKEN_LOOKUP_LENGTH = 20;
@@ -87,23 +94,6 @@ export const mcpResourcesMatch = (
 
 export const oauthPath = (request: Request | undefined, path: string): string =>
   `${getOAuthIssuer(request)}${path}`;
-
-/** Audiences ChatGPT / RFC 7523 clients may use for private_key_jwt assertions. */
-export const buildOAuthTokenAudiences = (request?: Request): string[] => {
-  const issuer = getOAuthIssuer(request);
-  const resource = getMcpResourceUrl(request);
-  const aliasResource = `${issuer}${MCP_RESOURCE_ALIAS_PATH}`;
-  const candidates = [
-    oauthPath(request, '/api/oauth/token'),
-    oauthPath(request, '/oauth/token'),
-    oauthPath(request, '/token'),
-    issuer,
-    `${issuer}/token`,
-    resource,
-    aliasResource,
-  ];
-  return [...new Set(candidates.map(trimTrailingSlash))];
-};
 
 export const parseScopeParam = (scope: string | null | undefined): AgentScope[] => {
   if (!scope?.trim()) return ['read'];

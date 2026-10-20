@@ -7,6 +7,16 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Security
+
+- **MCP connector OAuth hardening (MIC-I5, `serverInfo` 2.2.1)** — fixes from the October 2026 audit:
+  - PKCE `S256` is mandatory on every code exchange; a `client_assertion` can no longer stand in for the `code_verifier`, and a different CIMD `client_id` can no longer redeem another client's code. `private_key_jwt` is retired (assertions are ignored).
+  - Authorization codes are single-use atomically; replaying a code revokes the grants issued from it.
+  - Per-IP rate limits on `/api/oauth/token`, `/api/oauth/register` and new CIMD client resolution; token endpoint preflights no longer write to the database.
+  - Dynamic client registration only accepts https, loopback http or reverse-DNS private-scheme redirect URIs, and https `client_uri` / `logo_uri`; the consent screen shows the client's origin.
+  - Token audience (RFC 8707) is verified on `/api/mcp`, foreign `resource` values get `invalid_target`, access tokens last 24 h, refresh tokens expire after 365 days with reuse detection, consent POST requires same-origin, and the 401 challenge no longer follows the `Host` header.
+  - Requires migrations `20261020120000_mcp_oauth_grant_authorization_code` and `20261020130000_mcp_oauth_refresh_lifetime`.
+
 ### Added
 
 - **Loans (Préstamos)** — `Loan` and `LoanPayment` models, payment schedules, planner panel, wallet linking, and integration with dashboard obligations, liquidity projection, and transactions.

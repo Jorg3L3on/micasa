@@ -5,17 +5,35 @@ import {
   oauthErrorResponse,
   oauthJsonResponse,
   oauthOptionsResponse,
+  oauthRateLimitResponse,
 } from '@/lib/server/mcp-oauth/cors';
+import {
+  isAllowedRegistrationRedirectUri,
+  isHttpsUri,
+} from '@/lib/server/mcp-oauth/registration-uris';
+import { checkRateLimit } from '@/lib/server/rate-limit';
+
+const redirectUriSchema = z
+  .string()
+  .max(2048)
+  .refine(isAllowedRegistrationRedirectUri, {
+    message: 'redirect_uri debe ser https, http en loopback o un esquema privado reverse-DNS',
+  });
+
+const httpsUriSchema = z
+  .string()
+  .max(2048)
+  .refine(isHttpsUri, { message: 'Se requiere una URI https' });
 
 const registrationSchema = z
   .object({
     client_name: z.string().min(1).max(120).optional(),
-    redirect_uris: z.array(z.string().url()).min(1).max(20),
+    redirect_uris: z.array(redirectUriSchema).min(1).max(20),
     grant_types: z.array(z.string()).optional(),
     response_types: z.array(z.string()).optional(),
     token_endpoint_auth_method: z.string().optional(),
-    client_uri: z.string().url().optional(),
-    logo_uri: z.string().url().optional(),
+    client_uri: httpsUriSchema.optional(),
+    logo_uri: httpsUriSchema.optional(),
   })
   .passthrough();
 
@@ -24,6 +42,11 @@ export function OPTIONS() {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await checkRateLimit(request, 'oauth:register');
+  if (rateLimit.limited) {
+    return oauthRateLimitResponse(rateLimit.retryAfterSeconds);
+  }
+
   try {
     const body = await request.json();
     const input = registrationSchema.parse(body);
@@ -46,7 +69,17 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return oauthErrorResponse('invalid_client_metadata', error.message);
+      // RFC 7591 §3.2.2: bad redirect URIs get their own error code.
+      const badRedirect = error.issues.some(
+        (issue) => issue.path[0] === 'redirect_uris' && issue.path.length > 1,
+      );
+      return oauthErrorResponse(
+        badRedirect ? 'invalid_redirect_uri' : 'invalid_client_metadata',
+        error.message,
+      );
+    }
+    if (error instanceof SyntaxError) {
+      return oauthErrorResponse('invalid_client_metadata', 'JSON inválido');
     }
     console.error('OAuth DCR error:', error);
     return oauthErrorResponse('server_error', 'No se pudo registrar el cliente', 500);
