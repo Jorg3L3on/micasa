@@ -27,6 +27,10 @@ export const OAUTH_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED = [
   'client_secret_post',
 ] as const;
 
+/** Public connector docs (the app has no /docs route). */
+export const MCP_SERVICE_DOCUMENTATION_URL =
+  'https://github.com/Jorg3L3on/micasa/blob/main/docs/mcp-connector.md';
+
 export const buildAuthorizationServerMetadata = (request?: Request) => {
   const issuer = getOAuthIssuer(request);
   return {
@@ -43,6 +47,6 @@ export const buildAuthorizationServerMetadata = (request?: Request) => {
     ],
     scopes_supported: MCP_OAUTH_SCOPES,
     client_id_metadata_document_supported: true,
-    service_documentation: `${issuer}/docs/mcp-connector`,
+    service_documentation: MCP_SERVICE_DOCUMENTATION_URL,
   };
 };

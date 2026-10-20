@@ -27,6 +27,13 @@ describe('MCP OAuth metadata', () => {
     expect(metadata.grant_types_supported).toContain('authorization_code');
   });
 
+  it('apunta service_documentation a la doc pública del conector (no a una ruta 404 de la app)', () => {
+    const metadata = buildAuthorizationServerMetadata(request);
+    expect(metadata.service_documentation).toBe(
+      'https://github.com/Jorg3L3on/micasa/blob/main/docs/mcp-connector.md',
+    );
+  });
+
   it('anuncia exactamente los métodos de autenticación que acepta el token endpoint', () => {
     const metadata = buildAuthorizationServerMetadata(request);
     expect(metadata.token_endpoint_auth_methods_supported).toEqual([
