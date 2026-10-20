@@ -4,15 +4,11 @@ const {
   resolveOAuthClientMock,
   verifyClientSecretMock,
   exchangeAuthorizationCodeMock,
-  resolveAuthorizationCodeAuthMock,
-  peekAuthorizationCodeMock,
   recordTokenAttemptMock,
 } = vi.hoisted(() => ({
   resolveOAuthClientMock: vi.fn(),
   verifyClientSecretMock: vi.fn(),
   exchangeAuthorizationCodeMock: vi.fn(),
-  resolveAuthorizationCodeAuthMock: vi.fn(),
-  peekAuthorizationCodeMock: vi.fn(),
   recordTokenAttemptMock: vi.fn(),
 }));
 
@@ -24,18 +20,8 @@ vi.mock('@/lib/server/mcp-oauth/clients', () => ({
 
 vi.mock('@/lib/server/mcp-oauth/grants', () => ({
   exchangeAuthorizationCode: exchangeAuthorizationCodeMock,
-  peekAuthorizationCode: peekAuthorizationCodeMock,
   refreshOAuthGrant: vi.fn(),
 }));
-
-vi.mock('@/lib/server/mcp-oauth/token-auth', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/lib/server/mcp-oauth/token-auth')>();
-  return {
-    ...actual,
-    resolveAuthorizationCodeAuth: resolveAuthorizationCodeAuthMock,
-  };
-});
 
 vi.mock('@/lib/server/mcp-oauth/token-attempt-log', async (importOriginal) => {
   const actual =
@@ -73,15 +59,6 @@ beforeEach(() => {
   recordTokenAttemptMock.mockResolvedValue(undefined);
   resolveOAuthClientMock.mockResolvedValue(clientRow);
   verifyClientSecretMock.mockReturnValue(true);
-  resolveAuthorizationCodeAuthMock.mockResolvedValue({
-    ok: true,
-    codeVerifier: VERIFIER,
-    clientAuthenticatedViaPrivateKeyJwt: false,
-  });
-  peekAuthorizationCodeMock.mockResolvedValue({
-    client_id: CIMD_CLIENT_ID,
-    redirect_uri: 'https://chatgpt.com/connector/oauth/fixture-client',
-  });
 });
 
 describe('POST /api/oauth/token (PKCE)', () => {
@@ -89,7 +66,7 @@ describe('POST /api/oauth/token (PKCE)', () => {
     exchangeAuthorizationCodeMock.mockResolvedValue({
       access_token: 'micasa_oauth_access-token-de-prueba',
       token_type: 'bearer',
-      expires_in: 7776000,
+      expires_in: 86400,
       refresh_token: 'micasa_refresh_refresh-token-de-prueba',
       scope: 'read write',
     });
@@ -123,21 +100,16 @@ describe('POST /api/oauth/token (PKCE)', () => {
     );
   });
 
-  it('intercambia code con client_assertion + code_verifier (ChatGPT private_key_jwt)', async () => {
+  it('ignora client_assertion y canjea con code_verifier (CIMD private_key_jwt)', async () => {
     resolveOAuthClientMock.mockResolvedValue({
       ...clientRow,
       client_id: CIMD_CLIENT_ID,
       token_endpoint_auth_method: 'private_key_jwt',
     });
-    resolveAuthorizationCodeAuthMock.mockResolvedValue({
-      ok: true,
-      codeVerifier: VERIFIER,
-      clientAuthenticatedViaPrivateKeyJwt: true,
-    });
     exchangeAuthorizationCodeMock.mockResolvedValue({
       access_token: 'micasa_oauth_access-token-de-prueba',
       token_type: 'bearer',
-      expires_in: 7776000,
+      expires_in: 86400,
       refresh_token: 'micasa_refresh_refresh-token-de-prueba',
       scope: 'read write',
     });
@@ -170,19 +142,15 @@ describe('POST /api/oauth/token (PKCE)', () => {
     );
   });
 
-  it('invalid_request when code_verifier is missing', async () => {
-    resolveAuthorizationCodeAuthMock.mockResolvedValue({
-      ok: false,
-      error: 'invalid_request',
-      description: 'code_verifier requerido para PKCE S256',
-    });
-
+  it('invalid_request when code_verifier is missing, even with a client_assertion', async () => {
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code: 'micasa_code_uno-solo-uso',
       redirect_uri: 'https://chatgpt.com/connector/oauth/fixture-client',
       client_id: CIMD_CLIENT_ID,
       resource: 'http://localhost:3000/mcp',
+      client_assertion: 'eyJ.fixture.jwt',
+      client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
     });
 
     const response = await POST(

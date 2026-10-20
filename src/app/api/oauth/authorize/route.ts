@@ -6,6 +6,7 @@ import {
 } from '@/lib/server/mcp-oauth/clients';
 import {
   getMcpResourceUrl,
+  mcpResourcesMatch,
   normalizeMcpResourceUrl,
 } from '@/lib/server/mcp-oauth/config';
 import { oauthErrorResponse, oauthOptionsResponse, withOAuthCors } from '@/lib/server/mcp-oauth/cors';
@@ -61,6 +62,21 @@ export async function GET(request: NextRequest) {
     return oauthErrorResponse('invalid_request', 'redirect_uri no autorizado');
   }
 
+  // RFC 8707: this server only issues tokens for its own MCP resource.
+  const mcpResource = getMcpResourceUrl(request);
+  const requestedResource = url.searchParams.get('resource');
+  if (requestedResource && !mcpResourcesMatch(requestedResource, mcpResource, request)) {
+    const errorRedirect = new URL(redirectUri);
+    errorRedirect.searchParams.set('error', 'invalid_target');
+    errorRedirect.searchParams.set(
+      'error_description',
+      'resource debe ser la URL del servidor MCP de MiCasa',
+    );
+    const state = url.searchParams.get('state');
+    if (state) errorRedirect.searchParams.set('state', state);
+    return withOAuthCors(Response.redirect(errorRedirect));
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     const callback = `${url.pathname}${url.search}`;
@@ -73,10 +89,7 @@ export async function GET(request: NextRequest) {
   for (const [key, value] of url.searchParams.entries()) {
     consentUrl.searchParams.set(key, value);
   }
-  const resource = normalizeMcpResourceUrl(
-    url.searchParams.get('resource') ?? getMcpResourceUrl(request),
-    request,
-  );
+  const resource = normalizeMcpResourceUrl(requestedResource ?? mcpResource, request);
   consentUrl.searchParams.set('resource', resource);
 
   return withOAuthCors(Response.redirect(consentUrl));

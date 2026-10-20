@@ -8,8 +8,6 @@ import {
   isPublicTokenAuthMethod,
   isTrustedCimdHost,
   validateRedirectUri,
-  CHATGPT_JWKS_URI,
-  isChatGptCimdClientId,
 } from '@/lib/server/mcp-oauth/cimd';
 import { hashOAuthSecret, verifyOAuthSecret } from '@/lib/server/mcp-oauth/tokens';
 import { checkRateLimit } from '@/lib/server/rate-limit';
@@ -145,13 +143,6 @@ export const registerDynamicOAuthClient = async (
   };
 };
 
-export const resolveClientJwksUri = async (clientId: string): Promise<string | null> => {
-  const metadata = await fetchClientIdMetadataDocument(clientId);
-  if (metadata?.jwks_uri) return metadata.jwks_uri;
-  if (isChatGptCimdClientId(clientId)) return CHATGPT_JWKS_URI;
-  return null;
-};
-
 /**
  * Token request client_id must be the code's client_id. The only exception is
  * ChatGPT's stable vs instance CIMD, where both live on a trusted OpenAI host.
@@ -182,8 +173,8 @@ export const assertRedirectUriAllowed = (
 
 /**
  * Public / PKCE clients (none, private_key_jwt) do not use a shared secret at
- * the token endpoint. private_key_jwt assertions are verified separately
- * (token-auth.ts) and PKCE is required for every client.
+ * the token endpoint. PKCE is required for every client; client_assertion is
+ * ignored (private_key_jwt retired in MIC-I5).
  */
 export const verifyClientSecret = (
   client: ResolvedOAuthClient,

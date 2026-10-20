@@ -1,9 +1,9 @@
 /**
  * End-to-end regression for the PKCE bypass found in the October 2026 MCP
- * audit: a valid private_key_jwt assertion must never replace the
- * code_verifier, and a foreign CIMD client must never redeem someone else's
- * code. Only Prisma, fetch and the attempt log are mocked; token-auth, grants
- * and clients run for real.
+ * audit: a properly signed private_key_jwt assertion must never replace the
+ * code_verifier (assertions are ignored since MIC-I5), and a foreign CIMD
+ * client must never redeem someone else's code. Only Prisma, fetch and the
+ * attempt log are mocked; the token route, grants and clients run for real.
  */
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -161,7 +161,7 @@ beforeEach(() => {
 });
 
 describe('POST /api/oauth/token — PKCE cannot be bypassed', () => {
-  it('rejects a valid client_assertion without code_verifier', async () => {
+  it('rejects a correctly signed client_assertion without code_verifier', async () => {
     const response = await tokenRequest({
       client_id: VICTIM_CIMD,
       client_assertion: await signAssertion(VICTIM_CIMD, 'jti-1'),
@@ -184,7 +184,7 @@ describe('POST /api/oauth/token — PKCE cannot be bypassed', () => {
     expect(prismaMock.mcpOAuthGrant.create).not.toHaveBeenCalled();
   });
 
-  it('issues a grant for the same client_assertion with the correct code_verifier', async () => {
+  it('issues a grant with the correct code_verifier (assertion ignored)', async () => {
     const response = await tokenRequest({
       client_id: VICTIM_CIMD,
       client_assertion: await signAssertion(VICTIM_CIMD, 'jti-3'),

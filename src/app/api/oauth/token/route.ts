@@ -13,7 +13,6 @@ import {
 } from '@/lib/server/mcp-oauth/cors';
 import {
   exchangeAuthorizationCode,
-  peekAuthorizationCode,
   refreshOAuthGrant,
 } from '@/lib/server/mcp-oauth/grants';
 import {
@@ -29,10 +28,7 @@ import {
   recordTokenAttempt,
   sanitizeTokenAttemptBodyFromRecord,
 } from '@/lib/server/mcp-oauth/token-attempt-log';
-import {
-  isValidPkceVerifier,
-  resolveAuthorizationCodeAuth,
-} from '@/lib/server/mcp-oauth/token-auth';
+import { isValidPkceVerifier } from '@/lib/server/mcp-oauth/token-auth';
 import { checkRateLimit } from '@/lib/server/rate-limit';
 
 const parseFormBody = async (request: NextRequest) => {
@@ -173,29 +169,21 @@ export async function POST(request: NextRequest) {
     const resourceParam = input.resource?.trim() || null;
 
     if (input.grant_type === 'authorization_code') {
-      const codePeek = await peekAuthorizationCode(input.code);
-      const authResult = await resolveAuthorizationCodeAuth({
-        client,
-        codeVerifier: input.code_verifier,
-        clientAssertion: input.client_assertion,
-        clientAssertionType: input.client_assertion_type,
-        codeClientId: codePeek?.client_id,
-        request,
-      });
-
-      if (!authResult.ok) {
+      // PKCE is required for every client. client_assertion is accepted in
+      // the body for compatibility but ignored (private_key_jwt retired).
+      if (!hasVerifier) {
         logOAuthTokenFailure({
           grant_type: grantType,
           has_code: hasCode,
           has_verifier: hasVerifier,
           has_assertion: hasAssertion,
           client_id_host: clientIdHostOnly(clientId),
-          error: authResult.error,
+          error: 'invalid_request',
         });
         return returnWithAttempt(
-          authResult.error,
+          'invalid_request',
           400,
-          oauthErrorResponse(authResult.error, authResult.description),
+          oauthErrorResponse('invalid_request', 'code_verifier requerido para PKCE S256'),
         );
       }
 
@@ -222,7 +210,7 @@ export async function POST(request: NextRequest) {
         code: input.code,
         clientId: input.client_id,
         redirectUri: input.redirect_uri,
-        codeVerifier: authResult.codeVerifier,
+        codeVerifier: input.code_verifier,
         resource: resourceParam,
       });
       return returnWithAttempt(

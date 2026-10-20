@@ -74,7 +74,10 @@ describe('POST /api/oauth/consent', () => {
     const response = await POST(
       new NextRequest('https://micasa.example/api/oauth/consent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Origin: 'https://micasa.example',
+        },
         body,
       }),
     );
@@ -93,7 +96,10 @@ describe('POST /api/oauth/consent', () => {
     const response = await POST(
       new NextRequest('https://micasa.example/api/oauth/consent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://micasa.example',
+        },
         body: JSON.stringify({
           ...CONSENT_FIELDS,
           context_owner_type: 'user',
@@ -106,5 +112,76 @@ describe('POST /api/oauth/consent', () => {
     const json = await response.json();
     expect(json.redirect_to).toContain('micasa_code_fixture-code-value');
     expect(json.redirect_to).not.toContain('iss=');
+  });
+
+  const jsonConsent = (
+    headers: Record<string, string>,
+    fields: Record<string, string> = CONSENT_FIELDS,
+  ) =>
+    POST(
+      new NextRequest('https://micasa.example/api/oauth/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({
+          ...fields,
+          context_owner_type: 'user',
+          context_owner_id: '42',
+        }),
+      }),
+    );
+
+  it('403 when Origin is another host (CSRF)', async () => {
+    const response = await jsonConsent({ Origin: 'https://evil.example' });
+
+    expect(response.status).toBe(403);
+    expect(createAuthorizationCodeMock).not.toHaveBeenCalled();
+    expect(authMock).not.toHaveBeenCalled();
+  });
+
+  it('403 without Origin unless Sec-Fetch-Site is same-origin', async () => {
+    expect((await jsonConsent({})).status).toBe(403);
+    expect((await jsonConsent({ 'Sec-Fetch-Site': 'cross-site' })).status).toBe(403);
+    expect((await jsonConsent({ 'Sec-Fetch-Site': 'same-origin' })).status).toBe(200);
+  });
+
+  it('200 for a same-origin POST', async () => {
+    const response = await jsonConsent({ Origin: 'https://micasa.example' });
+    expect(response.status).toBe(200);
+  });
+
+  it('invalid_target when resource is another server', async () => {
+    const response = await jsonConsent(
+      { Origin: 'https://micasa.example' },
+      { ...CONSENT_FIELDS, resource: 'https://evil.example/api/mcp' },
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe('invalid_target');
+    expect(createAuthorizationCodeMock).not.toHaveBeenCalled();
+  });
+
+  it('stores the MCP URL when resource is absent', async () => {
+    const fields: Record<string, string> = { ...CONSENT_FIELDS };
+    delete fields.resource;
+    const response = await jsonConsent({ Origin: 'https://micasa.example' }, fields);
+
+    expect(response.status).toBe(200);
+    expect(createAuthorizationCodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'https://micasa.example/api/mcp' }),
+    );
+  });
+
+  it('does not echo internal error messages', async () => {
+    createAuthorizationCodeMock.mockRejectedValue(
+      new Error('Invalid `prisma.mcpOAuthAuthorizationCode.create()` invocation'),
+    );
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const response = await jsonConsent({ Origin: 'https://micasa.example' });
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(JSON.stringify(json)).not.toContain('prisma');
+    spy.mockRestore();
   });
 });

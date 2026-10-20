@@ -11,7 +11,9 @@ const prismaMock = vi.hoisted(() => ({
   },
   mcpOAuthGrant: {
     create: vi.fn(),
+    update: vi.fn(),
     updateMany: vi.fn(),
+    findUnique: vi.fn(),
   },
   agentConnectionAllowedContext: {
     deleteMany: vi.fn(),
@@ -51,6 +53,8 @@ vi.mock('@/lib/server/mcp-oauth/tokens', async (importOriginal) => {
 import {
   exchangeAuthorizationCode,
   issueGrant,
+  refreshOAuthGrant,
+  resolveOAuthGrantUser,
 } from '@/lib/server/mcp-oauth/grants';
 import { OAuthInvalidGrantError } from '@/lib/server/mcp-oauth/invalid-grant';
 import {
@@ -318,5 +322,141 @@ describe('exchangeAuthorizationCode', () => {
         data: { used_at: expect.any(Date) },
       }),
     );
+  });
+});
+
+const REFRESH = 'micasa_refresh_fixture-presented-refresh-token';
+
+const grantRow = {
+  id: 5,
+  user_id: 42,
+  client_id: INSTANCE_CIMD,
+  token_hash: 'sha256:old',
+  token_prefix: 'micasa_oauth_oldpref',
+  refresh_token_hash: hashOAuthSecret(REFRESH),
+  refresh_token_prefix: 'micasa_refresh_oldpr',
+  previous_refresh_token_hash: null,
+  scopes: ['read'],
+  resource: 'https://micasa.example/api/mcp',
+  expires_at: new Date(Date.now() + 60_000),
+  refresh_expires_at: new Date(Date.now() + 86_400_000),
+  revoked_at: null,
+};
+
+describe('refreshOAuthGrant', () => {
+  beforeEach(() => {
+    prismaMock.mcpOAuthGrant.findUnique.mockImplementation(
+      async ({ where }: { where: Record<string, string> }) =>
+        where.refresh_token_hash === grantRow.refresh_token_hash ? grantRow : null,
+    );
+    prismaMock.mcpOAuthGrant.updateMany.mockResolvedValue({ count: 1 });
+  });
+
+  it('rotates, remembers the previous refresh hash and renews both lifetimes', async () => {
+    const response = await refreshOAuthGrant({
+      refreshToken: REFRESH,
+      clientId: INSTANCE_CIMD,
+    });
+
+    expect(response.expires_in).toBe(86_400);
+    const call = prismaMock.mcpOAuthGrant.updateMany.mock.calls[0][0];
+    expect(call.where).toEqual({
+      id: grantRow.id,
+      refresh_token_hash: grantRow.refresh_token_hash,
+      revoked_at: null,
+    });
+    expect(call.data.previous_refresh_token_hash).toBe(grantRow.refresh_token_hash);
+    expect(call.data).not.toHaveProperty('revoked_at');
+    expect(call.data.refresh_expires_at.getTime()).toBeGreaterThan(
+      Date.now() + 364 * 86_400_000,
+    );
+    expect(call.data.expires_at.getTime()).toBeLessThanOrEqual(Date.now() + 86_400_000);
+  });
+
+  it('rejects an expired refresh token with invalid_grant (expired)', async () => {
+    prismaMock.mcpOAuthGrant.findUnique.mockResolvedValue({
+      ...grantRow,
+      refresh_expires_at: new Date(Date.now() - 1_000),
+    });
+
+    await expect(
+      refreshOAuthGrant({ refreshToken: REFRESH, clientId: INSTANCE_CIMD }),
+    ).rejects.toMatchObject({ reason: 'expired' } satisfies Partial<OAuthInvalidGrantError>);
+    expect(prismaMock.mcpOAuthGrant.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('revokes the grant and logs oauth.refresh_reuse when a rotated refresh token is replayed', async () => {
+    prismaMock.mcpOAuthGrant.findUnique.mockImplementation(
+      async ({ where }: { where: Record<string, string> }) =>
+        where.previous_refresh_token_hash === hashOAuthSecret(REFRESH)
+          ? { id: 5, client_id: INSTANCE_CIMD, user_id: 42, revoked_at: null }
+          : null,
+    );
+
+    await expect(
+      refreshOAuthGrant({ refreshToken: REFRESH, clientId: INSTANCE_CIMD }),
+    ).rejects.toMatchObject({
+      reason: 'refresh_reuse',
+    } satisfies Partial<OAuthInvalidGrantError>);
+
+    expect(prismaMock.mcpOAuthGrant.update).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { revoked_at: expect.any(Date) },
+    });
+    expect(logFinanceEventMock).toHaveBeenCalledWith('warn', 'oauth.refresh_reuse', {
+      client_id: INSTANCE_CIMD,
+      user_id: 42,
+      grant_id: 5,
+    });
+  });
+
+  it('does not un-revoke a revoked grant', async () => {
+    prismaMock.mcpOAuthGrant.findUnique.mockResolvedValue({
+      ...grantRow,
+      revoked_at: new Date(),
+    });
+
+    await expect(
+      refreshOAuthGrant({ refreshToken: REFRESH, clientId: INSTANCE_CIMD }),
+    ).rejects.toBeInstanceOf(OAuthInvalidGrantError);
+    expect(prismaMock.mcpOAuthGrant.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('only one of two concurrent refreshes rotates', async () => {
+    prismaMock.mcpOAuthGrant.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    await expect(
+      refreshOAuthGrant({ refreshToken: REFRESH, clientId: INSTANCE_CIMD }),
+    ).rejects.toMatchObject({ reason: 'other' } satisfies Partial<OAuthInvalidGrantError>);
+  });
+});
+
+describe('resolveOAuthGrantUser audience (RFC 8707)', () => {
+  const ACCESS = 'micasa_oauth_fixture-access-token-for-audience';
+
+  const grantFor = (resource: string) => ({
+    ...grantRow,
+    token_hash: hashOAuthSecret(ACCESS),
+    resource,
+    user: { id: 42, active: true },
+    client: { client_name: 'ChatGPT' },
+  });
+
+  beforeEach(() => {
+    prismaMock.mcpOAuthGrant.update.mockResolvedValue({});
+  });
+
+  it('accepts a grant issued for this MCP server', async () => {
+    prismaMock.mcpOAuthGrant.findUnique.mockResolvedValue(
+      grantFor('https://micasa.example/api/mcp'),
+    );
+    expect(await resolveOAuthGrantUser(ACCESS)).toMatchObject({ userId: 42 });
+  });
+
+  it('rejects a grant whose resource is another server', async () => {
+    prismaMock.mcpOAuthGrant.findUnique.mockResolvedValue(
+      grantFor('https://evil.example/api/mcp'),
+    );
+    expect(await resolveOAuthGrantUser(ACCESS)).toBeNull();
   });
 });

@@ -219,10 +219,14 @@ model McpOAuthGrant {
   token_prefix         String    @unique
   refresh_token_hash   String?   @unique
   refresh_token_prefix String?   @unique
+  /// Hash of the refresh token rotated out last; presenting it again revokes the grant.
+  previous_refresh_token_hash String? @unique
   scopes               String[]
   resource             String
   last_used_at         DateTime? @db.Timestamptz(3)
   expires_at           DateTime? @db.Timestamptz(3)
+  /// Refresh token lifetime (OAUTH_REFRESH_TOKEN_TTL_MS), renewed on each rotation.
+  refresh_expires_at   DateTime? @db.Timestamptz(3)
   revoked_at           DateTime? @db.Timestamptz(3)
   /// Authorization code this grant was issued from (null for pre-MIC-I5 grants).
   authorization_code_id Int?

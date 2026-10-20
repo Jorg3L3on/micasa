@@ -1,6 +1,7 @@
 import { createMcpHandler, withMcpAuth } from 'mcp-handler';
 import { registerMcpTools } from '@/lib/mcp/register-tools';
 import { verifyMcpBearerToken } from '@/lib/server/mcp-bearer-auth';
+import { getOAuthIssuer } from '@/lib/server/mcp-oauth/config';
 
 /**
  * MCP connector endpoint (stateless Streamable HTTP). Clients: Grok Bot,
@@ -25,10 +26,16 @@ const mcpHandler = createMcpHandler(
   },
 );
 
-const authenticatedHandler = withMcpAuth(mcpHandler, verifyMcpBearerToken, {
-  required: true,
-  resourceMetadataPath: '/.well-known/oauth-protected-resource',
-});
+/**
+ * `resourceUrl` pins the 401 challenge's resource_metadata to the configured
+ * issuer (NEXTAUTH_URL) instead of the Host / X-Forwarded-Host headers.
+ */
+const authenticatedHandler = (request: Request): Promise<Response> =>
+  withMcpAuth(mcpHandler, verifyMcpBearerToken, {
+    required: true,
+    resourceMetadataPath: '/.well-known/oauth-protected-resource',
+    resourceUrl: getOAuthIssuer(request),
+  })(request);
 
 /**
  * CORS for browser-based MCP clients (Claude web, MCP Inspector). Tokens are

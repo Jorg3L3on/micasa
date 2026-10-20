@@ -17,13 +17,14 @@ export const buildProtectedResourceMetadata = (request?: Request) => {
 };
 
 /**
- * What the token endpoint accepts. private_key_jwt authenticates the client
- * (assertion verified against the CIMD jwks_uri) on top of mandatory PKCE.
+ * Exactly what the token endpoint accepts: `none` (PKCE) and
+ * `client_secret_post` (confidential DCR clients, also with PKCE).
+ * private_key_jwt is not offered: ChatGPT then uses none + PKCE (JOR-90) and
+ * a client_assertion, if sent, is ignored (MIC-I5).
  */
 export const OAUTH_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED = [
   'none',
   'client_secret_post',
-  'private_key_jwt',
 ] as const;
 
 export const buildAuthorizationServerMetadata = (request?: Request) => {
@@ -40,15 +41,8 @@ export const buildAuthorizationServerMetadata = (request?: Request) => {
     token_endpoint_auth_methods_supported: [
       ...OAUTH_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED,
     ],
-    token_endpoint_auth_signing_alg_values_supported: ['RS256'],
     scopes_supported: MCP_OAUTH_SCOPES,
     client_id_metadata_document_supported: true,
     service_documentation: `${issuer}/docs/mcp-connector`,
   };
-};
-
-export const buildWwwAuthenticateChallenge = (request?: Request): string => {
-  const issuer = getOAuthIssuer(request);
-  const resourceMetadataUrl = `${issuer}/.well-known/oauth-protected-resource`;
-  return `Bearer realm="mcp", resource_metadata="${resourceMetadataUrl}", scope="read"`;
 };
