@@ -6,6 +6,7 @@ import {
 } from '@/lib/server/mcp-oauth/clients';
 import {
   getMcpResourceUrl,
+  mcpResourcesMatch,
   normalizeMcpResourceUrl,
 } from '@/lib/server/mcp-oauth/config';
 import { oauthErrorResponse, oauthOptionsResponse, withOAuthCors } from '@/lib/server/mcp-oauth/cors';
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   const clientId = url.searchParams.get('client_id')!;
   const redirectUri = url.searchParams.get('redirect_uri')!;
-  const client = await resolveOAuthClient(clientId);
+  const client = await resolveOAuthClient(clientId, request);
   if (!client) {
     return oauthErrorResponse('invalid_client', 'Cliente OAuth desconocido');
   }
@@ -59,6 +60,21 @@ export async function GET(request: NextRequest) {
     assertRedirectUriAllowed(client, redirectUri);
   } catch {
     return oauthErrorResponse('invalid_request', 'redirect_uri no autorizado');
+  }
+
+  // RFC 8707: this server only issues tokens for its own MCP resource.
+  const mcpResource = getMcpResourceUrl(request);
+  const requestedResource = url.searchParams.get('resource');
+  if (requestedResource && !mcpResourcesMatch(requestedResource, mcpResource, request)) {
+    const errorRedirect = new URL(redirectUri);
+    errorRedirect.searchParams.set('error', 'invalid_target');
+    errorRedirect.searchParams.set(
+      'error_description',
+      'resource debe ser la URL del servidor MCP de MiCasa',
+    );
+    const state = url.searchParams.get('state');
+    if (state) errorRedirect.searchParams.set('state', state);
+    return withOAuthCors(Response.redirect(errorRedirect));
   }
 
   const session = await auth();
@@ -73,10 +89,7 @@ export async function GET(request: NextRequest) {
   for (const [key, value] of url.searchParams.entries()) {
     consentUrl.searchParams.set(key, value);
   }
-  const resource = normalizeMcpResourceUrl(
-    url.searchParams.get('resource') ?? getMcpResourceUrl(request),
-    request,
-  );
+  const resource = normalizeMcpResourceUrl(requestedResource ?? mcpResource, request);
   consentUrl.searchParams.set('resource', resource);
 
   return withOAuthCors(Response.redirect(consentUrl));

@@ -62,4 +62,44 @@ describe('GET /api/oauth/authorize CORS', () => {
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
     expect(response.headers.get('Location')).toContain('/oauth/consent');
   });
+
+  it('redirects with invalid_target when resource is another server', async () => {
+    authMock.mockResolvedValue({ user: { id: '42' } });
+
+    const response = await GET(
+      new NextRequest(
+        `${BASE_AUTHORIZE}&state=xyz&resource=${encodeURIComponent('https://evil.example/api/mcp')}`,
+      ),
+    );
+
+    expect(response.status).toBe(302);
+    const location = new URL(response.headers.get('Location')!);
+    expect(location.origin).toBe('https://chatgpt.com');
+    expect(location.searchParams.get('error')).toBe('invalid_target');
+    expect(location.searchParams.get('state')).toBe('xyz');
+  });
+
+  it('defaults resource to the MCP URL when absent', async () => {
+    authMock.mockResolvedValue({ user: { id: '42' } });
+
+    const response = await GET(new NextRequest(BASE_AUTHORIZE));
+
+    const location = new URL(response.headers.get('Location')!);
+    expect(location.pathname).toBe('/oauth/consent');
+    expect(location.searchParams.get('resource')).toBe('http://localhost:3000/api/mcp');
+  });
+
+  it('accepts the /mcp alias of this server', async () => {
+    authMock.mockResolvedValue({ user: { id: '42' } });
+
+    const response = await GET(
+      new NextRequest(
+        `${BASE_AUTHORIZE}&resource=${encodeURIComponent('http://localhost:3000/mcp')}`,
+      ),
+    );
+
+    const location = new URL(response.headers.get('Location')!);
+    expect(location.pathname).toBe('/oauth/consent');
+    expect(location.searchParams.get('resource')).toBe('http://localhost:3000/api/mcp');
+  });
 });

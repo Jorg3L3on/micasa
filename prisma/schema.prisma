@@ -203,6 +203,8 @@ model McpOAuthAuthorizationCode {
   client           McpOAuthClient                    @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
   user             User                              @relation(fields: [user_id], references: [id], onDelete: Cascade)
   allowedContexts  McpOAuthAuthorizationCodeContext[]
+  /// Grants issued with this code; revoked if the code is replayed (OAuth 2.1 §4.1.2).
+  grants           McpOAuthGrant[]
 
   @@index([client_id])
   @@index([user_id])
@@ -217,19 +219,27 @@ model McpOAuthGrant {
   token_prefix         String    @unique
   refresh_token_hash   String?   @unique
   refresh_token_prefix String?   @unique
+  /// Hash of the refresh token rotated out last; presenting it again revokes the grant.
+  previous_refresh_token_hash String? @unique
   scopes               String[]
   resource             String
   last_used_at         DateTime? @db.Timestamptz(3)
   expires_at           DateTime? @db.Timestamptz(3)
+  /// Refresh token lifetime (OAUTH_REFRESH_TOKEN_TTL_MS), renewed on each rotation.
+  refresh_expires_at   DateTime? @db.Timestamptz(3)
   revoked_at           DateTime? @db.Timestamptz(3)
+  /// Authorization code this grant was issued from (null for pre-MIC-I5 grants).
+  authorization_code_id Int?
   created_at           DateTime  @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
-  client          McpOAuthClient                 @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
-  user            User                           @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  allowedContexts AgentConnectionAllowedContext[]
+  client            McpOAuthClient                 @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  user              User                           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  authorizationCode McpOAuthAuthorizationCode?     @relation(fields: [authorization_code_id], references: [id], onDelete: SetNull)
+  allowedContexts   AgentConnectionAllowedContext[]
 
   @@index([user_id])
   @@index([client_id])
+  @@index([authorization_code_id])
 }
 
 /// Allow-list row for an MCP API key or OAuth grant (ownerType + ownerId).

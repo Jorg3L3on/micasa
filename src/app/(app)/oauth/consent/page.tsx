@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { buildSelectableContextsForUser } from '@/lib/server/agent-allowed-contexts';
 import { resolveOAuthClient } from '@/lib/server/mcp-oauth/clients';
 import OAuthConsentForm from '@/components/oauth/OAuthConsentForm';
+import { buildOAuthClientDisplay } from '@/lib/oauth-client-display';
 
 export const metadata: Metadata = {
   title: 'Autorizar conexión',
@@ -51,11 +52,17 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
 
   const userId = Number(session.user.id);
   const selectableContexts = await buildSelectableContextsForUser(userId);
+  const display = buildOAuthClientDisplay({
+    clientId: client.client_id,
+    clientUri: client.client_uri,
+    redirectUri,
+  });
 
   return (
     <OAuthConsentForm
       clientName={client.client_name}
-      clientUri={client.client_uri}
+      clientOrigin={display.originLabel}
+      clientUri={display.safeClientUri}
       requestedScope={readParam(params, 'scope') ?? 'read write'}
       selectableContexts={selectableContexts}
       consentParams={{

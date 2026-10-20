@@ -47,9 +47,31 @@ MiCasa implementa OAuth 2.1 + PKCE para el recurso MCP:
 - **Dynamic Client Registration (RFC 7591):** `POST /api/oauth/register` — ChatGPT **no** necesita un client id preconfigurado.
 - **Client ID Metadata Documents (CIMD):** soportado cuando `client_id` es una URL HTTPS con metadata JSON.
 - **Flujo:** authorization code + PKCE (`S256`) + parámetro `resource` (RFC 8707) apuntando a la URL del MCP.
-- **Token endpoint auth (metadata):** el authorization server anuncia solo `none` y `client_secret_post` en `token_endpoint_auth_methods_supported`, para que clientes como ChatGPT usen PKCE (`none`) en lugar de `private_key_jwt`. Si un cliente CIMD envía `client_assertion` de todas formas, el token endpoint sigue aceptándola.
+- **PKCE obligatorio en todo canje (v2.2.1):** `/api/oauth/token` exige un `code_verifier` válido para cada código, sin excepción. El `client_id` del canje debe ser el mismo del código (única excepción: dos CIMD en hosts de OpenAI, `chatgpt.com` / `chat.openai.com`). Un código es de un solo uso: si se presenta otra vez, se revocan los grants emitidos con él.
+- **Token endpoint auth (metadata):** el authorization server anuncia solo `none` y `client_secret_post` en `token_endpoint_auth_methods_supported`, para que clientes como ChatGPT usen PKCE (`none`). `private_key_jwt` no se ofrece: si un cliente CIMD envía `client_assertion`, se ignora y nunca sustituye al `code_verifier`.
+- **Audience (RFC 8707):** solo se emiten tokens para este servidor MCP. `resource` ausente equivale a la URL del MCP; uno distinto responde `invalid_target`. `/api/mcp` rechaza (401) un token cuyo grant se emitió para otro `resource`.
 - **Access token:** prefijo `micasa_oauth_…`, enviado como `Authorization: Bearer` en `/api/mcp`.
 - **Revocación:** Ajustes → Conexiones → sección **Conexiones OAuth**.
+
+#### Vida de los tokens
+
+| Credencial | Vida | Notas |
+|---|---|---|
+| Código de autorización | 10 min | Un solo uso; reusarlo revoca los grants emitidos con él |
+| Access token OAuth | 24 h | El cliente lo renueva con el refresh token sin volver a pedir login |
+| Refresh token | 365 días | Rota en cada uso y la vida se renueva; presentar uno ya rotado revoca el grant completo |
+| Llave Bearer `micasa_…` | Hasta revocarla | Sin cambios |
+
+Las conexiones OAuth creadas antes de v2.2.1 conservan su access token actual (90 días) hasta el siguiente refresh; su refresh token vence 365 días después de creada la conexión.
+
+#### Registro dinámico (DCR): reglas de URIs
+
+`POST /api/oauth/register` valida la metadata antes de crear el cliente:
+
+- `redirect_uris`: `https://` en cualquier host; `http://` solo en loopback (`localhost`, `127.0.0.1`, `[::1]`); o un esquema privado reverse-DNS (`com.ejemplo.app:/cb`, RFC 8252). Sin fragmento (`#`) ni usuario/contraseña. Cualquier otra (`javascript:`, `data:`, `http://otro-host`) → `400 invalid_redirect_uri`.
+- `client_uri` y `logo_uri`: solo `https://` → si no, `400 invalid_client_metadata`.
+- `client_name` se recorta a 60 caracteres. La pantalla de consentimiento muestra junto al nombre el **origen** del cliente (host del CIMD, o "Registro dinámico · host de la redirección"), porque el nombre lo declara el propio cliente.
+- El POST de consentimiento solo se acepta desde la propia app (`Origin` same-origin); cualquier otro origen → 403.
 
 #### Conectar ChatGPT (OAuth)
 
@@ -164,7 +186,7 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **Redescubrimiento de tools**
 
-- `serverInfo.version` **2.2.0** (P2: reportes/alertas, casa, categorías CRUD, presupuesto multi-asignación, reconciliación/MSI; import PDF/CSV documentado fuera de v2) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
+- `serverInfo.version` **2.2.1** (hardening OAuth, ver arriba; antes 2.2.0 — P2: reportes/alertas, casa, categorías CRUD, presupuesto multi-asignación, reconciliación/MSI; import PDF/CSV documentado fuera de v2) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
 
 ### Lectura P2 (scope `read`)
 
@@ -231,6 +253,18 @@ Fuera de v2: **import PDF/CSV** vía MCP (solo multipart en la app), administrac
 ## Límites de uso
 
 Cada llave Bearer o grant OAuth tiene un límite de **120 llamadas de tool por minuto** (policy `mcp:tool`). Al excederlo, la tool responde con un error que indica en cuántos segundos reintentar. Crear llaves también está limitado (10 por hora por usuario).
+
+Los endpoints OAuth públicos tienen límites por IP:
+
+| Policy | Endpoint | Límite |
+|---|---|---|
+| `oauth:token` | `POST /api/oauth/token` (y alias `/token`, `/oauth/token`) | 30 por minuto |
+| `oauth:register` | `POST /api/oauth/register` | 10 por hora |
+| `oauth:cimd-resolve` | `client_id` CIMD nuevo (URL que aún no está registrada) | 20 por hora |
+
+Al excederlos la respuesta es `429` con `Retry-After` y cuerpo OAuth `{"error":"temporarily_unavailable"}`; la petición no escribe nada en la base. `OPTIONS` / `GET` del token endpoint no se registran y cada `POST` deja una sola fila en `McpOAuthTokenAttempt`.
+
+> **Alcance del límite:** sin Upstash (`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) el contador vive en memoria de cada instancia de Vercel, así que el límite efectivo es por instancia, no global. Para un límite global configura Upstash.
 
 ## Conectar el cliente
 

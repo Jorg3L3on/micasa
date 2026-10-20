@@ -8,10 +8,24 @@ import {
   isPublicTokenAuthMethod,
   isTrustedCimdHost,
   validateRedirectUri,
-  CHATGPT_JWKS_URI,
-  isChatGptCimdClientId,
 } from '@/lib/server/mcp-oauth/cimd';
 import { hashOAuthSecret, verifyOAuthSecret } from '@/lib/server/mcp-oauth/tokens';
+import { checkRateLimit } from '@/lib/server/rate-limit';
+
+/** Visible length cap for client_name on the consent screen. */
+export const OAUTH_CLIENT_NAME_MAX_LENGTH = 60;
+
+export const clampOAuthClientName = (
+  name: string | null | undefined,
+  fallback: string,
+): string => {
+  const trimmed = name?.trim().replace(/\s+/g, ' ') ?? '';
+  if (!trimmed) return fallback;
+  const chars = Array.from(trimmed);
+  return chars.length > OAUTH_CLIENT_NAME_MAX_LENGTH
+    ? chars.slice(0, OAUTH_CLIENT_NAME_MAX_LENGTH).join('')
+    : trimmed;
+};
 
 export type ResolvedOAuthClient = {
   client_id: string;
@@ -47,8 +61,14 @@ const toResolvedClient = (row: {
   client_secret_hash: row.client_secret_hash,
 });
 
+/**
+ * Known clients resolve from the DB. An unknown https client_id is fetched as
+ * a CIMD and stored; with `request`, that path is capped per IP
+ * (oauth:cimd-resolve) so arbitrary URLs cannot fill McpOAuthClient.
+ */
 export const resolveOAuthClient = async (
   clientId: string,
+  request?: Request,
 ): Promise<ResolvedOAuthClient | null> => {
   const existing = await prisma.mcpOAuthClient.findUnique({
     where: { client_id: clientId },
@@ -56,6 +76,11 @@ export const resolveOAuthClient = async (
   if (existing) return toResolvedClient(existing);
 
   if (!isClientIdMetadataUrl(clientId)) return null;
+
+  if (request) {
+    const rateLimit = await checkRateLimit(request, 'oauth:cimd-resolve');
+    if (rateLimit.limited) return null;
+  }
 
   const metadata = await fetchClientIdMetadataDocument(clientId);
   if (!metadata) return null;
@@ -65,7 +90,7 @@ export const resolveOAuthClient = async (
   const created = await prisma.mcpOAuthClient.create({
     data: {
       client_id: clientId,
-      client_name: metadata.client_name,
+      client_name: clampOAuthClientName(metadata.client_name, 'OAuth client'),
       redirect_uris: metadata.redirect_uris,
       grant_types: metadata.grant_types ?? ['authorization_code', 'refresh_token'],
       response_types: metadata.response_types ?? ['code'],
@@ -101,7 +126,7 @@ export const registerDynamicOAuthClient = async (
   const created = await prisma.mcpOAuthClient.create({
     data: {
       client_id: clientId,
-      client_name: input.client_name?.trim() || 'MCP OAuth client',
+      client_name: clampOAuthClientName(input.client_name, 'MCP OAuth client'),
       redirect_uris: input.redirect_uris,
       grant_types: input.grant_types ?? ['authorization_code', 'refresh_token'],
       response_types: input.response_types ?? ['code'],
@@ -118,40 +143,22 @@ export const registerDynamicOAuthClient = async (
   };
 };
 
-export const resolveClientJwksUri = async (clientId: string): Promise<string | null> => {
-  const metadata = await fetchClientIdMetadataDocument(clientId);
-  if (metadata?.jwks_uri) return metadata.jwks_uri;
-  if (isChatGptCimdClientId(clientId)) return CHATGPT_JWKS_URI;
-  return null;
-};
-
 /**
- * Token request client_id may differ from the code row (e.g. stable vs instance CIMD).
+ * Token request client_id must be the code's client_id. The only exception is
+ * ChatGPT's stable vs instance CIMD, where both live on a trusted OpenAI host.
  * redirect_uri must still match the code row exactly (checked separately).
  */
-export const tokenClientIdMatchesCode = async (
+export const tokenClientIdMatchesCode = (
   tokenClientId: string,
   codeClientId: string,
-  codeRedirectUri: string,
-): Promise<boolean> => {
+): boolean => {
   if (tokenClientId === codeClientId) return true;
 
-  if (
+  return (
     isClientIdMetadataUrl(tokenClientId) &&
     isClientIdMetadataUrl(codeClientId) &&
     isTrustedCimdHost(tokenClientId) &&
     isTrustedCimdHost(codeClientId)
-  ) {
-    return true;
-  }
-
-  const tokenClient = await resolveOAuthClient(tokenClientId);
-  if (!tokenClient) return false;
-
-  return validateRedirectUri(
-    codeRedirectUri,
-    tokenClient.redirect_uris,
-    tokenClient.client_id,
   );
 };
 
@@ -166,8 +173,8 @@ export const assertRedirectUriAllowed = (
 
 /**
  * Public / PKCE clients (none, private_key_jwt) do not use a shared secret at
- * the token endpoint. ChatGPT CIMD advertises private_key_jwt but exchanges
- * codes with PKCE only.
+ * the token endpoint. PKCE is required for every client; client_assertion is
+ * ignored (private_key_jwt retired in MIC-I5).
  */
 export const verifyClientSecret = (
   client: ResolvedOAuthClient,

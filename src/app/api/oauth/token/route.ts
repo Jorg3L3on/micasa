@@ -9,10 +9,10 @@ import {
   oauthErrorResponse,
   oauthJsonResponse,
   oauthOptionsResponse,
+  oauthRateLimitResponse,
 } from '@/lib/server/mcp-oauth/cors';
 import {
   exchangeAuthorizationCode,
-  peekAuthorizationCode,
   refreshOAuthGrant,
 } from '@/lib/server/mcp-oauth/grants';
 import {
@@ -24,18 +24,12 @@ import {
   logOAuthTokenFailure,
 } from '@/lib/server/mcp-oauth/oauth-token-log';
 import {
-  finishTokenAttempt,
   getTokenAttemptPath,
-  logTokenGetAttempt,
-  logTokenPreflightAttempt,
+  recordTokenAttempt,
   sanitizeTokenAttemptBodyFromRecord,
-  startTokenAttempt,
-  updateTokenAttemptBody,
 } from '@/lib/server/mcp-oauth/token-attempt-log';
-import {
-  isValidPkceVerifier,
-  resolveAuthorizationCodeAuth,
-} from '@/lib/server/mcp-oauth/token-auth';
+import { isValidPkceVerifier } from '@/lib/server/mcp-oauth/token-auth';
+import { checkRateLimit } from '@/lib/server/rate-limit';
 
 const parseFormBody = async (request: NextRequest) => {
   const contentType = request.headers.get('content-type') ?? '';
@@ -75,56 +69,55 @@ const tokenRequestSchema = z.discriminatedUnion('grant_type', [
   refreshTokenGrantSchema,
 ]);
 
-const returnWithAttempt = async (
-  attemptId: number | null,
-  error: string,
-  status: number,
-  response: Response,
-  invalidGrantReason?: InvalidGrantReason | null,
-): Promise<Response> => {
-  await finishTokenAttempt(attemptId, {
-    error,
-    http_status: status,
-    invalid_grant_reason: invalidGrantReason ?? null,
-  });
-  return response;
-};
-
-export async function OPTIONS(request: NextRequest) {
-  await logTokenPreflightAttempt(request);
+export function OPTIONS() {
   return oauthOptionsResponse();
 }
 
-export async function GET(request: NextRequest) {
-  await logTokenGetAttempt(request);
+export function GET() {
   return oauthErrorResponse('invalid_request', 'Use POST', 405);
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = await checkRateLimit(request, 'oauth:token');
+  if (rateLimit.limited) {
+    return oauthRateLimitResponse(rateLimit.retryAfterSeconds);
+  }
+
   const path = getTokenAttemptPath(request);
   const contentType = request.headers.get('content-type');
-  const attemptId = await startTokenAttempt({
-    path,
-    method: 'POST',
-    content_type: contentType,
-  });
+  let sanitizedBody: ReturnType<typeof sanitizeTokenAttemptBodyFromRecord> | undefined;
+
+  const returnWithAttempt = async (
+    error: string,
+    status: number,
+    response: Response,
+    invalidGrantReason?: InvalidGrantReason | null,
+  ): Promise<Response> => {
+    await recordTokenAttempt({
+      path,
+      method: 'POST',
+      content_type: contentType,
+      body: sanitizedBody,
+      error,
+      http_status: status,
+      invalid_grant_reason: invalidGrantReason ?? null,
+    });
+    return response;
+  };
 
   let grantType = 'unknown';
   let clientId = '';
   let hasCode = false;
   let hasVerifier = false;
   let hasAssertion = false;
-  let sanitizedBody: ReturnType<typeof sanitizeTokenAttemptBodyFromRecord> | undefined;
 
   try {
     let raw: Record<string, string>;
     try {
       raw = await parseFormBody(request);
       sanitizedBody = sanitizeTokenAttemptBodyFromRecord(raw);
-      await updateTokenAttemptBody(attemptId, sanitizedBody);
     } catch {
       return returnWithAttempt(
-        attemptId,
         'parse',
         400,
         oauthErrorResponse('invalid_request', 'Invalid request body'),
@@ -141,9 +134,7 @@ export async function POST(request: NextRequest) {
     hasAssertion = Boolean(
       input.grant_type === 'authorization_code' && input.client_assertion?.trim(),
     );
-    sanitizedBody = sanitizeTokenAttemptBodyFromRecord(raw);
-
-    const client = await resolveOAuthClient(input.client_id);
+    const client = await resolveOAuthClient(input.client_id, request);
     if (!client) {
       logOAuthTokenFailure({
         grant_type: grantType,
@@ -154,7 +145,6 @@ export async function POST(request: NextRequest) {
         error: 'invalid_client',
       });
       return returnWithAttempt(
-        attemptId,
         'invalid_client',
         401,
         oauthErrorResponse('invalid_client', undefined, 401),
@@ -170,7 +160,6 @@ export async function POST(request: NextRequest) {
         error: 'invalid_client',
       });
       return returnWithAttempt(
-        attemptId,
         'invalid_client',
         401,
         oauthErrorResponse('invalid_client', undefined, 401),
@@ -180,30 +169,21 @@ export async function POST(request: NextRequest) {
     const resourceParam = input.resource?.trim() || null;
 
     if (input.grant_type === 'authorization_code') {
-      const codePeek = await peekAuthorizationCode(input.code);
-      const authResult = await resolveAuthorizationCodeAuth({
-        client,
-        codeVerifier: input.code_verifier,
-        clientAssertion: input.client_assertion,
-        clientAssertionType: input.client_assertion_type,
-        codeClientId: codePeek?.client_id,
-        request,
-      });
-
-      if (!authResult.ok) {
+      // PKCE is required for every client. client_assertion is accepted in
+      // the body for compatibility but ignored (private_key_jwt retired).
+      if (!hasVerifier) {
         logOAuthTokenFailure({
           grant_type: grantType,
           has_code: hasCode,
           has_verifier: hasVerifier,
           has_assertion: hasAssertion,
           client_id_host: clientIdHostOnly(clientId),
-          error: authResult.error,
+          error: 'invalid_request',
         });
         return returnWithAttempt(
-          attemptId,
-          authResult.error,
+          'invalid_request',
           400,
-          oauthErrorResponse(authResult.error, authResult.description),
+          oauthErrorResponse('invalid_request', 'code_verifier requerido para PKCE S256'),
         );
       }
 
@@ -219,7 +199,6 @@ export async function POST(request: NextRequest) {
           error: 'invalid_grant',
         });
         return returnWithAttempt(
-          attemptId,
           'invalid_grant',
           400,
           oauthErrorResponse('invalid_grant', 'redirect_uri no autorizado'),
@@ -231,13 +210,10 @@ export async function POST(request: NextRequest) {
         code: input.code,
         clientId: input.client_id,
         redirectUri: input.redirect_uri,
-        codeVerifier: authResult.codeVerifier,
-        clientAuthenticatedViaPrivateKeyJwt:
-          authResult.clientAuthenticatedViaPrivateKeyJwt,
+        codeVerifier: input.code_verifier,
         resource: resourceParam,
       });
       return returnWithAttempt(
-        attemptId,
         'ok',
         200,
         oauthJsonResponse(tokenResponse),
@@ -250,7 +226,6 @@ export async function POST(request: NextRequest) {
       resource: resourceParam,
     });
     return returnWithAttempt(
-      attemptId,
       'ok',
       200,
       oauthJsonResponse(tokenResponse),
@@ -266,7 +241,6 @@ export async function POST(request: NextRequest) {
         error: 'invalid_request',
       });
       return returnWithAttempt(
-        attemptId,
         'invalid_request',
         400,
         oauthErrorResponse('invalid_request', error.message),
@@ -282,7 +256,6 @@ export async function POST(request: NextRequest) {
         error: 'invalid_grant',
       });
       return returnWithAttempt(
-        attemptId,
         'invalid_grant',
         400,
         oauthErrorResponse('invalid_grant'),
@@ -291,7 +264,6 @@ export async function POST(request: NextRequest) {
     }
     console.error('OAuth token error:', error);
     return returnWithAttempt(
-      attemptId,
       'server_error',
       500,
       oauthErrorResponse('server_error', undefined, 500),
