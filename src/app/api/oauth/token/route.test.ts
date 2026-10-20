@@ -6,18 +6,14 @@ const {
   exchangeAuthorizationCodeMock,
   resolveAuthorizationCodeAuthMock,
   peekAuthorizationCodeMock,
-  startTokenAttemptMock,
-  finishTokenAttemptMock,
-  updateTokenAttemptBodyMock,
+  recordTokenAttemptMock,
 } = vi.hoisted(() => ({
   resolveOAuthClientMock: vi.fn(),
   verifyClientSecretMock: vi.fn(),
   exchangeAuthorizationCodeMock: vi.fn(),
   resolveAuthorizationCodeAuthMock: vi.fn(),
   peekAuthorizationCodeMock: vi.fn(),
-  startTokenAttemptMock: vi.fn(),
-  finishTokenAttemptMock: vi.fn(),
-  updateTokenAttemptBodyMock: vi.fn(),
+  recordTokenAttemptMock: vi.fn(),
 }));
 
 vi.mock('@/lib/server/mcp-oauth/clients', () => ({
@@ -46,15 +42,12 @@ vi.mock('@/lib/server/mcp-oauth/token-attempt-log', async (importOriginal) => {
     await importOriginal<typeof import('@/lib/server/mcp-oauth/token-attempt-log')>();
   return {
     ...actual,
-    startTokenAttempt: startTokenAttemptMock,
-    finishTokenAttempt: finishTokenAttemptMock,
-    updateTokenAttemptBody: updateTokenAttemptBodyMock,
-    logTokenPreflightAttempt: vi.fn(),
-    logTokenGetAttempt: vi.fn(),
+    recordTokenAttempt: recordTokenAttemptMock,
   };
 });
 
-import { POST } from '@/app/api/oauth/token/route';
+import { GET, OPTIONS, POST } from '@/app/api/oauth/token/route';
+import { resetRateLimitStoreForTests } from '@/lib/server/rate-limit';
 import { OAuthInvalidGrantError } from '@/lib/server/mcp-oauth/invalid-grant';
 
 const CLIENT_ID = '11111111-2222-3333-4444-555555555555';
@@ -76,9 +69,8 @@ const clientRow = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  startTokenAttemptMock.mockResolvedValue(99);
-  finishTokenAttemptMock.mockResolvedValue(undefined);
-  updateTokenAttemptBodyMock.mockResolvedValue(undefined);
+  resetRateLimitStoreForTests();
+  recordTokenAttemptMock.mockResolvedValue(undefined);
   resolveOAuthClientMock.mockResolvedValue(clientRow);
   verifyClientSecretMock.mockReturnValue(true);
   resolveAuthorizationCodeAuthMock.mockResolvedValue({
@@ -205,17 +197,16 @@ describe('POST /api/oauth/token (PKCE)', () => {
     const json = await response.json();
     expect(json.error).toBe('invalid_request');
     expect(exchangeAuthorizationCodeMock).not.toHaveBeenCalled();
-    expect(startTokenAttemptMock).toHaveBeenCalledWith(
+    expect(recordTokenAttemptMock).toHaveBeenCalledTimes(1);
+    expect(recordTokenAttemptMock).toHaveBeenCalledWith(
       expect.objectContaining({
         path: '/api/oauth/token',
         method: 'POST',
+        error: 'invalid_request',
+        http_status: 400,
+        invalid_grant_reason: null,
       }),
     );
-    expect(finishTokenAttemptMock).toHaveBeenCalledWith(99, {
-      error: 'invalid_request',
-      http_status: 400,
-      invalid_grant_reason: null,
-    });
   });
 
   it('registra code_reuse en el intento cuando se reutiliza un código', async () => {
@@ -239,11 +230,13 @@ describe('POST /api/oauth/token (PKCE)', () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error).toBe('invalid_grant');
-    expect(finishTokenAttemptMock).toHaveBeenCalledWith(99, {
-      error: 'invalid_grant',
-      http_status: 400,
-      invalid_grant_reason: 'code_reuse',
-    });
+    expect(recordTokenAttemptMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: 'invalid_grant',
+        http_status: 400,
+        invalid_grant_reason: 'code_reuse',
+      }),
+    );
   });
 
   it('401 cuando el cliente es desconocido', async () => {
@@ -267,5 +260,65 @@ describe('POST /api/oauth/token (PKCE)', () => {
 
     expect(response.status).toBe(401);
     expect((await response.json()).error).toBe('invalid_client');
+  });
+});
+
+const tokenPost = (ip: string) =>
+  POST(
+    new Request('http://localhost:3000/api/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'x-forwarded-for': ip,
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: 'micasa_code_rate',
+        redirect_uri: 'https://chatgpt.com/connector_platform/oauth/callback',
+        client_id: CLIENT_ID,
+        code_verifier: VERIFIER,
+      }),
+    }) as Parameters<typeof POST>[0],
+  );
+
+describe('/api/oauth/token — rate limit and attempt log', () => {
+  beforeEach(() => {
+    exchangeAuthorizationCodeMock.mockResolvedValue({
+      access_token: 'micasa_oauth_access-token-de-prueba',
+      token_type: 'bearer',
+      expires_in: 86400,
+      refresh_token: 'micasa_refresh_refresh-token-de-prueba',
+      scope: 'read write',
+    });
+  });
+
+  it('responde 429 con Retry-After en la petición 31 desde la misma IP dentro del minuto', async () => {
+    for (let i = 0; i < 30; i += 1) {
+      expect((await tokenPost('203.0.113.7')).status).toBe(200);
+    }
+
+    const limited = await tokenPost('203.0.113.7');
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0);
+    expect((await limited.json()).error).toBe('temporarily_unavailable');
+    expect(limited.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    // The limited request writes nothing.
+    expect(recordTokenAttemptMock).toHaveBeenCalledTimes(30);
+
+    expect((await tokenPost('198.51.100.2')).status).toBe(200);
+  });
+
+  it('OPTIONS y GET no escriben intentos', async () => {
+    expect(OPTIONS().status).toBe(204);
+    expect(GET().status).toBe(405);
+    expect(recordTokenAttemptMock).not.toHaveBeenCalled();
+  });
+
+  it('un POST registra exactamente un intento', async () => {
+    await tokenPost('203.0.113.9');
+    expect(recordTokenAttemptMock).toHaveBeenCalledTimes(1);
+    expect(recordTokenAttemptMock).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'ok', http_status: 200 }),
+    );
   });
 });

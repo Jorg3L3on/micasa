@@ -45,3 +45,19 @@ export const oauthErrorResponse = (
     },
     { status },
   );
+
+/**
+ * 429 for the public OAuth endpoints. Body follows the OAuth error shape
+ * (`temporarily_unavailable`) so clients parse it like any other error.
+ */
+export const oauthRateLimitResponse = (retryAfterSeconds: number): Response =>
+  oauthJsonResponse(
+    {
+      error: 'temporarily_unavailable',
+      error_description: 'Demasiadas solicitudes. Inténtalo más tarde.',
+    },
+    {
+      status: 429,
+      headers: { 'Retry-After': String(retryAfterSeconds) },
+    },
+  );

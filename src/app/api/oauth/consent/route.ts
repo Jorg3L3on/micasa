@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       resource: scalarConsentField(fields, 'resource'),
       allow_write: scalarConsentField(fields, 'allow_write'),
     });
-    const client = await resolveOAuthClient(input.client_id);
+    const client = await resolveOAuthClient(input.client_id, request);
     if (!client) {
       return NextResponse.json({ error: 'Cliente inválido' }, { status: 400 });
     }

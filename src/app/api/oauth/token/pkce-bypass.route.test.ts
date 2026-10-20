@@ -36,15 +36,13 @@ vi.mock('@/lib/server/mcp-oauth/token-attempt-log', async (importOriginal) => {
     await importOriginal<typeof import('@/lib/server/mcp-oauth/token-attempt-log')>();
   return {
     ...actual,
-    startTokenAttempt: vi.fn(async () => 1),
-    finishTokenAttempt: vi.fn(),
-    updateTokenAttemptBody: vi.fn(),
     recordTokenAttempt: vi.fn(),
   };
 });
 
 import { POST } from '@/app/api/oauth/token/route';
 import { hashOAuthSecret } from '@/lib/server/mcp-oauth/tokens';
+import { resetRateLimitStoreForTests } from '@/lib/server/rate-limit';
 
 const ISSUER = 'https://micasa.example';
 const TOKEN_ENDPOINT = `${ISSUER}/api/oauth/token`;
@@ -132,6 +130,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetRateLimitStoreForTests();
   vi.stubEnv('NEXTAUTH_URL', ISSUER);
 
   // Both the victim and the attacker resolve to an existing client row.

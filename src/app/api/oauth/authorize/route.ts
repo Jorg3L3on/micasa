@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   const clientId = url.searchParams.get('client_id')!;
   const redirectUri = url.searchParams.get('redirect_uri')!;
-  const client = await resolveOAuthClient(clientId);
+  const client = await resolveOAuthClient(clientId, request);
   if (!client) {
     return oauthErrorResponse('invalid_client', 'Cliente OAuth desconocido');
   }
