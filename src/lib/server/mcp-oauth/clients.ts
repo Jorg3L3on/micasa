@@ -126,32 +126,21 @@ export const resolveClientJwksUri = async (clientId: string): Promise<string | n
 };
 
 /**
- * Token request client_id may differ from the code row (e.g. stable vs instance CIMD).
+ * Token request client_id must be the code's client_id. The only exception is
+ * ChatGPT's stable vs instance CIMD, where both live on a trusted OpenAI host.
  * redirect_uri must still match the code row exactly (checked separately).
  */
-export const tokenClientIdMatchesCode = async (
+export const tokenClientIdMatchesCode = (
   tokenClientId: string,
   codeClientId: string,
-  codeRedirectUri: string,
-): Promise<boolean> => {
+): boolean => {
   if (tokenClientId === codeClientId) return true;
 
-  if (
+  return (
     isClientIdMetadataUrl(tokenClientId) &&
     isClientIdMetadataUrl(codeClientId) &&
     isTrustedCimdHost(tokenClientId) &&
     isTrustedCimdHost(codeClientId)
-  ) {
-    return true;
-  }
-
-  const tokenClient = await resolveOAuthClient(tokenClientId);
-  if (!tokenClient) return false;
-
-  return validateRedirectUri(
-    codeRedirectUri,
-    tokenClient.redirect_uris,
-    tokenClient.client_id,
   );
 };
 
@@ -166,8 +155,8 @@ export const assertRedirectUriAllowed = (
 
 /**
  * Public / PKCE clients (none, private_key_jwt) do not use a shared secret at
- * the token endpoint. ChatGPT CIMD advertises private_key_jwt but exchanges
- * codes with PKCE only.
+ * the token endpoint. private_key_jwt assertions are verified separately
+ * (token-auth.ts) and PKCE is required for every client.
  */
 export const verifyClientSecret = (
   client: ResolvedOAuthClient,

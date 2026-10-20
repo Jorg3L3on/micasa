@@ -232,8 +232,6 @@ export async function POST(request: NextRequest) {
         clientId: input.client_id,
         redirectUri: input.redirect_uri,
         codeVerifier: authResult.codeVerifier,
-        clientAuthenticatedViaPrivateKeyJwt:
-          authResult.clientAuthenticatedViaPrivateKeyJwt,
         resource: resourceParam,
       });
       return returnWithAttempt(

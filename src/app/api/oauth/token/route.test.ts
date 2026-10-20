@@ -130,7 +130,7 @@ describe('POST /api/oauth/token (PKCE)', () => {
     );
   });
 
-  it('intercambia code con client_assertion sin code_verifier (ChatGPT private_key_jwt)', async () => {
+  it('intercambia code con client_assertion + code_verifier (ChatGPT private_key_jwt)', async () => {
     resolveOAuthClientMock.mockResolvedValue({
       ...clientRow,
       client_id: CIMD_CLIENT_ID,
@@ -138,6 +138,7 @@ describe('POST /api/oauth/token (PKCE)', () => {
     });
     resolveAuthorizationCodeAuthMock.mockResolvedValue({
       ok: true,
+      codeVerifier: VERIFIER,
       clientAuthenticatedViaPrivateKeyJwt: true,
     });
     exchangeAuthorizationCodeMock.mockResolvedValue({
@@ -153,6 +154,7 @@ describe('POST /api/oauth/token (PKCE)', () => {
       code: 'micasa_code_uno-solo-uso',
       redirect_uri: 'https://chatgpt.com/connector/oauth/fixture-client',
       client_id: CIMD_CLIENT_ID,
+      code_verifier: VERIFIER,
       resource: 'http://localhost:3000/api/mcp',
       client_assertion: 'eyJ.fixture.jwt',
       client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
@@ -170,18 +172,16 @@ describe('POST /api/oauth/token (PKCE)', () => {
     expect(exchangeAuthorizationCodeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         clientId: CIMD_CLIENT_ID,
-        clientAuthenticatedViaPrivateKeyJwt: true,
-        codeVerifier: undefined,
+        codeVerifier: VERIFIER,
       }),
     );
   });
 
-  it('invalid_request when neither code_verifier nor client_assertion is present', async () => {
+  it('invalid_request when code_verifier is missing', async () => {
     resolveAuthorizationCodeAuthMock.mockResolvedValue({
       ok: false,
       error: 'invalid_request',
-      description:
-        'Se requiere code_verifier (PKCE) o client_assertion (private_key_jwt)',
+      description: 'code_verifier requerido para PKCE S256',
     });
 
     const body = new URLSearchParams({

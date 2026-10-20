@@ -18,14 +18,8 @@ const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
 }));
 
-const tokenClientIdMatchesCodeMock = vi.hoisted(() => vi.fn());
-
 vi.mock('@/lib/prisma', () => ({
   default: prismaMock,
-}));
-
-vi.mock('@/lib/server/mcp-oauth/clients', () => ({
-  tokenClientIdMatchesCode: tokenClientIdMatchesCodeMock,
 }));
 
 vi.mock('@/lib/server/mcp-oauth/tokens', async (importOriginal) => {
@@ -62,6 +56,7 @@ const CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
 const INSTANCE_CIMD = 'https://chatgpt.com/oauth/fixture-client/client.json';
 const STABLE_CIMD = 'https://chatgpt.com/oauth/client.json';
 const REDIRECT = 'https://chatgpt.com/connector/oauth/fixture-client';
+const ATTACKER_CIMD = 'https://evil.example/oauth/client.json';
 
 const baseCodeRow = {
   id: 1,
@@ -92,7 +87,6 @@ beforeEach(() => {
     }
     return ops;
   });
-  tokenClientIdMatchesCodeMock.mockResolvedValue(true);
 });
 
 describe('issueGrant', () => {
@@ -123,22 +117,15 @@ describe('exchangeAuthorizationCode', () => {
     expect(prismaMock.mcpOAuthGrant.create).toHaveBeenCalled();
   });
 
-  it('accepts stable CIMD token client_id for instance CIMD code row with matching redirect', async () => {
-    tokenClientIdMatchesCodeMock.mockResolvedValue(true);
-
+  it('accepts stable CIMD token client_id for an instance CIMD code row (both trusted hosts)', async () => {
     const response = await exchangeAuthorizationCode({
       code: CODE,
       clientId: STABLE_CIMD,
       redirectUri: REDIRECT,
-      clientAuthenticatedViaPrivateKeyJwt: true,
+      codeVerifier: VERIFIER,
     });
 
     expect(response.token_type).toBe('bearer');
-    expect(tokenClientIdMatchesCodeMock).toHaveBeenCalledWith(
-      STABLE_CIMD,
-      INSTANCE_CIMD,
-      REDIRECT,
-    );
   });
 
   it('rejects when redirect_uri does not match the code row', async () => {
@@ -147,33 +134,62 @@ describe('exchangeAuthorizationCode', () => {
         code: CODE,
         clientId: INSTANCE_CIMD,
         redirectUri: 'https://chatgpt.com/connector_platform_oauth_redirect',
-        clientAuthenticatedViaPrivateKeyJwt: true,
+        codeVerifier: VERIFIER,
       }),
     ).rejects.toMatchObject({ reason: 'redirect' } satisfies Partial<OAuthInvalidGrantError>);
   });
 
-  it('rejects when token client_id is incompatible with the code row', async () => {
-    tokenClientIdMatchesCodeMock.mockResolvedValue(false);
+  it('rejects a foreign CIMD client_id even if its redirect_uris include the code redirect', async () => {
+    // Attack: evil.example/oauth/client.json declares the victim's redirect.
+    // Only an exact client_id match (or two trusted CIMD hosts) is accepted.
+    await expect(
+      exchangeAuthorizationCode({
+        code: CODE,
+        clientId: ATTACKER_CIMD,
+        redirectUri: REDIRECT,
+        codeVerifier: VERIFIER,
+      }),
+    ).rejects.toMatchObject({ reason: 'client' } satisfies Partial<OAuthInvalidGrantError>);
+    expect(prismaMock.mcpOAuthGrant.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a DCR client_id different from the code client_id', async () => {
+    prismaMock.mcpOAuthAuthorizationCode.findUnique.mockResolvedValue({
+      ...baseCodeRow,
+      client_id: '11111111-2222-3333-4444-555555555555',
+    });
 
     await expect(
       exchangeAuthorizationCode({
         code: CODE,
-        clientId: STABLE_CIMD,
+        clientId: '99999999-2222-3333-4444-555555555555',
         redirectUri: REDIRECT,
-        clientAuthenticatedViaPrivateKeyJwt: true,
+        codeVerifier: VERIFIER,
       }),
     ).rejects.toMatchObject({ reason: 'client' } satisfies Partial<OAuthInvalidGrantError>);
   });
 
-  it('accepts private_key_jwt without code_verifier when JWT auth is flagged', async () => {
-    const response = await exchangeAuthorizationCode({
-      code: CODE,
-      clientId: INSTANCE_CIMD,
-      redirectUri: REDIRECT,
-      clientAuthenticatedViaPrivateKeyJwt: true,
-    });
+  it('rejects an exchange without code_verifier (PKCE is mandatory)', async () => {
+    await expect(
+      exchangeAuthorizationCode({
+        code: CODE,
+        clientId: INSTANCE_CIMD,
+        redirectUri: REDIRECT,
+      }),
+    ).rejects.toMatchObject({ reason: 'pkce' } satisfies Partial<OAuthInvalidGrantError>);
+    expect(prismaMock.mcpOAuthGrant.create).not.toHaveBeenCalled();
+  });
 
-    expect(response.token_type).toBe('bearer');
+  it('rejects an exchange with a wrong code_verifier', async () => {
+    await expect(
+      exchangeAuthorizationCode({
+        code: CODE,
+        clientId: INSTANCE_CIMD,
+        redirectUri: REDIRECT,
+        codeVerifier:
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      }),
+    ).rejects.toMatchObject({ reason: 'pkce' } satisfies Partial<OAuthInvalidGrantError>);
   });
 
   it('rejects already-used authorization codes with invalid_grant', async () => {
@@ -219,11 +235,6 @@ describe('exchangeAuthorizationCode', () => {
 
     expect(response.token_type).toBe('bearer');
     expect(response.access_token).toContain('micasa_oauth_');
-    expect(tokenClientIdMatchesCodeMock).toHaveBeenCalledWith(
-      INSTANCE_CIMD,
-      INSTANCE_CIMD,
-      REDIRECT,
-    );
     expect(verifyPkceS256(VERIFIER, CHALLENGE)).toBe(true);
     expect(prismaMock.mcpOAuthAuthorizationCode.update).toHaveBeenCalledWith(
       expect.objectContaining({

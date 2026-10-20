@@ -79,7 +79,6 @@ export const exchangeAuthorizationCode = async (input: {
   clientId: string;
   redirectUri: string;
   codeVerifier?: string | null;
-  clientAuthenticatedViaPrivateKeyJwt?: boolean;
   resource?: string | null;
 }) => {
   const codeHash = hashOAuthSecret(input.code);
@@ -96,24 +95,19 @@ export const exchangeAuthorizationCode = async (input: {
   if (row.redirect_uri !== input.redirectUri) {
     throw new OAuthInvalidGrantError('redirect');
   }
-  const clientMatches = await tokenClientIdMatchesCode(
-    input.clientId,
-    row.client_id,
-    row.redirect_uri,
-  );
-  if (!clientMatches) {
+  if (!tokenClientIdMatchesCode(input.clientId, row.client_id)) {
     throw new OAuthInvalidGrantError('client');
   }
   if (row.code_challenge_method !== 'S256') {
     throw new OAuthInvalidGrantError('pkce');
   }
 
+  // PKCE is mandatory on every exchange. A private_key_jwt assertion only
+  // authenticates the client; it never replaces the code_verifier.
   const pkceValid =
     isValidPkceVerifier(input.codeVerifier ?? undefined) &&
     verifyPkceS256(input.codeVerifier!, row.code_challenge);
-  const jwtValid = input.clientAuthenticatedViaPrivateKeyJwt === true;
-
-  if (!pkceValid && !jwtValid) {
+  if (!pkceValid) {
     throw new OAuthInvalidGrantError('pkce');
   }
 

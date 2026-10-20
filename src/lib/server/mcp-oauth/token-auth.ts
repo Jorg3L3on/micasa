@@ -58,24 +58,17 @@ export const resolveAuthorizationCodeAuth = async (input: {
     });
   }
 
-  if (isPrivateKeyJwtClient) {
-    if (!hasVerifier && !jwtValid) {
-      return {
-        ok: false,
-        error: 'invalid_request',
-        description:
-          'Se requiere code_verifier (PKCE) o client_assertion válida (private_key_jwt)',
-      };
-    }
-
+  // A presented assertion must verify (RFC 7523 → invalid_client). It only
+  // authenticates the client: PKCE is still required below for every client.
+  if (hasAssertion && isPrivateKeyJwtClient && !jwtValid) {
     return {
-      ok: true,
-      codeVerifier: hasVerifier ? input.codeVerifier : undefined,
-      clientAuthenticatedViaPrivateKeyJwt: jwtValid,
+      ok: false,
+      error: 'invalid_client',
+      description: 'client_assertion inválida',
     };
   }
 
-  if (hasAssertion && !hasVerifier) {
+  if (hasAssertion && !isPrivateKeyJwtClient) {
     return {
       ok: false,
       error: 'invalid_request',
@@ -94,6 +87,6 @@ export const resolveAuthorizationCodeAuth = async (input: {
   return {
     ok: true,
     codeVerifier: input.codeVerifier,
-    clientAuthenticatedViaPrivateKeyJwt: false,
+    clientAuthenticatedViaPrivateKeyJwt: jwtValid,
   };
 };

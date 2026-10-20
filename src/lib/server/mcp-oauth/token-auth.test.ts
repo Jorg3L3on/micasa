@@ -27,6 +27,25 @@ const privateKeyJwtClient = {
   client_secret_hash: null,
 };
 
+const makeSigner = async () => {
+  const { publicKey, privateKey } = await generateKeyPair('RS256');
+  const jwk = await exportJWK(publicKey);
+  const jwks = {
+    keys: [{ ...jwk, kid: 'fixture-kid', use: 'sig', alg: 'RS256' }],
+  };
+  const sign = (jti: string) =>
+    new SignJWT({})
+      .setProtectedHeader({ alg: 'RS256', kid: 'fixture-kid' })
+      .setIssuer(INSTANCE_CIMD)
+      .setSubject(INSTANCE_CIMD)
+      .setAudience(TOKEN_ENDPOINT)
+      .setIssuedAt()
+      .setExpirationTime('5m')
+      .setJti(jti)
+      .sign(privateKey);
+  return { jwks, sign };
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv('NEXTAUTH_URL', 'https://micasa.example');
@@ -48,21 +67,9 @@ describe('resolveAuthorizationCodeAuth', () => {
     }
   });
 
-  it('accepts private_key_jwt client_assertion without code_verifier', async () => {
-    const { publicKey, privateKey } = await generateKeyPair('RS256');
-    const jwk = await exportJWK(publicKey);
-    const jwks = {
-      keys: [{ ...jwk, kid: 'fixture-kid', use: 'sig', alg: 'RS256' }],
-    };
-    const clientAssertion = await new SignJWT({})
-      .setProtectedHeader({ alg: 'RS256', kid: 'fixture-kid' })
-      .setIssuer(INSTANCE_CIMD)
-      .setSubject(INSTANCE_CIMD)
-      .setAudience('https://micasa.example/token')
-      .setIssuedAt()
-      .setExpirationTime('5m')
-      .setJti('fixture-jti-002')
-      .sign(privateKey);
+  it('rejects a valid private_key_jwt client_assertion without code_verifier', async () => {
+    const { jwks, sign } = await makeSigner();
+    const clientAssertion = await sign('fixture-jti-002');
 
     const result = await resolveAuthorizationCodeAuth({
       client: privateKeyJwtClient,
@@ -73,28 +80,39 @@ describe('resolveAuthorizationCodeAuth', () => {
       jwksJson: jwks,
     });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.clientAuthenticatedViaPrivateKeyJwt).toBe(true);
-      expect(result.codeVerifier).toBeUndefined();
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe('invalid_request');
+      expect(result.description).toContain('code_verifier');
     }
   });
 
-  it('accepts JWT when both verifier and assertion are present but verifier is wrong', async () => {
-    const { publicKey, privateKey } = await generateKeyPair('RS256');
-    const jwk = await exportJWK(publicKey);
-    const jwks = {
-      keys: [{ ...jwk, kid: 'fixture-kid', use: 'sig', alg: 'RS256' }],
-    };
-    const clientAssertion = await new SignJWT({})
-      .setProtectedHeader({ alg: 'RS256', kid: 'fixture-kid' })
-      .setIssuer(INSTANCE_CIMD)
-      .setSubject(INSTANCE_CIMD)
-      .setAudience('https://micasa.example/token')
-      .setIssuedAt()
-      .setExpirationTime('5m')
-      .setJti('fixture-jti-003')
-      .sign(privateKey);
+  it('accepts a valid client_assertion together with code_verifier and flags JWT auth', async () => {
+    const { jwks, sign } = await makeSigner();
+    const clientAssertion = await sign('fixture-jti-003');
+
+    const result = await resolveAuthorizationCodeAuth({
+      client: privateKeyJwtClient,
+      codeVerifier: VERIFIER,
+      clientAssertion,
+      clientAssertionType: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+      codeClientId: INSTANCE_CIMD,
+      request: new Request(TOKEN_ENDPOINT),
+      jwksJson: jwks,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.clientAuthenticatedViaPrivateKeyJwt).toBe(true);
+      expect(result.codeVerifier).toBe(VERIFIER);
+    }
+  });
+
+  it('passes the verifier through to the PKCE check even when the assertion is valid', async () => {
+    // token-auth does not decide PKCE: a wrong verifier is rejected by
+    // exchangeAuthorizationCode (invalid_grant pkce), never waived by the JWT.
+    const { jwks, sign } = await makeSigner();
+    const clientAssertion = await sign('fixture-jti-004');
 
     const result = await resolveAuthorizationCodeAuth({
       client: privateKeyJwtClient,
@@ -107,8 +125,40 @@ describe('resolveAuthorizationCodeAuth', () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.clientAuthenticatedViaPrivateKeyJwt).toBe(true);
       expect(result.codeVerifier).toBe(BAD_VERIFIER);
+    }
+  });
+
+  it('rejects an invalid client_assertion with invalid_client even when a verifier is present', async () => {
+    const { jwks } = await makeSigner();
+    const other = await makeSigner();
+    const clientAssertion = await other.sign('fixture-jti-005');
+
+    const result = await resolveAuthorizationCodeAuth({
+      client: privateKeyJwtClient,
+      codeVerifier: VERIFIER,
+      clientAssertion,
+      clientAssertionType: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+      request: new Request(TOKEN_ENDPOINT),
+      jwksJson: jwks,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe('invalid_client');
+    }
+  });
+
+  it('accepts private_key_jwt clients that send only PKCE (no assertion)', async () => {
+    const result = await resolveAuthorizationCodeAuth({
+      client: privateKeyJwtClient,
+      codeVerifier: VERIFIER,
+      request: new Request(TOKEN_ENDPOINT),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.clientAuthenticatedViaPrivateKeyJwt).toBe(false);
     }
   });
 
