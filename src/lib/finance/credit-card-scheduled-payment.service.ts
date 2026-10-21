@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { PaymentMethodType } from '@/generated/prisma/client';
+import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
 import {
   formatCalendarDate,
   parseCalendarDate,
@@ -18,6 +18,10 @@ import {
   ymdFallsInFortnight,
 } from '@/lib/fortnight-calendar';
 import { DomainError } from '@/lib/finance/domain-error';
+import {
+  cardPaymentMatchWindow,
+  pickCardPaymentMatch,
+} from '@/lib/finance/card-payment-match';
 
 export type CreditCardScheduledPaymentItem = {
   id: number;
@@ -212,8 +216,9 @@ export async function deleteScheduledPayment(
 export async function markScheduledPaymentPaid(
   scheduledPaymentId: number,
   creditCardPaymentId?: number,
+  tx: Prisma.TransactionClient = prisma,
 ): Promise<CreditCardScheduledPaymentItem | null> {
-  const existing = await prisma.creditCardScheduledPayment.findUnique({
+  const existing = await tx.creditCardScheduledPayment.findUnique({
     where: { id: scheduledPaymentId },
   });
 
@@ -221,7 +226,7 @@ export async function markScheduledPaymentPaid(
     return null;
   }
 
-  const row = await prisma.creditCardScheduledPayment.update({
+  const row = await tx.creditCardScheduledPayment.update({
     where: { id: scheduledPaymentId },
     data: {
       status: 'PAID',
@@ -235,40 +240,38 @@ export async function markScheduledPaymentPaid(
   return mapRow(row);
 }
 
-/** Match a card payment to the nearest scheduled row (±7 days or exact amount). */
+/**
+ * Marks the scheduled row a card payment settles (due ±7 days, see
+ * {@link pickCardPaymentMatch}). Runs on the payment's transaction so the
+ * payment and the match commit together.
+ */
 export async function coverScheduledPaymentForCardPayment(
+  tx: Prisma.TransactionClient,
   walletId: number,
   ownerFilter: OwnerFilter,
   paidAtYmd: string,
   amount: number,
   creditCardPaymentId?: number,
 ): Promise<CreditCardScheduledPaymentItem | null> {
-  const paidAt = parseCalendarDate(paidAtYmd);
-  const windowStart = new Date(paidAt);
-  windowStart.setUTCDate(windowStart.getUTCDate() - 7);
-  const windowEnd = new Date(paidAt);
-  windowEnd.setUTCDate(windowEnd.getUTCDate() + 7);
-
-  const candidates = await prisma.creditCardScheduledPayment.findMany({
+  const candidates = await tx.creditCardScheduledPayment.findMany({
     where: {
       credit_card_wallet_id: walletId,
       ...ownerFilter,
       status: 'SCHEDULED',
-      due_date: { gte: windowStart, lte: windowEnd },
+      due_date: cardPaymentMatchWindow(paidAtYmd),
     },
     orderBy: [{ due_date: 'asc' }, { id: 'asc' }],
   });
 
-  if (candidates.length === 0) {
+  const target = pickCardPaymentMatch(
+    candidates.map((row) => ({ id: row.id, amount: decimalToNumber(row.amount) })),
+    amount,
+  );
+  if (!target) {
     return null;
   }
 
-  const exactAmount = candidates.find(
-    (row) => decimalToNumber(row.amount) === amount,
-  );
-  const target = exactAmount ?? candidates[0];
-
-  return markScheduledPaymentPaid(target.id, creditCardPaymentId);
+  return markScheduledPaymentPaid(target.id, creditCardPaymentId, tx);
 }
 
 export type PlannerScheduledCardPaymentItem = CreditCardScheduledPaymentItem & {

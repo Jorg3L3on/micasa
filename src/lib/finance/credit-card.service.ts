@@ -518,10 +518,31 @@ export async function createCreditCardPayment(
       });
     }
 
+    // Settle the scheduled row / MSI cuota this payment covers in the same
+    // transaction: a failed match rolls the payment back instead of leaving a
+    // committed payment reported as an error.
+    const paidAtYmd = formatCalendarDate(payment.paid_at);
+    await coverScheduledPaymentForCardPayment(
+      tx,
+      creditCardWallet.id,
+      ownerFilter,
+      paidAtYmd,
+      input.amount,
+      payment.id,
+    );
+    await coverInstallmentPlanPaymentForCardPayment(
+      tx,
+      creditCardWallet.id,
+      ownerFilter,
+      paidAtYmd,
+      input.amount,
+      payment.id,
+    );
+
     return {
       id: payment.id,
       amount: Number(payment.amount),
-      paid_at: formatCalendarDate(payment.paid_at),
+      paid_at: paidAtYmd,
       note: payment.note ?? null,
       source_wallet_id: payment.source_wallet_id,
       source_wallet_name: payment.source_wallet?.name ?? 'Ya pagado',
@@ -532,28 +553,10 @@ export async function createCreditCardPayment(
       expense_id: expenseId,
       adjusts_debt: payment.adjusts_debt,
       is_external: payment.source_wallet_id == null,
-      paid_at_raw: input.paid_at,
     };
   }, { timeout: 30000, maxWait: 10000 });
 
-  await coverScheduledPaymentForCardPayment(
-    creditCardId,
-    ownerFilter,
-    result.paid_at_raw,
-    result.amount,
-    result.id,
-  );
-
-  await coverInstallmentPlanPaymentForCardPayment(
-    creditCardId,
-    ownerFilter,
-    result.paid_at_raw,
-    result.amount,
-    result.id,
-  );
-
-  const { paid_at_raw: _paidAtRaw, ...paymentDto } = result;
-  return paymentDto;
+  return result;
 }
 
 export async function isCardPaymentGeneratedExpense(
