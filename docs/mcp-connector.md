@@ -26,8 +26,8 @@ Ambos identifican al **mismo usuario** de MiCasa y respetan scopes `read` / `wri
 
 Al conectar (OAuth o llave Bearer) eliges qué contextos ve el cliente:
 
-- **Cuenta personal** (`ownerType: "user"`, `ownerId` = tu userId)
-- **Cada casa** donde eres miembro (`ownerType: "house"`, `ownerId` = id de la casa)
+- **Cuenta personal** (`owner_type: "user"`, `owner_id` = tu user_id)
+- **Cada casa** donde eres miembro (`owner_type: "house"`, `owner_id` = id de la casa)
 
 Reglas:
 
@@ -112,7 +112,7 @@ node scripts/mint-agent-token.mjs --revoke micasa_XXXXXXXX
 
 El token es **tu usuario**; cada tool elige el contexto financiero con `owner_type` + `owner_id`. Solo los contextos en la **allow-list** del token/grant son válidos:
 
-1. Llama `list_houses` primero — devuelve tu `userId`, `personalContext` (si está permitida) y las casas autorizadas, cada una con `ownerType` / `ownerId`.
+1. Llama `list_houses` primero — devuelve tu `user_id`, `personal_context` (si está permitida) y las casas autorizadas, cada una con `owner_type` / `owner_id`.
 2. Pasa `owner_type: "house", owner_id: <id>` (casa compartida) o `owner_type: "user", owner_id: <tu userId>` (finanzas personales) en todas las demás tools.
 
 La pertenencia a la casa se valida en cada llamada (mismas reglas que `getOwnerContext` en la app).
@@ -121,12 +121,33 @@ La pertenencia a la casa se valida en cada llamada (mismas reglas que `getOwnerC
 
 `serverInfo.version` **3.0.0**: 41 tools (antes 70). Convenciones comunes:
 
-- **Contexto.** Todas las tools (excepto `list_houses`) requieren `owner_type` + `owner_id`; los valores salen de `list_houses` (`ownerType` / `ownerId` de cada contexto). Durante v3 se aceptan también `ownerType` / `ownerId` como alias (si llegan ambos, gana la clave snake_case); el alias no aparece en `tools/list` y se retira en la siguiente versión mayor.
+- **Contexto.** Todas las tools (excepto `list_houses`) requieren `owner_type` + `owner_id`, tal como los devuelve `list_houses`. Durante v3 se aceptan también `ownerType` / `ownerId` como alias de entrada (si llegan ambos, gana la clave snake_case); el alias no aparece en `tools/list` y **se retira en v4.0.0, no antes del 31 de enero de 2027**.
 - **Referencias.** Billeteras y categorías se indican por **id o nombre** (`wallet_id` / `wallet_name`, `category_id` / `category_name`). Nombre ambiguo → `AMBIGUOUS_REF` con `candidates` (`id`, `name`).
-- **Entrada estricta.** Una clave que no está en el schema (p. ej. `wallet_nmae`) es error de validación, no se descarta en silencio. Las fechas `YYYY-MM-DD` deben existir en el calendario (`2025-02-30` se rechaza). Los campos que no aplican al tipo (p. ej. `credit_limit` en una billetera CASH, `source` en una plantilla de gasto) devuelven `VALIDATION`.
-- **Errores.** `{"error": "…", "code": "…", "hint"?: "…", "candidates"?: [{"id", "name"}]}` con `isError: true`. Códigos: `NOT_FOUND`, `AMBIGUOUS_REF`, `CONFIRM_REQUIRED`, `FORBIDDEN`, `VALIDATION`, `RATE_LIMITED` (con `hint` de reintento), `INTERNAL`. Los errores internos (base de datos, bugs) nunca exponen su texto: llegan como `INTERNAL` y el detalle queda en el log `mcp.tool.failed`.
-- **Anotaciones.** Todas declaran `openWorldHint: false`; las de lectura `readOnlyHint: true`. `delete`, `adjust_balance` y `regenerate_from_templates` llevan `destructiveHint: true`.
-- **Respuestas** en JSON compacto (sin sangría). Los schemas publicados omiten `$schema` y los límites ±2^53 de los enteros.
+- **Entrada estricta.** Cada campo de entrada tiene descripción en `tools/list`. Una clave que no está en el schema (p. ej. `wallet_nmae`) devuelve `VALIDATION` con el nombre de la clave; no se descarta en silencio. Las fechas `YYYY-MM-DD` deben existir en el calendario (`2025-02-30` se rechaza). Los campos que no aplican al tipo (p. ej. `credit_limit` en una billetera CASH, `source` en una plantilla de gasto) devuelven `VALIDATION`.
+- **Anotaciones.** Todas declaran `openWorldHint: false`; las de lectura `readOnlyHint: true`. `delete`, `adjust_balance` y `regenerate_from_templates` llevan `destructiveHint: true` y piden `confirm: true`; `create_month`, `update_*`, `upsert_*` y `adjust_balance` llevan `idempotentHint: true`. `delete` no es idempotente (el segundo borrado responde `NOT_FOUND`).
+
+#### Respuestas
+
+- **Forma.** JSON compacto con claves **snake_case** en todas las tools; montos como `number`; fechas como `YYYY-MM-DD` (día civil de Ciudad de México). Los mapas por nombre se publican como arreglos (`list_expenses.totals.by_wallet: [{name, amount}]`).
+- **`outputSchema`.** Las 16 tools de lectura publican `outputSchema` y devuelven el mismo objeto en `structuredContent` y como texto. El schema lista los campos principales; la respuesta puede traer campos adicionales (p. ej. las secciones de `get_card`).
+
+#### Paginación
+
+Toda tool `list_*` acepta `limit` (1-200, default 50) y `offset` (default 0) y responde `{ <lista>, total_count, limit, offset }`: `list_houses.houses`, `list_wallets.wallets`, `list_movements.movements`, `list_expenses.expenses`, `list_incomes.incomes`, `list_categories.categories`, `list_budgets.budgets`, `list_templates.templates`, `list_loans.loans`, `list_lenders.lenders`, `list_upcoming.items`. `total_count` cuenta todas las filas; los totales de `list_expenses` y `list_movements` cubren el rango completo, no solo la página.
+
+#### Errores
+
+Toda tool responde los errores como `{"error": "…", "code": "…", "hint"?: "…", "candidates"?: [{"id", "name"}]}` con `isError: true`.
+
+| `code` | Cuándo | Qué hacer |
+|---|---|---|
+| `VALIDATION` | Entrada inválida (clave desconocida, fecha inexistente, campo que no aplica al tipo) o regla de negocio (saldo insuficiente, asignaciones que no suman) | Corregir la entrada; el mensaje dice qué |
+| `NOT_FOUND` | El id o nombre no existe en el contexto | Listar con la tool `list_*`; `hint` sugiere cuál |
+| `AMBIGUOUS_REF` | Un nombre coincide con varias billeteras | Repetir con el id de `candidates` |
+| `CONFIRM_REQUIRED` | Falta `confirm: true` en `delete`, `adjust_balance` o `regenerate_from_templates` | Confirmar con el usuario y repetir con `confirm: true` |
+| `FORBIDDEN` | Contexto fuera de la allow-list de la conexión, no eres miembro, o el token no tiene el scope | Usar un contexto de `list_houses` o reconectar con el scope `write` |
+| `RATE_LIMITED` | Más de 120 llamadas por minuto en la conexión | Reintentar tras los segundos del `hint` |
+| `INTERNAL` | Error inesperado (base de datos, bug) | Reintentar más tarde; el texto real solo queda en el log `mcp.tool.failed` |
 
 ### Flujo típico del agente
 
@@ -146,8 +167,8 @@ La pertenencia a la casa se valida en cada llamada (mismas reglas que `getOwnerC
 | `list_incomes` | Ingresos de una quincena (`fortnight_id` o `year`+`month`+`period`). |
 | `list_categories` | Catálogo de categorías (`kind: expense\|income\|all`). |
 | `list_budgets` | Presupuestos activos: tope, gastado, restante, asignaciones. |
-| `list_templates` | Plantillas recurrentes (`kind: expense\|income\|all`) con flags 1ª/2ª quincena. |
-| `list_loans` | Préstamos; `year` + `month` filtra cuotas del mes. |
+| `list_templates` | Plantillas recurrentes en un solo arreglo `templates` (cada una con `kind`); filtro `kind: expense\|income\|all`. |
+| `list_loans` | Préstamos; `year` + `month` agrega las cuotas del mes y su total; `include_schedule` agrega el calendario completo; `include_inactive` incluye pagados, pausados y cancelados. |
 | `list_lenders` | Prestamistas con capital pendiente y ventana de pago. |
 | `get_loan` | Detalle + calendario de un préstamo. |
 | `list_upcoming` | Pagos unificados: tarjetas (revolving + MSI) y préstamos. Filtros: `year`/`month`, `period`, `from`/`to`. |
@@ -168,10 +189,10 @@ La pertenencia a la casa se valida en cada llamada (mismas reglas que `getOwnerC
 | `update_expense` | Corrige un gasto o lo marca pagado/pendiente | Con solo `is_paid` usa el mismo camino que el toggle de la app. |
 | `add_income` / `update_income` | Ingreso en billetera de activo | |
 | `create_category` / `update_category` | Categorías | `kind` EXPENSE\|INCOME. |
-| `upsert_budget` | Crea o actualiza presupuesto | Con `budget_id`: `name`/`amount` opcionales y `allocations[]` reemplaza las asignaciones. La suma debe igualar `amount`. |
-| `create_template` / `update_template` | Plantillas | `kind: expense\|income`. |
+| `upsert_budget` | Crea o actualiza presupuesto | Sin `budget_id` siempre crea (requiere `name` y `amount`); con `budget_id` actualiza: `name`/`amount` opcionales y `allocations[]` reemplaza las asignaciones. La suma debe igualar `amount`. |
+| `create_template` / `update_template` | Plantillas | `kind: expense\|income`. Billetera opcional en ambas (en ingresos, solo efectivo/débito). |
 | `create_month` | Crear mes / expandir plantillas | Idempotente. |
-| `regenerate_from_templates` | Regenerar quincena desde plantillas | `fortnight_id` o calendario. |
+| `regenerate_from_templates` | Regenerar quincena desde plantillas | `fortnight_id` o calendario. `confirm: true`. |
 | `add_card_payment` | Pago de tarjeta | `mode`: `external` (default) o `wallet` (descuenta billetera MiCasa). |
 | `upsert_installment_plan` | Crea (sin `plan_id`) o actualiza un plan MSI | Al actualizar, `paid_installments` es obligatorio. |
 | `create_scheduled_payment` | Cuota programada suelta en calendario de tarjeta | |
@@ -242,8 +263,7 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
 **`list_expenses`**
 
-- **`totals`:** suma por billetera y categoría en **todo** el rango filtrado (todas las páginas).
-- **`totals_in_page`:** suma solo de la página actual (`limit`/`offset`).
+- **`totals`:** suma por billetera y categoría en **todo** el rango filtrado (todas las páginas), como arreglos `[{name, amount}]`. Se calcula con una sola agregación en la base.
 
 **`list_movements` (tarjeta)**
 

@@ -79,6 +79,11 @@ export function registerExpenseTools(server: McpServer) {
         );
       }
 
+      if (isCard && args.category_id == null && !args.category_name) {
+        throw new McpToolError('VALIDATION', 'Las compras con tarjeta requieren categoría.', {
+          hint: 'Indica category_id o category_name (de list_categories).',
+        });
+      }
       const categoryId = await resolveCategoryRef(
         agent.ownerFilter,
         args.category_id,

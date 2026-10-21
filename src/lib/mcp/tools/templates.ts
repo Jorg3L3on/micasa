@@ -235,14 +235,11 @@ const updateExpenseTemplate = async (
       )) ?? categoryId;
   }
 
-  let walletId: number | null | undefined;
-  if (args.wallet_id !== undefined) {
-    walletId = args.wallet_id;
-  } else if (args.wallet_name) {
-    walletId = (
-      await resolveWalletRef(agent.ownerFilter, undefined, args.wallet_name)
-    ).id;
-  }
+  // Resolved through the owner (by id or name) so a foreign wallet is NOT_FOUND.
+  const walletId =
+    args.wallet_id != null || args.wallet_name
+      ? (await resolveWalletRef(agent.ownerFilter, args.wallet_id, args.wallet_name)).id
+      : undefined;
 
   const validated = updateExpenseTemplateSchema.parse({
     name: args.name ?? existing.name,
@@ -250,7 +247,8 @@ const updateExpenseTemplate = async (
     suggestedAmount:
       args.suggested_amount ??
       (existing.suggested_amount ? Number(existing.suggested_amount) : undefined),
-    paymentMethodId: walletId === undefined ? existing.wallet_id : walletId,
+    // The schema takes a wallet id or nothing; a template without wallet keeps none.
+    paymentMethodId: walletId ?? existing.wallet_id ?? undefined,
     active: args.active ?? existing.active,
     dueDayFirst:
       args.due_day_first !== undefined

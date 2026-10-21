@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { createWalletTransferForOwner } from '@/lib/finance/wallet-transfer.service';
+import { createWalletTransferSchema } from '@/schemas/wallet-transfer.schema';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { dateYmd } from '@/lib/mcp/schemas';
 import { resolveWalletRef } from '@/lib/mcp/resolvers';
@@ -42,7 +43,8 @@ export function registerTransferTools(server: McpServer) {
         args.to_wallet_name,
       );
 
-      const result = await createWalletTransferForOwner(agent.ownerFilter, {
+      // Same schema as the REST route (rejects origin = destination).
+      const input = createWalletTransferSchema.parse({
         from_wallet_id: fromWallet.id,
         to_wallet_id: toWallet.id,
         amount: args.amount,
@@ -51,6 +53,7 @@ export function registerTransferTools(server: McpServer) {
         note: args.note ?? defaultTransferNote(fromWallet.type, toWallet.type),
         exclude_from_report: true,
       });
+      const result = await createWalletTransferForOwner(agent.ownerFilter, input);
 
       return {
         transfer_id: result.id,
