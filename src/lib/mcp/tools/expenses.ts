@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
-import prisma from '@/lib/prisma';
 import { todayCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
 import { createCreditCardPurchase } from '@/lib/finance/credit-card.service';
 import {
@@ -9,13 +8,14 @@ import {
   updateExpense,
 } from '@/lib/finance/expense.service';
 import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
+import { listExpensesWithTotals } from '@/lib/finance/expense-list.service';
+import { getWalletAmountForOwner } from '@/lib/finance/wallet.service';
 import type { PaymentMethodType } from '@/generated/prisma/client';
 import { createCreditCardPurchaseSchema } from '@/schemas/credit-card.schema';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
 import { categoryRef, dateYmd, walletRef } from '@/lib/mcp/schemas';
 import {
-  calendarRangeBounds,
   resolveCategoryRef,
   resolveDateRange,
   resolveFortnightIdForDate,
@@ -101,10 +101,6 @@ export function registerExpenseTools(server: McpServer) {
           agent.ownerFilter,
           purchaseInput,
         );
-        const card = await prisma.wallet.findUnique({
-          where: { id: wallet.id },
-          select: { amount: true },
-        });
         return {
           expense_id: purchase.id,
           wallet_id: wallet.id,
@@ -112,7 +108,7 @@ export function registerExpenseTools(server: McpServer) {
           amount: args.amount,
           date: expenseDate,
           effect: 'debt_increase',
-          new_balance_or_debt: card ? Number(card.amount) : null,
+          new_balance_or_debt: await getWalletAmountForOwner(wallet.id, agent.ownerFilter),
           already_in_balance: args.already_in_balance,
           installment:
             args.installment_current != null && args.installment_total != null
@@ -132,11 +128,6 @@ export function registerExpenseTools(server: McpServer) {
         applyWalletDelta: args.is_paid && !args.already_in_balance,
       });
 
-      const updatedWallet = await prisma.wallet.findUnique({
-        where: { id: wallet.id },
-        select: { amount: true },
-      });
-
       return {
         expense_id: created.id,
         wallet_id: wallet.id,
@@ -144,7 +135,7 @@ export function registerExpenseTools(server: McpServer) {
         amount: args.amount,
         date: expenseDate,
         effect: args.is_paid ? 'balance_decrease' : 'pending_expense',
-        new_balance_or_debt: updatedWallet ? Number(updatedWallet.amount) : null,
+        new_balance_or_debt: await getWalletAmountForOwner(wallet.id, agent.ownerFilter),
         is_paid: args.is_paid,
         already_in_balance: args.already_in_balance,
       };
@@ -169,7 +160,6 @@ export function registerExpenseTools(server: McpServer) {
     },
     run: async (agent, args) => {
       const range = resolveDateRange(args);
-      const { fromDate, toDate } = calendarRangeBounds(range);
 
       let walletId = args.wallet_id;
       if (args.wallet_name && walletId == null) {
@@ -188,78 +178,16 @@ export function registerExpenseTools(server: McpServer) {
           )) ?? undefined;
       }
 
-      const where = {
-        ...agent.ownerFilter,
-        OR: [
-          { payment_date: { gte: fromDate, lte: toDate } },
-          {
-            AND: [
-              { payment_date: null },
-              { created_at: { gte: fromDate, lte: toDate } },
-            ],
-          },
-        ],
-        ...(walletId != null ? { wallet_id: walletId } : {}),
-        ...(categoryId != null ? { category_id: categoryId } : {}),
-      };
-
-      const [total, expenses, expensesForTotals] = await Promise.all([
-        prisma.expense.count({ where }),
-        prisma.expense.findMany({
-          where,
-          include: {
-            wallet: { select: { id: true, name: true, type: true } },
-            category: { select: { id: true, name: true } },
-          },
-          orderBy: [{ payment_date: 'desc' }, { created_at: 'desc' }],
-          skip: args.offset,
-          take: args.limit,
-        }),
-        prisma.expense.findMany({
-          where,
-          select: {
-            amount: true,
-            wallet: { select: { name: true } },
-            category: { select: { name: true } },
-          },
-        }),
-      ]);
-
-      const totalsByWallet = new Map<string, number>();
-      const totalsByCategory = new Map<string, number>();
-      const rangeTotalsByWallet = new Map<string, number>();
-      const rangeTotalsByCategory = new Map<string, number>();
-
-      for (const expense of expensesForTotals) {
-        const walletKey = expense.wallet?.name ?? 'Sin billetera';
-        rangeTotalsByWallet.set(
-          walletKey,
-          (rangeTotalsByWallet.get(walletKey) ?? 0) + Number(expense.amount),
-        );
-        const categoryKey = expense.category?.name ?? 'Sin categoría';
-        rangeTotalsByCategory.set(
-          categoryKey,
-          (rangeTotalsByCategory.get(categoryKey) ?? 0) + Number(expense.amount),
-        );
-      }
-
-      for (const expense of expenses) {
-        const walletKey = expense.wallet?.name ?? 'Sin billetera';
-        totalsByWallet.set(
-          walletKey,
-          (totalsByWallet.get(walletKey) ?? 0) + Number(expense.amount),
-        );
-        const categoryKey = expense.category?.name ?? 'Sin categoría';
-        totalsByCategory.set(
-          categoryKey,
-          (totalsByCategory.get(categoryKey) ?? 0) + Number(expense.amount),
-        );
-      }
+      const { totalCount, expenses, totals, totalsInPage } = await listExpensesWithTotals(
+        agent.ownerFilter,
+        { from: range.from, to: range.to, walletId, categoryId },
+        { limit: args.limit, offset: args.offset },
+      );
 
       return {
         from: range.from,
         to: range.to,
-        total_count: total,
+        total_count: totalCount,
         offset: args.offset,
         limit: args.limit,
         expenses: expenses.map((expense) => ({
@@ -279,14 +207,8 @@ export function registerExpenseTools(server: McpServer) {
               ? 'debt_increase'
               : 'balance_decrease',
         })),
-        totals: {
-          by_wallet: Object.fromEntries(rangeTotalsByWallet),
-          by_category: Object.fromEntries(rangeTotalsByCategory),
-        },
-        totals_in_page: {
-          by_wallet: Object.fromEntries(totalsByWallet),
-          by_category: Object.fromEntries(totalsByCategory),
-        },
+        totals,
+        totals_in_page: totalsInPage,
       };
     },
   });

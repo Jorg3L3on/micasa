@@ -1,11 +1,5 @@
 import prisma from '@/lib/prisma';
-import {
-  addCalendarDays,
-  endOfCalendarDay,
-  formatCalendarDate,
-  startOfCalendarDay,
-  todayCalendarDate,
-} from '@/lib/calendar-dates';
+import { addCalendarDays, todayCalendarDate } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { FortnightPeriod } from '@/generated/prisma/client';
@@ -161,13 +155,6 @@ export function resolveDateRange(input: {
   return { from: addCalendarDays(today, -29), to: today };
 }
 
-export function calendarRangeBounds(range: ResolvedDateRange) {
-  return {
-    fromDate: startOfCalendarDay(range.from),
-    toDate: endOfCalendarDay(range.to),
-  };
-}
-
 export async function resolveFortnightIdForDate(
   agent: AgentContext,
   ymd: string,
@@ -212,20 +199,4 @@ export async function resolveFortnightRef(
     });
   }
   return fortnight.id;
-}
-
-export function currentCalendarMonth(): { year: number; month: number } {
-  const today = todayCalendarDate();
-  return {
-    year: Number(today.slice(0, 4)),
-    month: Number(today.slice(5, 7)),
-  };
-}
-
-export function formatYmdFromDate(value: Date | string | null | undefined): string | null {
-  if (value == null) return null;
-  if (typeof value === 'string') {
-    return value.slice(0, 10);
-  }
-  return formatCalendarDate(value);
 }

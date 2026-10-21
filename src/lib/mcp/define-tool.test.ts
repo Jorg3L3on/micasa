@@ -33,6 +33,7 @@ vi.mock('@/lib/observability/finance-log', () => ({ logFinanceEvent }));
 import { Prisma } from '@/generated/prisma/client';
 import { defineOwnerTool, defineUserTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
+import { DomainError } from '@/lib/finance/domain-error';
 import { runAgentTool } from '@/lib/mcp/tool-helpers';
 import { connectInMemoryMcp } from '@/lib/mcp/testing/in-memory-client';
 
@@ -216,15 +217,34 @@ describe('errores', () => {
     await client.close();
   });
 
-  it('un Error de negocio simple conserva su mensaje como VALIDATION', async () => {
-    probeRun.mockRejectedValue(new Error('El préstamo debe pagarse desde efectivo o débito'));
+  it('un DomainError conserva su mensaje y se clasifica por status', async () => {
+    probeRun
+      .mockRejectedValueOnce(
+        new DomainError('VALIDATION', 'El préstamo debe pagarse desde efectivo o débito'),
+      )
+      .mockRejectedValueOnce(new DomainError('P2025', 'Préstamo no encontrado'))
+      .mockRejectedValueOnce(new DomainError('NOT_HOUSE_MEMBER', 'No eres miembro de esta casa', 403));
     const client = await connectProbe();
-    const result = await client.callTool('probe', { owner_type: 'house', owner_id: 42, name: 'x' });
+    const call = () => client.callTool('probe', { owner_type: 'house', owner_id: 42, name: 'x' });
 
-    expect(parseText(result)).toEqual({
+    expect(parseText(await call())).toEqual({
       error: 'El préstamo debe pagarse desde efectivo o débito',
       code: 'VALIDATION',
     });
+    expect(parseText(await call())).toEqual({ error: 'Préstamo no encontrado', code: 'NOT_FOUND' });
+    expect(parseText(await call())).toEqual({
+      error: 'No eres miembro de esta casa',
+      code: 'FORBIDDEN',
+    });
+    await client.close();
+  });
+
+  it('un Error simple ya no expone su mensaje (INTERNAL)', async () => {
+    probeRun.mockRejectedValue(new Error('Category seed: root "Hogar" was not created'));
+    const client = await connectProbe();
+    const result = await client.callTool('probe', { owner_type: 'house', owner_id: 42, name: 'x' });
+
+    expect(parseText(result)).toEqual({ error: 'Error interno en la herramienta', code: 'INTERNAL' });
     await client.close();
   });
 

@@ -38,6 +38,8 @@ const {
   fortnightFindUnique,
   walletFindUnique,
   getCreditCardByOwner,
+  createCategoryForOwner,
+  deleteCategoryForOwner,
 } = vi.hoisted(() => ({
   findUniqueApiKey: vi.fn(),
   updateApiKey: vi.fn(),
@@ -67,6 +69,8 @@ const {
   fortnightFindUnique: vi.fn(),
   walletFindUnique: vi.fn(),
   getCreditCardByOwner: vi.fn(),
+  createCategoryForOwner: vi.fn(),
+  deleteCategoryForOwner: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -96,6 +100,7 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/finance/budget.service', () => ({
   createBudget,
+  findBudgetForOwner: (_ownerFilter: unknown, ref: unknown) => budgetFindFirst(ref),
   deleteBudget: vi.fn(),
   updateBudgetTemplate,
   updateBudgetAllocations,
@@ -152,14 +157,17 @@ vi.mock('@/lib/finance/category-seed.service', () => ({
 }));
 
 vi.mock('@/lib/finance/category.service', () => ({
-  assertValidParentForCreate: vi.fn(),
-  findDuplicateCategoryName: vi.fn(),
-  assertCategoryDeletable: vi.fn(),
-  deactivateCategoryTree: vi.fn(),
-  activateCategory: vi.fn(),
-  categoryOwnerWhere: vi.fn(() => ({})),
+  createCategoryForOwner,
+  deleteCategoryForOwner,
+  listCategoriesForOwner: vi.fn(),
+  updateCategoryForOwner: vi.fn(),
   CategoryServiceError: class CategoryServiceError extends Error {
-    status = 409;
+    constructor(
+      message: string,
+      readonly status: number,
+    ) {
+      super(message);
+    }
   },
 }));
 
@@ -172,7 +180,6 @@ vi.mock('@/lib/mcp/resolvers', () => ({
   resolveWalletRef,
   resolveDateRange: vi.fn(),
   resolveFortnightIdForDate: vi.fn(),
-  calendarRangeBounds: vi.fn(),
 }));
 
 vi.mock('@/lib/server/rate-limit', () => ({
@@ -362,9 +369,8 @@ describe('registered list_houses with include_members', () => {
 });
 
 describe('registered category tools', () => {
-  it('create_category persists category', async () => {
-    categoryCount.mockResolvedValue(0);
-    categoryCreate.mockResolvedValue({
+  it('create_category delegates to createCategoryForOwner', async () => {
+    createCategoryForOwner.mockResolvedValue({
       id: 11,
       name: 'Ocio',
       description: null,
@@ -382,18 +388,16 @@ describe('registered category tools', () => {
     });
 
     expect(result.isError).toBeFalsy();
-    expect(categoryCreate).toHaveBeenCalled();
+    expect(createCategoryForOwner).toHaveBeenCalledWith(
+      'house',
+      42,
+      expect.objectContaining({ name: 'Ocio', kind: 'EXPENSE' }),
+    );
     expect(parseResult(result)).toMatchObject({ id: 11, name: 'Ocio', kind: 'EXPENSE' });
   });
 
-  it('delete (category) requires owned category before delete', async () => {
-    categoryFindFirst.mockResolvedValue({
-      id: 11,
-      name: 'Ocio',
-      kind: 'EXPENSE',
-    });
-    const { assertCategoryDeletable } = await import('@/lib/finance/category.service');
-    vi.mocked(assertCategoryDeletable).mockResolvedValue(undefined);
+  it('delete (category) delegates to deleteCategoryForOwner', async () => {
+    deleteCategoryForOwner.mockResolvedValue(undefined);
 
     const result = await invokeTool('delete', {
       ...houseArgs,
@@ -403,12 +407,15 @@ describe('registered category tools', () => {
     });
 
     expect(result.isError).toBeFalsy();
-    expect(categoryFindFirst).toHaveBeenCalled();
-    expect(categoryDelete).toHaveBeenCalledWith({ where: { id: 11 } });
+    expect(deleteCategoryForOwner).toHaveBeenCalledWith('house', 42, 11);
+    expect(parseResult(result)).toEqual({ deleted: true, kind: 'category', id: 11 });
   });
 
-  it('delete (category) rejects missing owner-scoped category', async () => {
-    categoryFindFirst.mockResolvedValue(null);
+  it('delete (category) maps a missing category to NOT_FOUND', async () => {
+    const { CategoryServiceError } = await import('@/lib/finance/category.service');
+    deleteCategoryForOwner.mockRejectedValue(
+      new CategoryServiceError('Categoría no encontrada', 404),
+    );
 
     const result = await invokeTool('delete', {
       ...houseArgs,
@@ -418,8 +425,7 @@ describe('registered category tools', () => {
     });
 
     expect(result.isError).toBe(true);
-    expect(parseResult(result)).toMatchObject({ code: 'NOT_FOUND' });
-    expect(categoryDelete).not.toHaveBeenCalled();
+    expect(parseResult(result)).toEqual({ error: 'Categoría no encontrada', code: 'NOT_FOUND' });
   });
 });
 

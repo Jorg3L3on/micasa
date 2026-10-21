@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
-import prisma from '@/lib/prisma';
 import {
   createBudget,
+  findBudgetForOwner,
   updateBudgetTemplate,
   updateBudgetAllocations,
 } from '@/lib/finance/budget.service';
@@ -112,17 +112,9 @@ export function registerBudgetTools(server: McpServer) {
     run: async (agent, args) => {
       const budget =
         args.budget_id != null
-          ? await prisma.budget.findFirst({
-              where: { id: args.budget_id, ...agent.ownerFilter },
-            })
+          ? await findBudgetForOwner(agent.ownerFilter, { id: args.budget_id })
           : args.name != null
-            ? await prisma.budget.findFirst({
-                where: {
-                  ...agent.ownerFilter,
-                  name: { equals: args.name, mode: 'insensitive' },
-                  active: true,
-                },
-              })
+            ? await findBudgetForOwner(agent.ownerFilter, { activeName: args.name })
             : null;
 
       if (args.budget_id != null && !budget) {

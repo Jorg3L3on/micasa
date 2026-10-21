@@ -148,6 +148,7 @@ vi.mock('@/lib/finance/credit-card-statement.service', () => ({
 
 vi.mock('@/lib/finance/wallet.service', () => ({
   createWalletForOwner: vi.fn(),
+  getWalletAmountForOwner: vi.fn().mockResolvedValue(1000),
   listWalletsByOwner: vi.fn(),
   updateWalletMetadataForOwner: vi.fn(),
 }));
@@ -167,7 +168,6 @@ vi.mock('@/lib/mcp/resolvers', () => ({
   resolveDateRange,
   resolveFortnightIdForDate: vi.fn(),
   resolveFortnightRef,
-  calendarRangeBounds: vi.fn(),
 }));
 
 vi.mock('@/lib/finance/category.service', () => ({

@@ -17,6 +17,7 @@ import { MCP_AGENT_IDENTITY_KEY } from '@/lib/server/mcp-bearer-auth';
 import { AssigneeInvalidError } from '@/lib/server/house-members';
 import { CategoryServiceError } from '@/lib/finance/category.service';
 import { IncomeServiceError } from '@/lib/finance/income.service';
+import { DomainError } from '@/lib/finance/domain-error';
 import {
   codeForStatus,
   McpToolError,
@@ -109,13 +110,10 @@ const INTERNAL_ERROR: McpErrorPayload = {
 };
 
 /**
- * Only errors on the allow-list reach the model with their message. Anything
- * else (Prisma, driver, TypeError…) becomes a generic INTERNAL; the real
- * message stays in the `mcp.tool.failed` log.
- *
- * Plain `new Error(msg)` (exact class, not a subclass) is how services and
- * resolvers still report business rules ("Billetera no encontrada…"); those
- * pass as VALIDATION until MIC-I6-3 gives them typed errors.
+ * Only errors on the allow-list reach the model with their message: tool
+ * errors, auth, validation and the typed business errors of the finance
+ * services. Anything else (Prisma, driver, TypeError, a plain `Error`) becomes
+ * a generic INTERNAL; the real message stays in the `mcp.tool.failed` log.
  */
 export const toErrorPayload = (error: unknown): McpErrorPayload => {
   if (error instanceof McpToolError) return error.toPayload();
@@ -131,14 +129,10 @@ export const toErrorPayload = (error: unknown): McpErrorPayload => {
   if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
     return { error: error.message, code: codeForStatus(error.status) };
   }
-  if (error instanceof AssigneeInvalidError) {
-    return { error: error.message, code: 'VALIDATION' };
+  if (error instanceof DomainError) {
+    return { error: error.message, code: codeForStatus(error.status) };
   }
-  if (
-    error instanceof Error &&
-    Object.getPrototypeOf(error) === Error.prototype &&
-    error.message
-  ) {
+  if (error instanceof AssigneeInvalidError) {
     return { error: error.message, code: 'VALIDATION' };
   }
   return INTERNAL_ERROR;

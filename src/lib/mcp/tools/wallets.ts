@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
-import prisma from '@/lib/prisma';
 import { formatCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
 import { computeGoalMetrics } from '@/lib/finance/goal-metrics';
 import {
@@ -9,6 +8,7 @@ import {
 } from '@/lib/finance/wallet-movements';
 import {
   createWalletForOwner,
+  getWalletAmountForOwner,
   listWalletsByOwner,
   updateWalletMetadataForOwner,
 } from '@/lib/finance/wallet.service';
@@ -23,6 +23,7 @@ import {
   isFundingWalletType,
 } from '@/lib/finance/wallet-accounting';
 import type { PaymentMethodType } from '@/generated/prisma/client';
+import { listCardMovementsForRange } from '@/lib/finance/credit-card-movements.service';
 import { createWalletSchema, updateWalletSchema } from '@/schemas/wallet.schema';
 import {
   createCreditCardSchema,
@@ -32,7 +33,6 @@ import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
 import { confirm, dateYmd, walletRef } from '@/lib/mcp/schemas';
 import { resolveDateRange, resolveWalletRef } from '@/lib/mcp/resolvers';
-import { listCardMovements } from '@/lib/mcp/tools/credit-cards';
 
 const walletTypeSchema = z
   .enum(['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD', 'GOAL'])
@@ -402,9 +402,9 @@ export function registerWalletTools(server: McpServer) {
             : { from: args.from, to: args.to };
         return {
           ...header,
-          ...(await listCardMovements(agent, wallet.id, {
+          ...(await listCardMovementsForRange(wallet.id, agent.ownerFilter, {
             ...range,
-            use_current_cycle: args.use_current_cycle,
+            useCurrentCycle: args.use_current_cycle,
           })),
         };
       }
@@ -427,14 +427,9 @@ export function registerWalletTools(server: McpServer) {
       );
       const totals = computeMovementTotals(movements);
 
-      const row = await prisma.wallet.findUnique({
-        where: { id: wallet.id },
-        select: { amount: true },
-      });
-
       return {
         ...header,
-        balance: row ? Number(row.amount) : null,
+        balance: await getWalletAmountForOwner(wallet.id, agent.ownerFilter),
         from: range.from,
         to: range.to,
         movements,

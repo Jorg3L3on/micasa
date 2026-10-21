@@ -1,9 +1,17 @@
 import { z } from 'zod';
-import type { Prisma } from '@/generated/prisma/client';
 import type { McpServer } from '@modelcontextprotocol/server';
-import prisma from '@/lib/prisma';
 import { deriveLegacyDueDayForTemplate } from '@/lib/finance/expense-template-due';
-import { assertOwnedCategoryOfKind } from '@/lib/finance/category.service';
+import {
+  createExpenseTemplateForOwner,
+  findExpenseTemplateForOwner,
+  listExpenseTemplatesForOwner,
+  updateExpenseTemplateForOwner,
+} from '@/lib/finance/expense-template.service';
+import {
+  createIncomeTemplateForOwner,
+  listIncomeTemplatesForOwner,
+  updateIncomeTemplateForOwner,
+} from '@/lib/finance/income-template.service';
 import {
   createExpenseTemplateSchema,
   updateExpenseTemplateSchema,
@@ -17,19 +25,6 @@ import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
 import { categoryRef, walletRef } from '@/lib/mcp/schemas';
 import { resolveCategoryRef, resolveWalletRef } from '@/lib/mcp/resolvers';
-
-const prismaDueFieldsFromPayload = (validated: {
-  dueDayFirst?: number | null | undefined;
-  dueDaySecond?: number | null | undefined;
-}) => {
-  const first = validated.dueDayFirst ?? null;
-  const second = validated.dueDaySecond ?? null;
-  return {
-    due_day_first_fortnight: first,
-    due_day_second_fortnight: second,
-    due_day: first ?? second ?? null,
-  };
-};
 
 const formatExpenseTemplate = (template: {
   id: number;
@@ -73,6 +68,7 @@ const formatIncomeTemplate = (template: {
   suggested_amount: unknown;
   source: string | null;
   category_id: number | null;
+  wallet_id: number | null;
   applies_first_fortnight: boolean;
   applies_second_fortnight: boolean;
   active: boolean;
@@ -89,6 +85,7 @@ const formatIncomeTemplate = (template: {
   category_id: template.category_id,
   category_name: template.category?.name ?? null,
   category_icon: template.category?.icon ?? null,
+  wallet_id: template.wallet_id,
   applies_first_fortnight: template.applies_first_fortnight,
   applies_second_fortnight: template.applies_second_fortnight,
   active: template.active,
@@ -100,8 +97,6 @@ const templateKindSchema = z
   .describe('expense = plantilla de gasto recurrente; income = plantilla de ingreso.');
 
 const EXPENSE_ONLY_FIELDS = [
-  'wallet_id',
-  'wallet_name',
   'due_day_first',
   'due_day_second',
   'cutoff_day',
@@ -184,13 +179,6 @@ const assertFieldsForTemplateKind = (args: TemplateArgs) => {
   }
 };
 
-const templateNotFound = (kind: 'expense' | 'income') =>
-  new McpToolError(
-    'NOT_FOUND',
-    kind === 'expense' ? 'Plantilla de gasto no encontrada' : 'Plantilla de ingresos no encontrada',
-    { hint: `Usa list_templates con kind ${kind} para ver los ids válidos.` },
-  );
-
 const createExpenseTemplate = async (agent: AgentContext, args: TemplateArgs & { name: string }) => {
   const categoryId = await resolveCategoryRef(
     agent.ownerFilter,
@@ -221,43 +209,19 @@ const createExpenseTemplate = async (agent: AgentContext, args: TemplateArgs & {
     isSubscription: args.is_subscription ?? false,
   });
 
-  const dueFields = prismaDueFieldsFromPayload(validated);
-  const template = await prisma.expenseTemplate.create({
-    data: {
-      name: validated.name,
-      category_id: validated.categoryId,
-      suggested_amount: validated.suggestedAmount
-        ? validated.suggestedAmount.toString()
-        : null,
-      wallet_id: validated.paymentMethodId ?? undefined,
-      active: validated.active ?? true,
-      ...dueFields,
-      cutoff_day: validated.cutoffDay ?? null,
-      is_recurring: validated.isRecurring,
-      applies_first_fortnight: validated.appliesFirstFortnight,
-      applies_second_fortnight: validated.appliesSecondFortnight,
-      is_subscription: validated.isSubscription,
-      user_id: agent.ownerType === 'user' ? agent.ownerId : null,
-      house_id: agent.ownerType === 'house' ? agent.ownerId : null,
-    },
-    include: {
-      category: { select: { name: true, icon: true } },
-      wallet: { select: { id: true, name: true } },
-    },
-  });
-
-  return formatExpenseTemplate(template);
+  return formatExpenseTemplate(await createExpenseTemplateForOwner(agent, validated));
 };
 
+/**
+ * The update schema is the full create schema, so unspecified fields are
+ * filled from the stored template before calling the shared service.
+ */
 const updateExpenseTemplate = async (
   agent: AgentContext,
   templateId: number,
   args: TemplateArgs,
 ) => {
-  const existing = await prisma.expenseTemplate.findFirst({
-    where: { id: templateId, ...agent.ownerFilter },
-  });
-  if (!existing) throw templateNotFound('expense');
+  const existing = await findExpenseTemplateForOwner(templateId, agent.ownerFilter);
 
   let categoryId = existing.category_id;
   if (args.category_id != null || args.category_name) {
@@ -304,30 +268,18 @@ const updateExpenseTemplate = async (
     isSubscription: args.is_subscription ?? existing.is_subscription,
   });
 
-  const updateData: Prisma.ExpenseTemplateUncheckedUpdateInput = {
-    name: validated.name,
-    category_id: validated.categoryId,
-    suggested_amount: validated.suggestedAmount?.toString(),
-    wallet_id: validated.paymentMethodId ?? null,
-    active: validated.active,
-    ...prismaDueFieldsFromPayload(validated),
-    cutoff_day: validated.cutoffDay ?? null,
-    is_recurring: validated.isRecurring,
-    applies_first_fortnight: validated.appliesFirstFortnight,
-    applies_second_fortnight: validated.appliesSecondFortnight,
-    is_subscription: validated.isSubscription,
-  };
+  return formatExpenseTemplate(
+    await updateExpenseTemplateForOwner(templateId, agent.ownerFilter, validated),
+  );
+};
 
-  const template = await prisma.expenseTemplate.update({
-    where: { id: templateId },
-    data: updateData,
-    include: {
-      category: { select: { name: true, icon: true } },
-      wallet: { select: { id: true, name: true } },
-    },
-  });
-
-  return formatExpenseTemplate(template);
+const resolveIncomeWalletId = async (
+  agent: AgentContext,
+  args: TemplateArgs,
+): Promise<number | null | undefined> => {
+  if (args.wallet_id !== undefined) return args.wallet_id;
+  if (!args.wallet_name) return undefined;
+  return (await resolveWalletRef(agent.ownerFilter, undefined, args.wallet_name)).id;
 };
 
 const createIncomeTemplate = async (agent: AgentContext, args: TemplateArgs & { name: string }) => {
@@ -343,40 +295,13 @@ const createIncomeTemplate = async (agent: AgentContext, args: TemplateArgs & { 
     categoryId,
     suggestedAmount: args.suggested_amount ?? null,
     source: args.source ?? null,
+    walletId: (await resolveIncomeWalletId(agent, args)) ?? null,
     appliesFirstFortnight: args.applies_first_fortnight ?? false,
     appliesSecondFortnight: args.applies_second_fortnight ?? false,
     active: args.active ?? true,
   });
 
-  await assertOwnedCategoryOfKind(
-    prisma,
-    agent.ownerType,
-    agent.ownerId,
-    validated.categoryId,
-    'INCOME',
-  );
-
-  const template = await prisma.incomeTemplate.create({
-    data: {
-      name: validated.name,
-      suggested_amount: validated.suggestedAmount
-        ? validated.suggestedAmount.toString()
-        : null,
-      source: validated.source ?? null,
-      category_id: validated.categoryId,
-      applies_first_fortnight: validated.appliesFirstFortnight,
-      applies_second_fortnight: validated.appliesSecondFortnight,
-      active: validated.active ?? true,
-      user_id: agent.ownerType === 'user' ? agent.ownerId : null,
-      house_id: agent.ownerType === 'house' ? agent.ownerId : null,
-    },
-    include: {
-      category: { select: { id: true, name: true, icon: true } },
-      user: { select: { id: true, name: true } },
-    },
-  });
-
-  return formatIncomeTemplate(template);
+  return formatIncomeTemplate(await createIncomeTemplateForOwner(agent, validated));
 };
 
 const updateIncomeTemplate = async (
@@ -384,17 +309,20 @@ const updateIncomeTemplate = async (
   templateId: number,
   args: TemplateArgs,
 ) => {
-  const existing = await prisma.incomeTemplate.findFirst({
-    where: { id: templateId, ...agent.ownerFilter },
-  });
-  if (!existing) throw templateNotFound('income');
+  const categoryId =
+    args.category_id != null || args.category_name
+      ? await resolveCategoryRef(agent.ownerFilter, args.category_id, args.category_name, {
+          required: true,
+        })
+      : undefined;
+  const walletId = await resolveIncomeWalletId(agent, args);
 
   const validated = updateIncomeTemplateSchema.parse({
     ...(args.name != null ? { name: args.name } : {}),
-    ...(args.suggested_amount !== undefined
-      ? { suggestedAmount: args.suggested_amount }
-      : {}),
+    ...(args.suggested_amount !== undefined ? { suggestedAmount: args.suggested_amount } : {}),
     ...(args.source !== undefined ? { source: args.source } : {}),
+    ...(categoryId != null ? { categoryId } : {}),
+    ...(walletId !== undefined ? { walletId } : {}),
     ...(args.applies_first_fortnight !== undefined
       ? { appliesFirstFortnight: args.applies_first_fortnight }
       : {}),
@@ -404,58 +332,7 @@ const updateIncomeTemplate = async (
     ...(args.active !== undefined ? { active: args.active } : {}),
   });
 
-  let categoryId = existing.category_id;
-  if (args.category_id != null || args.category_name) {
-    categoryId =
-      (await resolveCategoryRef(
-        agent.ownerFilter,
-        args.category_id,
-        args.category_name,
-        { required: true },
-      )) ?? categoryId;
-    validated.categoryId = categoryId ?? undefined;
-  }
-
-  if (validated.categoryId != null) {
-    await assertOwnedCategoryOfKind(
-      prisma,
-      agent.ownerType,
-      agent.ownerId,
-      validated.categoryId,
-      'INCOME',
-    );
-  }
-
-  const updateData: Record<string, unknown> = {};
-  if (validated.name !== undefined) updateData.name = validated.name;
-  if (validated.suggestedAmount !== undefined) {
-    updateData.suggested_amount =
-      validated.suggestedAmount === null ? null : validated.suggestedAmount.toString();
-  }
-  if (validated.source !== undefined) updateData.source = validated.source;
-  if (validated.categoryId !== undefined) {
-    updateData.category_id = validated.categoryId;
-  } else if (categoryId != null) {
-    updateData.category_id = categoryId;
-  }
-  if (validated.appliesFirstFortnight !== undefined) {
-    updateData.applies_first_fortnight = validated.appliesFirstFortnight;
-  }
-  if (validated.appliesSecondFortnight !== undefined) {
-    updateData.applies_second_fortnight = validated.appliesSecondFortnight;
-  }
-  if (validated.active !== undefined) updateData.active = validated.active;
-
-  const template = await prisma.incomeTemplate.update({
-    where: { id: templateId },
-    data: updateData,
-    include: {
-      category: { select: { id: true, name: true, icon: true } },
-      user: { select: { id: true, name: true } },
-    },
-  });
-
-  return formatIncomeTemplate(template);
+  return formatIncomeTemplate(await updateIncomeTemplateForOwner(templateId, agent, validated));
 };
 
 export function registerTemplateTools(server: McpServer) {
@@ -473,26 +350,8 @@ export function registerTemplateTools(server: McpServer) {
     },
     run: async (agent, args) => {
       const [expenseTemplates, incomeTemplates] = await Promise.all([
-        args.kind === 'income'
-          ? null
-          : prisma.expenseTemplate.findMany({
-              where: agent.ownerFilter,
-              include: {
-                category: { select: { name: true, icon: true } },
-                wallet: { select: { id: true, name: true } },
-              },
-              orderBy: [{ active: 'desc' }, { name: 'asc' }],
-            }),
-        args.kind === 'expense'
-          ? null
-          : prisma.incomeTemplate.findMany({
-              where: agent.ownerFilter,
-              include: {
-                category: { select: { id: true, name: true, icon: true } },
-                user: { select: { id: true, name: true } },
-              },
-              orderBy: { name: 'asc' },
-            }),
+        args.kind === 'income' ? null : listExpenseTemplatesForOwner(agent.ownerFilter),
+        args.kind === 'expense' ? null : listIncomeTemplatesForOwner(agent.ownerFilter),
       ]);
       return {
         ...(expenseTemplates
@@ -509,7 +368,7 @@ export function registerTemplateTools(server: McpServer) {
     name: 'create_template',
     title: 'Crear plantilla',
     description:
-      'Alta de plantilla de gasto (kind expense: billetera, días de pago, corte, suscripción) o de ingreso (kind income: source).',
+      'Alta de plantilla de gasto (kind expense: días de pago, corte, suscripción) o de ingreso (kind income: source). La billetera es opcional en ambas (en ingresos, solo efectivo/débito).',
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
