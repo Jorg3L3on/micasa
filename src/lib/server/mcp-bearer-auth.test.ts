@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { resolveAgentUserMock } = vi.hoisted(() => ({
-  resolveAgentUserMock: vi.fn(),
+const { resolveAgentIdentityMock } = vi.hoisted(() => ({
+  resolveAgentIdentityMock: vi.fn(),
 }));
 
 vi.mock('@/lib/server/resolve-agent-context', () => ({
-  resolveAgentUser: resolveAgentUserMock,
+  resolveAgentIdentity: resolveAgentIdentityMock,
 }));
 
 import { verifyMcpBearerToken } from '@/lib/server/mcp-bearer-auth';
@@ -21,11 +21,11 @@ describe('verifyMcpBearerToken', () => {
   it('returns undefined when bearer token is missing', async () => {
     const result = await verifyMcpBearerToken(new Request('http://localhost/api/mcp'));
     expect(result).toBeUndefined();
-    expect(resolveAgentUserMock).not.toHaveBeenCalled();
+    expect(resolveAgentIdentityMock).not.toHaveBeenCalled();
   });
 
   it('maps ApiKey credentials to AuthInfo', async () => {
-    resolveAgentUserMock.mockResolvedValue({
+    resolveAgentIdentityMock.mockResolvedValue({
       userId: 1,
       scopes: ['read', 'write'],
       authSource: 'api_key',
@@ -38,16 +38,25 @@ describe('verifyMcpBearerToken', () => {
       API_KEY_TOKEN,
     );
 
-    expect(resolveAgentUserMock).toHaveBeenCalledWith(API_KEY_TOKEN);
+    expect(resolveAgentIdentityMock).toHaveBeenCalledWith(API_KEY_TOKEN);
     expect(result).toEqual({
       token: API_KEY_TOKEN,
       clientId: 'api-key:42',
       scopes: ['read', 'write'],
+      extra: {
+        micasa_agent: {
+          userId: 1,
+          scopes: ['read', 'write'],
+          authSource: 'api_key',
+          apiKeyId: 42,
+          rateLimitIdentity: 42,
+        },
+      },
     });
   });
 
   it('maps OAuth access tokens to AuthInfo', async () => {
-    resolveAgentUserMock.mockResolvedValue({
+    resolveAgentIdentityMock.mockResolvedValue({
       userId: 2,
       scopes: ['read'],
       authSource: 'oauth_grant',
@@ -64,11 +73,20 @@ describe('verifyMcpBearerToken', () => {
       token: OAUTH_TOKEN,
       clientId: 'oauth-grant:9',
       scopes: ['read'],
+      extra: {
+        micasa_agent: {
+          userId: 2,
+          scopes: ['read'],
+          authSource: 'oauth_grant',
+          oauthGrantId: 9,
+          rateLimitIdentity: -9,
+        },
+      },
     });
   });
 
-  it('returns undefined when resolveAgentUser rejects the token', async () => {
-    resolveAgentUserMock.mockRejectedValue(new Error('invalid'));
+  it('returns undefined when resolveAgentIdentity rejects the token', async () => {
+    resolveAgentIdentityMock.mockRejectedValue(new Error('invalid'));
     const result = await verifyMcpBearerToken(
       new Request('http://localhost/api/mcp'),
       API_KEY_TOKEN,

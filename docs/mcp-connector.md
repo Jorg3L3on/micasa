@@ -121,6 +121,13 @@ La pertenencia a la casa se valida en cada llamada (mismas reglas que `getOwnerC
 
 Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resuelven billeteras y categorías por **id o nombre** (nombre ambiguo → error con ids para desambiguar).
 
+### Transición a v3 (rama `feat/mcp-tools-v3`)
+
+- **Owner args.** Las tools migradas (`list_houses`, `list_wallets`, `create_wallet`, `list_wallet_movements`) publican `owner_type` + `owner_id`. Durante una versión siguen aceptando `ownerType` / `ownerId` como alias (si llegan ambos, gana la clave snake_case); el alias no aparece en `tools/list`. Las demás tools pasan a snake_case en MIC-I6-2/4.
+- **Entrada estricta.** En las tools migradas una clave que no está en el schema (p. ej. `wallet_nmae`) es error de validación, no se descarta en silencio. Las fechas `YYYY-MM-DD` deben existir en el calendario (`2025-02-30` se rechaza).
+- **Errores.** Toda tool responde los errores como `{"error": "…", "code": "…", "hint"?: "…", "candidates"?: [{"id", "name"}]}` con `isError: true`. Códigos: `NOT_FOUND`, `AMBIGUOUS_REF` (con `candidates`), `CONFIRM_REQUIRED`, `FORBIDDEN`, `VALIDATION`, `RATE_LIMITED` (con `hint` de reintento), `INTERNAL`. Los errores internos (base de datos, bugs) nunca exponen su texto: llegan como `INTERNAL` y el detalle queda en el log `mcp.tool.failed`.
+- **Respuestas** en JSON compacto (sin sangría).
+
 ### Flujo típico del agente
 
 1. `list_houses` → elige contexto personal o casa.
@@ -252,7 +259,7 @@ Fuera de v2: **import PDF/CSV** vía MCP (solo multipart en la app), administrac
 
 ## Límites de uso
 
-Cada llave Bearer o grant OAuth tiene un límite de **120 llamadas de tool por minuto** (policy `mcp:tool`). Al excederlo, la tool responde con un error que indica en cuántos segundos reintentar. Crear llaves también está limitado (10 por hora por usuario).
+Cada llave Bearer o grant OAuth tiene un límite de **120 llamadas de tool por minuto** (policy `mcp:tool`). Al excederlo, la tool responde `code: "RATE_LIMITED"` con un `hint` que indica en cuántos segundos reintentar; el límite se evalúa antes de cualquier consulta a la base. Crear llaves también está limitado (10 por hora por usuario).
 
 Los endpoints OAuth públicos tienen límites por IP:
 

@@ -18,7 +18,8 @@ import { registerReportTools } from '@/lib/mcp/tools/reports';
 /**
  * MCP connector v2: v1 reads/writes for cards plus expenses, incomes, loans,
  * transfers, goals, budgets, planning, liquidity, templates and P2 reports/house/categories.
- * Auth is per-tool via Bearer agent token (see `resolveAgentContext`).
+ * The transport verifies the Bearer token once per request (`withMcpAuth`);
+ * tools reuse that identity via `ctx.http.authInfo` (see `runAgentTool`).
  */
 export function registerMcpTools(server: McpServer) {
   registerHouseTools(server);

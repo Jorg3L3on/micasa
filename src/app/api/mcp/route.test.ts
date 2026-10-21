@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { resolveAgentUserMock } = vi.hoisted(() => ({
-  resolveAgentUserMock: vi.fn(),
+const { resolveAgentIdentityMock } = vi.hoisted(() => ({
+  resolveAgentIdentityMock: vi.fn(),
 }));
 
 vi.mock('@/lib/server/resolve-agent-context', () => ({
-  resolveAgentUser: resolveAgentUserMock,
+  resolveAgentIdentity: resolveAgentIdentityMock,
 }));
 
 import { POST } from '@/app/api/mcp/route';
@@ -71,7 +71,7 @@ describe('POST /api/mcp transport auth', () => {
     expect(response.headers.get('Access-Control-Expose-Headers')).toContain(
       'WWW-Authenticate',
     );
-    expect(resolveAgentUserMock).not.toHaveBeenCalled();
+    expect(resolveAgentIdentityMock).not.toHaveBeenCalled();
   });
 
   it('returns 401 + WWW-Authenticate for tools/list without token', async () => {
@@ -82,31 +82,31 @@ describe('POST /api/mcp transport auth', () => {
   });
 
   it('allows initialize with a valid ApiKey Bearer token', async () => {
-    resolveAgentUserMock.mockResolvedValue(apiKeyAgent);
+    resolveAgentIdentityMock.mockResolvedValue(apiKeyAgent);
 
     const response = await POST(
       makeMcpRequest('initialize', `Bearer ${API_KEY_TOKEN}`),
     );
 
     expect(response.status).toBe(200);
-    expect(resolveAgentUserMock).toHaveBeenCalledWith(API_KEY_TOKEN);
+    expect(resolveAgentIdentityMock).toHaveBeenCalledWith(API_KEY_TOKEN);
     expect(response.headers.get('WWW-Authenticate')).toBeNull();
   });
 
   it('allows tools/list with a valid OAuth access token', async () => {
-    resolveAgentUserMock.mockResolvedValue(oauthAgent);
+    resolveAgentIdentityMock.mockResolvedValue(oauthAgent);
 
     const response = await POST(
       makeMcpRequest('tools/list', `Bearer ${OAUTH_TOKEN}`),
     );
 
     expect(response.status).toBe(200);
-    expect(resolveAgentUserMock).toHaveBeenCalledWith(OAUTH_TOKEN);
+    expect(resolveAgentIdentityMock).toHaveBeenCalledWith(OAUTH_TOKEN);
     expect(response.headers.get('WWW-Authenticate')).toBeNull();
   });
 
   it('returns 401 for an invalid Bearer token', async () => {
-    resolveAgentUserMock.mockRejectedValue(new Error('invalid'));
+    resolveAgentIdentityMock.mockRejectedValue(new Error('invalid'));
 
     const response = await POST(
       makeMcpRequest('initialize', `Bearer ${API_KEY_TOKEN}`),

@@ -15,9 +15,9 @@ import {
   ownerIdSchema,
   ownerTypeSchema,
   runAgentTool,
-  runAgentUserTool,
   type McpToolContext,
 } from '@/lib/mcp/tool-helpers';
+import { defineUserTool } from '@/lib/mcp/define-tool';
 import { resolveWalletRef } from '@/lib/mcp/resolvers';
 
 const houseOwnerArgs = {
@@ -28,37 +28,34 @@ const houseOwnerArgs = {
 const periodSchema = z.enum(['FIRST', 'SECOND']);
 
 export function registerHouseTools(server: McpServer) {
-  server.registerTool(
-    'list_houses',
-    {
-      title: 'Listar casas del usuario',
-      description:
-        'Punto de entrada: devuelve el userId del token y las casas donde es miembro. Llama esto primero para conocer los ownerType/ownerId que aceptan las demás herramientas.',
-      annotations: { readOnlyHint: true },
+  defineUserTool(server, {
+    name: 'list_houses',
+    title: 'Listar casas del usuario',
+    description:
+      'Punto de entrada: devuelve el userId del token y las casas donde es miembro. Llama esto primero para conocer los ownerType/ownerId que aceptan las demás herramientas.',
+    input: {},
+    run: async (user) => {
+      const allHouses = await listUserHouses(user.userId);
+      const houses = filterAllowedHouses(allHouses, user.allowedContexts);
+      const personalAllowed = isPersonalContextAllowed(
+        user.userId,
+        user.allowedContexts,
+      );
+      return {
+        userId: user.userId,
+        scopes: user.scopes,
+        personalContext: personalAllowed
+          ? { ownerType: 'user', ownerId: user.userId }
+          : null,
+        houses: houses.map((house) => ({
+          ownerType: 'house',
+          ownerId: house.id,
+          name: house.name,
+          role: house.role,
+        })),
+      };
     },
-    async (ctx) =>
-      runAgentUserTool('list_houses', ctx as McpToolContext, async (user) => {
-        const allHouses = await listUserHouses(user.userId);
-        const houses = filterAllowedHouses(allHouses, user.allowedContexts);
-        const personalAllowed = isPersonalContextAllowed(
-          user.userId,
-          user.allowedContexts,
-        );
-        return {
-          userId: user.userId,
-          scopes: user.scopes,
-          personalContext: personalAllowed
-            ? { ownerType: 'user', ownerId: user.userId }
-            : null,
-          houses: houses.map((house) => ({
-            ownerType: 'house',
-            ownerId: house.id,
-            name: house.name,
-            role: house.role,
-          })),
-        };
-      }),
-  );
+  });
 
   server.registerTool(
     'list_house_members',
