@@ -1,5 +1,10 @@
 import prisma from '@/lib/prisma';
 import type { CategoryKind, Prisma } from '@/generated/prisma/client';
+import { validateCategoryIconInput } from '@/lib/category-icons';
+import {
+  seedDefaultExpenseCategoriesForOwner,
+  seedDefaultIncomeCategoriesForOwner,
+} from '@/lib/finance/category-seed.service';
 
 export type CategoryOwnerType = 'user' | 'house';
 
@@ -246,4 +251,166 @@ export async function assertCategoryDeletable(
       409,
     );
   }
+}
+
+export type CategoryListKind = 'expense' | 'income' | 'all';
+
+/**
+ * Categories of an owner, seeding the defaults first when the owner has none
+ * of the requested kind(s). Shared by GET /api/categories and list_categories.
+ */
+export async function listCategoriesForOwner(
+  ownerType: CategoryOwnerType,
+  ownerId: number,
+  kind: CategoryListKind,
+) {
+  const ownerRef = ownerType === 'user' ? { userId: ownerId } : { houseId: ownerId };
+
+  await prisma.$transaction(async (tx) => {
+    if (kind === 'expense' || kind === 'all') {
+      await seedDefaultExpenseCategoriesForOwner(tx, ownerRef);
+    }
+    if (kind === 'income' || kind === 'all') {
+      await seedDefaultIncomeCategoriesForOwner(tx, ownerRef);
+    }
+  });
+
+  const kindFilter =
+    kind === 'all' ? {} : { kind: (kind === 'income' ? 'INCOME' : 'EXPENSE') as CategoryKind };
+
+  return prisma.category.findMany({
+    where: { ...categoryOwnerWhere(ownerType, ownerId), ...kindFilter },
+    orderBy: [{ parent_id: 'asc' }, { sort_order: 'asc' }, { name: 'asc' }],
+  });
+}
+
+const findOwnedCategory = async (
+  ownerType: CategoryOwnerType,
+  ownerId: number,
+  categoryId: number,
+) => {
+  const existing = await prisma.category.findFirst({
+    where: { id: categoryId, ...categoryOwnerWhere(ownerType, ownerId) },
+  });
+  if (!existing) {
+    throw new CategoryServiceError('Categoría no encontrada', 404);
+  }
+  return existing;
+};
+
+/** Create a category (one-level children via parentId); appended last among its siblings. */
+export async function createCategoryForOwner(
+  ownerType: CategoryOwnerType,
+  ownerId: number,
+  input: {
+    name: string;
+    description?: string | null;
+    icon?: string;
+    parentId?: number | null;
+    kind: CategoryKind;
+  },
+) {
+  const iconResult = validateCategoryIconInput(input.icon, null);
+  if (!iconResult.ok) {
+    throw new CategoryServiceError(iconResult.message, 400);
+  }
+
+  const parentId = input.parentId ?? null;
+  await assertValidParentForCreate(prisma, ownerType, ownerId, parentId, input.kind);
+
+  const duplicate = await findDuplicateCategoryName(
+    prisma,
+    ownerType,
+    ownerId,
+    input.name,
+    input.kind,
+  );
+  if (duplicate) {
+    throw new CategoryServiceError('Ya existe una categoría con este nombre', 409);
+  }
+
+  const siblingCount = await prisma.category.count({
+    where: {
+      ...categoryOwnerWhere(ownerType, ownerId),
+      parent_id: parentId,
+      kind: input.kind,
+    },
+  });
+
+  return prisma.category.create({
+    data: {
+      name: input.name,
+      description: input.description || null,
+      icon: iconResult.value,
+      active: true,
+      sort_order: siblingCount,
+      parent_id: parentId,
+      kind: input.kind,
+      ...(ownerType === 'user'
+        ? { user_id: ownerId, house_id: null }
+        : { user_id: null, house_id: ownerId }),
+    },
+  });
+}
+
+/**
+ * Update name / description / icon / active. Deactivating a root cascades to
+ * its children; reactivating does not reactivate them.
+ */
+export async function updateCategoryForOwner(
+  ownerType: CategoryOwnerType,
+  ownerId: number,
+  categoryId: number,
+  input: {
+    name?: string;
+    description?: string | null;
+    icon?: string;
+    active?: boolean;
+  },
+) {
+  const existing = await findOwnedCategory(ownerType, ownerId, categoryId);
+
+  const iconResult = validateCategoryIconInput(input.icon, existing.icon);
+  if (!iconResult.ok) {
+    throw new CategoryServiceError(iconResult.message, 400);
+  }
+
+  if (input.name && input.name !== existing.name) {
+    const duplicate = await findDuplicateCategoryName(
+      prisma,
+      ownerType,
+      ownerId,
+      input.name,
+      existing.kind,
+      categoryId,
+    );
+    if (duplicate) {
+      throw new CategoryServiceError('Ya existe una categoría con este nombre', 409);
+    }
+  }
+
+  if (input.active === false && existing.active) {
+    return deactivateCategoryTree(prisma, categoryId, ownerType, ownerId);
+  }
+  if (input.active === true && !existing.active) {
+    return activateCategory(prisma, categoryId, ownerType, ownerId);
+  }
+
+  const updateData: { name?: string; description?: string | null; icon?: string | null } = {};
+  if (input.name) updateData.name = input.name;
+  if (input.description !== undefined) updateData.description = input.description || null;
+  if (input.icon !== undefined) updateData.icon = iconResult.value;
+
+  return prisma.category.update({ where: { id: categoryId }, data: updateData });
+}
+
+/** Delete a category with no children and no expenses, incomes, templates or budgets. */
+export async function deleteCategoryForOwner(
+  ownerType: CategoryOwnerType,
+  ownerId: number,
+  categoryId: number,
+): Promise<void> {
+  await findOwnedCategory(ownerType, ownerId, categoryId);
+  await assertCategoryDeletable(prisma, categoryId, ownerType, ownerId);
+  await prisma.category.delete({ where: { id: categoryId } });
 }

@@ -42,6 +42,7 @@ import type {
   LoanStatusValue,
   PlannerLoanPaymentsResponse,
 } from '@/types/loans';
+import { DomainError } from '@/lib/finance/domain-error';
 
 function decimalToNumber(value: unknown): number {
   if (
@@ -81,7 +82,7 @@ async function assertOwnedWallet(
     select: { id: true },
   });
   if (!wallet) {
-    throw new Error('La billetera seleccionada no pertenece a este contexto');
+    throw new DomainError('VALIDATION', 'La billetera seleccionada no pertenece a este contexto');
   }
 }
 
@@ -95,10 +96,10 @@ async function assertOwnedFundingWallet(
     select: { id: true, type: true },
   });
   if (!wallet) {
-    throw new Error('La billetera de pago no pertenece a este contexto');
+    throw new DomainError('VALIDATION', 'La billetera de pago no pertenece a este contexto');
   }
   if (wallet.type !== 'CASH' && wallet.type !== 'DEBIT_CARD') {
-    throw new Error('El préstamo debe pagarse desde efectivo o débito');
+    throw new DomainError('VALIDATION', 'El préstamo debe pagarse desde efectivo o débito');
   }
 }
 
@@ -112,7 +113,7 @@ async function assertOwnedIncomeTemplate(
     select: { id: true },
   });
   if (!template) {
-    throw new Error('La plantilla de ingreso seleccionada no pertenece a este contexto');
+    throw new DomainError('VALIDATION', 'La plantilla de ingreso seleccionada no pertenece a este contexto');
   }
 }
 
@@ -314,23 +315,23 @@ function assertLoanStatusTransition(
   if (currentStatus === nextStatus) return;
 
   if (nextStatus === 'PAUSED' && currentStatus !== 'ACTIVE') {
-    throw new Error('Solo los préstamos activos se pueden pausar');
+    throw new DomainError('VALIDATION', 'Solo los préstamos activos se pueden pausar');
   }
   if (nextStatus === 'ACTIVE' && currentStatus !== 'PAUSED') {
-    throw new Error('Solo los préstamos pausados se pueden reanudar');
+    throw new DomainError('VALIDATION', 'Solo los préstamos pausados se pueden reanudar');
   }
   if (
     nextStatus === 'CANCELLED' &&
     currentStatus !== 'ACTIVE' &&
     currentStatus !== 'PAUSED'
   ) {
-    throw new Error('Solo los préstamos activos o pausados se pueden cancelar');
+    throw new DomainError('VALIDATION', 'Solo los préstamos activos o pausados se pueden cancelar');
   }
   if (currentStatus === 'CANCELLED') {
-    throw new Error('Los préstamos cancelados no se pueden reactivar');
+    throw new DomainError('VALIDATION', 'Los préstamos cancelados no se pueden reactivar');
   }
   if (currentStatus === 'PAID_OFF') {
-    throw new Error('Los préstamos pagados permanecen en historial');
+    throw new DomainError('VALIDATION', 'Los préstamos pagados permanecen en historial');
   }
 }
 
@@ -423,7 +424,7 @@ export async function updateLoanForOwner(
     },
   });
   if (!existing) {
-    throw new Error('Préstamo no encontrado');
+    throw new DomainError('NOT_FOUND', 'Préstamo no encontrado');
   }
 
   await Promise.all([
@@ -435,7 +436,7 @@ export async function updateLoanForOwner(
     existing.payment_source !== 'PAYROLL_DEDUCTION' &&
     input.incomeTemplateId != null
   ) {
-    throw new Error('La plantilla de ingreso solo aplica a préstamos de nómina');
+    throw new DomainError('VALIDATION', 'La plantilla de ingreso solo aplica a préstamos de nómina');
   }
 
   const data: Prisma.LoanUncheckedUpdateInput = {};
@@ -520,7 +521,7 @@ export async function deleteLoanForOwner(
     });
 
     if (!loan) {
-      throw new Error('Préstamo no encontrado');
+      throw new DomainError('NOT_FOUND', 'Préstamo no encontrado');
     }
 
     let deletedGeneratedExpenses = 0;
@@ -647,7 +648,7 @@ async function applyLoanPaymentUpdateInTransaction(
   }
 
   if (willDebitWallet && !nextSourceWalletId) {
-    throw new Error('Selecciona la billetera que paga el préstamo');
+    throw new DomainError('VALIDATION', 'Selecciona la billetera que paga el préstamo');
   }
 
   if (willDebitWallet && nextSourceWalletId) {
@@ -656,13 +657,13 @@ async function applyLoanPaymentUpdateInTransaction(
       select: { id: true, amount: true, type: true },
     });
     if (!sourceWallet) {
-      throw new Error('Billetera de origen no encontrada');
+      throw new DomainError('NOT_FOUND', 'Billetera de origen no encontrada');
     }
     if (!isFundingWalletType(sourceWallet.type)) {
-      throw new Error('El préstamo debe pagarse desde efectivo o débito');
+      throw new DomainError('VALIDATION', 'El préstamo debe pagarse desde efectivo o débito');
     }
     if (decimalToNumber(sourceWallet.amount) < amount) {
-      throw new Error('Saldo insuficiente en la billetera de origen');
+      throw new DomainError('VALIDATION', 'Saldo insuficiente en la billetera de origen');
     }
   }
 
@@ -740,7 +741,7 @@ export async function updateLoanPaymentForOwner(
       include: loanPaymentUpdateInclude,
     });
     if (!existing) {
-      throw new Error('Pago de préstamo no encontrado');
+      throw new DomainError('NOT_FOUND', 'Pago de préstamo no encontrado');
     }
 
     return applyLoanPaymentUpdateInTransaction(tx, existing, ownerFilter, action, {
@@ -757,7 +758,7 @@ export async function batchUpdateLoanPaymentsForOwner(
 ): Promise<LoanPaymentListItem[]> {
   const uniqueIds = [...new Set(input.paymentIds)];
   if (uniqueIds.length === 0) {
-    throw new Error('Selecciona al menos un pago del mes');
+    throw new DomainError('VALIDATION', 'Selecciona al menos un pago del mes');
   }
 
   const action = input.action;
@@ -771,12 +772,12 @@ export async function batchUpdateLoanPaymentsForOwner(
   });
 
   if (payments.length !== uniqueIds.length) {
-    throw new Error('Uno o más pagos no pertenecen a este contexto');
+    throw new DomainError('VALIDATION', 'Uno o más pagos no pertenecen a este contexto');
   }
 
   const notScheduled = payments.filter((payment) => payment.status !== 'SCHEDULED');
   if (notScheduled.length > 0) {
-    throw new Error('Solo puedes pagar en lote cuotas pendientes');
+    throw new DomainError('VALIDATION', 'Solo puedes pagar en lote cuotas pendientes');
   }
 
   if (action === 'MARK_PAID') {
@@ -791,14 +792,14 @@ export async function batchUpdateLoanPaymentsForOwner(
       const nextSourceWalletId = walletIdForAction ?? defaultSourceWalletId;
 
       if (payment.loan.payment_source === 'WALLET' && !nextSourceWalletId) {
-        throw new Error('Selecciona la billetera que paga el lote');
+        throw new DomainError('VALIDATION', 'Selecciona la billetera que paga el lote');
       }
 
       if (nextSourceWalletId) {
         if (debitWalletId == null) {
           debitWalletId = nextSourceWalletId;
         } else if (debitWalletId !== nextSourceWalletId && !walletIdForAction) {
-          throw new Error('Selecciona una billetera para pagar todo el lote');
+          throw new DomainError('VALIDATION', 'Selecciona una billetera para pagar todo el lote');
         }
         totalDebit += decimalToNumber(payment.amount);
       }
@@ -807,7 +808,7 @@ export async function batchUpdateLoanPaymentsForOwner(
     if (totalDebit > 0) {
       const walletId = walletIdForAction ?? debitWalletId;
       if (!walletId) {
-        throw new Error('Selecciona la billetera que paga el lote');
+        throw new DomainError('VALIDATION', 'Selecciona la billetera que paga el lote');
       }
 
       const sourceWallet = await prisma.wallet.findFirst({
@@ -815,13 +816,13 @@ export async function batchUpdateLoanPaymentsForOwner(
         select: { id: true, amount: true, type: true },
       });
       if (!sourceWallet) {
-        throw new Error('Billetera de origen no encontrada');
+        throw new DomainError('NOT_FOUND', 'Billetera de origen no encontrada');
       }
       if (!isFundingWalletType(sourceWallet.type)) {
-        throw new Error('El préstamo debe pagarse desde efectivo o débito');
+        throw new DomainError('VALIDATION', 'El préstamo debe pagarse desde efectivo o débito');
       }
       if (decimalToNumber(sourceWallet.amount) < totalDebit) {
-        throw new Error('Saldo insuficiente en la billetera de origen');
+        throw new DomainError('VALIDATION', 'Saldo insuficiente en la billetera de origen');
       }
     }
   }
@@ -1119,7 +1120,7 @@ export async function getLoanByIdForOwner(
     include: loanInclude,
   });
   if (!loan) {
-    throw new Error('Préstamo no encontrado');
+    throw new DomainError('NOT_FOUND', 'Préstamo no encontrado');
   }
   return mapLoan(loan);
 }
@@ -1174,10 +1175,8 @@ export async function updateLoanScheduleForOwner(
     },
   });
   if (!existing) {
-    throw new Error('Préstamo no encontrado');
+    throw new DomainError('NOT_FOUND', 'Préstamo no encontrado');
   }
-
-  const metadata = await updateLoanForOwner(loanId, ownerFilter, input);
 
   const needsScheduleChange =
     input.paymentAmount != null ||
@@ -1185,7 +1184,7 @@ export async function updateLoanScheduleForOwner(
     input.nextPaymentDate != null;
 
   if (!needsScheduleChange) {
-    return metadata;
+    return updateLoanForOwner(loanId, ownerFilter, input);
   }
 
   const paidOrClosed = existing.payments.filter(
@@ -1196,16 +1195,23 @@ export async function updateLoanScheduleForOwner(
     input.paymentAmount ?? decimalToNumber(existing.payment_amount);
   const paymentCount = input.paymentCount ?? existing.payment_count;
 
+  // Validate the schedule before committing metadata, so a rejected update saves nothing.
   if (paymentCount < paidCount) {
-    throw new Error(
-      `El total de cuotas (${paymentCount}) no puede ser menor a las ya pagadas (${paidCount})`,
-    );
+    throw new DomainError('VALIDATION', `El total de cuotas (${paymentCount}) no puede ser menor a las ya pagadas (${paidCount})`);
   }
 
+  await updateLoanForOwner(loanId, ownerFilter, input);
+
+  // due_date is @db.Date (00:00 UTC); re-anchor it as a calendar date so the
+  // Mexico City formatting in generateLoanPaymentSchedule keeps the same day.
+  const nextScheduledDue = existing.payments.find(
+    (p) => p.status === 'SCHEDULED',
+  )?.due_date;
   const startDate = input.nextPaymentDate
     ? parseYmdAsUtcDate(input.nextPaymentDate)
-    : existing.payments.find((p) => p.status === 'SCHEDULED')?.due_date ??
-      existing.start_date;
+    : nextScheduledDue
+      ? parseYmdAsUtcDate(formatLoanDueYmd(nextScheduledDue))
+      : existing.start_date;
 
   const remainingCount = paymentCount - paidCount;
   const newSchedule = generateLoanPaymentSchedule({

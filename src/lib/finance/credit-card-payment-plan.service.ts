@@ -37,6 +37,7 @@ import {
   getCurrentCalendarFortnightRef,
   getCalendarFortnightRefForYmd,
 } from '@/lib/fortnight-calendar';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
@@ -323,43 +324,27 @@ export async function upsertCreditCardPaymentPlan(
   ]);
 
   if (!fortnight) {
-    const error = new Error('Quincena no encontrada');
-    (error as { code?: string }).code = 'FORTNIGHT_NOT_FOUND';
-    throw error;
+    throw new DomainError('FORTNIGHT_NOT_FOUND', 'Quincena no encontrada');
   }
 
   if (!wallet || !isCreditWalletType(wallet.type)) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'WALLET_NOT_FOUND';
-    throw error;
+    throw new DomainError('WALLET_NOT_FOUND', 'Tarjeta no encontrada');
   }
 
   const declareZero = options?.declareZero === true;
   const scope = options?.scope ?? 'this_cycle';
   if (scope === 'n_cycles' && (options?.cycleCount == null || options.cycleCount < 1)) {
-    const error = new Error('Indica cuántos cortes cubre el pago planeado.');
-    (error as { code?: string }).code = 'SCOPE_INVALID';
-    throw error;
+    throw new DomainError('SCOPE_INVALID', 'Indica cuántos cortes cubre el pago planeado.');
   }
   if (scope === 'until_date' && !options?.validUntil) {
-    const error = new Error('Indica la fecha hasta la que aplica el pago planeado.');
-    (error as { code?: string }).code = 'SCOPE_INVALID';
-    throw error;
+    throw new DomainError('SCOPE_INVALID', 'Indica la fecha hasta la que aplica el pago planeado.');
   }
   const outstandingBalance = Number(wallet.amount);
   if (!declareZero && plannedAmount <= 0) {
-    const error = new Error(
-      'El monto planeado debe ser mayor a 0. Quita el monto planeado si no quieres un override.',
-    );
-    (error as { code?: string }).code = 'AMOUNT_INVALID';
-    throw error;
+    throw new DomainError('AMOUNT_INVALID', 'El monto planeado debe ser mayor a 0. Quita el monto planeado si no quieres un override.');
   }
   if (!declareZero && plannedAmount > outstandingBalance) {
-    const error = new Error(
-      'El monto planeado no puede superar la deuda actual de la tarjeta',
-    );
-    (error as { code?: string }).code = 'AMOUNT_EXCEEDS_BALANCE';
-    throw error;
+    throw new DomainError('AMOUNT_EXCEEDS_BALANCE', 'El monto planeado no puede superar la deuda actual de la tarjeta');
   }
 
   const isUserContext = ownerFilter.user_id !== null;
@@ -429,9 +414,7 @@ export async function clearCreditCardPaymentPlan(
   });
 
   if (!fortnight) {
-    const error = new Error('Quincena no encontrada');
-    (error as { code?: string }).code = 'FORTNIGHT_NOT_FOUND';
-    throw error;
+    throw new DomainError('FORTNIGHT_NOT_FOUND', 'Quincena no encontrada');
   }
 
   const wallet = await prisma.wallet.findFirst({

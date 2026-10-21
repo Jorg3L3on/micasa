@@ -53,6 +53,7 @@ import {
   monthScheduledDebtTotal,
   toUtcDateOnlyString,
 } from '@/lib/finance/liquidity-projection';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export type LiquidityObligationSource =
   | 'credit_card_statement'
@@ -715,19 +716,11 @@ export const getLiquidityProjection = async (
   const toMonthKey = untilStr.slice(0, 7);
 
   if (compareMonthKeys(fromMonthKey, toMonthKey) > 0) {
-    const error = new Error(
-      'El rango del gráfico es inválido: el mes inicial no puede ser posterior al final.',
-    );
-    (error as { code?: string }).code = 'INVALID_HORIZON';
-    throw error;
+    throw new DomainError('INVALID_HORIZON', 'El rango del gráfico es inválido: el mes inicial no puede ser posterior al final.');
   }
 
   if (compareUtcDateOnly(untilStr, asOfStr) < 0) {
-    const error = new Error(
-      'La fecha "until" no puede ser anterior a "asOf" (comparación UTC).',
-    );
-    (error as { code?: string }).code = 'INVALID_HORIZON';
-    throw error;
+    throw new DomainError('INVALID_HORIZON', 'La fecha "until" no puede ser anterior a "asOf" (comparación UTC).');
   }
 
   const omitZero = input.omitZeroObligations ?? true;

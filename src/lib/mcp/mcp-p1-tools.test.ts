@@ -6,6 +6,7 @@ import { registerLoanTools } from '@/lib/mcp/tools/loans';
 import { registerCreditCardTools } from '@/lib/mcp/tools/credit-cards';
 import { registerWalletTools } from '@/lib/mcp/tools/wallets';
 import { registerTemplateTools } from '@/lib/mcp/tools/templates';
+import { registerDeleteTools } from '@/lib/mcp/tools/delete';
 import type { McpToolContext } from '@/lib/mcp/tool-helpers';
 
 const {
@@ -37,6 +38,8 @@ const {
   resolveDateRange,
   assertOwnedCategoryOfKind,
   findFortnightByCalendarPeriod,
+  resolveFortnightRef,
+  getCreditCardStatementByOwner,
 } = vi.hoisted(() => ({
   findUniqueApiKey: vi.fn(),
   updateApiKey: vi.fn(),
@@ -66,6 +69,8 @@ const {
   resolveDateRange: vi.fn(),
   assertOwnedCategoryOfKind: vi.fn(),
   findFortnightByCalendarPeriod: vi.fn(),
+  resolveFortnightRef: vi.fn(),
+  getCreditCardStatementByOwner: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -124,7 +129,7 @@ vi.mock('@/lib/finance/credit-card.service', () => ({
 vi.mock('@/lib/finance/credit-card-scheduled-payment.service', () => ({
   createScheduledPayment,
   deleteScheduledPayment: vi.fn(),
-  listScheduledPaymentsForCard: vi.fn(),
+  listScheduledPaymentsForCard: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('@/lib/finance/credit-card-payment-plan.service', () => ({
@@ -133,16 +138,17 @@ vi.mock('@/lib/finance/credit-card-payment-plan.service', () => ({
 
 vi.mock('@/lib/finance/credit-card-installment-plan.service', () => ({
   createInstallmentPlan: vi.fn(),
-  listInstallmentPlansForCard: vi.fn(),
+  listInstallmentPlansForCard: vi.fn().mockResolvedValue([]),
   updateInstallmentPlan: vi.fn(),
 }));
 
 vi.mock('@/lib/finance/credit-card-statement.service', () => ({
-  getCreditCardStatementByOwner: vi.fn(),
+  getCreditCardStatementByOwner,
 }));
 
 vi.mock('@/lib/finance/wallet.service', () => ({
   createWalletForOwner: vi.fn(),
+  getWalletAmountForOwner: vi.fn().mockResolvedValue(1000),
   listWalletsByOwner: vi.fn(),
   updateWalletMetadataForOwner: vi.fn(),
 }));
@@ -161,7 +167,7 @@ vi.mock('@/lib/mcp/resolvers', () => ({
   resolveWalletRef,
   resolveDateRange,
   resolveFortnightIdForDate: vi.fn(),
-  calendarRangeBounds: vi.fn(),
+  resolveFortnightRef,
 }));
 
 vi.mock('@/lib/finance/category.service', () => ({
@@ -215,7 +221,7 @@ const ctxWithToken = (token?: string) => ({
   },
 });
 
-const houseArgs = { ownerType: 'house' as const, ownerId: 42 };
+const houseArgs = { owner_type: 'house' as const, owner_id: 42 };
 
 const invokeTool = async (name: string, args: Record<string, unknown>) => {
   const handler = registeredTools.get(name);
@@ -267,6 +273,7 @@ beforeEach(() => {
   registerCreditCardTools(testServer);
   registerWalletTools(testServer);
   registerTemplateTools(testServer);
+  registerDeleteTools(testServer);
 
   updateApiKey.mockResolvedValue({});
   findUniqueApiKey.mockResolvedValue(writeApiKey);
@@ -283,13 +290,16 @@ beforeEach(() => {
     }),
   );
   expenseUpdateMany.mockResolvedValue({ count: 0 });
+  resolveFortnightRef.mockImplementation(async (_agent, input: { fortnight_id?: number }) =>
+    input.fortnight_id ?? 55,
+  );
 });
 
 describe('registered MCP P1 tools auth', () => {
-  it('set_expense_paid requires write scope', async () => {
+  it('update_expense (is_paid) requires write scope', async () => {
     findUniqueApiKey.mockResolvedValue({ ...writeApiKey, scopes: ['read'] });
 
-    const result = await invokeTool('set_expense_paid', {
+    const result = await invokeTool('update_expense', {
       ...houseArgs,
       expense_id: 1,
       is_paid: true,
@@ -300,11 +310,12 @@ describe('registered MCP P1 tools auth', () => {
     expect(toggleExpensePaid).not.toHaveBeenCalled();
   });
 
-  it('create_expense_template requires write scope', async () => {
+  it('create_template requires write scope', async () => {
     findUniqueApiKey.mockResolvedValue({ ...writeApiKey, scopes: ['read'] });
 
-    const result = await invokeTool('create_expense_template', {
+    const result = await invokeTool('create_template', {
       ...houseArgs,
+      kind: 'expense',
       name: 'Renta',
       category_id: 10,
       applies_first_fortnight: true,
@@ -316,8 +327,8 @@ describe('registered MCP P1 tools auth', () => {
   });
 });
 
-describe('registered set_expense_paid', () => {
-  it('maps wallet name from prisma expense row', async () => {
+describe('registered update_expense with only is_paid', () => {
+  it('goes through toggleExpensePaid and maps the wallet name', async () => {
     toggleExpensePaid.mockResolvedValue({
       id: 12,
       is_paid: true,
@@ -327,7 +338,7 @@ describe('registered set_expense_paid', () => {
       category: null,
     });
 
-    const result = await invokeTool('set_expense_paid', {
+    const result = await invokeTool('update_expense', {
       ...houseArgs,
       expense_id: 12,
       is_paid: true,
@@ -349,24 +360,28 @@ describe('registered set_expense_paid', () => {
 });
 
 describe('registered expense template tools', () => {
-  it('list_expense_templates returns formatted rows', async () => {
+  it('list_templates (expense) returns formatted rows', async () => {
     expenseTemplateFindMany.mockResolvedValue([sampleExpenseTemplateRow]);
 
-    const result = await invokeTool('list_expense_templates', houseArgs);
+    const result = await invokeTool('list_templates', { ...houseArgs, kind: 'expense' });
 
     expect(result.isError).toBeFalsy();
+    expect(incomeTemplateFindMany).not.toHaveBeenCalled();
+    expect(parseResult(result)).toMatchObject({ total_count: 1, limit: 50, offset: 0 });
     expect(parseResult(result).templates[0]).toMatchObject({
+      kind: 'expense',
       id: 1,
       name: 'Renta',
       applies_first_fortnight: true,
     });
   });
 
-  it('create_expense_template persists via prisma', async () => {
+  it('create_template (expense) persists via prisma', async () => {
     expenseTemplateCreate.mockResolvedValue(sampleExpenseTemplateRow);
 
-    const result = await invokeTool('create_expense_template', {
+    const result = await invokeTool('create_template', {
       ...houseArgs,
+      kind: 'expense',
       name: 'Renta',
       category_id: 10,
       applies_first_fortnight: true,
@@ -381,7 +396,7 @@ describe('registered expense template tools', () => {
     expect(parseResult(result)).toMatchObject({ id: 1, name: 'Renta' });
   });
 
-  it('update_expense_template updates owned template', async () => {
+  it('update_template (expense) updates owned template', async () => {
     expenseTemplateFindFirst.mockResolvedValue({
       ...sampleExpenseTemplateRow,
       category_id: 10,
@@ -392,8 +407,9 @@ describe('registered expense template tools', () => {
       name: 'Renta actualizada',
     });
 
-    const result = await invokeTool('update_expense_template', {
+    const result = await invokeTool('update_template', {
       ...houseArgs,
+      kind: 'expense',
       template_id: 1,
       name: 'Renta actualizada',
     });
@@ -403,13 +419,14 @@ describe('registered expense template tools', () => {
     expect(parseResult(result).name).toBe('Renta actualizada');
   });
 
-  it('delete_expense_template detaches and deletes', async () => {
+  it('delete (expense_template) detaches and deletes', async () => {
     expenseTemplateFindFirst.mockResolvedValue(sampleExpenseTemplateRow);
     expenseUpdateMany.mockResolvedValue({ count: 2 });
 
-    const result = await invokeTool('delete_expense_template', {
+    const result = await invokeTool('delete', {
       ...houseArgs,
-      template_id: 1,
+      kind: 'expense_template',
+      id: 1,
       confirm: true,
     });
 
@@ -417,30 +434,48 @@ describe('registered expense template tools', () => {
     expect(prismaTransaction).toHaveBeenCalled();
     expect(parseResult(result)).toMatchObject({
       deleted: true,
-      template_id: 1,
+      kind: 'expense_template',
+      id: 1,
       detached_expense_count: 2,
     });
+  });
+
+  it('create_template rejects fields of the other kind', async () => {
+    const result = await invokeTool('create_template', {
+      ...houseArgs,
+      kind: 'expense',
+      name: 'Renta',
+      category_id: 10,
+      source: 'Nómina',
+    });
+
+    expect(result.isError).toBe(true);
+    expect(parseResult(result)).toMatchObject({ code: 'VALIDATION' });
+    expect(expenseTemplateCreate).not.toHaveBeenCalled();
   });
 });
 
 describe('registered income template tools', () => {
-  it('list_income_templates returns formatted rows', async () => {
+  it('list_templates (income) returns formatted rows', async () => {
     incomeTemplateFindMany.mockResolvedValue([sampleIncomeTemplateRow]);
 
-    const result = await invokeTool('list_income_templates', houseArgs);
+    const result = await invokeTool('list_templates', { ...houseArgs, kind: 'income' });
 
     expect(result.isError).toBeFalsy();
+    expect(expenseTemplateFindMany).not.toHaveBeenCalled();
     expect(parseResult(result).templates[0]).toMatchObject({
+      kind: 'income',
       id: 2,
       name: 'Salario',
     });
   });
 
-  it('create_income_template persists via prisma', async () => {
+  it('create_template (income) persists via prisma', async () => {
     incomeTemplateCreate.mockResolvedValue(sampleIncomeTemplateRow);
 
-    const result = await invokeTool('create_income_template', {
+    const result = await invokeTool('create_template', {
       ...houseArgs,
+      kind: 'income',
       name: 'Salario',
       category_id: 10,
       applies_first_fortnight: true,
@@ -453,7 +488,7 @@ describe('registered income template tools', () => {
     expect(parseResult(result)).toMatchObject({ id: 2, name: 'Salario' });
   });
 
-  it('update_income_template updates owned template', async () => {
+  it('update_template (income) updates owned template', async () => {
     incomeTemplateFindFirst.mockResolvedValue({
       ...sampleIncomeTemplateRow,
       category_id: 10,
@@ -463,8 +498,9 @@ describe('registered income template tools', () => {
       name: 'Salario actualizado',
     });
 
-    const result = await invokeTool('update_income_template', {
+    const result = await invokeTool('update_template', {
       ...houseArgs,
+      kind: 'income',
       template_id: 2,
       name: 'Salario actualizado',
     });
@@ -474,19 +510,20 @@ describe('registered income template tools', () => {
     expect(parseResult(result).name).toBe('Salario actualizado');
   });
 
-  it('delete_income_template removes unused template', async () => {
+  it('delete (income_template) removes unused template', async () => {
     incomeTemplateFindFirst.mockResolvedValue(sampleIncomeTemplateRow);
     incomeFindFirst.mockResolvedValue(null);
 
-    const result = await invokeTool('delete_income_template', {
+    const result = await invokeTool('delete', {
       ...houseArgs,
-      template_id: 2,
+      kind: 'income_template',
+      id: 2,
       confirm: true,
     });
 
     expect(result.isError).toBeFalsy();
     expect(incomeTemplateDelete).toHaveBeenCalledWith({ where: { id: 2 } });
-    expect(parseResult(result)).toMatchObject({ deleted: true, template_id: 2 });
+    expect(parseResult(result)).toMatchObject({ deleted: true, kind: 'income_template', id: 2 });
   });
 });
 
@@ -584,21 +621,51 @@ describe('registered card calendar tools', () => {
   });
 });
 
-describe('registered list_wallet_movements', () => {
-  it('rejects credit card wallets', async () => {
+describe('registered list_movements', () => {
+  it('routes credit card wallets to the card movement listing', async () => {
     resolveWalletRef.mockResolvedValueOnce({
       id: 9,
       name: 'Visa',
       type: 'CREDIT_CARD',
     });
+    getCreditCardStatementByOwner.mockResolvedValue({
+      current_cycle_start: '2026-08-06T00:00:00.000Z',
+      current_cycle_end: '2026-09-05T00:00:00.000Z',
+      outstanding_balance: 2500,
+      statement_purchases: [],
+      current_cycle_purchase_items: [
+        { id: 31, payment_date: '2026-08-10', description: 'Super', amount: 300 },
+      ],
+      installment_active_purchases: [],
+      payment_history: [],
+    });
 
-    const result = await invokeTool('list_wallet_movements', {
+    const result = await invokeTool('list_movements', {
       ...houseArgs,
       wallet_id: 9,
     });
 
+    expect(result.isError).toBeFalsy();
+    expect(listWalletMovements).not.toHaveBeenCalled();
+    expect(parseResult(result)).toMatchObject({
+      wallet_id: 9,
+      wallet_type: 'CREDIT_CARD',
+      balance: 2500,
+      from: '2026-08-06',
+      to: '2026-09-05',
+      movements: [{ kind: 'purchase', id: 31, amount: 300 }],
+    });
+  });
+
+  it('rejects use_current_cycle on funding wallets', async () => {
+    const result = await invokeTool('list_movements', {
+      ...houseArgs,
+      wallet_id: 4,
+      use_current_cycle: true,
+    });
+
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('list_card_movements');
+    expect(parseResult(result)).toMatchObject({ code: 'VALIDATION' });
     expect(listWalletMovements).not.toHaveBeenCalled();
   });
 
@@ -619,7 +686,7 @@ describe('registered list_wallet_movements', () => {
       },
     ]);
 
-    const result = await invokeTool('list_wallet_movements', {
+    const result = await invokeTool('list_movements', {
       ...houseArgs,
       wallet_id: 4,
     });

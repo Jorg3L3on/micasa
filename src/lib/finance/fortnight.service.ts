@@ -9,6 +9,7 @@ import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
 import { planningMonthCreateError } from '@/lib/finance/planning-month';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { FortnightPeriod } from '@/generated/prisma/client';
+import { DomainError } from '@/lib/finance/domain-error';
 
 /** List fortnights for the given owner (user_id or house_id). Required for owner-scoped catalog. */
 export async function listFortnightsForCatalog(ownerFilter: OwnerFilter) {
@@ -54,7 +55,7 @@ export async function createMonthFortnightsForOwner(
 
   const monthError = planningMonthCreateError(year, month);
   if (monthError) {
-    throw new Error(monthError);
+    throw new DomainError('VALIDATION', monthError);
   }
 
   const existingFirst = await prisma.fortnight.findFirst({
@@ -185,9 +186,7 @@ export async function regenerateFortnightFromTemplatesForOwner(
   });
 
   if (!fortnight) {
-    const error = new Error('Quincena no encontrada');
-    (error as { code?: string }).code = 'FORTNIGHT_NOT_FOUND';
-    throw error;
+    throw new DomainError('FORTNIGHT_NOT_FOUND', 'Quincena no encontrada');
   }
 
   await prisma.$transaction(async (tx) => {

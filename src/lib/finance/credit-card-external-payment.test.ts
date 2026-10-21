@@ -102,6 +102,56 @@ describe('createCreditCardPayment external mode', () => {
     expect(coverInstallmentPlan).toHaveBeenCalled();
   });
 
+  it('matches scheduled rows inside the payment transaction', async () => {
+    await createCreditCardPayment(7, ownerFilter, {
+      mode: 'external',
+      amount: 100,
+      paid_at: '2026-06-05',
+      note: null,
+      adjusts_debt: true,
+    });
+
+    const txClient = coverScheduled.mock.calls[0]![0];
+    expect(txClient).toHaveProperty('creditCardPayment');
+    expect(coverScheduled).toHaveBeenCalledWith(txClient, 7, ownerFilter, '2026-06-05', 100, 12);
+    expect(coverInstallmentPlan).toHaveBeenCalledWith(
+      txClient,
+      7,
+      ownerFilter,
+      '2026-06-05',
+      100,
+      12,
+    );
+  });
+
+  it('runs the match before the transaction commits and fails the payment with it', async () => {
+    let insideTransaction = false;
+    const callback = transactionFn.getMockImplementation()!;
+    transactionFn.mockImplementationOnce(async (fn) => {
+      insideTransaction = true;
+      try {
+        return await callback(fn);
+      } finally {
+        insideTransaction = false;
+      }
+    });
+    coverInstallmentPlan.mockImplementationOnce(async () => {
+      expect(insideTransaction).toBe(true);
+      throw new Error('match failed');
+    });
+
+    await expect(
+      createCreditCardPayment(7, ownerFilter, {
+        mode: 'external',
+        amount: 100,
+        paid_at: '2026-06-05',
+        note: null,
+        adjusts_debt: true,
+      }),
+    ).rejects.toThrow('match failed');
+    expect(coverInstallmentPlan).toHaveBeenCalledTimes(1);
+  });
+
   it('supports ledger-only mode without reducing debt', async () => {
     createPayment.mockResolvedValueOnce({
       id: 13,

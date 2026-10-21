@@ -1,118 +1,190 @@
 import { z } from 'zod';
+import type { AuthInfo } from '@modelcontextprotocol/server';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 import { checkRateLimit } from '@/lib/server/rate-limit';
 import {
   AgentAuthError,
   assertScope,
-  resolveAgentContext,
-  resolveAgentUser,
+  loadAllowedContextsForIdentity,
   parseBearerToken,
+  resolveAgentContextForIdentity,
+  resolveAgentIdentity,
   type AgentContext,
+  type AgentIdentity,
   type AgentScope,
 } from '@/lib/server/resolve-agent-context';
+import { MCP_AGENT_IDENTITY_KEY } from '@/lib/server/mcp-bearer-auth';
+import { AssigneeInvalidError } from '@/lib/server/house-members';
+import { CategoryServiceError } from '@/lib/finance/category.service';
+import { IncomeServiceError } from '@/lib/finance/income.service';
+import { DomainError } from '@/lib/finance/domain-error';
+import {
+  codeForStatus,
+  McpToolError,
+  type McpErrorPayload,
+} from '@/lib/mcp/errors';
 import type { AgentContextEntry } from '@/schemas/agent-context.schema';
+import { toMcpShape } from '@/lib/mcp/shapes';
 
 /** Structural view of the SDK's ServerContext — only what the tools need. */
 export type McpToolContext = {
-  http?: { req?: Request };
+  http?: { req?: Request; authInfo?: AuthInfo };
 };
-
-export const ownerTypeSchema = z
-  .enum(['user', 'house'])
-  .describe(
-    'Contexto financiero: "user" (finanzas personales) o "house" (casa compartida). Usa list_houses primero para descubrir los ids.',
-  );
-
-export const ownerIdSchema = z
-  .number()
-  .int()
-  .positive()
-  .describe('Id del usuario (ownerType=user) o de la casa (ownerType=house).');
-
-export const confirmSchema = z
-  .literal(true)
-  .describe(
-    'Confirmación explícita requerida: esta operación modifica saldos o elimina datos.',
-  );
 
 type McpTextResult = {
   content: Array<{ type: 'text'; text: string }>;
+  structuredContent?: Record<string, unknown>;
   isError?: boolean;
 };
 
-export const jsonResult = (data: unknown): McpTextResult => ({
-  content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
-});
+/**
+ * Serializes a tool response in the MCP shape (snake_case, numbers, civil
+ * dates). Tools with an output schema also return it as `structuredContent`.
+ */
+export const jsonResult = (data: unknown, options?: { structured?: boolean }): McpTextResult => {
+  const shaped = toMcpShape(data);
+  return {
+    content: [{ type: 'text' as const, text: JSON.stringify(shaped) }],
+    ...(options?.structured ? { structuredContent: shaped as Record<string, unknown> } : {}),
+  };
+};
 
-export const errorResult = (message: string): McpTextResult => ({
-  content: [{ type: 'text' as const, text: JSON.stringify({ error: message }) }],
+/** Error result for an input that failed the tool's schema. */
+export const errorResultFor = (error: unknown): McpTextResult =>
+  errorPayloadResult(toErrorPayload(error));
+
+const errorPayloadResult = (payload: McpErrorPayload): McpTextResult => ({
+  content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
   isError: true,
 });
 
-const getAuthorizationHeader = (ctx: McpToolContext): string | null =>
-  ctx.http?.req?.headers.get('authorization') ?? null;
+/**
+ * Owner args: `defineOwnerTool` normalizes the v2 camelCase alias to
+ * snake_case; direct callers (tests) may still pass camelCase.
+ */
+type OwnerToolArgs =
+  | { owner_type: 'user' | 'house'; owner_id: number }
+  | { ownerType: 'user' | 'house'; ownerId: number };
+
+const readOwnerArgs = (args: OwnerToolArgs) =>
+  'owner_type' in args
+    ? { ownerType: args.owner_type, ownerId: args.owner_id }
+    : { ownerType: args.ownerType, ownerId: args.ownerId };
+
+const agentIdentitySchema = z.object({
+  userId: z.number().int().positive(),
+  scopes: z.array(z.enum(['read', 'write'])),
+  authSource: z.enum(['api_key', 'oauth_grant']),
+  apiKeyId: z.number().int().optional(),
+  oauthGrantId: z.number().int().optional(),
+  rateLimitIdentity: z.number().int(),
+});
+
+/**
+ * The credential `withMcpAuth` already verified for this request. Falls back
+ * to resolving the Authorization header only when the transport did not
+ * provide it (direct calls in tests).
+ */
+const resolveCallerIdentity = async (ctx: McpToolContext): Promise<AgentIdentity> => {
+  const stamped = agentIdentitySchema.safeParse(
+    ctx.http?.authInfo?.extra?.[MCP_AGENT_IDENTITY_KEY],
+  );
+  if (stamped.success) return stamped.data;
+  const token = parseBearerToken(ctx.http?.req?.headers.get('authorization'));
+  return resolveAgentIdentity(token);
+};
 
 /**
  * Per-credential rate limit (policy `mcp:tool`). Api key ids are positive;
- * OAuth grant ids are negated so identities never collide.
- * Returns an error result when limited, otherwise null.
+ * OAuth grant ids are negated so identities never collide. Runs before any
+ * allow-list or business query.
  */
 const enforceToolRateLimit = async (
   ctx: McpToolContext,
   rateLimitIdentity: number,
-): Promise<McpTextResult | null> => {
+): Promise<void> => {
   const request = ctx.http?.req;
-  if (!request) return null;
+  if (!request) return;
   const { limited, retryAfterSeconds } = await checkRateLimit(
     request,
     'mcp:tool',
     rateLimitIdentity,
   );
-  if (!limited) return null;
-  return errorResult(
-    `Límite de solicitudes alcanzado para esta conexión. Reintenta en ${retryAfterSeconds}s.`,
+  if (!limited) return;
+  throw new McpToolError(
+    'RATE_LIMITED',
+    'Límite de solicitudes alcanzado para esta conexión.',
+    { hint: `Reintenta en ${retryAfterSeconds}s.` },
   );
 };
 
-const toErrorResult = (error: unknown): McpTextResult => {
+const INTERNAL_ERROR: McpErrorPayload = {
+  error: 'Error interno en la herramienta',
+  code: 'INTERNAL',
+};
+
+/**
+ * Only errors on the allow-list reach the model with their message: tool
+ * errors, auth, validation and the typed business errors of the finance
+ * services. Anything else (Prisma, driver, TypeError, a plain `Error`) becomes
+ * a generic INTERNAL; the real message stays in the `mcp.tool.failed` log.
+ */
+export const toErrorPayload = (error: unknown): McpErrorPayload => {
+  if (error instanceof McpToolError) return error.toPayload();
   if (error instanceof AgentAuthError) {
-    return errorResult(error.message);
+    return { error: error.message, code: codeForStatus(error.status) };
   }
   if (error instanceof z.ZodError) {
     const details = error.issues
       .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
       .join('; ');
-    return errorResult(`Error de validación: ${details}`);
+    return { error: `Error de validación: ${details}`, code: 'VALIDATION' };
   }
-  if (error instanceof Error && error.message) {
-    return errorResult(error.message);
+  if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
+    return { error: error.message, code: codeForStatus(error.status) };
   }
-  return errorResult('Error interno en la herramienta');
+  if (error instanceof DomainError) {
+    return { error: error.message, code: codeForStatus(error.status) };
+  }
+  if (error instanceof AssigneeInvalidError) {
+    return { error: error.message, code: 'VALIDATION' };
+  }
+  return INTERNAL_ERROR;
+};
+
+const logToolFailure = (
+  toolName: string,
+  error: unknown,
+  fields: Record<string, string | number | null>,
+) => {
+  logFinanceEvent('warn', 'mcp.tool.failed', {
+    tool: toolName,
+    ...fields,
+    error_name: error instanceof Error ? error.name : typeof error,
+    error: error instanceof Error ? error.message : String(error),
+  });
 };
 
 /**
- * Runs an owner-scoped MCP tool: resolves the agent token from the
- * Authorization header, enforces the scope, resolves the owner context
- * (house membership / self), executes and serializes.
+ * Runs an owner-scoped MCP tool: takes the credential the transport verified,
+ * rate-limits it, enforces the scope, resolves the owner context (allow-list
+ * + house membership), executes and serializes.
  */
 export async function runAgentTool(
   toolName: string,
   ctx: McpToolContext,
-  args: { ownerType: 'user' | 'house'; ownerId: number },
+  args: OwnerToolArgs,
   scope: AgentScope,
   fn: (agent: AgentContext) => Promise<unknown>,
+  options?: { structured?: boolean },
 ): Promise<McpTextResult> {
+  const { ownerType, ownerId } = readOwnerArgs(args);
   try {
-    const agent = await resolveAgentContext(
-      getAuthorizationHeader(ctx),
-      args.ownerType,
-      args.ownerId,
-    );
-    assertScope(agent, scope);
+    const identity = await resolveCallerIdentity(ctx);
+    await enforceToolRateLimit(ctx, identity.rateLimitIdentity);
+    assertScope(identity, scope);
 
-    const limitedResult = await enforceToolRateLimit(ctx, agent.rateLimitIdentity);
-    if (limitedResult) return limitedResult;
-
+    const agent = await resolveAgentContextForIdentity(identity, ownerType, ownerId);
     const data = await fn(agent);
 
     logFinanceEvent('info', 'mcp.tool.invoked', {
@@ -124,15 +196,10 @@ export async function runAgentTool(
       scope,
     });
 
-    return jsonResult(data);
+    return jsonResult(data, options);
   } catch (error) {
-    logFinanceEvent('warn', 'mcp.tool.failed', {
-      tool: toolName,
-      owner_type: args.ownerType,
-      owner_id: args.ownerId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return toErrorResult(error);
+    logToolFailure(toolName, error, { owner_type: ownerType, owner_id: ownerId });
+    return errorPayloadResult(toErrorPayload(error));
   }
 }
 
@@ -148,29 +215,25 @@ export async function runAgentUserTool(
     scopes: AgentScope[];
     allowedContexts: AgentContextEntry[];
   }) => Promise<unknown>,
+  options?: { structured?: boolean },
 ): Promise<McpTextResult> {
   try {
-    const token = parseBearerToken(getAuthorizationHeader(ctx));
-    const user = await resolveAgentUser(token);
+    const identity = await resolveCallerIdentity(ctx);
+    await enforceToolRateLimit(ctx, identity.rateLimitIdentity);
 
-    const limitedResult = await enforceToolRateLimit(ctx, user.rateLimitIdentity);
-    if (limitedResult) return limitedResult;
-
-    const data = await fn(user);
+    const allowedContexts = await loadAllowedContextsForIdentity(identity);
+    const data = await fn({ ...identity, allowedContexts });
 
     logFinanceEvent('info', 'mcp.tool.invoked', {
       tool: toolName,
-      user_id: user.userId,
-      api_key_id: user.apiKeyId ?? null,
-      oauth_grant_id: user.oauthGrantId ?? null,
+      user_id: identity.userId,
+      api_key_id: identity.apiKeyId ?? null,
+      oauth_grant_id: identity.oauthGrantId ?? null,
     });
 
-    return jsonResult(data);
+    return jsonResult(data, options);
   } catch (error) {
-    logFinanceEvent('warn', 'mcp.tool.failed', {
-      tool: toolName,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return toErrorResult(error);
+    logToolFailure(toolName, error, {});
+    return errorPayloadResult(toErrorPayload(error));
   }
 }

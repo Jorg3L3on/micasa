@@ -39,4 +39,10 @@ describe('assertIncomeFundingWallet', () => {
       assertIncomeFundingWallet({ type: PaymentMethodType.CREDIT_CARD }),
     ).toThrow(INCOME_WALLET_TYPE_MESSAGE);
   });
+
+  it('rejects goal wallets on create and edit alike', () => {
+    expect(() =>
+      assertIncomeFundingWallet({ type: PaymentMethodType.GOAL }),
+    ).toThrow(INCOME_WALLET_TYPE_MESSAGE);
+  });
 });

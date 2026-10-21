@@ -204,9 +204,10 @@ describe('MCP context allow-list enforcer', () => {
 
     expect(result.isError).toBeUndefined();
     const payload = JSON.parse(result.content[0].text);
-    expect(payload.personalContext).toBeNull();
+    // MCP responses are snake_case (toMcpShape in jsonResult).
+    expect(payload.personal_context).toBeNull();
     expect(payload.houses).toEqual([
-      { ownerType: 'house', ownerId: 20, name: 'Casa Beta' },
+      { owner_type: 'house', owner_id: 20, name: 'Casa Beta' },
     ]);
   });
 
@@ -225,7 +226,7 @@ describe('MCP context allow-list enforcer', () => {
 
     expect(result.isError).toBeUndefined();
     const payload = JSON.parse(result.content[0].text);
-    expect(payload.houseCount).toBe(0);
+    expect(payload.house_count).toBe(0);
     expect(payload.houses).toEqual([]);
   });
 

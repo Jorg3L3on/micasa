@@ -12,6 +12,7 @@ const {
   resolveOrCreateFortnight,
   transactionFn,
   applyWalletAmountDelta,
+  fortnightFindUnique,
 } = vi.hoisted(() => ({
   getOwnerContext: vi.fn(),
   incomeFindFirst: vi.fn(),
@@ -24,6 +25,7 @@ const {
   resolveOrCreateFortnight: vi.fn(),
   transactionFn: vi.fn(),
   applyWalletAmountDelta: vi.fn(),
+  fortnightFindUnique: vi.fn(),
 }));
 
 vi.mock('@/lib/server/get-owner-context', () => ({
@@ -39,6 +41,7 @@ vi.mock('@/lib/prisma', () => ({
     },
     wallet: { findFirst: walletFindFirst },
     category: { findFirst: categoryFindFirst },
+    fortnight: { findUnique: fortnightFindUnique },
     $transaction: transactionFn,
   },
 }));
@@ -57,7 +60,10 @@ vi.mock('@/lib/finance/wallet-accounting', async (importOriginal) => {
 });
 
 import { POST, PUT } from './route';
-import { INCOME_WALLET_REQUIRED_MESSAGE } from '@/lib/finance/income.service';
+import {
+  INCOME_WALLET_REQUIRED_MESSAGE,
+  INCOME_WALLET_TYPE_MESSAGE,
+} from '@/lib/finance/income.service';
 
 const ownerContext = {
   userId: 1,
@@ -283,4 +289,46 @@ describe('POST /api/incomes planned', () => {
       }),
     );
   });
+});
+
+describe('POST /api/incomes credited', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getOwnerContext.mockResolvedValue(ownerContext);
+    categoryFindFirst.mockResolvedValue({ id: 4, kind: 'INCOME', active: true });
+    fortnightFindUnique.mockResolvedValue({
+      id: 10,
+      user_id: 1,
+      house_id: null,
+      year: 2026,
+      month: 9,
+      period: 'SECOND',
+    });
+  });
+
+  it.each(['GOAL', 'CREDIT_CARD'])(
+    'rejects a %s wallet like the edit path does',
+    async (type) => {
+      walletFindFirst.mockResolvedValue({ id: 7, type });
+
+      const response = await POST(
+        new Request('http://localhost/api/incomes?ownerType=user&ownerId=1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: 800,
+            received_at: '2026-09-20',
+            category_id: 4,
+            fortnight_id: 10,
+            wallet_id: 7,
+          }),
+        }) as Parameters<typeof POST>[0],
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: INCOME_WALLET_TYPE_MESSAGE });
+      expect(transactionFn).not.toHaveBeenCalled();
+      expect(applyWalletAmountDelta).not.toHaveBeenCalled();
+    },
+  );
 });
