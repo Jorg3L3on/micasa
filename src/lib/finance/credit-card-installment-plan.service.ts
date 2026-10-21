@@ -20,6 +20,7 @@ import {
   resolvePlanRemainingBalance,
   roundMoney,
 } from '@/lib/finance/credit-card-msi-period-due';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export type CreditCardInstallmentPlanPaymentItem = {
   id: number;
@@ -158,9 +159,7 @@ async function assertCreditCardWallet(
   });
 
   if (!wallet) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'WALLET_NOT_FOUND';
-    throw error;
+    throw new DomainError('WALLET_NOT_FOUND', 'Tarjeta no encontrada');
   }
 
   ensureCreditWalletType(wallet);
@@ -227,11 +226,7 @@ export async function createInstallmentPlan(
     decimalToNumber(wallet.amount) + debtDelta >
       decimalToNumber(wallet.credit_limit)
   ) {
-    const error = new Error(
-      'El saldo restante del plan supera el crédito disponible',
-    );
-    (error as { code?: string }).code = 'INSUFFICIENT_CREDIT';
-    throw error;
+    throw new DomainError('INSUFFICIENT_CREDIT', 'El saldo restante del plan supera el crédito disponible');
   }
 
   const plan = await prisma.$transaction(async (tx) => {
@@ -349,9 +344,7 @@ export async function updateInstallmentPlan(
   });
 
   if (!existing) {
-    const error = new Error('Plan de cuotas no encontrado');
-    (error as { code?: string }).code = 'NOT_FOUND';
-    throw error;
+    throw new DomainError('NOT_FOUND', 'Plan de cuotas no encontrado');
   }
 
   const nextDueDate =
@@ -416,11 +409,7 @@ export async function updateInstallmentPlan(
     decimalToNumber(wallet.amount) + debtDelta >
       decimalToNumber(wallet.credit_limit)
   ) {
-    const error = new Error(
-      'El saldo restante del plan supera el crédito disponible',
-    );
-    (error as { code?: string }).code = 'INSUFFICIENT_CREDIT';
-    throw error;
+    throw new DomainError('INSUFFICIENT_CREDIT', 'El saldo restante del plan supera el crédito disponible');
   }
 
   const plan = await prisma.$transaction(async (tx) => {
@@ -493,9 +482,7 @@ export async function deleteInstallmentPlan(
   });
 
   if (!existing) {
-    const error = new Error('Plan de cuotas no encontrado');
-    (error as { code?: string }).code = 'NOT_FOUND';
-    throw error;
+    throw new DomainError('NOT_FOUND', 'Plan de cuotas no encontrado');
   }
 
   const scheduledTotal = existing.payments.reduce(

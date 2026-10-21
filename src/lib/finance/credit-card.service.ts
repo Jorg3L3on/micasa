@@ -30,6 +30,7 @@ import {
 } from '@/lib/finance/payment-category';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { DomainError } from '@/lib/finance/domain-error';
 
 const creditCardWalletTypes: PaymentMethodType[] = [
   PaymentMethodType.CREDIT_CARD,
@@ -165,9 +166,7 @@ export async function getCreditCardByOwner(
   ]);
 
   if (!wallet) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   const spent = Number(spentAgg._sum.amount ?? 0);
@@ -192,9 +191,7 @@ export async function updateCreditCardForOwner(
   const wallet = await updateWalletMetadataForOwner(id, data, ownerFilter);
 
   if (!isCreditWalletType(wallet.type)) {
-    const error = new Error('La billetera no es una tarjeta de crédito');
-    (error as { code?: string }).code = 'INVALID_CREDIT_CARD';
-    throw error;
+    throw new DomainError('INVALID_CREDIT_CARD', 'La billetera no es una tarjeta de crédito');
   }
 
   const spentAgg = await prisma.expense.aggregate({
@@ -208,8 +205,6 @@ export async function updateCreditCardForOwner(
 
   return mapWalletToCreditCardDto(wallet, spent);
 }
-
-type CreditCardServiceError = Error & { code?: string };
 
 /**
  * Deletes a credit / department-store card wallet owned by the current context.
@@ -232,9 +227,7 @@ export async function deleteCreditCardForOwner(
   });
 
   if (!existing) {
-    const error = new Error('Tarjeta no encontrada') as CreditCardServiceError;
-    error.code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   const [
@@ -269,11 +262,7 @@ export async function deleteCreditCardForOwner(
     relatedBudgetAllocation ||
     relatedTransfer
   ) {
-    const error = new Error(
-      'La tarjeta tiene movimientos o plantillas asociadas y no puede eliminarse. Desactívala desde Editar si ya no la usas.',
-    ) as CreditCardServiceError;
-    error.code = 'WALLET_IN_USE';
-    throw error;
+    throw new DomainError('WALLET_IN_USE', 'La tarjeta tiene movimientos o plantillas asociadas y no puede eliminarse. Desactívala desde Editar si ya no la usas.');
   }
 
   await prisma.$transaction(async (tx) => {
@@ -317,9 +306,7 @@ export async function createCreditCardPurchase(
   });
 
   if (!wallet) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   const alreadyInCardBalance = input.already_in_card_balance === true;
@@ -359,9 +346,7 @@ export async function createCreditCardPayment(
     });
 
     if (!creditCardWallet) {
-      const error = new Error('Tarjeta no encontrada');
-      (error as { code?: string }).code = 'P2025';
-      throw error;
+      throw new DomainError('P2025', 'Tarjeta no encontrada');
     }
 
     ensureCreditWalletType(creditCardWallet);
@@ -396,48 +381,32 @@ export async function createCreditCardPayment(
       });
 
       if (!sourceWallet) {
-        const error = new Error('Billetera de origen no encontrada');
-        (error as { code?: string }).code = 'WALLET_NOT_FOUND';
-        throw error;
+        throw new DomainError('WALLET_NOT_FOUND', 'Billetera de origen no encontrada');
       }
 
       ensureFundingWalletType(sourceWallet);
 
       if (creditCardWallet.id === sourceWallet.id) {
-        const error = new Error(
-          'La billetera de origen debe ser distinta de la tarjeta',
-        );
-        (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_WALLET';
-        throw error;
+        throw new DomainError('INVALID_PAYMENT_SOURCE_WALLET', 'La billetera de origen debe ser distinta de la tarjeta');
       }
 
       if (
         creditCardWallet.user_id !== sourceWallet.user_id ||
         creditCardWallet.house_id !== sourceWallet.house_id
       ) {
-        const error = new Error(
-          'La billetera de origen debe pertenecer al mismo titular',
-        );
-        (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_OWNER';
-        throw error;
+        throw new DomainError('INVALID_PAYMENT_SOURCE_OWNER', 'La billetera de origen debe pertenecer al mismo titular');
       }
 
       const sourceBalance = toWalletAmountNumber(sourceWallet);
       if (sourceBalance < input.amount) {
-        const error = new Error('Saldo insuficiente en la billetera de origen');
-        (error as { code?: string }).code = 'INSUFFICIENT_SOURCE_BALANCE';
-        throw error;
+        throw new DomainError('INSUFFICIENT_SOURCE_BALANCE', 'Saldo insuficiente en la billetera de origen');
       }
     }
 
     if (adjustsDebt) {
       const currentDebt = toWalletAmountNumber(creditCardWallet);
       if (input.amount > currentDebt) {
-        const error = new Error(
-          'El monto del pago no puede superar la deuda actual de la tarjeta',
-        );
-        (error as { code?: string }).code = 'INVALID_PAYMENT_AMOUNT';
-        throw error;
+        throw new DomainError('INVALID_PAYMENT_AMOUNT', 'El monto del pago no puede superar la deuda actual de la tarjeta');
       }
     }
 
@@ -478,9 +447,7 @@ export async function createCreditCardPayment(
       if (categoryId == null) {
         const kind = paymentCategoryKindForWallet(creditCardWallet.type);
         if (kind == null) {
-          const error = new Error('Esta tarjeta no tiene categoría de pago');
-          (error as { code?: string }).code = 'CATEGORY_NOT_FOUND';
-          throw error;
+          throw new DomainError('CATEGORY_NOT_FOUND', 'Esta tarjeta no tiene categoría de pago');
         }
         categoryId = await resolvePaymentCategoryId(tx, ownerFilter, kind);
       } else {
@@ -488,9 +455,7 @@ export async function createCreditCardPayment(
           where: { id: categoryId, kind: 'EXPENSE', ...ownerFilter },
         });
         if (!category) {
-          const error = new Error('Categoría no encontrada');
-          (error as { code?: string }).code = 'CATEGORY_NOT_FOUND';
-          throw error;
+          throw new DomainError('CATEGORY_NOT_FOUND', 'Categoría no encontrada');
         }
       }
 
@@ -502,9 +467,7 @@ export async function createCreditCardPayment(
           where: { id: input.fortnight_id, ...ownerFilter },
         });
         if (!existing) {
-          const error = new Error('Quincena no encontrada');
-          (error as { code?: string }).code = 'FORTNIGHT_NOT_FOUND';
-          throw error;
+          throw new DomainError('FORTNIGHT_NOT_FOUND', 'Quincena no encontrada');
         }
         fortnight = existing;
       } else {
@@ -515,9 +478,7 @@ export async function createCreditCardPayment(
         const ownerUserId = creditCardWallet.user_id;
         const ownerHouseId = creditCardWallet.house_id;
         if (ownerUserId == null && ownerHouseId == null) {
-          const error = new Error('Titular de tarjeta inválido');
-          (error as { code?: string }).code = 'INVALID_CARD_OWNER';
-          throw error;
+          throw new DomainError('INVALID_CARD_OWNER', 'Titular de tarjeta inválido');
         }
 
         fortnight = await resolveOrCreateFortnight({
@@ -636,9 +597,7 @@ export async function reverseCreditCardPayment(
     });
 
     if (!payment) {
-      const error = new Error('Pago no encontrado');
-      (error as { code?: string }).code = 'PAYMENT_NOT_FOUND';
-      throw error;
+      throw new DomainError('PAYMENT_NOT_FOUND', 'Pago no encontrado');
     }
 
     const amount = Number(payment.amount);
@@ -678,9 +637,7 @@ export async function listCreditCardPaymentsByOwner(
   });
 
   if (!wallet) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   const payments = await prisma.creditCardPayment.findMany({

@@ -1,9 +1,17 @@
 import type { AuthInfo } from '@modelcontextprotocol/server';
-import { resolveAgentUser } from '@/lib/server/resolve-agent-context';
+import {
+  resolveAgentIdentity,
+  type AgentIdentity,
+} from '@/lib/server/resolve-agent-context';
+
+/** Key under `AuthInfo.extra` where the resolved credential travels to tools. */
+export const MCP_AGENT_IDENTITY_KEY = 'micasa_agent';
 
 /**
  * Bearer verifier for MCP transport auth (`withMcpAuth`). Accepts ApiKey tokens
- * (`micasa_…`) and OAuth access tokens (`micasa_oauth_…`).
+ * (`micasa_…`) and OAuth access tokens (`micasa_oauth_…`). The resolved
+ * identity rides on `extra` so tools reach it via `ctx.http.authInfo` instead
+ * of resolving the token a second time.
  */
 export async function verifyMcpBearerToken(
   _request: Request,
@@ -12,7 +20,7 @@ export async function verifyMcpBearerToken(
   if (!bearerToken?.trim()) return undefined;
 
   try {
-    const agent = await resolveAgentUser(bearerToken);
+    const agent = await resolveAgentIdentity(bearerToken);
     return {
       token: bearerToken,
       clientId:
@@ -20,6 +28,7 @@ export async function verifyMcpBearerToken(
           ? `oauth-grant:${agent.oauthGrantId}`
           : `api-key:${agent.apiKeyId}`,
       scopes: agent.scopes,
+      extra: { [MCP_AGENT_IDENTITY_KEY]: agent satisfies AgentIdentity },
     };
   } catch {
     return undefined;

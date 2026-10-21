@@ -48,6 +48,7 @@ import {
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
 import type { DuePaymentItem } from '@/types/catalog';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export {
   buildCardStatementObligation,
@@ -114,9 +115,7 @@ export async function getCreditCardStatementByOwner(
   });
 
   if (!card) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   if (
@@ -124,11 +123,7 @@ export async function getCreditCardStatementByOwner(
     card.cutoff_day == null ||
     card.due_day == null
   ) {
-    const error = new Error(
-      'La billetera no está configurada como tarjeta de crédito',
-    );
-    (error as { code?: string }).code = 'INVALID_CREDIT_CARD';
-    throw error;
+    throw new DomainError('INVALID_CREDIT_CARD', 'La billetera no está configurada como tarjeta de crédito');
   }
 
   const normalizedAsOf = asOf ?? new Date();

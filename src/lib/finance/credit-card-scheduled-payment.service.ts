@@ -17,6 +17,7 @@ import {
   getFortnightYmdBounds,
   ymdFallsInFortnight,
 } from '@/lib/fortnight-calendar';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export type CreditCardScheduledPaymentItem = {
   id: number;
@@ -83,9 +84,7 @@ async function assertCreditCardWallet(
   });
 
   if (!wallet) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'WALLET_NOT_FOUND';
-    throw error;
+    throw new DomainError('WALLET_NOT_FOUND', 'Tarjeta no encontrada');
   }
 
   ensureCreditWalletType(wallet);
@@ -164,15 +163,11 @@ export async function updateScheduledPayment(
   });
 
   if (!existing) {
-    const error = new Error('Cuota programada no encontrada');
-    (error as { code?: string }).code = 'NOT_FOUND';
-    throw error;
+    throw new DomainError('NOT_FOUND', 'Cuota programada no encontrada');
   }
 
   if (existing.status === 'PAID') {
-    const error = new Error('No se puede editar una cuota ya cubierta');
-    (error as { code?: string }).code = 'ALREADY_PAID';
-    throw error;
+    throw new DomainError('ALREADY_PAID', 'No se puede editar una cuota ya cubierta');
   }
 
   const row = await prisma.creditCardScheduledPayment.update({
@@ -189,29 +184,26 @@ export async function updateScheduledPayment(
   return mapRow(row);
 }
 
+/** `walletId` null = any card of the owner (the MCP `delete` tool has only the id). */
 export async function deleteScheduledPayment(
   paymentId: number,
-  walletId: number,
+  walletId: number | null,
   ownerFilter: OwnerFilter,
 ): Promise<void> {
   const existing = await prisma.creditCardScheduledPayment.findFirst({
     where: {
       id: paymentId,
-      credit_card_wallet_id: walletId,
+      ...(walletId != null ? { credit_card_wallet_id: walletId } : {}),
       ...ownerFilter,
     },
   });
 
   if (!existing) {
-    const error = new Error('Cuota programada no encontrada');
-    (error as { code?: string }).code = 'NOT_FOUND';
-    throw error;
+    throw new DomainError('NOT_FOUND', 'Cuota programada no encontrada');
   }
 
   if (existing.status === 'PAID') {
-    const error = new Error('No se puede eliminar una cuota ya cubierta');
-    (error as { code?: string }).code = 'ALREADY_PAID';
-    throw error;
+    throw new DomainError('ALREADY_PAID', 'No se puede eliminar una cuota ya cubierta');
   }
 
   await prisma.creditCardScheduledPayment.delete({ where: { id: paymentId } });

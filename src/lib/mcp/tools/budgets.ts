@@ -1,34 +1,26 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
-import prisma from '@/lib/prisma';
 import {
   createBudget,
-  deleteBudget,
+  findBudgetForOwner,
   updateBudgetTemplate,
   updateBudgetAllocations,
 } from '@/lib/finance/budget.service';
 import { listActivePeriods } from '@/lib/finance/budget-period.service';
+import { formatStoredDateOnly } from '@/lib/calendar-dates';
 import { resolveCategoryRef, resolveWalletRef } from '@/lib/mcp/resolvers';
-import {
-  confirmSchema,
-  ownerIdSchema,
-  ownerTypeSchema,
-  runAgentTool,
-  type McpToolContext,
-} from '@/lib/mcp/tool-helpers';
+import { defineOwnerTool } from '@/lib/mcp/define-tool';
+import { McpToolError } from '@/lib/mcp/errors';
+import { categoryRef, pagination, walletRef } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 
-const ownerArgs = {
-  ownerType: ownerTypeSchema,
-  ownerId: ownerIdSchema,
-};
-
-const allocationInputSchema = z.object({
-  wallet_id: z.number().int().positive().optional(),
-  wallet_name: z.string().trim().min(1).optional(),
-  category_id: z.number().int().positive().optional(),
-  category_name: z.string().trim().min(1).optional(),
-  amount: z.number().positive(),
-});
+const allocationInputSchema = z
+  .object({
+    ...walletRef,
+    ...categoryRef,
+    amount: z.number().positive().describe('Monto de la asignación.'),
+  })
+  .strict();
 
 const resolveOptionalWalletId = async (
   ownerFilter: Parameters<typeof resolveWalletRef>[0],
@@ -67,245 +59,150 @@ const resolveAllocationRows = async (
 };
 
 export function registerBudgetTools(server: McpServer) {
-  server.registerTool(
-    'list_budgets',
-    {
-      title: 'Listar presupuestos',
-      description:
-        'Presupuestos activos del periodo actual: tope, gastado, restante y %.',
-      inputSchema: z.object({
-        ownerType: ownerTypeSchema,
-        ownerId: ownerIdSchema,
+  defineOwnerTool(server, {
+    name: 'list_budgets',
+    title: 'Listar presupuestos',
+    description:
+      'Presupuestos activos del periodo actual: tope, gastado, restante, % usado y asignaciones.',
+    scope: 'read',
+    input: { ...pagination },
+    output: {
+      budgets: out.list({
+        budget_id: z.number(),
+        name: z.string(),
+        allocated_amount: out.money,
+        spent_amount: out.money,
+        remaining_amount: out.money,
       }),
-      annotations: { readOnlyHint: true },
+      ...out.page,
     },
-    async (args, ctx) =>
-      runAgentTool('list_budgets', ctx as McpToolContext, args, 'read', async (agent) => {
-        const periods = await listActivePeriods(agent.ownerFilter, new Date());
-        return periods.map((period) => ({
-          period_id: period.period_id,
-          budget_id: period.budget_id,
-          name: period.name,
-          start_date: period.start_date,
-          end_date: period.end_date,
-          allocated_amount: period.allocated_amount,
-          spent_amount: period.spent_amount,
-          remaining_amount: period.remaining_amount,
-          percent_used:
-            period.allocated_amount > 0
-              ? Math.round(
-                  (period.spent_amount / period.allocated_amount) * 100,
-                )
-              : 0,
-          allocations: period.allocations,
-        }));
-      }),
-  );
-
-  server.registerTool(
-    'upsert_budget',
-    {
-      title: 'Crear o actualizar presupuesto',
-      description:
-        'Crea o actualiza un presupuesto con una o varias asignaciones (categoría y, si quieres acotar, billetera). Omite wallet_id y wallet_name para Cualquier billetera. La suma de allocations debe igualar amount.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        budget_id: z.number().int().positive().optional(),
-        name: z.string().trim().min(1).max(25),
-        amount: z.number().positive(),
-        wallet_id: z.number().int().positive().optional(),
-        wallet_name: z.string().trim().min(1).optional(),
-        category_id: z.number().int().positive().optional(),
-        category_name: z.string().trim().min(1).optional(),
-        allocations: z
-          .array(allocationInputSchema)
-          .min(1)
-          .optional()
-          .describe(
-            'Varias asignaciones categoría y billetera opcional. Omite la billetera para Cualquier billetera. La suma debe igualar amount. Si se omite, usa una sola asignación con wallet/category.',
-          ),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: true },
+    run: async (agent, args) => {
+      const periods = await listActivePeriods(agent.ownerFilter, new Date());
+      const rows = periods.map((period) => ({
+        period_id: period.period_id,
+        budget_id: period.budget_id,
+        name: period.name,
+        start_date: period.start_date,
+        end_date: period.end_date,
+        allocated_amount: period.allocated_amount,
+        spent_amount: period.spent_amount,
+        remaining_amount: period.remaining_amount,
+        percent_used:
+          period.allocated_amount > 0
+            ? Math.round((period.spent_amount / period.allocated_amount) * 100)
+            : 0,
+        allocations: period.allocations,
+      }));
+      return paginate('budgets', rows, args);
     },
-    async (args, ctx) =>
-      runAgentTool('upsert_budget', ctx as McpToolContext, args, 'write', async (agent) => {
-        const allocationRows =
-          args.allocations != null && args.allocations.length > 0
-            ? await resolveAllocationRows(agent, args.allocations)
-            : null;
+  });
 
-        const walletId = allocationRows
-          ? null
-          : await resolveOptionalWalletId(
+  defineOwnerTool(server, {
+    name: 'upsert_budget',
+    title: 'Crear o actualizar presupuesto',
+    description:
+      'Sin budget_id crea un presupuesto quincenal (requiere name y amount); con budget_id actualiza ese presupuesto (name y amount opcionales, allocations reemplaza las asignaciones). Asignaciones por categoría y billetera opcional (sin billetera = cualquiera); deben sumar amount.',
+    scope: 'write',
+    annotations: { destructiveHint: false, idempotentHint: true },
+    input: {
+      budget_id: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Presupuesto a actualizar (de list_budgets). Omítelo para crear.'),
+      name: z.string().trim().min(1).max(25).optional().describe('Nombre (máx. 25).'),
+      amount: z.number().positive().optional().describe('Tope total del presupuesto.'),
+      ...walletRef,
+      ...categoryRef,
+      allocations: z
+        .array(allocationInputSchema)
+        .min(1)
+        .optional()
+        .describe('Si se omite: una asignación con wallet/category y amount.'),
+    },
+    run: async (agent, args) => {
+      // Updates only by id: a name match must never overwrite another budget.
+      const budget =
+        args.budget_id != null
+          ? await findBudgetForOwner(agent.ownerFilter, args.budget_id)
+          : null;
+
+      if (args.budget_id != null && !budget) {
+        throw new McpToolError('NOT_FOUND', 'Presupuesto no encontrado', {
+          hint: 'Usa list_budgets para ver los ids válidos.',
+        });
+      }
+      if (!budget && (args.name == null || args.amount == null)) {
+        throw new McpToolError('VALIDATION', 'Para crear un presupuesto indica name y amount');
+      }
+
+      const name = args.name ?? budget!.name;
+      const amount = args.amount ?? Number(budget!.total_amount);
+
+      const allocationRows =
+        args.allocations != null && args.allocations.length > 0
+          ? await resolveAllocationRows(agent, args.allocations)
+          : null;
+
+      const resolvedAllocations =
+        allocationRows ??
+        [
+          {
+            wallet_id: await resolveOptionalWalletId(
               agent.ownerFilter,
               args.wallet_id,
               args.wallet_name,
-            );
-        const categoryId = allocationRows
-          ? null
-          : await resolveCategoryRef(
+            ),
+            category_id: (await resolveCategoryRef(
               agent.ownerFilter,
               args.category_id,
               args.category_name,
               { required: true },
-            );
-
-        const resolvedAllocations =
-          allocationRows ??
-          [
-            {
-              wallet_id: walletId,
-              category_id: categoryId!,
-              amount: args.amount,
-            },
-          ];
-
-        const allocTotal = resolvedAllocations.reduce((sum, row) => sum + row.amount, 0);
-        if (Math.abs(allocTotal - args.amount) > 0.01) {
-          throw new Error('La suma de allocations debe ser igual a amount');
-        }
-
-        if (args.budget_id != null) {
-          const budget = await prisma.budget.findFirst({
-            where: { id: args.budget_id, ...agent.ownerFilter },
-            include: { allocations: true },
-          });
-          if (!budget) {
-            throw new Error('Presupuesto no encontrado');
-          }
-
-          await updateBudgetTemplate(budget.id, agent.ownerFilter, {
-            name: args.name,
-            allocated_amount: args.amount,
-            frequency: budget.frequency,
-            recurrent: budget.recurrent,
-            start_date: budget.start_date
-              ? budget.start_date.toISOString().slice(0, 10)
-              : null,
-            end_date: budget.end_date
-              ? budget.end_date.toISOString().slice(0, 10)
-              : null,
-          });
-
-          await updateBudgetAllocations(budget.id, agent.ownerFilter, resolvedAllocations);
-
-          return { budget_id: budget.id, updated: true, allocations: resolvedAllocations.length };
-        }
-
-        const existing = await prisma.budget.findFirst({
-          where: {
-            ...agent.ownerFilter,
-            name: { equals: args.name, mode: 'insensitive' },
-            active: true,
+            ))!,
+            amount,
           },
+        ];
+
+      const allocTotal = resolvedAllocations.reduce((sum, row) => sum + row.amount, 0);
+      if (Math.abs(allocTotal - amount) > 0.01) {
+        throw new McpToolError('VALIDATION', 'La suma de allocations debe ser igual a amount', {
+          hint: `amount = ${amount}; allocations suman ${allocTotal}.`,
         });
+      }
 
-        if (existing) {
-          await updateBudgetTemplate(existing.id, agent.ownerFilter, {
-            name: args.name,
-            allocated_amount: args.amount,
-            frequency: existing.frequency,
-            recurrent: existing.recurrent,
-            start_date: existing.start_date
-              ? existing.start_date.toISOString().slice(0, 10)
-              : null,
-            end_date: existing.end_date
-              ? existing.end_date.toISOString().slice(0, 10)
-              : null,
-          });
-          await updateBudgetAllocations(existing.id, agent.ownerFilter, resolvedAllocations);
-          return {
-            budget_id: existing.id,
-            updated: true,
-            allocations: resolvedAllocations.length,
-          };
-        }
-
-        const created = await createBudget(agent.ownerType, agent.ownerId, {
-          name: args.name,
-          allocated_amount: args.amount,
-          frequency: 'BIWEEKLY',
-          recurrent: true,
-          start_date: null,
-          end_date: null,
-          allocations: resolvedAllocations,
+      if (budget) {
+        await updateBudgetTemplate(budget.id, agent.ownerFilter, {
+          name,
+          allocated_amount: amount,
+          frequency: budget.frequency,
+          recurrent: budget.recurrent,
+          start_date: budget.start_date ? formatStoredDateOnly(budget.start_date) : null,
+          end_date: budget.end_date ? formatStoredDateOnly(budget.end_date) : null,
         });
-
+        await updateBudgetAllocations(budget.id, agent.ownerFilter, resolvedAllocations);
         return {
-          budget_id: created.id,
-          created: true,
+          budget_id: budget.id,
+          updated: true,
           allocations: resolvedAllocations.length,
         };
-      }),
-  );
+      }
 
-  server.registerTool(
-    'update_budget_allocations',
-    {
-      title: 'Actualizar asignaciones de presupuesto',
-      description:
-        'Reemplaza las asignaciones (categoría, monto y billetera opcional) de un presupuesto existente. Omite la billetera para Cualquier billetera. Mismo PUT /api/budgets/[id]/allocations de la UI.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        budget_id: z.number().int().positive(),
-        allocations: z.array(allocationInputSchema).min(1),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: true },
+      const created = await createBudget(agent.ownerType, agent.ownerId, {
+        name,
+        allocated_amount: amount,
+        frequency: 'BIWEEKLY',
+        recurrent: true,
+        start_date: null,
+        end_date: null,
+        allocations: resolvedAllocations,
+      });
+
+      return {
+        budget_id: created.id,
+        created: true,
+        allocations: resolvedAllocations.length,
+      };
     },
-    async (args, ctx) =>
-      runAgentTool(
-        'update_budget_allocations',
-        ctx as McpToolContext,
-        args,
-        'write',
-        async (agent) => {
-          const budget = await prisma.budget.findFirst({
-            where: { id: args.budget_id, ...agent.ownerFilter },
-            select: { id: true, total_amount: true },
-          });
-          if (!budget) {
-            throw new Error('Presupuesto no encontrado');
-          }
-
-          const resolvedAllocations = await resolveAllocationRows(agent, args.allocations);
-          const allocTotal = resolvedAllocations.reduce((sum, row) => sum + row.amount, 0);
-          if (Math.abs(allocTotal - Number(budget.total_amount)) > 0.01) {
-            throw new Error(
-              'La suma de allocations debe ser igual al monto total del presupuesto',
-            );
-          }
-
-          await updateBudgetAllocations(
-            args.budget_id,
-            agent.ownerFilter,
-            resolvedAllocations,
-          );
-
-          return {
-            budget_id: args.budget_id,
-            updated: true,
-            allocations: resolvedAllocations,
-          };
-        },
-      ),
-  );
-
-  server.registerTool(
-    'delete_budget',
-    {
-      title: 'Eliminar presupuesto',
-      description: 'Desactiva/elimina un presupuesto. Requiere confirm: true.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        budget_id: z.number().int().positive(),
-        confirm: confirmSchema,
-      }),
-      annotations: { destructiveHint: true, idempotentHint: true },
-    },
-    async (args, ctx) =>
-      runAgentTool('delete_budget', ctx as McpToolContext, args, 'write', async (agent) => {
-        await deleteBudget(args.budget_id, agent.ownerFilter);
-        return { deleted: true, budget_id: args.budget_id };
-      }),
-  );
+  });
 }

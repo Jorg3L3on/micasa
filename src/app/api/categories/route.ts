@@ -1,24 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import prisma from '@/lib/prisma';
-import { validateCategoryIconInput } from '@/lib/category-icons';
 import {
   createCategorySchema,
   updateCategorySchema,
 } from '@/schemas/category.schema';
 import {
-  seedDefaultExpenseCategoriesForOwner,
-  seedDefaultIncomeCategoriesForOwner,
-} from '@/lib/finance/category-seed.service';
-import {
-  activateCategory,
-  assertCategoryDeletable,
-  assertValidParentForCreate,
-  categoryOwnerWhere,
   CategoryServiceError,
-  deactivateCategoryTree,
-  findDuplicateCategoryName,
+  createCategoryForOwner,
+  deleteCategoryForOwner,
+  listCategoriesForOwner,
+  updateCategoryForOwner,
 } from '@/lib/finance/category.service';
 import type { CategoryKind } from '@/generated/prisma/client';
 
@@ -62,30 +54,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       searchParams.get('kind') ?? 'expense',
     );
 
-    const ownerRef =
-      ownerType === 'user' ? { userId: ownerId } : { houseId: ownerId };
-
-    await prisma.$transaction(async (tx) => {
-      if (kindParam === 'expense' || kindParam === 'all') {
-        await seedDefaultExpenseCategoriesForOwner(tx, ownerRef);
-      }
-      if (kindParam === 'income' || kindParam === 'all') {
-        await seedDefaultIncomeCategoriesForOwner(tx, ownerRef);
-      }
-    });
-
-    const kindFilter =
-      kindParam === 'all'
-        ? {}
-        : { kind: (kindParam === 'income' ? 'INCOME' : 'EXPENSE') as CategoryKind };
-
-    const categories = await prisma.category.findMany({
-      where: {
-        ...categoryOwnerWhere(ownerType, ownerId),
-        ...kindFilter,
-      },
-      orderBy: [{ parent_id: 'asc' }, { sort_order: 'asc' }, { name: 'asc' }],
-    });
+    const categories = await listCategoriesForOwner(ownerType, ownerId, kindParam);
 
     return NextResponse.json(categories.map(serializeCategory), {
       status: 200,
@@ -114,57 +83,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const body = await request.json();
     const validatedData = createCategorySchema.parse(body);
-    const kind = validatedData.kind;
-    const iconResult = validateCategoryIconInput(validatedData.icon, null);
-    if (!iconResult.ok) {
-      return NextResponse.json({ error: iconResult.message }, { status: 400 });
-    }
-
-    const parentId = validatedData.parentId ?? null;
-    await assertValidParentForCreate(
-      prisma,
-      ownerType,
-      ownerId,
-      parentId,
-      kind,
-    );
-
-    const existingSameName = await findDuplicateCategoryName(
-      prisma,
-      ownerType,
-      ownerId,
-      validatedData.name,
-      kind,
-    );
-    if (existingSameName) {
-      return NextResponse.json(
-        { error: 'Ya existe una categoría con este nombre' },
-        { status: 409 },
-      );
-    }
-
-    const siblingCount = await prisma.category.count({
-      where: {
-        ...categoryOwnerWhere(ownerType, ownerId),
-        parent_id: parentId,
-        kind,
-      },
-    });
-
-    const category = await prisma.category.create({
-      data: {
-        name: validatedData.name,
-        description: validatedData.description || null,
-        icon: iconResult.value,
-        active: true,
-        sort_order: siblingCount,
-        parent_id: parentId,
-        kind,
-        ...(ownerType === 'user'
-          ? { user_id: ownerId, house_id: null }
-          : { user_id: null, house_id: ownerId }),
-      },
-    });
+    const category = await createCategoryForOwner(ownerType, ownerId, validatedData);
 
     return NextResponse.json(serializeCategory(category), { status: 201 });
   } catch (error) {
@@ -210,83 +129,14 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const categoryId = Number(id);
-    const existing = await prisma.category.findFirst({
-      where: { id: categoryId, ...categoryOwnerWhere(ownerType, ownerId) },
-    });
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Categoría no encontrada' },
-        { status: 404 },
-      );
-    }
-
     const body = await request.json();
     const validatedData = updateCategorySchema.parse(body);
-    const iconResult = validateCategoryIconInput(
-      validatedData.icon,
-      existing.icon,
+    const category = await updateCategoryForOwner(
+      ownerType,
+      ownerId,
+      Number(id),
+      validatedData,
     );
-    if (!iconResult.ok) {
-      return NextResponse.json({ error: iconResult.message }, { status: 400 });
-    }
-
-    if (validatedData.name && validatedData.name !== existing.name) {
-      const duplicateName = await findDuplicateCategoryName(
-        prisma,
-        ownerType,
-        ownerId,
-        validatedData.name,
-        existing.kind,
-        categoryId,
-      );
-      if (duplicateName) {
-        return NextResponse.json(
-          { error: 'Ya existe una categoría con este nombre' },
-          { status: 409 },
-        );
-      }
-    }
-
-    if (validatedData.active === false && existing.active) {
-      const category = await deactivateCategoryTree(
-        prisma,
-        categoryId,
-        ownerType,
-        ownerId,
-      );
-      return NextResponse.json(serializeCategory(category), { status: 200 });
-    }
-
-    if (validatedData.active === true && !existing.active) {
-      const category = await activateCategory(
-        prisma,
-        categoryId,
-        ownerType,
-        ownerId,
-      );
-      return NextResponse.json(serializeCategory(category), { status: 200 });
-    }
-
-    const updateData: {
-      name?: string;
-      description?: string | null;
-      icon?: string | null;
-    } = {};
-    if (validatedData.name) {
-      updateData.name = validatedData.name;
-    }
-    if (validatedData.description !== undefined) {
-      updateData.description = validatedData.description || null;
-    }
-    if (validatedData.icon !== undefined) {
-      updateData.icon = iconResult.value;
-    }
-
-    const category = await prisma.category.update({
-      where: { id: categoryId },
-      data: updateData,
-    });
 
     return NextResponse.json(serializeCategory(category), { status: 200 });
   } catch (error) {
@@ -342,22 +192,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const categoryId = Number(id);
-    const existing = await prisma.category.findFirst({
-      where: { id: categoryId, ...categoryOwnerWhere(ownerType, ownerId) },
-    });
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Categoría no encontrada' },
-        { status: 404 },
-      );
-    }
-
-    await assertCategoryDeletable(prisma, categoryId, ownerType, ownerId);
-
-    await prisma.category.delete({
-      where: { id: categoryId },
-    });
+    await deleteCategoryForOwner(ownerType, ownerId, Number(id));
 
     return NextResponse.json(
       { message: 'Categoría eliminada correctamente' },

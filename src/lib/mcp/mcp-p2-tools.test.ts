@@ -6,6 +6,7 @@ import { registerCategoryTools } from '@/lib/mcp/tools/categories';
 import { registerBudgetTools } from '@/lib/mcp/tools/budgets';
 import { registerReportTools } from '@/lib/mcp/tools/reports';
 import { registerCreditCardTools } from '@/lib/mcp/tools/credit-cards';
+import { registerDeleteTools } from '@/lib/mcp/tools/delete';
 import type { McpToolContext } from '@/lib/mcp/tool-helpers';
 
 const {
@@ -36,6 +37,9 @@ const {
   houseFindUnique,
   fortnightFindUnique,
   walletFindUnique,
+  getCreditCardByOwner,
+  createCategoryForOwner,
+  deleteCategoryForOwner,
 } = vi.hoisted(() => ({
   findUniqueApiKey: vi.fn(),
   updateApiKey: vi.fn(),
@@ -64,6 +68,9 @@ const {
   houseFindUnique: vi.fn(),
   fortnightFindUnique: vi.fn(),
   walletFindUnique: vi.fn(),
+  getCreditCardByOwner: vi.fn(),
+  createCategoryForOwner: vi.fn(),
+  deleteCategoryForOwner: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -93,6 +100,7 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/finance/budget.service', () => ({
   createBudget,
+  findBudgetForOwner: (_ownerFilter: unknown, ref: unknown) => budgetFindFirst(ref),
   deleteBudget: vi.fn(),
   updateBudgetTemplate,
   updateBudgetAllocations,
@@ -122,7 +130,7 @@ vi.mock('@/lib/finance/credit-card.service', () => ({
   createCreditCardForOwner: vi.fn(),
   createCreditCardPayment: vi.fn(),
   createCreditCardPurchase: vi.fn(),
-  getCreditCardByOwner: vi.fn(),
+  getCreditCardByOwner,
   listCreditCardsByOwner: vi.fn(),
   updateCreditCardForOwner: vi.fn(),
 }));
@@ -130,7 +138,7 @@ vi.mock('@/lib/finance/credit-card.service', () => ({
 vi.mock('@/lib/finance/credit-card-scheduled-payment.service', () => ({
   createScheduledPayment: vi.fn(),
   deleteScheduledPayment: vi.fn(),
-  listScheduledPaymentsForCard: vi.fn(),
+  listScheduledPaymentsForCard: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('@/lib/finance/credit-card-payment-plan.service', () => ({
@@ -139,7 +147,7 @@ vi.mock('@/lib/finance/credit-card-payment-plan.service', () => ({
 
 vi.mock('@/lib/finance/credit-card-installment-plan.service', () => ({
   createInstallmentPlan: vi.fn(),
-  listInstallmentPlansForCard: vi.fn(),
+  listInstallmentPlansForCard: vi.fn().mockResolvedValue([]),
   updateInstallmentPlan: vi.fn(),
 }));
 
@@ -149,14 +157,17 @@ vi.mock('@/lib/finance/category-seed.service', () => ({
 }));
 
 vi.mock('@/lib/finance/category.service', () => ({
-  assertValidParentForCreate: vi.fn(),
-  findDuplicateCategoryName: vi.fn(),
-  assertCategoryDeletable: vi.fn(),
-  deactivateCategoryTree: vi.fn(),
-  activateCategory: vi.fn(),
-  categoryOwnerWhere: vi.fn(() => ({})),
+  createCategoryForOwner,
+  deleteCategoryForOwner,
+  listCategoriesForOwner: vi.fn(),
+  updateCategoryForOwner: vi.fn(),
   CategoryServiceError: class CategoryServiceError extends Error {
-    status = 409;
+    constructor(
+      message: string,
+      readonly status: number,
+    ) {
+      super(message);
+    }
   },
 }));
 
@@ -169,7 +180,6 @@ vi.mock('@/lib/mcp/resolvers', () => ({
   resolveWalletRef,
   resolveDateRange: vi.fn(),
   resolveFortnightIdForDate: vi.fn(),
-  calendarRangeBounds: vi.fn(),
 }));
 
 vi.mock('@/lib/server/rate-limit', () => ({
@@ -204,8 +214,8 @@ const writeApiKey = {
   user: { id: 2, active: true },
 };
 
-const houseArgs = { ownerType: 'house' as const, ownerId: 42 };
-const userArgs = { ownerType: 'user' as const, ownerId: 2 };
+const houseArgs = { owner_type: 'house' as const, owner_id: 42 };
+const userArgs = { owner_type: 'user' as const, owner_id: 2 };
 
 const ctxWithToken = (token?: string) => ({
   http: {
@@ -234,6 +244,7 @@ beforeEach(() => {
   registerBudgetTools(testServer);
   registerReportTools(testServer);
   registerCreditCardTools(testServer);
+  registerDeleteTools(testServer);
 
   updateApiKey.mockResolvedValue({});
   findUniqueApiKey.mockResolvedValue(writeApiKey);
@@ -258,14 +269,26 @@ beforeEach(() => {
 });
 
 describe('registered MCP P2 tools auth fail-closed', () => {
-  it('list_house_members rejects empty allow-list', async () => {
+  it('get_alerts rejects empty allow-list', async () => {
     findManyAllowedContexts.mockResolvedValue([]);
 
-    const result = await invokeTool('list_house_members', houseArgs);
+    const result = await invokeTool('get_alerts', houseArgs);
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('contextos autorizados');
-    expect(findManyHouseMembers).not.toHaveBeenCalled();
+    expect(getAlerts).not.toHaveBeenCalled();
+  });
+
+  it('list_houses with an empty allow-list lists no house and no members', async () => {
+    findManyAllowedContexts.mockResolvedValue([]);
+    findManyHouseMembers.mockResolvedValue([
+      { house_id: 42, role: 'OWNER', house: { id: 42, name: 'Casa' } },
+    ]);
+
+    const result = await invokeTool('list_houses', { include_members: true });
+
+    expect(result.isError).toBeFalsy();
+    expect(parseResult(result)).toMatchObject({ personal_context: null, houses: [], total_count: 0 });
   });
 
   it('create_category requires write scope', async () => {
@@ -299,29 +322,55 @@ describe('registered MCP P2 tools auth fail-closed', () => {
   });
 });
 
-describe('registered list_house_members', () => {
-  it('returns members only for allowed house context', async () => {
-    findManyHouseMembers.mockResolvedValue([
-      { user: { id: 2, name: 'Usuario A' } },
-      { user: { id: 5, name: 'Usuario B' } },
-    ]);
+describe('registered list_houses with include_members', () => {
+  it('returns members only for allowed houses', async () => {
+    findManyHouseMembers.mockImplementation(({ where }: { where: Record<string, unknown> }) =>
+      Promise.resolve(
+        'user_id' in where
+          ? [
+              { house_id: 42, role: 'OWNER', house: { id: 42, name: 'Casa' } },
+              { house_id: 77, role: 'MEMBER', house: { id: 77, name: 'Otra' } },
+            ]
+          : [
+              { house_id: 42, user: { id: 2, name: 'Usuario A' } },
+              { house_id: 42, user: { id: 5, name: 'Usuario B' } },
+            ],
+      ),
+    );
 
-    const result = await invokeTool('list_house_members', houseArgs);
+    const result = await invokeTool('list_houses', { include_members: true });
 
     expect(result.isError).toBeFalsy();
     expect(findManyHouseMembers).toHaveBeenCalledWith({
-      where: { house_id: 42 },
+      where: { house_id: { in: [42] } },
       include: { user: { select: { id: true, name: true } } },
       orderBy: { user: { name: 'asc' } },
     });
-    expect(parseResult(result).members).toHaveLength(2);
+    const { houses } = parseResult(result);
+    expect(houses).toHaveLength(1);
+    expect(houses[0]).toMatchObject({ owner_type: 'house', owner_id: 42 });
+    expect(houses[0].members).toEqual([
+      { user_id: 2, name: 'Usuario A' },
+      { user_id: 5, name: 'Usuario B' },
+    ]);
+  });
+
+  it('skips the members query by default', async () => {
+    findManyHouseMembers.mockResolvedValue([
+      { house_id: 42, role: 'OWNER', house: { id: 42, name: 'Casa' } },
+    ]);
+
+    const result = await invokeTool('list_houses', {});
+
+    expect(result.isError).toBeFalsy();
+    expect(findManyHouseMembers).toHaveBeenCalledTimes(1);
+    expect(parseResult(result).houses[0].members).toBeUndefined();
   });
 });
 
 describe('registered category tools', () => {
-  it('create_category persists category', async () => {
-    categoryCount.mockResolvedValue(0);
-    categoryCreate.mockResolvedValue({
+  it('create_category delegates to createCategoryForOwner', async () => {
+    createCategoryForOwner.mockResolvedValue({
       id: 11,
       name: 'Ocio',
       description: null,
@@ -339,53 +388,64 @@ describe('registered category tools', () => {
     });
 
     expect(result.isError).toBeFalsy();
-    expect(categoryCreate).toHaveBeenCalled();
+    expect(createCategoryForOwner).toHaveBeenCalledWith(
+      'house',
+      42,
+      expect.objectContaining({ name: 'Ocio', kind: 'EXPENSE' }),
+    );
     expect(parseResult(result)).toMatchObject({ id: 11, name: 'Ocio', kind: 'EXPENSE' });
   });
 
-  it('delete_category requires owned category before delete', async () => {
-    categoryFindFirst.mockResolvedValue({
-      id: 11,
-      name: 'Ocio',
-      kind: 'EXPENSE',
-    });
-    const { assertCategoryDeletable } = await import('@/lib/finance/category.service');
-    vi.mocked(assertCategoryDeletable).mockResolvedValue(undefined);
+  it('delete (category) delegates to deleteCategoryForOwner', async () => {
+    deleteCategoryForOwner.mockResolvedValue(undefined);
 
-    const result = await invokeTool('delete_category', {
+    const result = await invokeTool('delete', {
       ...houseArgs,
-      category_id: 11,
+      kind: 'category',
+      id: 11,
       confirm: true,
     });
 
     expect(result.isError).toBeFalsy();
-    expect(categoryFindFirst).toHaveBeenCalled();
-    expect(categoryDelete).toHaveBeenCalledWith({ where: { id: 11 } });
+    expect(deleteCategoryForOwner).toHaveBeenCalledWith('house', 42, 11);
+    expect(parseResult(result)).toEqual({ deleted: true, kind: 'category', id: 11 });
   });
 
-  it('delete_category rejects missing owner-scoped category', async () => {
-    categoryFindFirst.mockResolvedValue(null);
+  it('delete (category) maps a missing category to NOT_FOUND', async () => {
+    const { CategoryServiceError } = await import('@/lib/finance/category.service');
+    deleteCategoryForOwner.mockRejectedValue(
+      new CategoryServiceError('Categoría no encontrada', 404),
+    );
 
-    const result = await invokeTool('delete_category', {
+    const result = await invokeTool('delete', {
       ...houseArgs,
-      category_id: 11,
+      kind: 'category',
+      id: 11,
       confirm: true,
     });
 
     expect(result.isError).toBe(true);
-    expect(categoryDelete).not.toHaveBeenCalled();
+    expect(parseResult(result)).toEqual({ error: 'Categoría no encontrada', code: 'NOT_FOUND' });
   });
 });
 
 describe('registered budget allocation tools', () => {
-  it('update_budget_allocations replaces rows', async () => {
-    budgetFindFirst.mockResolvedValue({ id: 7, total_amount: '300' });
+  it('upsert_budget with budget_id + allocations replaces rows and keeps name/amount', async () => {
+    budgetFindFirst.mockResolvedValue({
+      id: 7,
+      name: 'Despensa',
+      total_amount: '300',
+      frequency: 'BIWEEKLY',
+      recurrent: true,
+      start_date: null,
+      end_date: null,
+    });
     updateBudgetAllocations.mockResolvedValue({ id: 7 });
     resolveCategoryRef
       .mockResolvedValueOnce(10)
       .mockResolvedValueOnce(11);
 
-    const result = await invokeTool('update_budget_allocations', {
+    const result = await invokeTool('upsert_budget', {
       ...houseArgs,
       budget_id: 7,
       allocations: [
@@ -399,7 +459,33 @@ describe('registered budget allocation tools', () => {
       { wallet_id: 4, category_id: 10, amount: 200 },
       { wallet_id: 4, category_id: 11, amount: 100 },
     ]);
+    expect(updateBudgetTemplate).toHaveBeenCalledWith(
+      7,
+      expect.any(Object),
+      expect.objectContaining({ name: 'Despensa', allocated_amount: 300 }),
+    );
     expect(parseResult(result)).toMatchObject({ budget_id: 7, updated: true });
+  });
+
+  it('upsert_budget rejects allocations that do not add up to the budget total', async () => {
+    budgetFindFirst.mockResolvedValue({ id: 7, name: 'Despensa', total_amount: '300' });
+
+    const result = await invokeTool('upsert_budget', {
+      ...houseArgs,
+      budget_id: 7,
+      allocations: [{ category_id: 10, amount: 200 }],
+    });
+
+    expect(result.isError).toBe(true);
+    expect(parseResult(result)).toMatchObject({ code: 'VALIDATION' });
+    expect(updateBudgetAllocations).not.toHaveBeenCalled();
+  });
+
+  it('upsert_budget without budget_id needs name and amount', async () => {
+    const result = await invokeTool('upsert_budget', { ...houseArgs, category_id: 10 });
+
+    expect(result.isError).toBe(true);
+    expect(createBudget).not.toHaveBeenCalled();
   });
 
   it('upsert_budget omits the wallet for Cualquier cartera', async () => {
@@ -438,7 +524,7 @@ describe('registered report tools', () => {
 
     expect(result.isError).toBeFalsy();
     expect(getReportSummary).toHaveBeenCalled();
-    expect(parseResult(result)).toMatchObject({ totalIncome: 1000 });
+    expect(parseResult(result)).toMatchObject({ total_income: 1000 });
   });
 
   it('get_alerts delegates to alerts service', async () => {
@@ -526,19 +612,33 @@ describe('registered transfer_to_house', () => {
 });
 
 describe('registered card reconciliation tools', () => {
-  it('get_card_reconciliation returns report', async () => {
+  it('get_card include reconciliation returns the card report', async () => {
+    getCreditCardByOwner.mockResolvedValue({ id: 8, name: 'Tarjeta prueba', amount: 900 });
     getCreditCardReconciliationReport.mockResolvedValue({
       issues: [],
       summary: { total: 0, repairable: 0, byKind: {} },
     });
 
-    const result = await invokeTool('get_card_reconciliation', houseArgs);
+    const result = await invokeTool('get_card', {
+      ...houseArgs,
+      card_id: 8,
+      include: ['reconciliation'],
+    });
 
     expect(result.isError).toBeFalsy();
-    expect(getCreditCardReconciliationReport).toHaveBeenCalled();
+    expect(getCreditCardReconciliationReport).toHaveBeenCalledWith(
+      { user_id: null, house_id: 42 },
+      8,
+    );
+    expect(getCreditCardStatementByOwner).not.toHaveBeenCalled();
+    expect(parseResult(result)).toMatchObject({
+      card: { id: 8, debt: 900 },
+      reconciliation: { summary: { total: 0 } },
+    });
   });
 
-  it('get_installment_portfolio builds MSI exposure', async () => {
+  it('get_card include installments builds MSI exposure', async () => {
+    getCreditCardByOwner.mockResolvedValue({ id: 8, name: 'Tarjeta prueba', amount: 900 });
     getCreditCardStatementByOwner.mockResolvedValue({
       name: 'Tarjeta prueba',
       installment_active_purchases: [
@@ -553,16 +653,18 @@ describe('registered card reconciliation tools', () => {
       ],
     });
 
-    const result = await invokeTool('get_installment_portfolio', {
+    const result = await invokeTool('get_card', {
       ...houseArgs,
       card_id: 8,
+      include: ['installments'],
     });
 
     expect(result.isError).toBeFalsy();
     expect(parseResult(result)).toMatchObject({
-      card_id: 8,
-      item_count: 1,
-      total_exposure: 2000,
+      installment_plans: [],
+      scheduled_payments: [],
+      installment_portfolio: { item_count: 1, total_exposure: 2000 },
     });
+    expect(parseResult(result).statement).toBeUndefined();
   });
 });

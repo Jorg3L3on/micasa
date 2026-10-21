@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import type { Prisma } from '@/generated/prisma/client';
-import prisma from '@/lib/prisma';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
+import {
+  createExpenseTemplateForOwner,
+  deleteExpenseTemplateForOwner,
+  listExpenseTemplatesForOwner,
+  updateExpenseTemplateForOwner,
+} from '@/lib/finance/expense-template.service';
 import {
   createExpenseTemplateSchema,
   updateExpenseTemplateSchema,
@@ -14,50 +18,13 @@ import { deriveLegacyDueDayForTemplate } from '@/lib/finance/expense-template-du
  * gastos de tarjeta (import PDF / compra registrada), no como plantillas recurrentes por quincena.
  */
 
-const prismaDueFieldsFromPayload = (validated: {
-  dueDayFirst?: number | null | undefined;
-  dueDaySecond?: number | null | undefined;
-}) => {
-  const first = validated.dueDayFirst ?? null;
-  const second = validated.dueDaySecond ?? null;
-  return {
-    due_day_first_fortnight: first,
-    due_day_second_fortnight: second,
-    due_day: first ?? second ?? null,
-  };
-};
-
 export async function GET(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
     const { ownerFilter } = context;
 
-    const templates = await prisma.expenseTemplate.findMany({
-      where: ownerFilter,
-      include: {
-        category: {
-          select: {
-            name: true,
-            icon: true,
-          },
-        },
-        wallet: {
-          select: {
-            id: true,
-            name: true,
-            provider_icon_key: true,
-          },
-        },
-        expenses: {
-          select: {
-            id: true,
-            amount: true,
-          },
-        },
-      },
-      orderBy: [{ active: 'desc' }, { name: 'asc' }],
-    });
+    const templates = await listExpenseTemplatesForOwner(ownerFilter);
 
     const formatted = templates.map((template) => {
       // Calculate total from suggested_amount or sum of related transactional expenses
@@ -104,47 +71,11 @@ export async function POST(request: NextRequest) {
   try {
     const context = await getOwnerContext(request);
     if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
 
     const body = await request.json();
     const validatedData = createExpenseTemplateSchema.parse(body);
 
-    const dueFields = prismaDueFieldsFromPayload(validatedData);
-
-    const template = await prisma.expenseTemplate.create({
-      data: {
-        name: validatedData.name,
-        category_id: validatedData.categoryId,
-        suggested_amount: validatedData.suggestedAmount
-          ? validatedData.suggestedAmount.toString()
-          : null,
-        wallet_id: validatedData.paymentMethodId ?? undefined,
-        active: validatedData.active ?? true,
-        ...dueFields,
-        cutoff_day: validatedData.cutoffDay ?? null,
-        is_recurring: validatedData.isRecurring,
-        applies_first_fortnight: validatedData.appliesFirstFortnight,
-        applies_second_fortnight: validatedData.appliesSecondFortnight,
-        is_subscription: validatedData.isSubscription,
-        user_id: ownerType === 'user' ? ownerId : null,
-        house_id: ownerType === 'house' ? ownerId : null,
-      },
-      include: {
-        category: {
-          select: {
-            name: true,
-            icon: true,
-          },
-        },
-        wallet: {
-          select: {
-            id: true,
-            name: true,
-            provider_icon_key: true,
-          },
-        },
-      },
-    });
+    const template = await createExpenseTemplateForOwner(context, validatedData);
 
     return NextResponse.json(
       {
@@ -221,64 +152,11 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const validatedData = updateExpenseTemplateSchema.parse(body);
 
-    const updateData: Prisma.ExpenseTemplateUncheckedUpdateInput = {};
-    if (validatedData.name !== undefined) {
-      updateData.name = validatedData.name;
-    }
-    if (validatedData.categoryId !== undefined) {
-      updateData.category_id = validatedData.categoryId;
-    }
-    if (validatedData.suggestedAmount !== undefined) {
-      updateData.suggested_amount = validatedData.suggestedAmount.toString();
-    }
-    if (validatedData.active !== undefined) {
-      updateData.active = validatedData.active;
-    }
-    if (validatedData.paymentMethodId !== undefined) {
-      updateData.wallet_id = validatedData.paymentMethodId ?? null;
-    }
-
-    Object.assign(updateData, prismaDueFieldsFromPayload(validatedData));
-    updateData.cutoff_day = validatedData.cutoffDay ?? null;
-    if (validatedData.isRecurring !== undefined) {
-      updateData.is_recurring = validatedData.isRecurring;
-    }
-    if (validatedData.appliesFirstFortnight !== undefined) {
-      updateData.applies_first_fortnight = validatedData.appliesFirstFortnight;
-    }
-    if (validatedData.appliesSecondFortnight !== undefined) {
-      updateData.applies_second_fortnight =
-        validatedData.appliesSecondFortnight;
-    }
-    if (validatedData.isSubscription !== undefined) {
-      updateData.is_subscription = validatedData.isSubscription;
-    }
-
-    const template = await prisma.expenseTemplate.update({
-      where: { id: Number(id), ...ownerFilter },
-      data: updateData,
-      include: {
-        category: {
-          select: {
-            name: true,
-            icon: true,
-          },
-        },
-        wallet: {
-          select: {
-            id: true,
-            name: true,
-            provider_icon_key: true,
-          },
-        },
-        expenses: {
-          select: {
-            id: true,
-            amount: true,
-          },
-        },
-      },
-    });
+    const template = await updateExpenseTemplateForOwner(
+      Number(id),
+      ownerFilter,
+      validatedData,
+    );
 
     const totalAmount = template.expenses.reduce(
       (sum, exp) => sum + Number(exp.amount),
@@ -357,34 +235,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const templateId = Number(id);
-    const existing = await prisma.expenseTemplate.findFirst({
-      where: { id: templateId, ...ownerFilter },
-    });
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Expense template not found' },
-        { status: 404 },
-      );
-    }
-
-    const result = await prisma.$transaction(async (tx) => {
-      const detachedExpenses = await tx.expense.updateMany({
-        where: { expense_template_id: templateId },
-        data: { expense_template_id: null },
-      });
-
-      await tx.expenseTemplate.delete({
-        where: { id: templateId },
-      });
-
-      return detachedExpenses;
-    });
+    const { detachedExpenseCount } = await deleteExpenseTemplateForOwner(
+      Number(id),
+      ownerFilter,
+    );
 
     return NextResponse.json(
       {
         message: 'Expense template deleted successfully',
-        detachedExpenseCount: result.count,
+        detachedExpenseCount,
       },
       { status: 200 },
     );
