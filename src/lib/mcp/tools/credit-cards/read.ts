@@ -14,6 +14,7 @@ import type { AgentContext } from '@/lib/server/resolve-agent-context';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
 import { cardIdSchema } from '@/lib/mcp/tools/credit-cards/shared';
+import { out } from '@/lib/mcp/shapes';
 
 const CARD_SECTIONS = [
   'statement',
@@ -144,6 +145,15 @@ export function registerCardReadTools(server: McpServer) {
         .min(1)
         .default(['statement'])
         .describe('Secciones a incluir (default ["statement"]).'),
+    },
+    output: {
+      card: out.row({
+        id: z.number(),
+        name: z.string(),
+        debt: out.money,
+        credit_limit: out.nullableMoney,
+        available_credit: out.nullableMoney,
+      }),
     },
     run: async (agent, args) => {
       const card = await getCreditCardByOwner(args.card_id, agent.ownerFilter);

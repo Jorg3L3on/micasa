@@ -11,13 +11,14 @@ import { formatStoredDateOnly } from '@/lib/calendar-dates';
 import { resolveCategoryRef, resolveWalletRef } from '@/lib/mcp/resolvers';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
-import { categoryRef, walletRef } from '@/lib/mcp/schemas';
+import { categoryRef, pagination, walletRef } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 
 const allocationInputSchema = z
   .object({
     ...walletRef,
     ...categoryRef,
-    amount: z.number().positive(),
+    amount: z.number().positive().describe('Monto de la asignación.'),
   })
   .strict();
 
@@ -64,10 +65,20 @@ export function registerBudgetTools(server: McpServer) {
     description:
       'Presupuestos activos del periodo actual: tope, gastado, restante, % usado y asignaciones.',
     scope: 'read',
-    input: {},
-    run: async (agent) => {
+    input: { ...pagination },
+    output: {
+      budgets: out.list({
+        budget_id: z.number(),
+        name: z.string(),
+        allocated_amount: out.money,
+        spent_amount: out.money,
+        remaining_amount: out.money,
+      }),
+      ...out.page,
+    },
+    run: async (agent, args) => {
       const periods = await listActivePeriods(agent.ownerFilter, new Date());
-      return periods.map((period) => ({
+      const rows = periods.map((period) => ({
         period_id: period.period_id,
         budget_id: period.budget_id,
         name: period.name,
@@ -82,6 +93,7 @@ export function registerBudgetTools(server: McpServer) {
             : 0,
         allocations: period.allocations,
       }));
+      return paginate('budgets', rows, args);
     },
   });
 
@@ -89,7 +101,7 @@ export function registerBudgetTools(server: McpServer) {
     name: 'upsert_budget',
     title: 'Crear o actualizar presupuesto',
     description:
-      'Crea o actualiza un presupuesto quincenal con asignaciones por categoría (y billetera opcional; sin billetera = cualquiera). Con budget_id actualiza: name y amount opcionales, allocations reemplaza las actuales. Sin budget_id requiere name y amount (un activo con el mismo nombre se actualiza). allocations debe sumar amount.',
+      'Sin budget_id crea un presupuesto quincenal (requiere name y amount); con budget_id actualiza ese presupuesto (name y amount opcionales, allocations reemplaza las asignaciones). Asignaciones por categoría y billetera opcional (sin billetera = cualquiera); deben sumar amount.',
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: true },
     input: {
@@ -99,7 +111,7 @@ export function registerBudgetTools(server: McpServer) {
         .positive()
         .optional()
         .describe('Presupuesto a actualizar (de list_budgets). Omítelo para crear.'),
-      name: z.string().trim().min(1).max(25).optional(),
+      name: z.string().trim().min(1).max(25).optional().describe('Nombre (máx. 25).'),
       amount: z.number().positive().optional().describe('Tope total del presupuesto.'),
       ...walletRef,
       ...categoryRef,
@@ -110,12 +122,11 @@ export function registerBudgetTools(server: McpServer) {
         .describe('Si se omite: una asignación con wallet/category y amount.'),
     },
     run: async (agent, args) => {
+      // Updates only by id: a name match must never overwrite another budget.
       const budget =
         args.budget_id != null
-          ? await findBudgetForOwner(agent.ownerFilter, { id: args.budget_id })
-          : args.name != null
-            ? await findBudgetForOwner(agent.ownerFilter, { activeName: args.name })
-            : null;
+          ? await findBudgetForOwner(agent.ownerFilter, args.budget_id)
+          : null;
 
       if (args.budget_id != null && !budget) {
         throw new McpToolError('NOT_FOUND', 'Presupuesto no encontrado', {

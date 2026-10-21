@@ -367,7 +367,9 @@ describe('registered expense template tools', () => {
 
     expect(result.isError).toBeFalsy();
     expect(incomeTemplateFindMany).not.toHaveBeenCalled();
-    expect(parseResult(result).expense_templates[0]).toMatchObject({
+    expect(parseResult(result)).toMatchObject({ total_count: 1, limit: 50, offset: 0 });
+    expect(parseResult(result).templates[0]).toMatchObject({
+      kind: 'expense',
       id: 1,
       name: 'Renta',
       applies_first_fortnight: true,
@@ -461,7 +463,8 @@ describe('registered income template tools', () => {
 
     expect(result.isError).toBeFalsy();
     expect(expenseTemplateFindMany).not.toHaveBeenCalled();
-    expect(parseResult(result).income_templates[0]).toMatchObject({
+    expect(parseResult(result).templates[0]).toMatchObject({
+      kind: 'income',
       id: 2,
       name: 'Salario',
     });

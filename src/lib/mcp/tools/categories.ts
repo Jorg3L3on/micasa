@@ -7,11 +7,14 @@ import {
   updateCategoryForOwner,
 } from '@/lib/finance/category.service';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
+import { pagination } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 
 const categoryKindFilterSchema = z
   .enum(['expense', 'income', 'all'])
   .optional()
-  .default('all');
+  .default('all')
+  .describe('expense, income o all (default).');
 
 const categoryKindInputSchema = z
   .enum(['EXPENSE', 'INCOME'])
@@ -45,10 +48,19 @@ export function registerCategoryTools(server: McpServer) {
     description:
       'Catálogo de categorías del contexto (crea las predeterminadas si faltan). Filtra por kind expense|income|all. Usa los nombres o ids en add_expense / add_income.',
     scope: 'read',
-    input: { kind: categoryKindFilterSchema },
+    input: { kind: categoryKindFilterSchema, ...pagination },
+    output: {
+      categories: out.list({
+        id: z.number(),
+        name: z.string(),
+        kind: z.string(),
+        parent_id: z.number().nullable(),
+      }),
+      ...out.page,
+    },
     run: async (agent, args) => {
       const categories = await listCategoriesForOwner(agent.ownerType, agent.ownerId, args.kind);
-      return categories.map(serializeCategory);
+      return paginate('categories', categories.map(serializeCategory), args);
     },
   });
 
@@ -60,11 +72,11 @@ export function registerCategoryTools(server: McpServer) {
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
-      name: z.string().trim().min(1).max(80),
-      description: z.string().trim().max(200).optional(),
-      icon: z.string().optional(),
-      parent_id: z.number().int().positive().nullable().optional(),
-      kind: categoryKindInputSchema,
+      name: z.string().trim().min(1).max(80).describe('Nombre.'),
+      description: z.string().trim().max(200).optional().describe('Descripción opcional.'),
+      icon: z.string().optional().describe('Clave de icono opcional.'),
+      parent_id: z.number().int().positive().nullable().optional().describe('Categoría padre (un solo nivel).'),
+      kind: categoryKindInputSchema.describe('EXPENSE (default) o INCOME.'),
     },
     run: async (agent, args) => {
       const category = await createCategoryForOwner(agent.ownerType, agent.ownerId, {
@@ -86,11 +98,11 @@ export function registerCategoryTools(server: McpServer) {
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: true },
     input: {
-      category_id: z.number().int().positive(),
-      name: z.string().trim().min(1).max(80).optional(),
-      description: z.string().trim().max(200).nullable().optional(),
-      icon: z.string().optional(),
-      active: z.boolean().optional(),
+      category_id: z.number().int().positive().describe('Categoría, de list_categories.'),
+      name: z.string().trim().min(1).max(80).optional().describe('Nuevo nombre.'),
+      description: z.string().trim().max(200).nullable().optional().describe('null la borra.'),
+      icon: z.string().optional().describe('Clave de icono.'),
+      active: z.boolean().optional().describe('false desactiva la categoría y sus subcategorías.'),
     },
     run: async (agent, args) => {
       const category = await updateCategoryForOwner(

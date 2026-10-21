@@ -14,7 +14,8 @@ import type { PaymentMethodType } from '@/generated/prisma/client';
 import { createCreditCardPurchaseSchema } from '@/schemas/credit-card.schema';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
-import { categoryRef, dateYmd, walletRef } from '@/lib/mcp/schemas';
+import { categoryRef, dateYmd, pagination, walletRef } from '@/lib/mcp/schemas';
+import { namedTotals, out } from '@/lib/mcp/shapes';
 import {
   resolveCategoryRef,
   resolveDateRange,
@@ -32,8 +33,8 @@ export function registerExpenseTools(server: McpServer) {
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
       ...walletRef,
-      amount: z.number().positive(),
-      description: z.string().trim().min(1).max(200),
+      amount: z.number().positive().describe('Monto en MXN.'),
+      description: z.string().trim().min(1).max(200).describe('Concepto.'),
       expense_date: dateYmd
         .optional()
         .describe('Fecha del gasto (YYYY-MM-DD). Default: hoy CDMX.'),
@@ -146,17 +147,32 @@ export function registerExpenseTools(server: McpServer) {
     name: 'list_expenses',
     title: 'Listar gastos por rango',
     description:
-      'Lista gastos del contexto en un rango de fechas (default últimos 30 días), paginados, con totales del rango completo por billetera y categoría.',
+      'Lista gastos del contexto en un rango de fechas (default últimos 30 días), paginados, con totales del rango completo (todas las páginas) por billetera y categoría.',
     scope: 'read',
     input: {
-      from: dateYmd.optional(),
-      to: dateYmd.optional(),
-      last_n_days: z.number().int().min(1).max(366).optional(),
-      last_n_months: z.number().int().min(1).max(24).optional(),
+      from: dateYmd.optional().describe('Inicio del rango. Con to; sin to llega a hoy.'),
+      to: dateYmd.optional().describe('Fin del rango. Sin from, 30 días hacia atrás.'),
+      last_n_days: z.number().int().min(1).max(366).optional().describe('Atajo: los últimos N días.'),
+      last_n_months: z
+        .number()
+        .int()
+        .min(1)
+        .max(24)
+        .optional()
+        .describe('Atajo: desde el día 1 de hace N meses hasta hoy.'),
       ...walletRef,
       ...categoryRef,
-      limit: z.number().int().min(1).max(500).default(100),
-      offset: z.number().int().min(0).default(0),
+      ...pagination,
+    },
+    output: {
+      from: out.ymd,
+      to: out.ymd,
+      expenses: out.list({ id: z.number(), date: out.ymd, amount: out.money }),
+      totals: out.row({
+        by_wallet: out.list({ name: z.string(), amount: out.money }),
+        by_category: out.list({ name: z.string(), amount: out.money }),
+      }),
+      ...out.page,
     },
     run: async (agent, args) => {
       const range = resolveDateRange(args);
@@ -178,7 +194,7 @@ export function registerExpenseTools(server: McpServer) {
           )) ?? undefined;
       }
 
-      const { totalCount, expenses, totals, totalsInPage } = await listExpensesWithTotals(
+      const { totalCount, expenses, totals } = await listExpensesWithTotals(
         agent.ownerFilter,
         { from: range.from, to: range.to, walletId, categoryId },
         { limit: args.limit, offset: args.offset },
@@ -207,8 +223,10 @@ export function registerExpenseTools(server: McpServer) {
               ? 'debt_increase'
               : 'balance_decrease',
         })),
-        totals,
-        totals_in_page: totalsInPage,
+        totals: {
+          by_wallet: namedTotals(totals.by_wallet),
+          by_category: namedTotals(totals.by_category),
+        },
       };
     },
   });
@@ -221,9 +239,9 @@ export function registerExpenseTools(server: McpServer) {
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: true },
     input: {
-      expense_id: z.number().int().positive(),
-      amount: z.number().positive().optional(),
-      description: z.string().trim().min(1).max(200).optional(),
+      expense_id: z.number().int().positive().describe('Gasto, de list_expenses.'),
+      amount: z.number().positive().optional().describe('Nuevo monto.'),
+      description: z.string().trim().min(1).max(200).optional().describe('Nuevo concepto.'),
       expense_date: dateYmd.optional(),
       ...walletRef,
       ...categoryRef,

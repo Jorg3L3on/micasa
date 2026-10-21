@@ -8,6 +8,7 @@ import {
 import { buildMcpLiquidityPayload } from '@/lib/mcp/liquidity-response';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { dateYmd } from '@/lib/mcp/schemas';
+import { out } from '@/lib/mcp/shapes';
 
 export function registerLiquidityTools(server: McpServer) {
   defineOwnerTool(server, {
@@ -24,6 +25,14 @@ export function registerLiquidityTools(server: McpServer) {
         .boolean()
         .default(true)
         .describe('Cuenta los gastos pendientes de la quincena como compromisos.'),
+    },
+    output: {
+      as_of: out.ymd,
+      until: out.ymd,
+      funding_total: out.money,
+      committed_obligations_total: out.money,
+      net_liquidity: out.money,
+      lasts_until: out.ymd.nullable(),
     },
     run: async (agent, args) => {
       const asOf = new Date();

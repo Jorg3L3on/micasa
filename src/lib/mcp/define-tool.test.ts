@@ -143,8 +143,8 @@ describe('owner args', () => {
     });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0]!.text).toContain('Input validation error');
-    expect(result.content[0]!.text).toContain('wallet_nmae');
+    expect(parseText(result)).toMatchObject({ code: 'VALIDATION' });
+    expect(parseText(result).error).toContain('wallet_nmae');
     expect(probeRun).not.toHaveBeenCalled();
     await client.close();
   });
@@ -352,7 +352,7 @@ describe('defineUserTool', () => {
     const result = await client.callTool('probe_user', {});
     expect(parseText(result)).toEqual({
       user_id: 2,
-      contexts: [{ ownerType: 'house', ownerId: 42 }],
+      contexts: [{ owner_type: 'house', owner_id: 42 }],
     });
 
     const rejected = await client.callTool('probe_user', { ownerType: 'user' });

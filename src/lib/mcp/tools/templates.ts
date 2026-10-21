@@ -23,7 +23,8 @@ import {
 import type { AgentContext } from '@/lib/server/resolve-agent-context';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
-import { categoryRef, walletRef } from '@/lib/mcp/schemas';
+import { categoryRef, pagination, walletRef } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 import { resolveCategoryRef, resolveWalletRef } from '@/lib/mcp/resolvers';
 
 const formatExpenseTemplate = (template: {
@@ -108,7 +109,7 @@ const INCOME_ONLY_FIELDS = ['source'] as const;
 const templateFields = {
   ...categoryRef,
   ...walletRef,
-  suggested_amount: z.number().positive().nullable().optional(),
+  suggested_amount: z.number().positive().nullable().optional().describe('Monto sugerido; null lo quita.'),
   active: z.boolean().optional().describe('Default true.'),
   applies_first_fortnight: z.boolean().optional().describe('Se expande en FIRST. Default false.'),
   applies_second_fortnight: z.boolean().optional().describe('Se expande en SECOND. Default false.'),
@@ -347,20 +348,27 @@ export function registerTemplateTools(server: McpServer) {
         .enum(['expense', 'income', 'all'])
         .default('all')
         .describe('expense, income o all (default).'),
+      ...pagination,
+    },
+    output: {
+      templates: out.list({
+        kind: z.enum(['expense', 'income']),
+        id: z.number(),
+        name: z.string(),
+        suggested_amount: out.nullableMoney,
+      }),
+      ...out.page,
     },
     run: async (agent, args) => {
       const [expenseTemplates, incomeTemplates] = await Promise.all([
-        args.kind === 'income' ? null : listExpenseTemplatesForOwner(agent.ownerFilter),
-        args.kind === 'expense' ? null : listIncomeTemplatesForOwner(agent.ownerFilter),
+        args.kind === 'income' ? [] : listExpenseTemplatesForOwner(agent.ownerFilter),
+        args.kind === 'expense' ? [] : listIncomeTemplatesForOwner(agent.ownerFilter),
       ]);
-      return {
-        ...(expenseTemplates
-          ? { expense_templates: expenseTemplates.map(formatExpenseTemplate) }
-          : {}),
-        ...(incomeTemplates
-          ? { income_templates: incomeTemplates.map(formatIncomeTemplate) }
-          : {}),
-      };
+      const rows = [
+        ...expenseTemplates.map((t) => ({ kind: 'expense' as const, ...formatExpenseTemplate(t) })),
+        ...incomeTemplates.map((t) => ({ kind: 'income' as const, ...formatIncomeTemplate(t) })),
+      ];
+      return paginate('templates', rows, args);
     },
   });
 
@@ -373,7 +381,7 @@ export function registerTemplateTools(server: McpServer) {
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
       kind: templateKindSchema,
-      name: z.string().trim().min(1),
+      name: z.string().trim().min(1).describe('Nombre.'),
       ...templateFields,
     },
     run: async (agent, args) => {
@@ -394,7 +402,7 @@ export function registerTemplateTools(server: McpServer) {
     input: {
       kind: templateKindSchema,
       template_id: z.number().int().positive().describe('Id de list_templates.'),
-      name: z.string().trim().min(1).optional(),
+      name: z.string().trim().min(1).optional().describe('Nuevo nombre.'),
       ...templateFields,
     },
     run: async (agent, args) => {

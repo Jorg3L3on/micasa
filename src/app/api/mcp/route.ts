@@ -22,7 +22,7 @@ const mcpHandler = createMcpHandler(
       tools: {},
     },
     instructions:
-      'Conector de MiCasa (finanzas del hogar). Llama list_houses primero: cada contexto que devuelve (ownerType "user" = finanzas personales, "house" = casa compartida, con su ownerId) se pasa como owner_type/owner_id a las demás herramientas. Billeteras y categorías se indican por id o por nombre exacto (sin distinguir mayúsculas). La planeación va por quincenas: FIRST = del último día del mes anterior al 14; SECOND = del 15 al penúltimo día. Montos en MXN; fechas YYYY-MM-DD en hora de Ciudad de México. Los errores traen code (NOT_FOUND, AMBIGUOUS_REF, VALIDATION, FORBIDDEN, CONFIRM_REQUIRED, RATE_LIMITED, INTERNAL) y a veces hint o candidates.',
+      'Conector de MiCasa (finanzas del hogar). Llama list_houses primero: cada contexto que devuelve trae owner_type ("user" = finanzas personales, "house" = casa compartida) y owner_id, que se pasan tal cual a las demás herramientas. Billeteras y categorías se indican por id o por nombre exacto (sin distinguir mayúsculas). La planeación va por quincenas: FIRST = del último día del mes anterior al 14; SECOND = del 15 al penúltimo día. Montos en MXN; fechas YYYY-MM-DD en hora de Ciudad de México. Las listas paginan con limit/offset y devuelven total_count. Los errores traen code (NOT_FOUND, AMBIGUOUS_REF, VALIDATION, FORBIDDEN, CONFIRM_REQUIRED, RATE_LIMITED, INTERNAL) y a veces hint o candidates; CONFIRM_REQUIRED pide confirmar con el usuario y repetir con confirm: true.',
   },
 );
 

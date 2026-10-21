@@ -1,7 +1,9 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { DEFAULT_PROJECTION_HORIZON_DAYS } from '@/lib/finance/liquidity-projection';
+import { z } from 'zod';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
-import { dateYmd, month, period, year } from '@/lib/mcp/schemas';
+import { dateYmd, month, pagination, period, year } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 import { listUpcomingCommitments } from '@/lib/mcp/upcoming-commitments.service';
 
 export function registerPlanningTools(server: McpServer) {
@@ -25,15 +27,29 @@ export function registerPlanningTools(server: McpServer) {
         .describe(
           `Fin del rango (YYYY-MM-DD). Revolving futuro usa horizonte ~${DEFAULT_PROJECTION_HORIZON_DAYS} días de liquidez.`,
         ),
+      ...pagination,
     },
-    run: (agent, args) =>
-      listUpcomingCommitments({
+    output: {
+      items: out.list({
+        date: out.ymd,
+        type: z.enum(['revolving', 'msi', 'loan']),
+        name: z.string(),
+        amount: out.nullableMoney,
+        is_paid: z.boolean(),
+      }),
+      period_total: out.money,
+      ...out.page,
+    },
+    run: async (agent, args) => {
+      const { items, ...rest } = await listUpcomingCommitments({
         ownerFilter: agent.ownerFilter,
         year: args.year,
         month: args.month,
         period: args.period,
         from: args.from,
         to: args.to,
-      }),
+      });
+      return { ...rest, ...paginate('items', items, args) };
+    },
   });
 }

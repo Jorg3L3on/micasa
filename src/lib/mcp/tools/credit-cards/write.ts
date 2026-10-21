@@ -147,14 +147,14 @@ export function registerCardWriteTools(server: McpServer) {
         .enum(['external', 'wallet'])
         .default('external')
         .describe('external = pago ya hecho fuera; wallet = descuenta billetera MiCasa.'),
-      amount: z.number().positive(),
+      amount: z.number().positive().describe('Monto pagado en MXN.'),
       paid_at: dateYmd.optional().describe('Fecha del pago (YYYY-MM-DD). Default: hoy (CDMX).'),
-      note: z.string().trim().max(200).optional(),
+      note: z.string().trim().max(200).optional().describe('Nota opcional.'),
       adjusts_debt: z
         .boolean()
         .default(true)
         .describe('Solo mode external: false si la deuda ya refleja el pago.'),
-      source_wallet_id: z.number().int().positive().optional(),
+      source_wallet_id: z.number().int().positive().optional().describe('mode wallet: billetera que paga, de list_wallets.'),
       source_wallet_name: z
         .string()
         .trim()
@@ -165,9 +165,9 @@ export function registerCardWriteTools(server: McpServer) {
         .boolean()
         .optional()
         .describe('mode wallet: registrar gasto en quincena.'),
-      fortnight_id: z.number().int().positive().optional(),
+      fortnight_id: z.number().int().positive().optional().describe('mode wallet: quincena del gasto; default la de paid_at.'),
       ...categoryRef,
-      expense_description: z.string().trim().max(200).optional(),
+      expense_description: z.string().trim().max(200).optional().describe('mode wallet: concepto del gasto en la quincena.'),
     },
     run: (agent, args) => executeCardPayment(agent, args),
   });
@@ -187,9 +187,9 @@ export function registerCardWriteTools(server: McpServer) {
         .positive()
         .optional()
         .describe('Plan a actualizar (de get_card include installments). Omítelo para crear.'),
-      name: z.string().trim().min(1).max(120),
-      installment_amount: z.number().positive(),
-      total_installments: z.number().int().min(2).max(60),
+      name: z.string().trim().min(1).max(120).describe('Nombre del plan (p. ej. Laptop 12 MSI).'),
+      installment_amount: z.number().positive().describe('Mensualidad en MXN.'),
+      total_installments: z.number().int().min(2).max(60).describe('Total de mensualidades.'),
       paid_installments: z
         .number()
         .int()
@@ -199,7 +199,7 @@ export function registerCardWriteTools(server: McpServer) {
       next_due_date: dateYmd
         .optional()
         .describe('Próxima fecha de cuota; default derivado del día de pago.'),
-      already_in_balance: z.boolean().default(false),
+      already_in_balance: z.boolean().default(false).describe('true si la deuda ya incluye las cuotas restantes.'),
       issuer_remaining_balance: z
         .number()
         .positive()
@@ -251,8 +251,8 @@ export function registerCardWriteTools(server: McpServer) {
     input: {
       card_id: cardIdSchema,
       due_date: dateYmd,
-      amount: z.number().positive(),
-      label: z.string().trim().max(120).optional(),
+      amount: z.number().positive().describe('Monto de la cuota.'),
+      label: z.string().trim().max(120).optional().describe('Etiqueta opcional.'),
     },
     run: async (agent, args) => {
       const input = createCreditCardScheduledPaymentSchema.parse({
@@ -273,7 +273,7 @@ export function registerCardWriteTools(server: McpServer) {
     annotations: { destructiveHint: false, idempotentHint: true },
     input: {
       card_id: cardIdSchema,
-      planned_amount: z.number().positive(),
+      planned_amount: z.number().positive().describe('Monto a pagar en la quincena.'),
       scope: z
         .enum(['this_cycle', 'n_cycles', 'until_date'])
         .optional()

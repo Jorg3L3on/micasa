@@ -10,7 +10,8 @@ import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
 import type { PaymentMethodType } from '@/generated/prisma/client';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
-import { categoryRef, dateYmd, fortnightRef, walletRef } from '@/lib/mcp/schemas';
+import { categoryRef, dateYmd, fortnightRef, pagination, walletRef } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 import {
   resolveCategoryRef,
   resolveFortnightIdForDate,
@@ -25,11 +26,16 @@ export function registerIncomeTools(server: McpServer) {
     description:
       'Lista los ingresos registrados en una quincena (por fortnight_id o year + month + period).',
     scope: 'read',
-    input: { ...fortnightRef },
+    input: { ...fortnightRef, ...pagination },
+    output: {
+      fortnight_id: z.number(),
+      incomes: out.list({ id: z.number(), amount: out.money }),
+      ...out.page,
+    },
     run: async (agent, args) => {
       const fortnightId = await resolveFortnightRef(agent, args);
       const incomes = await listIncomesForFortnight(agent.ownerFilter, fortnightId);
-      return { fortnight_id: fortnightId, incomes };
+      return { fortnight_id: fortnightId, ...paginate('incomes', incomes, args) };
     },
   });
 
@@ -42,8 +48,8 @@ export function registerIncomeTools(server: McpServer) {
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
       ...walletRef,
-      amount: z.number().positive(),
-      description: z.string().trim().max(200).optional(),
+      amount: z.number().positive().describe('Monto en MXN.'),
+      description: z.string().trim().max(200).optional().describe('Concepto opcional.'),
       income_date: dateYmd
         .optional()
         .describe('Fecha de recepción (YYYY-MM-DD). Default: hoy CDMX.'),
@@ -97,8 +103,8 @@ export function registerIncomeTools(server: McpServer) {
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: true },
     input: {
-      income_id: z.number().int().positive(),
-      amount: z.number().min(0),
+      income_id: z.number().int().positive().describe('Ingreso, de list_incomes.'),
+      amount: z.number().min(0).describe('Nuevo monto.'),
       ...walletRef,
       force_wallet_credit: z
         .boolean()

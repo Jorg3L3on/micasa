@@ -10,7 +10,6 @@ import { deleteExpenseTemplateForOwner } from '@/lib/finance/expense-template.se
 import { deleteIncomeTemplateForOwner } from '@/lib/finance/income-template.service';
 import type { AgentContext } from '@/lib/server/resolve-agent-context';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
-import { confirm } from '@/lib/mcp/schemas';
 
 const DELETE_KINDS = [
   'expense',
@@ -68,10 +67,10 @@ export function registerDeleteTools(server: McpServer) {
       'Elimina un registro y revierte su efecto: expense / income revierten saldo o deuda; category solo sin uso; budget se desactiva; expense_template desvincula sus gastos; income_template solo sin uso; loan revierte sus movimientos; scheduled_payment solo si no está cubierta. Requiere confirm: true.',
     scope: 'write',
     annotations: { destructiveHint: true, idempotentHint: false },
+    confirm: true,
     input: {
       kind: z.enum(DELETE_KINDS).describe('Tipo de registro a eliminar.'),
       id: z.number().int().positive().describe('Id del registro.'),
-      confirm,
     },
     run: async (agent, args) => {
       const extra = await DELETERS[args.kind](agent, args.id);

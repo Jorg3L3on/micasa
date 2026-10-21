@@ -22,13 +22,13 @@ export function registerTransferTools(server: McpServer) {
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
-      from_wallet_id: z.number().int().positive().optional(),
-      from_wallet_name: z.string().trim().min(1).optional(),
-      to_wallet_id: z.number().int().positive().optional(),
-      to_wallet_name: z.string().trim().min(1).optional(),
-      amount: z.number().positive(),
+      from_wallet_id: z.number().int().positive().optional().describe('Billetera origen, de list_wallets.'),
+      from_wallet_name: z.string().trim().min(1).optional().describe('Nombre de la billetera origen.'),
+      to_wallet_id: z.number().int().positive().optional().describe('Billetera destino.'),
+      to_wallet_name: z.string().trim().min(1).optional().describe('Nombre de la billetera destino.'),
+      amount: z.number().positive().describe('Monto en MXN.'),
       transfer_date: dateYmd.optional().describe('Default: hoy CDMX.'),
-      note: z.string().trim().max(200).optional(),
+      note: z.string().trim().max(200).optional().describe('Nota opcional.'),
     },
     run: async (agent, args) => {
       const fromWallet = await resolveWalletRef(

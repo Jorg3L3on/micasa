@@ -129,7 +129,6 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
       "wallet_name",
     ],
     "required": [
-      "confirm",
       "new_balance",
       "owner_id",
       "owner_type",
@@ -307,7 +306,6 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
       "owner_type",
     ],
     "required": [
-      "confirm",
       "id",
       "kind",
       "owner_id",
@@ -422,6 +420,8 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     },
     "name": "list_budgets",
     "properties": [
+      "limit",
+      "offset",
       "owner_id",
       "owner_type",
     ],
@@ -439,6 +439,8 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     "name": "list_categories",
     "properties": [
       "kind",
+      "limit",
+      "offset",
       "owner_id",
       "owner_type",
     ],
@@ -482,6 +484,8 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     "name": "list_houses",
     "properties": [
       "include_members",
+      "limit",
+      "offset",
     ],
     "required": [],
     "strict": true,
@@ -494,7 +498,9 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     "name": "list_incomes",
     "properties": [
       "fortnight_id",
+      "limit",
       "month",
+      "offset",
       "owner_id",
       "owner_type",
       "period",
@@ -513,6 +519,8 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     },
     "name": "list_lenders",
     "properties": [
+      "limit",
+      "offset",
       "owner_id",
       "owner_type",
     ],
@@ -529,8 +537,11 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     },
     "name": "list_loans",
     "properties": [
-      "includeInactive",
+      "include_inactive",
+      "include_schedule",
+      "limit",
       "month",
+      "offset",
       "owner_id",
       "owner_type",
       "year",
@@ -550,6 +561,8 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     "properties": [
       "from",
       "last_n_days",
+      "limit",
+      "offset",
       "owner_id",
       "owner_type",
       "to",
@@ -571,6 +584,8 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     "name": "list_templates",
     "properties": [
       "kind",
+      "limit",
+      "offset",
       "owner_id",
       "owner_type",
     ],
@@ -588,7 +603,9 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     "name": "list_upcoming",
     "properties": [
       "from",
+      "limit",
       "month",
+      "offset",
       "owner_id",
       "owner_type",
       "period",
@@ -608,6 +625,8 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     },
     "name": "list_wallets",
     "properties": [
+      "limit",
+      "offset",
       "owner_id",
       "owner_type",
       "type",
@@ -651,6 +670,7 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     },
     "name": "regenerate_from_templates",
     "properties": [
+      "confirm",
       "fortnight_id",
       "month",
       "owner_id",

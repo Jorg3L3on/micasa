@@ -34,9 +34,10 @@ export function registerFortnightTools(server: McpServer) {
     name: 'regenerate_from_templates',
     title: 'Regenerar quincena desde plantillas',
     description:
-      'Elimina los gastos e ingresos generados por plantillas en la quincena y los vuelve a expandir, como Regenerar en Panel financiero.',
+      'Elimina los gastos e ingresos generados por plantillas en la quincena y los vuelve a expandir, como Regenerar en Panel financiero. Requiere confirm: true.',
     scope: 'write',
     annotations: { destructiveHint: true, idempotentHint: true },
+    confirm: true,
     input: { ...fortnightRef },
     run: async (agent, args) => {
       const fortnightId = await resolveFortnightRef(agent, args);

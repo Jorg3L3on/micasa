@@ -12,7 +12,8 @@ import {
 import { AgentAuthError } from '@/lib/server/resolve-agent-context';
 import { defineOwnerTool, defineUserTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
-import { month, period, year } from '@/lib/mcp/schemas';
+import { month, pagination, period, year } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 import { resolveWalletRef } from '@/lib/mcp/resolvers';
 
 export function registerHouseTools(server: McpServer) {
@@ -20,12 +21,25 @@ export function registerHouseTools(server: McpServer) {
     name: 'list_houses',
     title: 'Listar casas del usuario',
     description:
-      'Punto de entrada: devuelve el userId del token, su contexto personal y las casas donde es miembro. Llama esto primero: sus ownerType/ownerId son los owner_type/owner_id de las demás herramientas. include_members agrega los miembros de cada casa.',
+      'Punto de entrada: devuelve el user_id del token, su contexto personal y las casas donde es miembro. Llama esto primero: cada contexto trae el owner_type/owner_id que piden las demás herramientas. include_members agrega los miembros de cada casa.',
     input: {
       include_members: z
         .boolean()
         .default(false)
         .describe('true = incluye los miembros (user_id, name) de cada casa.'),
+      ...pagination,
+    },
+    output: {
+      user_id: z.number(),
+      scopes: z.array(z.string()),
+      personal_context: out.row({ owner_type: z.literal('user'), owner_id: z.number() }).nullable(),
+      houses: out.list({
+        owner_type: z.literal('house'),
+        owner_id: z.number(),
+        name: z.string(),
+        role: z.string(),
+      }),
+      ...out.page,
     },
     run: async (user, args) => {
       const allHouses = await listUserHouses(user.userId);
@@ -37,19 +51,20 @@ export function registerHouseTools(server: McpServer) {
       const membersByHouse = args.include_members
         ? await listHouseMembersByHouse(houses.map((house) => house.id))
         : null;
+      const rows = houses.map((house) => ({
+        owner_type: 'house' as const,
+        owner_id: house.id,
+        name: house.name,
+        role: house.role,
+        ...(membersByHouse ? { members: membersByHouse.get(house.id) ?? [] } : {}),
+      }));
       return {
-        userId: user.userId,
+        user_id: user.userId,
         scopes: user.scopes,
-        personalContext: personalAllowed
-          ? { ownerType: 'user', ownerId: user.userId }
+        personal_context: personalAllowed
+          ? { owner_type: 'user' as const, owner_id: user.userId }
           : null,
-        houses: houses.map((house) => ({
-          ownerType: 'house',
-          ownerId: house.id,
-          name: house.name,
-          role: house.role,
-          ...(membersByHouse ? { members: membersByHouse.get(house.id) ?? [] } : {}),
-        })),
+        ...paginate('houses', rows, args),
       };
     },
   });
@@ -63,17 +78,17 @@ export function registerHouseTools(server: McpServer) {
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
       house_id: z.number().int().positive().describe('Casa destino (debe estar en tu allow-list).'),
-      amount: z.number().positive(),
-      user_wallet_id: z.number().int().positive().optional(),
-      user_wallet_name: z.string().trim().min(1).optional(),
-      house_wallet_id: z.number().int().positive().optional(),
-      house_wallet_name: z.string().trim().min(1).optional(),
-      user_fortnight_id: z.number().int().positive().optional(),
-      house_fortnight_id: z.number().int().positive().optional(),
+      amount: z.number().positive().describe('Monto en MXN.'),
+      user_wallet_id: z.number().int().positive().optional().describe('Billetera personal que paga, de list_wallets.'),
+      user_wallet_name: z.string().trim().min(1).optional().describe('Nombre de la billetera personal (alternativa a user_wallet_id).'),
+      house_wallet_id: z.number().int().positive().optional().describe('Billetera de la casa que recibe.'),
+      house_wallet_name: z.string().trim().min(1).optional().describe('Nombre de la billetera de la casa (alternativa a house_wallet_id).'),
+      user_fortnight_id: z.number().int().positive().optional().describe('Quincena personal; alternativa a year + month + period.'),
+      house_fortnight_id: z.number().int().positive().optional().describe('Quincena de la casa; alternativa a year + month + period.'),
       year: year.optional(),
       month: month.optional(),
       period: period.optional(),
-      note: z.string().trim().max(200).optional(),
+      note: z.string().trim().max(200).optional().describe('Nota opcional.'),
     },
     run: async (agent, args) => {
       const houseId = args.house_id;

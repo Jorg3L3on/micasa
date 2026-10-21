@@ -108,7 +108,8 @@ describe('wallet tools on defineOwnerTool', () => {
     });
 
     expect(listWalletsByOwner).toHaveBeenCalledWith({ user_id: null, house_id: 42 });
-    expect(parseText(result)).toEqual([
+    expect(parseText(result)).toEqual({
+      wallets: [
       {
         id: 1,
         name: 'Nu',
@@ -122,7 +123,11 @@ describe('wallet tools on defineOwnerTool', () => {
         cutoff_day: 5,
         due_day: 25,
       },
-    ]);
+      ],
+      total_count: 1,
+      limit: 50,
+      offset: 0,
+    });
     await client.close();
   });
 

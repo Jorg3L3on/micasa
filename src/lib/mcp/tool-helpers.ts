@@ -24,6 +24,7 @@ import {
   type McpErrorPayload,
 } from '@/lib/mcp/errors';
 import type { AgentContextEntry } from '@/schemas/agent-context.schema';
+import { toMcpShape } from '@/lib/mcp/shapes';
 
 /** Structural view of the SDK's ServerContext — only what the tools need. */
 export type McpToolContext = {
@@ -32,12 +33,25 @@ export type McpToolContext = {
 
 type McpTextResult = {
   content: Array<{ type: 'text'; text: string }>;
+  structuredContent?: Record<string, unknown>;
   isError?: boolean;
 };
 
-export const jsonResult = (data: unknown): McpTextResult => ({
-  content: [{ type: 'text' as const, text: JSON.stringify(data) }],
-});
+/**
+ * Serializes a tool response in the MCP shape (snake_case, numbers, civil
+ * dates). Tools with an output schema also return it as `structuredContent`.
+ */
+export const jsonResult = (data: unknown, options?: { structured?: boolean }): McpTextResult => {
+  const shaped = toMcpShape(data);
+  return {
+    content: [{ type: 'text' as const, text: JSON.stringify(shaped) }],
+    ...(options?.structured ? { structuredContent: shaped as Record<string, unknown> } : {}),
+  };
+};
+
+/** Error result for an input that failed the tool's schema. */
+export const errorResultFor = (error: unknown): McpTextResult =>
+  errorPayloadResult(toErrorPayload(error));
 
 const errorPayloadResult = (payload: McpErrorPayload): McpTextResult => ({
   content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
@@ -162,6 +176,7 @@ export async function runAgentTool(
   args: OwnerToolArgs,
   scope: AgentScope,
   fn: (agent: AgentContext) => Promise<unknown>,
+  options?: { structured?: boolean },
 ): Promise<McpTextResult> {
   const { ownerType, ownerId } = readOwnerArgs(args);
   try {
@@ -181,7 +196,7 @@ export async function runAgentTool(
       scope,
     });
 
-    return jsonResult(data);
+    return jsonResult(data, options);
   } catch (error) {
     logToolFailure(toolName, error, { owner_type: ownerType, owner_id: ownerId });
     return errorPayloadResult(toErrorPayload(error));
@@ -200,6 +215,7 @@ export async function runAgentUserTool(
     scopes: AgentScope[];
     allowedContexts: AgentContextEntry[];
   }) => Promise<unknown>,
+  options?: { structured?: boolean },
 ): Promise<McpTextResult> {
   try {
     const identity = await resolveCallerIdentity(ctx);
@@ -215,7 +231,7 @@ export async function runAgentUserTool(
       oauth_grant_id: identity.oauthGrantId ?? null,
     });
 
-    return jsonResult(data);
+    return jsonResult(data, options);
   } catch (error) {
     logToolFailure(toolName, error, {});
     return errorPayloadResult(toErrorPayload(error));

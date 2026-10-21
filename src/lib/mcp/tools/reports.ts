@@ -8,6 +8,7 @@ import { getAlerts } from '@/features/alerts/server/alerts.service';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
 import { month, period, year } from '@/lib/mcp/schemas';
+import { out } from '@/lib/mcp/shapes';
 
 export function registerReportTools(server: McpServer) {
   defineOwnerTool(server, {
@@ -31,6 +32,13 @@ export function registerReportTools(server: McpServer) {
         .boolean()
         .default(false)
         .describe('true = agrega la quincena (id, label) y sus gastos. Requiere period.'),
+    },
+    output: {
+      total_income: out.money,
+      total_expense: out.money,
+      total_paid: out.money,
+      total_unpaid: out.money,
+      balance: out.money,
     },
     run: async (agent, args) => {
       if (!args.include_movements) {
@@ -116,6 +124,9 @@ export function registerReportTools(server: McpServer) {
       year: year.optional(),
       month: month.optional(),
       period: period.optional(),
+    },
+    output: {
+      alerts: out.list({ severity: z.string(), title: z.string() }),
     },
     run: (agent, args) =>
       getAlerts({

@@ -62,7 +62,7 @@ describe('runAgentTool', () => {
 
     expect(result.isError).toBeUndefined();
     expect(JSON.parse(result.content[0].text)).toEqual({
-      ownerFilter: { user_id: null, house_id: 42 },
+      owner_filter: { user_id: null, house_id: 42 },
     });
   });
 
@@ -150,7 +150,7 @@ describe('runAgentUserTool', () => {
     );
 
     expect(result.isError).toBeUndefined();
-    expect(JSON.parse(result.content[0].text)).toEqual({ userId: 2 });
+    expect(JSON.parse(result.content[0].text)).toEqual({ user_id: 2 });
   });
 
   it('devuelve isError con token inválido', async () => {

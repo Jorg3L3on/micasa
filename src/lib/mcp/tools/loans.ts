@@ -16,7 +16,8 @@ import type { LenderListItem } from '@/types/lenders';
 import { createLoanSchema, updateLoanPaymentSchema } from '@/schemas/loan.schema';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
-import { dateYmd, month, year } from '@/lib/mcp/schemas';
+import { dateYmd, month, pagination, year } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 import { resolveWalletRef } from '@/lib/mcp/resolvers';
 
 /** Cross-field rules of add_loan_payment (single vs batch, SKIP, wallet). */
@@ -97,19 +98,35 @@ export function registerLoanTools(server: McpServer) {
     name: 'list_loans',
     title: 'Listar préstamos',
     description:
-      'Préstamos del contexto con progreso, cuota vencida y próxima cuota. Pasa year y month para ver solo las cuotas de ese mes y su total (p. ej. "¿cuánto pago en diciembre?").',
+      'Préstamos del contexto con progreso, cuota vencida y próxima cuota. Con year y month agrega las cuotas de ese mes y su total (p. ej. "¿cuánto pago en diciembre?"); include_schedule agrega el calendario completo. Detalle de uno: get_loan.',
     scope: 'read',
     input: {
-      year: year.optional(),
-      month: month.optional(),
-      includeInactive: z
+      year: year.optional().describe('Con month: cuotas de ese mes.'),
+      month: month.optional().describe('Con year: cuotas de ese mes.'),
+      include_inactive: z
         .boolean()
         .default(false)
         .describe('Incluir préstamos pagados, pausados o cancelados.'),
+      include_schedule: z
+        .boolean()
+        .default(false)
+        .describe('true = agrega el calendario completo de cuotas (payments) de cada préstamo.'),
+      ...pagination,
+    },
+    output: {
+      loans: out.list({
+        id: z.number(),
+        name: z.string(),
+        status: z.string(),
+        remaining_amount: out.money,
+      }),
+      month: z.string().optional(),
+      month_scheduled_total: out.money.optional(),
+      ...out.page,
     },
     run: async (agent, args) => {
       const loans = await listLoansByOwner(agent.ownerFilter);
-      const visible = args.includeInactive
+      const visible = args.include_inactive
         ? loans
         : loans.filter((loan) => loan.status === 'ACTIVE');
 
@@ -150,13 +167,14 @@ export function registerLoanTools(server: McpServer) {
           overduePayment: loan.overduePayment,
           nextPayment: loan.nextPayment,
           ...(monthPayments ? { monthPayments } : {}),
+          ...(args.include_schedule ? { payments } : {}),
         };
       });
 
       return {
-        loans: items,
+        ...paginate('loans', items, args),
         ...(monthPrefix
-          ? { month: monthPrefix, monthScheduledTotal: monthTotalDue }
+          ? { month: monthPrefix, month_scheduled_total: monthTotalDue }
           : {}),
       };
     },
@@ -168,10 +186,19 @@ export function registerLoanTools(server: McpServer) {
     description:
       'Prestamistas con capital pendiente. nextPaymentAmount / canPayAmount = ventana de pago de pay_lender; overduePayment* = cuotas vencidas; upcomingPayment* = siguiente cuota sin pagar.',
     scope: 'read',
-    input: {},
-    run: async (agent) => {
+    input: { ...pagination },
+    output: {
+      lenders: out.list({
+        id: z.number(),
+        name: z.string(),
+        remaining_principal: out.money,
+        next_payment_amount: out.money,
+      }),
+      ...out.page,
+    },
+    run: async (agent, args) => {
       const lenders = await listLendersByOwner(agent.ownerFilter);
-      return { lenders: lenders.map(mapLenderForMcpList) };
+      return paginate('lenders', lenders.map(mapLenderForMcpList), args);
     },
   });
 
@@ -184,13 +211,13 @@ export function registerLoanTools(server: McpServer) {
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
       lender_id: z.number().int().positive().describe('Id de list_lenders.'),
-      mode: z.enum(['WALLET', 'EXTERNAL']).default('WALLET'),
+      mode: z.enum(['WALLET', 'EXTERNAL']).default('WALLET').describe('WALLET descuenta una billetera; EXTERNAL solo lo registra.'),
       paid_at: dateYmd.optional(),
-      source_wallet_id: z.number().int().positive().optional(),
-      wallet_name: z.string().trim().min(1).optional(),
-      exclude_payment_ids: z.array(z.number().int().positive()).optional(),
-      amount: z.number().positive().optional(),
-      note: z.string().trim().max(500).optional(),
+      source_wallet_id: z.number().int().positive().optional().describe('WALLET: billetera que paga.'),
+      wallet_name: z.string().trim().min(1).optional().describe('WALLET: nombre de la billetera (alternativa a source_wallet_id).'),
+      exclude_payment_ids: z.array(z.number().int().positive()).optional().describe('Cuotas que quedan fuera de este pago.'),
+      amount: z.number().positive().optional().describe('Default: la ventana completa.'),
+      note: z.string().trim().max(500).optional().describe('Nota opcional.'),
     },
     run: async (agent, args) => {
       let sourceWalletId: number | null = null;
@@ -227,9 +254,13 @@ export function registerLoanTools(server: McpServer) {
       'Detalle de un préstamo con su calendario de cuotas. year y month opcionales filtran las cuotas de ese mes.',
     scope: 'read',
     input: {
-      loan_id: z.number().int().positive(),
-      year: year.optional(),
-      month: month.optional(),
+      loan_id: z.number().int().positive().describe('Préstamo, de list_loans.'),
+      year: year.optional().describe('Con month: solo las cuotas de ese mes.'),
+      month: month.optional().describe('Con year: solo las cuotas de ese mes.'),
+    },
+    output: {
+      loan: out.row({ id: z.number(), name: z.string(), status: z.string() }),
+      calendar: out.list({ id: z.number(), due_date: z.string(), amount: out.money, status: z.string() }),
     },
     run: async (agent, args) => {
       const loan = await getLoanByIdForOwner(args.loan_id, agent.ownerFilter);
@@ -269,18 +300,18 @@ export function registerLoanTools(server: McpServer) {
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
-      name: z.string().trim().min(1),
-      lender: z.string().trim().min(1).default('Prestamista'),
-      payment_amount: z.number().positive(),
-      payment_count: z.number().int().positive(),
+      name: z.string().trim().min(1).describe('Nombre del préstamo.'),
+      lender: z.string().trim().min(1).default('Prestamista').describe('Nombre del prestamista.'),
+      payment_amount: z.number().positive().describe('Monto de cada cuota.'),
+      payment_count: z.number().int().positive().describe('Total de cuotas.'),
       start_date: dateYmd.describe('Fecha de la primera cuota pendiente.'),
-      frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY']).default('MONTHLY'),
-      paid_payments_count: z.number().int().min(0).default(0),
+      frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY']).default('MONTHLY').describe('Periodicidad de las cuotas.'),
+      paid_payments_count: z.number().int().min(0).default(0).describe('Cuotas ya pagadas fuera de MiCasa.'),
       payment_source: z
         .enum(['WALLET', 'PAYROLL_DEDUCTION'])
-        .default('PAYROLL_DEDUCTION'),
-      source_wallet_id: z.number().int().positive().optional(),
-      notes: z.string().trim().max(500).optional(),
+        .default('PAYROLL_DEDUCTION').describe('WALLET = se paga desde una billetera; PAYROLL_DEDUCTION = por nómina.'),
+      source_wallet_id: z.number().int().positive().optional().describe('WALLET: billetera que paga.'),
+      notes: z.string().trim().max(500).optional().describe('Notas opcionales.'),
     },
     run: async (agent, args) => {
       const loanType = args.payment_source === 'WALLET' ? 'PERSONAL' : 'PAYROLL';
@@ -317,14 +348,14 @@ export function registerLoanTools(server: McpServer) {
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: true },
     input: {
-      loan_id: z.number().int().positive(),
-      name: z.string().trim().min(1).optional(),
-      lender: z.string().trim().min(1).optional(),
-      payment_amount: z.number().positive().optional(),
-      payment_count: z.number().int().positive().optional(),
+      loan_id: z.number().int().positive().describe('Préstamo, de list_loans.'),
+      name: z.string().trim().min(1).optional().describe('Nuevo nombre.'),
+      lender: z.string().trim().min(1).optional().describe('Nuevo prestamista.'),
+      payment_amount: z.number().positive().optional().describe('Nuevo monto de cuota.'),
+      payment_count: z.number().int().positive().optional().describe('Nuevo total de cuotas (no menor a las pagadas).'),
       next_payment_date: dateYmd.optional(),
-      status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).optional(),
-      notes: z.string().trim().max(500).optional().nullable(),
+      status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED']).optional().describe('ACTIVE, PAUSED o CANCELLED.'),
+      notes: z.string().trim().max(500).optional().nullable().describe('null las borra.'),
     },
     run: async (agent, args) => {
       const loan = await updateLoanScheduleForOwner(args.loan_id, agent.ownerFilter, {
@@ -373,8 +404,8 @@ export function registerLoanTools(server: McpServer) {
           'MARK_PAID = descuenta billetera; MARK_PAID_EXTERNAL = pagado fuera; SKIP = omitir cuota.',
         ),
       paid_at: dateYmd.optional(),
-      note: z.string().trim().max(500).optional(),
-      source_wallet_id: z.number().int().positive().optional(),
+      note: z.string().trim().max(500).optional().describe('Nota opcional.'),
+      source_wallet_id: z.number().int().positive().optional().describe('MARK_PAID: billetera que paga.'),
       source_wallet_name: z
         .string()
         .trim()

@@ -456,19 +456,7 @@ export async function deleteBudget(budgetId: number, ownerFilter: OwnerFilter) {
   await deleteFuturePeriods(budgetId);
 }
 
-/** An owned budget by id, or the active one with that name (case-insensitive). */
-export function findBudgetForOwner(
-  ownerFilter: OwnerFilter,
-  ref: { id: number } | { activeName: string },
-) {
-  return prisma.budget.findFirst({
-    where:
-      'id' in ref
-        ? { id: ref.id, ...ownerFilter }
-        : {
-            ...ownerFilter,
-            name: { equals: ref.activeName, mode: 'insensitive' },
-            active: true,
-          },
-  });
+/** An owned budget by id, or null. */
+export function findBudgetForOwner(ownerFilter: OwnerFilter, id: number) {
+  return prisma.budget.findFirst({ where: { id, ...ownerFilter } });
 }

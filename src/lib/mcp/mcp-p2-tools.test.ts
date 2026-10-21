@@ -288,7 +288,7 @@ describe('registered MCP P2 tools auth fail-closed', () => {
     const result = await invokeTool('list_houses', { include_members: true });
 
     expect(result.isError).toBeFalsy();
-    expect(parseResult(result)).toMatchObject({ personalContext: null, houses: [] });
+    expect(parseResult(result)).toMatchObject({ personal_context: null, houses: [], total_count: 0 });
   });
 
   it('create_category requires write scope', async () => {
@@ -348,7 +348,7 @@ describe('registered list_houses with include_members', () => {
     });
     const { houses } = parseResult(result);
     expect(houses).toHaveLength(1);
-    expect(houses[0]).toMatchObject({ ownerId: 42 });
+    expect(houses[0]).toMatchObject({ owner_type: 'house', owner_id: 42 });
     expect(houses[0].members).toEqual([
       { user_id: 2, name: 'Usuario A' },
       { user_id: 5, name: 'Usuario B' },
@@ -524,7 +524,7 @@ describe('registered report tools', () => {
 
     expect(result.isError).toBeFalsy();
     expect(getReportSummary).toHaveBeenCalled();
-    expect(parseResult(result)).toMatchObject({ totalIncome: 1000 });
+    expect(parseResult(result)).toMatchObject({ total_income: 1000 });
   });
 
   it('get_alerts delegates to alerts service', async () => {

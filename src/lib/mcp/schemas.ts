@@ -82,12 +82,6 @@ export const pagination = {
     .describe('Filas a saltar para paginar (por defecto 0). Usa total_count de la respuesta.'),
 };
 
-export const confirm = z
-  .literal(true)
-  .describe(
-    'Debe ser true: confirma que el usuario aprobó esta operación, que elimina datos o sobreescribe saldos.',
-  );
-
 export const period = z.enum(['FIRST', 'SECOND']).describe('Quincena del mes.');
 
 export const year = z.number().int().min(2000).max(2100).describe('Año.');

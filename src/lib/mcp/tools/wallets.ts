@@ -31,7 +31,8 @@ import {
 } from '@/schemas/credit-card.schema';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
-import { confirm, dateYmd, walletRef } from '@/lib/mcp/schemas';
+import { dateYmd, pagination, walletRef } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 import { resolveDateRange, resolveWalletRef } from '@/lib/mcp/resolvers';
 
 const walletTypeSchema = z
@@ -145,10 +146,20 @@ export function registerWalletTools(server: McpServer) {
         .enum(['all', 'funding', 'credit', 'goal'])
         .default('all')
         .describe('funding = efectivo/débito; credit = tarjetas; goal = metas; all (default).'),
+      ...pagination,
+    },
+    output: {
+      wallets: out.list({
+        id: z.number(),
+        name: z.string(),
+        type: z.string(),
+        amount: out.money,
+      }),
+      ...out.page,
     },
     run: async (agent, args) => {
       const wallets = await listWalletsByOwner(agent.ownerFilter);
-      return wallets
+      const rows = wallets
         .filter((wallet) => args.type === 'all' || walletKind(wallet.type) === args.type)
         .map((wallet) => {
           const kind = walletKind(wallet.type);
@@ -175,6 +186,7 @@ export function registerWalletTools(server: McpServer) {
             ...(kind === 'goal' ? goalFields(wallet) : {}),
           };
         });
+      return paginate('wallets', rows, args);
     },
   });
 
@@ -186,18 +198,18 @@ export function registerWalletTools(server: McpServer) {
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
-      name: z.string().trim().min(1),
+      name: z.string().trim().min(1).describe('Nombre visible.'),
       type: walletTypeSchema.default('CASH'),
-      amount: z.number().min(0).default(0),
+      amount: z.number().min(0).default(0).describe('Saldo inicial; en tarjetas, deuda inicial.'),
       include_in_liquidity: z
         .boolean()
         .optional()
         .describe('Cuenta en la proyección de liquidez. Default true; las metas nunca cuentan.'),
-      active: z.boolean().default(true),
-      credit_limit: z.number().positive().optional(),
-      cutoff_day: z.number().int().min(1).max(31).optional(),
-      due_day: z.number().int().min(1).max(31).optional(),
-      goal_amount: z.number().positive().optional(),
+      active: z.boolean().default(true).describe('Default true.'),
+      credit_limit: z.number().positive().optional().describe('Tarjetas: línea de crédito.'),
+      cutoff_day: z.number().int().min(1).max(31).optional().describe('Tarjetas: día de corte.'),
+      due_day: z.number().int().min(1).max(31).optional().describe('Tarjetas: día de pago.'),
+      goal_amount: z.number().positive().optional().describe('Metas: monto objetivo.'),
       goal_due_date: dateYmd.optional(),
     },
     run: async (agent, args) => {
@@ -257,20 +269,20 @@ export function registerWalletTools(server: McpServer) {
     annotations: { destructiveHint: false, idempotentHint: true },
     input: {
       ...walletRef,
-      name: z.string().trim().min(1).optional(),
-      active: z.boolean().optional(),
-      include_in_liquidity: z.boolean().optional(),
-      credit_limit: z.number().positive().optional(),
+      name: z.string().trim().min(1).optional().describe('Nuevo nombre.'),
+      active: z.boolean().optional().describe('false = desactiva.'),
+      include_in_liquidity: z.boolean().optional().describe('Efectivo/débito: cuenta en la liquidez.'),
+      credit_limit: z.number().positive().optional().describe('Tarjetas: línea de crédito.'),
       temporary_credit_limit: z
         .number()
         .positive()
         .nullable()
         .optional()
         .describe('Límite temporal del emisor; null para quitarlo.'),
-      cutoff_day: z.number().int().min(1).max(31).optional(),
-      due_day: z.number().int().min(1).max(31).optional(),
-      goal_amount: z.number().positive().optional(),
-      goal_due_date: dateYmd.nullable().optional(),
+      cutoff_day: z.number().int().min(1).max(31).optional().describe('Tarjetas: día de corte.'),
+      due_day: z.number().int().min(1).max(31).optional().describe('Tarjetas: día de pago.'),
+      goal_amount: z.number().positive().optional().describe('Metas: monto objetivo.'),
+      goal_due_date: dateYmd.nullable().optional().describe('Metas: fecha límite; null la quita.'),
     },
     run: async (agent, args) => {
       const wallet = await resolveWalletRef(agent.ownerFilter, args.wallet_id, args.wallet_name);
@@ -327,13 +339,13 @@ export function registerWalletTools(server: McpServer) {
       'Fija el número de una billetera al del banco sin crear gasto, ingreso ni pago: en efectivo, débito y metas fija el saldo; en tarjetas fija la deuda (saldo utilizado). Requiere confirm: true.',
     scope: 'write',
     annotations: { destructiveHint: true, idempotentHint: true },
+    confirm: true,
     input: {
       ...walletRef,
       new_balance: z
         .number()
         .min(0)
         .describe('Nuevo saldo (efectivo/débito/meta) o nueva deuda total (tarjeta).'),
-      confirm,
     },
     run: async (agent, args) => {
       const wallet = await resolveWalletRef(agent.ownerFilter, args.wallet_id, args.wallet_name);
@@ -381,11 +393,22 @@ export function registerWalletTools(server: McpServer) {
       ...walletRef,
       from: dateYmd.optional(),
       to: dateYmd.optional(),
-      last_n_days: z.number().int().min(1).max(366).optional(),
+      last_n_days: z.number().int().min(1).max(366).optional().describe('Atajo: los últimos N días.'),
       use_current_cycle: z
         .boolean()
         .default(false)
         .describe('Solo tarjetas: true = ciclo de corte vigente en lugar de from/to.'),
+      ...pagination,
+    },
+    output: {
+      wallet_id: z.number(),
+      wallet_name: z.string(),
+      wallet_type: z.string(),
+      balance: out.nullableMoney,
+      from: out.ymd,
+      to: out.ymd,
+      movements: out.list({ date: out.ymd, amount: out.money }),
+      ...out.page,
     },
     run: async (agent, args) => {
       const wallet = await resolveWalletRef(agent.ownerFilter, args.wallet_id, args.wallet_name);
@@ -400,13 +423,12 @@ export function registerWalletTools(server: McpServer) {
           args.last_n_days != null
             ? resolveDateRange({ last_n_days: args.last_n_days })
             : { from: args.from, to: args.to };
-        return {
-          ...header,
-          ...(await listCardMovementsForRange(wallet.id, agent.ownerFilter, {
-            ...range,
-            useCurrentCycle: args.use_current_cycle,
-          })),
-        };
+        const { movements, ...card } = await listCardMovementsForRange(
+          wallet.id,
+          agent.ownerFilter,
+          { ...range, useCurrentCycle: args.use_current_cycle },
+        );
+        return { ...header, ...card, ...paginate('movements', movements, args) };
       }
 
       if (args.use_current_cycle) {
@@ -432,8 +454,8 @@ export function registerWalletTools(server: McpServer) {
         balance: await getWalletAmountForOwner(wallet.id, agent.ownerFilter),
         from: range.from,
         to: range.to,
-        movements,
         totals,
+        ...paginate('movements', movements, args),
       };
     },
   });
