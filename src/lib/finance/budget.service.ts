@@ -261,10 +261,15 @@ export async function createBudget(
   return budget;
 }
 
-export async function updateBudgetTemplate(
+/**
+ * Update a budget's template fields and, optionally, its allocations together.
+ * When `allocations` is given they replace the stored ones and must add up to
+ * the new `allocated_amount`; otherwise the stored allocations must.
+ */
+export async function updateBudget(
   budgetId: number,
   ownerFilter: OwnerFilter,
-  data: Step1Values,
+  data: Step1Values & { allocations?: AllocationInput[] },
 ) {
   const budget = await prisma.budget.findFirst({
     where: { id: budgetId, ...ownerFilter },
@@ -274,13 +279,22 @@ export async function updateBudgetTemplate(
     throw new DomainError('P2025', 'Presupuesto no encontrado');
   }
 
-  const allocations = budget.allocations.map((allocation) => ({
+  const replacementAllocations = data.allocations
+    ? normalizeAllocations(data.allocations)
+    : null;
+  const allocations =
+    replacementAllocations ??
+    budget.allocations.map((allocation) => ({
       wallet_id: allocation.wallet_id,
       category_id: allocation.category_id,
       amount: Number(allocation.amount),
     }));
   assertNoEmptyAllocations(allocations);
   assertExactAllocationTotal(Number(data.allocated_amount), allocations);
+  if (replacementAllocations) {
+    await assertNoAllocationOverlap(ownerFilter, replacementAllocations);
+    await assertOwnerScopedReferences(ownerFilter, replacementAllocations);
+  }
 
   const budgetDateRange = await resolveBudgetDateRange(
     data.frequency,
@@ -291,16 +305,30 @@ export async function updateBudgetTemplate(
 
   const recurrent = data.frequency === 'CUSTOM' ? false : (data.recurrent ?? true);
 
-  const updated = await prisma.budget.update({
-    where: { id: budgetId },
-    data: {
-      name: data.name,
-      total_amount: data.allocated_amount,
-      frequency: data.frequency,
-      recurrent,
-      start_date: budgetDateRange.start_date,
-      end_date: budgetDateRange.end_date,
-    },
+  const updated = await prisma.$transaction(async (tx) => {
+    const row = await tx.budget.update({
+      where: { id: budgetId },
+      data: {
+        name: data.name,
+        total_amount: data.allocated_amount,
+        frequency: data.frequency,
+        recurrent,
+        start_date: budgetDateRange.start_date,
+        end_date: budgetDateRange.end_date,
+      },
+    });
+    if (replacementAllocations) {
+      await tx.budgetAllocation.deleteMany({ where: { budget_id: budgetId } });
+      await tx.budgetAllocation.createMany({
+        data: replacementAllocations.map((a) => ({
+          budget_id: budgetId,
+          wallet_id: a.wallet_id,
+          category_id: a.category_id,
+          amount: a.amount,
+        })),
+      });
+    }
+    return row;
   });
 
   const calendarDateKey = (value: Date | null) =>
@@ -333,6 +361,15 @@ export async function updateBudgetTemplate(
   }
 
   return updated;
+}
+
+/** Template fields only; the stored allocations must match the new amount. */
+export function updateBudgetTemplate(
+  budgetId: number,
+  ownerFilter: OwnerFilter,
+  data: Step1Values,
+) {
+  return updateBudget(budgetId, ownerFilter, data);
 }
 
 export async function setBudgetActive(

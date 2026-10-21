@@ -3,8 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import {
   createBudget,
   findBudgetForOwner,
-  updateBudgetTemplate,
-  updateBudgetAllocations,
+  updateBudget,
 } from '@/lib/finance/budget.service';
 import { listActivePeriods } from '@/lib/finance/budget-period.service';
 import { formatStoredDateOnly } from '@/lib/calendar-dates';
@@ -172,15 +171,15 @@ export function registerBudgetTools(server: McpServer) {
       }
 
       if (budget) {
-        await updateBudgetTemplate(budget.id, agent.ownerFilter, {
+        await updateBudget(budget.id, agent.ownerFilter, {
           name,
           allocated_amount: amount,
           frequency: budget.frequency,
           recurrent: budget.recurrent,
           start_date: budget.start_date ? formatStoredDateOnly(budget.start_date) : null,
           end_date: budget.end_date ? formatStoredDateOnly(budget.end_date) : null,
+          allocations: resolvedAllocations,
         });
-        await updateBudgetAllocations(budget.id, agent.ownerFilter, resolvedAllocations);
         return {
           budget_id: budget.id,
           updated: true,
