@@ -420,6 +420,24 @@ describe('upsert_budget', () => {
       ]);
   });
 
+  it('with budget_id changes amount and allocations together', async () => {
+    seedBudget();
+
+    const result = await callTool(registerBudgetTools, 'upsert_budget', {
+      ...HOUSE,
+      budget_id: 7,
+      amount: 4000,
+      allocations: [{ category_id: 20, amount: 4000 }],
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(result.body).toEqual({ budget_id: 7, updated: true, allocations: 1 });
+    expect(Number(db.rows.budget[0]!.total_amount)).toBe(4000);
+    expect(db.rows.budgetAllocation.filter((a) => a.budget_id === 7)).toEqual([
+      expect.objectContaining({ wallet_id: null, category_id: 20, amount: 4000 }),
+    ]);
+  });
+
   it('with budget_id renames the budget and keeps its allocations', async () => {
     seedBudget();
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getOwnerContext } from '@/lib/server/get-owner-context';
-import { deleteBudget, updateBudgetTemplate } from '@/lib/finance/budget.service';
+import { deleteBudget, updateBudget } from '@/lib/finance/budget.service';
 import { updateBudgetSchema } from '@/schemas/budget.schema';
 
 type ErrorWithCode = Error & { code?: string };
@@ -23,7 +23,7 @@ export async function PATCH(
 
     const body = await request.json();
     const data = updateBudgetSchema.parse(body);
-    const budget = await updateBudgetTemplate(id, ownerFilter, data);
+    const budget = await updateBudget(id, ownerFilter, data);
     return NextResponse.json(budget, { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {

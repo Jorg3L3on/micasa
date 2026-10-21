@@ -22,8 +22,7 @@ const {
   categoryDelete,
   categoryCount,
   budgetFindFirst,
-  updateBudgetAllocations,
-  updateBudgetTemplate,
+  updateBudget,
   createBudget,
   createUserToHouseTransfer,
   findFortnightByCalendarPeriod,
@@ -53,8 +52,7 @@ const {
   categoryDelete: vi.fn(),
   categoryCount: vi.fn(),
   budgetFindFirst: vi.fn(),
-  updateBudgetAllocations: vi.fn(),
-  updateBudgetTemplate: vi.fn(),
+  updateBudget: vi.fn(),
   createBudget: vi.fn(),
   createUserToHouseTransfer: vi.fn(),
   findFortnightByCalendarPeriod: vi.fn(),
@@ -102,8 +100,7 @@ vi.mock('@/lib/finance/budget.service', () => ({
   createBudget,
   findBudgetForOwner: (_ownerFilter: unknown, ref: unknown) => budgetFindFirst(ref),
   deleteBudget: vi.fn(),
-  updateBudgetTemplate,
-  updateBudgetAllocations,
+  updateBudget,
 }));
 
 vi.mock('@/lib/finance/transfer.service', () => ({
@@ -440,7 +437,7 @@ describe('registered budget allocation tools', () => {
       start_date: null,
       end_date: null,
     });
-    updateBudgetAllocations.mockResolvedValue({ id: 7 });
+    updateBudget.mockResolvedValue({ id: 7 });
     resolveCategoryRef
       .mockResolvedValueOnce(10)
       .mockResolvedValueOnce(11);
@@ -455,14 +452,17 @@ describe('registered budget allocation tools', () => {
     });
 
     expect(result.isError).toBeFalsy();
-    expect(updateBudgetAllocations).toHaveBeenCalledWith(7, expect.any(Object), [
-      { wallet_id: 4, category_id: 10, amount: 200 },
-      { wallet_id: 4, category_id: 11, amount: 100 },
-    ]);
-    expect(updateBudgetTemplate).toHaveBeenCalledWith(
+    expect(updateBudget).toHaveBeenCalledWith(
       7,
       expect.any(Object),
-      expect.objectContaining({ name: 'Despensa', allocated_amount: 300 }),
+      expect.objectContaining({
+        name: 'Despensa',
+        allocated_amount: 300,
+        allocations: [
+          { wallet_id: 4, category_id: 10, amount: 200 },
+          { wallet_id: 4, category_id: 11, amount: 100 },
+        ],
+      }),
     );
     expect(parseResult(result)).toMatchObject({ budget_id: 7, updated: true });
   });
@@ -478,7 +478,7 @@ describe('registered budget allocation tools', () => {
 
     expect(result.isError).toBe(true);
     expect(parseResult(result)).toMatchObject({ code: 'VALIDATION' });
-    expect(updateBudgetAllocations).not.toHaveBeenCalled();
+    expect(updateBudget).not.toHaveBeenCalled();
   });
 
   it('upsert_budget without budget_id needs name and amount', async () => {
