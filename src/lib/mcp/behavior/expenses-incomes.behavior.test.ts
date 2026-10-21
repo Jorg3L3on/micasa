@@ -135,6 +135,7 @@ const CASH = 1;
 const DEBIT = 2;
 const CARD = 3;
 const OTHER_DEBIT = 4;
+const GOAL = 5;
 const CATEGORY = 7;
 
 beforeEach(() => {
@@ -146,6 +147,7 @@ beforeEach(() => {
       { id: DEBIT, name: 'Nómina', type: 'DEBIT_CARD', amount: 5000, credit_limit: null, temporary_credit_limit: null, ...HOUSE_FILTER },
       { id: CARD, name: 'Mercado Pago', type: 'CREDIT_CARD', amount: 2000, credit_limit: 10000, temporary_credit_limit: null, ...HOUSE_FILTER },
       { id: OTHER_DEBIT, name: 'Ahorro', type: 'DEBIT_CARD', amount: 300, credit_limit: null, temporary_credit_limit: null, ...HOUSE_FILTER },
+      { id: GOAL, name: 'Viaje', type: 'GOAL', amount: 400, credit_limit: null, temporary_credit_limit: null, ...HOUSE_FILTER },
     ],
     category: [{ id: CATEGORY, name: 'Super', active: true, ...HOUSE_FILTER }],
     fortnight: [],
@@ -570,6 +572,27 @@ describe('add_income', () => {
       hint: 'Para pagar la tarjeta usa add_card_payment.',
     });
     expect(wallet(CARD).amount).toBe(2000);
+    expect(tables().income).toHaveLength(0);
+  });
+});
+
+describe('add_income goal wallet', () => {
+  // update_income rejects goal wallets, so add_income must too: an income it
+  // accepted could never be edited afterwards.
+  it('goal wallet → VALIDATION, nothing written and balance unchanged', async () => {
+    const res = await callTool(registerIncomeTools, 'add_income', {
+      ...HOUSE,
+      wallet_id: GOAL,
+      amount: 500,
+      income_date: '2026-10-05',
+    });
+
+    expect(res.isError).toBe(true);
+    expect(res.body).toMatchObject({
+      error: 'No se puede registrar ingreso en una meta.',
+      code: 'VALIDATION',
+    });
+    expect(wallet(GOAL).amount).toBe(400);
     expect(tables().income).toHaveLength(0);
   });
 });

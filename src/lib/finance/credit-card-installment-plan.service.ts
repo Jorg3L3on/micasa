@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { PaymentMethodType } from '@/generated/prisma/client';
+import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
 import {
   formatCalendarDate,
   todayCalendarDate,
@@ -21,6 +21,10 @@ import {
   roundMoney,
 } from '@/lib/finance/credit-card-msi-period-due';
 import { DomainError } from '@/lib/finance/domain-error';
+import {
+  cardPaymentMatchWindow,
+  pickCardPaymentMatch,
+} from '@/lib/finance/card-payment-match';
 
 export type CreditCardInstallmentPlanPaymentItem = {
   id: number;
@@ -503,7 +507,17 @@ export async function markInstallmentPlanPaymentPaid(
   paymentId: number,
   creditCardPaymentId?: number,
 ): Promise<CreditCardInstallmentPlanPaymentItem | null> {
-  const existing = await prisma.creditCardInstallmentPlanPayment.findUnique({
+  return prisma.$transaction((tx) =>
+    markInstallmentPlanPaymentPaidInTx(tx, paymentId, creditCardPaymentId),
+  );
+}
+
+async function markInstallmentPlanPaymentPaidInTx(
+  tx: Prisma.TransactionClient,
+  paymentId: number,
+  creditCardPaymentId?: number,
+): Promise<CreditCardInstallmentPlanPaymentItem | null> {
+  const existing = await tx.creditCardInstallmentPlanPayment.findUnique({
     where: { id: paymentId },
     include: { plan: { select: { id: true, total_installments: true } } },
   });
@@ -512,64 +526,59 @@ export async function markInstallmentPlanPaymentPaid(
     return null;
   }
 
-  const row = await prisma.$transaction(async (tx) => {
-    const updated = await tx.creditCardInstallmentPlanPayment.update({
-      where: { id: paymentId },
-      data: {
-        status: 'PAID',
-        paid_at: new Date(),
-        ...(creditCardPaymentId != null
-          ? { credit_card_payment_id: creditCardPaymentId }
-          : {}),
-      },
-    });
-
-    const remaining = await tx.creditCardInstallmentPlanPayment.count({
-      where: { plan_id: existing.plan_id, status: 'SCHEDULED' },
-    });
-
-    if (remaining === 0) {
-      await tx.creditCardInstallmentPlan.update({
-        where: { id: existing.plan_id },
-        data: {
-          status: 'COMPLETED',
-          paid_installments: existing.plan.total_installments,
-        },
-      });
-    } else {
-      const paidCount = await tx.creditCardInstallmentPlanPayment.count({
-        where: { plan_id: existing.plan_id, status: 'PAID' },
-      });
-      await tx.creditCardInstallmentPlan.update({
-        where: { id: existing.plan_id },
-        data: { paid_installments: paidCount },
-      });
-    }
-
-    return updated;
+  const updated = await tx.creditCardInstallmentPlanPayment.update({
+    where: { id: paymentId },
+    data: {
+      status: 'PAID',
+      paid_at: new Date(),
+      ...(creditCardPaymentId != null
+        ? { credit_card_payment_id: creditCardPaymentId }
+        : {}),
+    },
   });
 
-  return mapPayment(row);
+  const remaining = await tx.creditCardInstallmentPlanPayment.count({
+    where: { plan_id: existing.plan_id, status: 'SCHEDULED' },
+  });
+
+  if (remaining === 0) {
+    await tx.creditCardInstallmentPlan.update({
+      where: { id: existing.plan_id },
+      data: {
+        status: 'COMPLETED',
+        paid_installments: existing.plan.total_installments,
+      },
+    });
+  } else {
+    const paidCount = await tx.creditCardInstallmentPlanPayment.count({
+      where: { plan_id: existing.plan_id, status: 'PAID' },
+    });
+    await tx.creditCardInstallmentPlan.update({
+      where: { id: existing.plan_id },
+      data: { paid_installments: paidCount },
+    });
+  }
+
+  return mapPayment(updated);
 }
 
-/** Match a card payment to the nearest plan installment (±7 days or exact amount). */
+/**
+ * Marks the MSI cuota a card payment settles (due ±7 days, see
+ * {@link pickCardPaymentMatch}). Runs on the payment's transaction so the
+ * payment and the match commit together.
+ */
 export async function coverInstallmentPlanPaymentForCardPayment(
+  tx: Prisma.TransactionClient,
   walletId: number,
   ownerFilter: OwnerFilter,
   paidAtYmd: string,
   amount: number,
   creditCardPaymentId?: number,
 ): Promise<CreditCardInstallmentPlanPaymentItem | null> {
-  const paidAt = new Date(paidAtYmd.slice(0, 10) + 'T12:00:00.000Z');
-  const windowStart = new Date(paidAt);
-  windowStart.setUTCDate(windowStart.getUTCDate() - 7);
-  const windowEnd = new Date(paidAt);
-  windowEnd.setUTCDate(windowEnd.getUTCDate() + 7);
-
-  const candidates = await prisma.creditCardInstallmentPlanPayment.findMany({
+  const candidates = await tx.creditCardInstallmentPlanPayment.findMany({
     where: {
       status: 'SCHEDULED',
-      due_date: { gte: windowStart, lte: windowEnd },
+      due_date: cardPaymentMatchWindow(paidAtYmd),
       plan: {
         credit_card_wallet_id: walletId,
         ...ownerFilter,
@@ -579,16 +588,15 @@ export async function coverInstallmentPlanPaymentForCardPayment(
     orderBy: [{ due_date: 'asc' }, { id: 'asc' }],
   });
 
-  if (candidates.length === 0) {
+  const target = pickCardPaymentMatch(
+    candidates.map((row) => ({ id: row.id, amount: decimalToNumber(row.amount) })),
+    amount,
+  );
+  if (!target) {
     return null;
   }
 
-  const exactAmount = candidates.find(
-    (row) => decimalToNumber(row.amount) === amount,
-  );
-  const target = exactAmount ?? candidates[0];
-
-  return markInstallmentPlanPaymentPaid(target.id, creditCardPaymentId);
+  return markInstallmentPlanPaymentPaidInTx(tx, target.id, creditCardPaymentId);
 }
 
 export type PlannerInstallmentPlanPaymentItem = {

@@ -5,6 +5,7 @@ import { getOwnerContext } from '@/lib/server/get-owner-context';
 import prisma from '@/lib/prisma';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { createUserToHouseTransfer } from '@/lib/finance/transfer.service';
+import { DomainError } from '@/lib/finance/domain-error';
 import { applyWalletAmountDelta } from '@/lib/finance/wallet-accounting';
 import { dateStringSchema } from '@/schemas/common.schema';
 import {
@@ -452,6 +453,11 @@ export async function POST(request: NextRequest) {
     }
 
     const walletId = walletIdRequired;
+    const fundingWallet = await prisma.wallet.findFirst({
+      where: { id: walletId, ...ownerFilter },
+      select: { id: true, type: true },
+    });
+    assertIncomeFundingWallet(fundingWallet);
 
     const created = await prisma.$transaction(async (tx) => {
       const income = await tx.income.create({
@@ -478,7 +484,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(serializeIncome(created), { status: 201 });
   } catch (error) {
-    if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
+    if (
+      error instanceof CategoryServiceError ||
+      error instanceof IncomeServiceError ||
+      error instanceof DomainError
+    ) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status },

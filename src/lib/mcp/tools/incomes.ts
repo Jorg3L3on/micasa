@@ -6,7 +6,7 @@ import {
   listIncomesForFortnight,
   updateIncomeForOwner,
 } from '@/lib/finance/income.service';
-import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
+import { isCreditWalletType, isGoalWalletType } from '@/lib/finance/wallet-accounting';
 import type { PaymentMethodType } from '@/generated/prisma/client';
 import { defineOwnerTool } from '@/lib/mcp/define-tool';
 import { McpToolError } from '@/lib/mcp/errors';
@@ -43,7 +43,7 @@ export function registerIncomeTools(server: McpServer) {
     name: 'add_income',
     title: 'Agregar ingreso',
     description:
-      'Registra un ingreso en una billetera de activo (efectivo/débito/meta) y sube su saldo. La quincena sale de fortnight_id, de year + month + period o de la fecha. No aplica a tarjetas (usa add_card_payment).',
+      'Registra un ingreso en una billetera de efectivo o débito y sube su saldo. La quincena sale de fortnight_id, de year + month + period o de la fecha. No aplica a tarjetas (usa add_card_payment) ni a metas (usa transfer desde una billetera de efectivo/débito).',
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
@@ -69,6 +69,14 @@ export function registerIncomeTools(server: McpServer) {
           'VALIDATION',
           'No se puede registrar ingreso en una tarjeta.',
           { hint: 'Para pagar la tarjeta usa add_card_payment.' },
+        );
+      }
+
+      if (isGoalWalletType(wallet.type as PaymentMethodType)) {
+        throw new McpToolError(
+          'VALIDATION',
+          'No se puede registrar ingreso en una meta.',
+          { hint: 'Registra el ingreso en efectivo/débito y usa transfer para apartarlo a la meta.' },
         );
       }
 

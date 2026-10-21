@@ -40,6 +40,13 @@ export const resolveIncomeWalletId = (
   return next;
 };
 
+/**
+ * Incomes count as fortnight income and as Liquidez, so they must land in a
+ * funding wallet (efectivo/débito). Goal wallets sit outside liquidity and are
+ * filled with Transferir dinero; cards are paid with a card payment. Create
+ * and edit share this rule so an income can always be edited where it was
+ * recorded.
+ */
 export const assertIncomeFundingWallet = (
   wallet: { type: PaymentMethodType } | null,
 ): void => {
@@ -111,6 +118,7 @@ export async function createIncomeForOwner(
   if (!wallet) {
     throw new DomainError('NOT_FOUND', 'Billetera no encontrada en este contexto');
   }
+  assertIncomeFundingWallet(wallet);
 
   const fortnight = await prisma.fortnight.findFirst({
     where: { id: input.fortnightId, ...ownerFilter },
