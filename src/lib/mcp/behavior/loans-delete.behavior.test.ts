@@ -535,11 +535,9 @@ describe('update_loan', () => {
     ]);
   });
 
-  // BUG (loan.service.ts updateLoanScheduleForOwner): with no next_payment_date the new
-  // schedule starts from the first SCHEDULED `due_date`, a @db.Date read back as 00:00 UTC,
-  // and generateLoanPaymentSchedule formats it in America/Mexico_City → one day earlier.
-  // Received today: 2026-03-14, 2026-04-14, 2026-05-14, 2026-06-14.
-  it.fails('without next_payment_date keeps the due days of the scheduled installments', async () => {
+  // Regression: the first SCHEDULED due_date is a @db.Date (00:00 UTC); it used to
+  // shift every regenerated due date one day earlier (2026-03-15 → 2026-03-14).
+  it('without next_payment_date keeps the due days of the scheduled installments', async () => {
     seedHalfPaidLoan();
 
     await loanTool('update_loan', { loan_id: 5, payment_amount: 1500, payment_count: 5 });
@@ -570,10 +568,8 @@ describe('update_loan', () => {
     expect(byId('loan', 5)!.payment_count).toBe(3);
   });
 
-  // BUG (loan.service.ts updateLoanScheduleForOwner): the metadata update
-  // (updateLoanForOwner) is committed before the paymentCount < paidCount check, so the
-  // call answers VALIDATION while the rename is already persisted.
-  it.fails('a rejected schedule change does not persist the rename sent with it', async () => {
+  // Regression: the metadata update used to be committed before the schedule check.
+  it('a rejected schedule change does not persist the rename sent with it', async () => {
     seedCashWallet(5000);
     seedWalletLoan({
       id: 5,

@@ -1178,15 +1178,13 @@ export async function updateLoanScheduleForOwner(
     throw new DomainError('NOT_FOUND', 'Préstamo no encontrado');
   }
 
-  const metadata = await updateLoanForOwner(loanId, ownerFilter, input);
-
   const needsScheduleChange =
     input.paymentAmount != null ||
     input.paymentCount != null ||
     input.nextPaymentDate != null;
 
   if (!needsScheduleChange) {
-    return metadata;
+    return updateLoanForOwner(loanId, ownerFilter, input);
   }
 
   const paidOrClosed = existing.payments.filter(
@@ -1197,14 +1195,23 @@ export async function updateLoanScheduleForOwner(
     input.paymentAmount ?? decimalToNumber(existing.payment_amount);
   const paymentCount = input.paymentCount ?? existing.payment_count;
 
+  // Validate the schedule before committing metadata, so a rejected update saves nothing.
   if (paymentCount < paidCount) {
     throw new DomainError('VALIDATION', `El total de cuotas (${paymentCount}) no puede ser menor a las ya pagadas (${paidCount})`);
   }
 
+  await updateLoanForOwner(loanId, ownerFilter, input);
+
+  // due_date is @db.Date (00:00 UTC); re-anchor it as a calendar date so the
+  // Mexico City formatting in generateLoanPaymentSchedule keeps the same day.
+  const nextScheduledDue = existing.payments.find(
+    (p) => p.status === 'SCHEDULED',
+  )?.due_date;
   const startDate = input.nextPaymentDate
     ? parseYmdAsUtcDate(input.nextPaymentDate)
-    : existing.payments.find((p) => p.status === 'SCHEDULED')?.due_date ??
-      existing.start_date;
+    : nextScheduledDue
+      ? parseYmdAsUtcDate(formatLoanDueYmd(nextScheduledDue))
+      : existing.start_date;
 
   const remainingCount = paymentCount - paidCount;
   const newSchedule = generateLoanPaymentSchedule({
