@@ -12,17 +12,10 @@ export const dateYmd = z
   .refine(isValidCalendarDateString, 'La fecha no existe en el calendario')
   .describe('Fecha de calendario YYYY-MM-DD (Ciudad de México).');
 
+/** Explained once in the server instructions; short here because every tool repeats it. */
 export const ownerArgs = {
-  owner_type: z
-    .enum(['user', 'house'])
-    .describe(
-      'Contexto financiero: "user" (finanzas personales) o "house" (casa compartida). Los valores válidos salen de list_houses.',
-    ),
-  owner_id: z
-    .number()
-    .int()
-    .positive()
-    .describe('Id del usuario (owner_type=user) o de la casa (owner_type=house), según list_houses.'),
+  owner_type: z.enum(['user', 'house']).describe('Contexto, de list_houses.'),
+  owner_id: z.number().int().positive().describe('Id del contexto, de list_houses.'),
 };
 
 export type OwnerArgs = {
@@ -54,33 +47,23 @@ export const normalizeOwnerAliases = (input: unknown): unknown => {
 };
 
 export const walletRef = {
-  wallet_id: z
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .describe('Id de la billetera (de list_wallets). Tiene prioridad sobre wallet_name.'),
+  wallet_id: z.number().int().positive().optional().describe('Billetera, de list_wallets.'),
   wallet_name: z
     .string()
     .trim()
     .min(1)
     .optional()
-    .describe('Nombre exacto de la billetera, sin distinguir mayúsculas. Usa wallet_id si el nombre se repite.'),
+    .describe('Nombre de la billetera (alternativa a wallet_id).'),
 };
 
 export const categoryRef = {
-  category_id: z
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .describe('Id de la categoría (de list_categories). Tiene prioridad sobre category_name.'),
+  category_id: z.number().int().positive().optional().describe('Categoría, de list_categories.'),
   category_name: z
     .string()
     .trim()
     .min(1)
     .optional()
-    .describe('Nombre exacto de la categoría, sin distinguir mayúsculas.'),
+    .describe('Nombre de la categoría (alternativa a category_id).'),
 };
 
 export const pagination = {
@@ -104,3 +87,22 @@ export const confirm = z
   .describe(
     'Debe ser true: confirma que el usuario aprobó esta operación, que elimina datos o sobreescribe saldos.',
   );
+
+export const period = z.enum(['FIRST', 'SECOND']).describe('Quincena del mes.');
+
+export const year = z.number().int().min(2000).max(2100).describe('Año.');
+
+export const month = z.number().int().min(1).max(12).describe('Mes.');
+
+/** Fortnight by id or by calendar period (resolved with `resolveFortnightRef`). */
+export const fortnightRef = {
+  fortnight_id: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('Quincena; alternativa a year + month + period.'),
+  year: year.optional(),
+  month: month.optional(),
+  period: period.optional(),
+};

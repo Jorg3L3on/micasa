@@ -189,15 +189,16 @@ export async function updateScheduledPayment(
   return mapRow(row);
 }
 
+/** `walletId` null = any card of the owner (the MCP `delete` tool has only the id). */
 export async function deleteScheduledPayment(
   paymentId: number,
-  walletId: number,
+  walletId: number | null,
   ownerFilter: OwnerFilter,
 ): Promise<void> {
   const existing = await prisma.creditCardScheduledPayment.findFirst({
     where: {
       id: paymentId,
-      credit_card_wallet_id: walletId,
+      ...(walletId != null ? { credit_card_wallet_id: walletId } : {}),
       ...ownerFilter,
     },
   });

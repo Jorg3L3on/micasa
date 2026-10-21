@@ -5,6 +5,9 @@ vi.mock('@/lib/prisma', () => ({ default: {} }));
 import { registerMcpTools } from '@/lib/mcp/register-tools';
 import { connectInMemoryMcp } from '@/lib/mcp/testing/in-memory-client';
 
+/** Upper bound for the compact `tools/list` payload; raise it only on purpose. */
+const TOOLS_LIST_BYTE_BUDGET = 51_000;
+
 /**
  * Contract of the published surface: any change to a tool name, annotation,
  * required key or input property shows up here. Update the snapshot only for
@@ -15,6 +18,10 @@ describe('MCP tool registry', () => {
     const client = await connectInMemoryMcp(registerMcpTools);
     const tools = await client.listTools();
     await client.close();
+
+    // v3 budget (MIC-I6-2): 41 tools. v2 published 70 tools / 81 157 bytes.
+    expect(tools).toHaveLength(41);
+    expect(Buffer.byteLength(JSON.stringify({ tools }))).toBeLessThanOrEqual(TOOLS_LIST_BYTE_BUDGET);
 
     const surface = tools
       .map((tool) => ({

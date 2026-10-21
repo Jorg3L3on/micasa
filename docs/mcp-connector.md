@@ -34,7 +34,7 @@ Reglas:
 1. **Mínimo uno** al autorizar OAuth o crear una llave en Ajustes → Conexiones.
 2. La allow-list se guarda en la base (tabla `AgentConnectionAllowedContext`), editable después en Conexiones sin re-login del cliente.
 3. **`list_houses`** solo devuelve contextos permitidos (y `personalContext: null` si la personal no está autorizada).
-4. Cualquier otra tool con un `ownerId` fuera de la lista → error explícito (`403`), nunca éxito vacío silencioso.
+4. Cualquier otra tool con un `owner_id` fuera de la lista → error explícito (`FORBIDDEN`), nunca éxito vacío silencioso.
 5. Sigue exigiéndose **membresía** a la casa; si te sacan de una casa, desaparece aunque siga en el grant.
 6. **Llaves/grants existentes sin filas** en la allow-list → **fail closed** (no ven nada). Re-conecta o edita en Conexiones.
 
@@ -110,23 +110,23 @@ node scripts/mint-agent-token.mjs --revoke micasa_XXXXXXXX
 
 ## Modelo de contexto
 
-El token es **tu usuario**; cada tool elige el contexto financiero con `ownerType` + `ownerId`. Solo los contextos en la **allow-list** del token/grant son válidos:
+El token es **tu usuario**; cada tool elige el contexto financiero con `owner_type` + `owner_id`. Solo los contextos en la **allow-list** del token/grant son válidos:
 
-1. Llama `list_houses` primero — devuelve tu `userId`, `personalContext` (si está permitida) y las casas autorizadas.
-2. Pasa `ownerType: "house", ownerId: <id>` (casa compartida) o `ownerType: "user", ownerId: <tu userId>` (finanzas personales) en todas las demás tools.
+1. Llama `list_houses` primero — devuelve tu `userId`, `personalContext` (si está permitida) y las casas autorizadas, cada una con `ownerType` / `ownerId`.
+2. Pasa `owner_type: "house", owner_id: <id>` (casa compartida) o `owner_type: "user", owner_id: <tu userId>` (finanzas personales) en todas las demás tools.
 
 La pertenencia a la casa se valida en cada llamada (mismas reglas que `getOwnerContext` en la app).
 
-## Tools v2
+## Tools v3
 
-Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resuelven billeteras y categorías por **id o nombre** (nombre ambiguo → error con ids para desambiguar).
+`serverInfo.version` **3.0.0**: 41 tools (antes 70). Convenciones comunes:
 
-### Transición a v3 (rama `feat/mcp-tools-v3`)
-
-- **Owner args.** Las tools migradas (`list_houses`, `list_wallets`, `create_wallet`, `list_wallet_movements`) publican `owner_type` + `owner_id`. Durante una versión siguen aceptando `ownerType` / `ownerId` como alias (si llegan ambos, gana la clave snake_case); el alias no aparece en `tools/list`. Las demás tools pasan a snake_case en MIC-I6-2/4.
-- **Entrada estricta.** En las tools migradas una clave que no está en el schema (p. ej. `wallet_nmae`) es error de validación, no se descarta en silencio. Las fechas `YYYY-MM-DD` deben existir en el calendario (`2025-02-30` se rechaza).
-- **Errores.** Toda tool responde los errores como `{"error": "…", "code": "…", "hint"?: "…", "candidates"?: [{"id", "name"}]}` con `isError: true`. Códigos: `NOT_FOUND`, `AMBIGUOUS_REF` (con `candidates`), `CONFIRM_REQUIRED`, `FORBIDDEN`, `VALIDATION`, `RATE_LIMITED` (con `hint` de reintento), `INTERNAL`. Los errores internos (base de datos, bugs) nunca exponen su texto: llegan como `INTERNAL` y el detalle queda en el log `mcp.tool.failed`.
-- **Respuestas** en JSON compacto (sin sangría).
+- **Contexto.** Todas las tools (excepto `list_houses`) requieren `owner_type` + `owner_id`; los valores salen de `list_houses` (`ownerType` / `ownerId` de cada contexto). Durante v3 se aceptan también `ownerType` / `ownerId` como alias (si llegan ambos, gana la clave snake_case); el alias no aparece en `tools/list` y se retira en la siguiente versión mayor.
+- **Referencias.** Billeteras y categorías se indican por **id o nombre** (`wallet_id` / `wallet_name`, `category_id` / `category_name`). Nombre ambiguo → `AMBIGUOUS_REF` con `candidates` (`id`, `name`).
+- **Entrada estricta.** Una clave que no está en el schema (p. ej. `wallet_nmae`) es error de validación, no se descarta en silencio. Las fechas `YYYY-MM-DD` deben existir en el calendario (`2025-02-30` se rechaza). Los campos que no aplican al tipo (p. ej. `credit_limit` en una billetera CASH, `source` en una plantilla de gasto) devuelven `VALIDATION`.
+- **Errores.** `{"error": "…", "code": "…", "hint"?: "…", "candidates"?: [{"id", "name"}]}` con `isError: true`. Códigos: `NOT_FOUND`, `AMBIGUOUS_REF`, `CONFIRM_REQUIRED`, `FORBIDDEN`, `VALIDATION`, `RATE_LIMITED` (con `hint` de reintento), `INTERNAL`. Los errores internos (base de datos, bugs) nunca exponen su texto: llegan como `INTERNAL` y el detalle queda en el log `mcp.tool.failed`.
+- **Anotaciones.** Todas declaran `openWorldHint: false`; las de lectura `readOnlyHint: true`. `delete`, `adjust_balance` y `regenerate_from_templates` llevan `destructiveHint: true`.
+- **Respuestas** en JSON compacto (sin sangría). Los schemas publicados omiten `$schema` y los límites ±2^53 de los enteros.
 
 ### Flujo típico del agente
 
@@ -138,29 +138,87 @@ Todas las tools (excepto `list_houses`) requieren `ownerType` + `ownerId`. Resue
 
 | Tool | Qué hace |
 |---|---|
-| `list_houses` | Descubrimiento: userId del token + casas con rol |
-| `list_wallets` | Billeteras con saldo, límite y crédito disponible |
-| `list_cards` | Tarjetas: deuda, límite, corte, día de pago |
-| `get_card` | Detalle: estado de cuenta, movimientos recientes, MSI |
-| `list_card_movements` | Movimientos de una tarjeta por rango o ciclo actual |
-| `list_loans` | Préstamos; `year` + `month` filtra cuotas del mes |
-| `get_loan` | Detalle + calendario de un préstamo |
-| `list_categories` | Catálogo de categorías (gasto e ingreso comparten árbol) |
-| `list_expenses` | Gastos por rango (`from`/`to`, `last_n_days`, filtros). Incluye `totals` del rango completo y `totals_in_page` de la página actual. |
-| `list_incomes` | Ingresos de una quincena (`fortnight_id` o `year`+`month`+`period`) |
-| `list_wallet_movements` | Movimientos de billetera efectivo/débito/meta: gastos, ingresos, transferencias y pagos a tarjeta |
-| `list_expense_templates` / `list_income_templates` | Plantillas recurrentes con flags 1ª/2ª quincena |
-| `list_upcoming` | Pagos unificados: tarjetas (revolving + MSI), préstamos. Filtros: `year`/`month`, `period` FIRST\|SECOND, `from`/`to`. Revolving futuro vía proyección de liquidez (~180 días). |
-| `list_goals` | Metas con progreso hacia el objetivo |
-| `list_budgets` | Presupuestos activos: tope, gastado, restante |
-| `get_liquidity` | “Me alcanza hasta…” (misma lógica que Liquidez en la app) |
-| `get_fortnight` | Resumen y gastos de una quincena (`year`, `month`, `period`) |
+| `list_houses` | Descubrimiento: userId del token, contexto personal y casas con rol. `include_members: true` agrega los miembros de cada casa. |
+| `list_wallets` | Billeteras: efectivo/débito (saldo), tarjetas (deuda, límite, crédito disponible, corte, pago) y metas (objetivo, progreso). `type: all\|funding\|credit\|goal`. |
+| `list_movements` | Movimientos de una billetera. Efectivo/débito/meta: gastos, ingresos, transferencias y pagos a tarjeta con totales. Tarjeta: compras, pagos, cuotas programadas y MSI (default ciclo vigente, `use_current_cycle`). |
+| `get_card` | Deuda, límite y corte de una tarjeta + secciones de `include`: `statement` (default), `movements`, `installments`, `reconciliation`, `cycle_reconciliation`. |
+| `list_expenses` | Gastos por rango (`from`/`to`, `last_n_days`, `last_n_months`, filtros), paginados con `limit`/`offset`/`total_count`. |
+| `list_incomes` | Ingresos de una quincena (`fortnight_id` o `year`+`month`+`period`). |
+| `list_categories` | Catálogo de categorías (`kind: expense\|income\|all`). |
+| `list_budgets` | Presupuestos activos: tope, gastado, restante, asignaciones. |
+| `list_templates` | Plantillas recurrentes (`kind: expense\|income\|all`) con flags 1ª/2ª quincena. |
+| `list_loans` | Préstamos; `year` + `month` filtra cuotas del mes. |
+| `list_lenders` | Prestamistas con capital pendiente y ventana de pago. |
+| `get_loan` | Detalle + calendario de un préstamo. |
+| `list_upcoming` | Pagos unificados: tarjetas (revolving + MSI) y préstamos. Filtros: `year`/`month`, `period`, `from`/`to`. |
+| `get_liquidity` | “Me alcanza hasta…” (misma lógica que Liquidez en la app). |
+| `get_period_summary` | Totales de una quincena (con `period`) o del mes. `include_movements: true` (requiere `period`) agrega la quincena y sus gastos. |
+| `get_alerts` | Alertas del periodo (ingreso faltante, compromiso alto, vencidos). |
 
-### Reglas de lectura (v1.3.x)
+### Escritura (scope `write`)
+
+| Tool | Qué hace | Nota |
+|---|---|---|
+| `create_wallet` | Alta de billetera, tarjeta o meta | `type`: CASH, DEBIT_CARD, CREDIT_CARD, DEPARTMENT_STORE_CARD (requiere `credit_limit`, `cutoff_day`, `due_day`) o GOAL (requiere `goal_amount`, `goal_due_date`). |
+| `update_wallet` | Edita nombre, estado, liquidez, límites, corte/pago o meta | Solo los campos del tipo de la billetera. |
+| `adjust_balance` | Fija saldo (efectivo/débito/meta) o deuda (tarjeta) al del banco | `confirm: true`. |
+| `transfer` | Entre billeteras de activo y metas | Aportar a / retirar de una meta. No es pago de tarjeta. |
+| `transfer_to_house` | Aporte personal → casa (`USER_TO_HOUSE`) | Crea gasto personal + ingreso en la casa. |
+| `add_expense` | Gasto en cualquier billetera | En tarjeta es compra (sube deuda); `installment_current` / `installment_total` para MSI. `is_paid`, `already_in_balance`. |
+| `update_expense` | Corrige un gasto o lo marca pagado/pendiente | Con solo `is_paid` usa el mismo camino que el toggle de la app. |
+| `add_income` / `update_income` | Ingreso en billetera de activo | |
+| `create_category` / `update_category` | Categorías | `kind` EXPENSE\|INCOME. |
+| `upsert_budget` | Crea o actualiza presupuesto | Con `budget_id`: `name`/`amount` opcionales y `allocations[]` reemplaza las asignaciones. La suma debe igualar `amount`. |
+| `create_template` / `update_template` | Plantillas | `kind: expense\|income`. |
+| `create_month` | Crear mes / expandir plantillas | Idempotente. |
+| `regenerate_from_templates` | Regenerar quincena desde plantillas | `fortnight_id` o calendario. |
+| `add_card_payment` | Pago de tarjeta | `mode`: `external` (default) o `wallet` (descuenta billetera MiCasa). |
+| `upsert_installment_plan` | Crea (sin `plan_id`) o actualiza un plan MSI | Al actualizar, `paid_installments` es obligatorio. |
+| `create_scheduled_payment` | Cuota programada suelta en calendario de tarjeta | |
+| `upsert_card_payment_plan` | Monto planeado de pago de tarjeta en quincena | |
+| `create_loan` / `update_loan` | Préstamos | |
+| `add_loan_payment` | Marca cuotas | `MARK_PAID` (descuenta wallet), `MARK_PAID_EXTERNAL`, `SKIP`; lote con `payment_ids`. |
+| `pay_lender` | Paga la ventana de un prestamista | Pago parcial o abono a capital según `amount`. |
+| `delete` | Elimina un registro | `kind`: expense, income, category, budget, expense_template, income_template, loan, scheduled_payment. `confirm: true`. |
+
+### Tools retiradas en v3 (reemplazo)
+
+Los clientes que cachearon `tools/list` de v2 (ChatGPT, Claude, Cursor) deben **reconectar** el conector una vez para ver la lista nueva; v3 no anuncia `tools.listChanged` (el handler es stateless y nunca emitía la notificación).
+
+| Tool v2 | Reemplazo v3 |
+|---|---|
+| `pay_card` | `add_card_payment` con `mode: "wallet"` |
+| `add_card_purchase` | `add_expense` con una billetera de crédito (`installment_current` / `installment_total` para MSI) |
+| `contribute_goal` | `transfer` con la meta como destino |
+| `withdraw_goal` | `transfer` con la meta como origen |
+| `create_goal` | `create_wallet` con `type: "GOAL"` |
+| `update_goal` | `update_wallet` |
+| `list_goals` | `list_wallets` con `type: "goal"` |
+| `list_cards` | `list_wallets` con `type: "credit"` |
+| `create_card` | `create_wallet` con `type: "CREDIT_CARD"` o `"DEPARTMENT_STORE_CARD"` |
+| `update_card` | `update_wallet` |
+| `adjust_card_debt` | `adjust_balance` (en tarjetas fija la deuda) |
+| `adjust_wallet_balance` | `adjust_balance` |
+| `list_wallet_movements` | `list_movements` |
+| `list_card_movements` | `list_movements` (tarjeta) |
+| `get_card_reconciliation` | `get_card` con `include: ["reconciliation"]` (por tarjeta) |
+| `get_card_cycle_reconciliation` | `get_card` con `include: ["cycle_reconciliation"]` |
+| `get_installment_portfolio` | `get_card` con `include: ["installments"]` (`installment_portfolio`) |
+| `create_installment_plan` | `upsert_installment_plan` sin `plan_id` |
+| `update_installment_plan` | `upsert_installment_plan` con `plan_id` |
+| `set_expense_paid` | `update_expense` con solo `is_paid` |
+| `update_budget_allocations` | `upsert_budget` con `budget_id` + `allocations` |
+| `list_expense_templates` / `list_income_templates` | `list_templates` con `kind` |
+| `create_expense_template` / `create_income_template` | `create_template` con `kind` |
+| `update_expense_template` / `update_income_template` | `update_template` con `kind` |
+| `delete_expense_template` / `delete_income_template` | `delete` con `kind: "expense_template"` / `"income_template"` |
+| `delete_expense` / `delete_income` / `delete_category` / `delete_budget` / `delete_loan` / `delete_scheduled_payment` | `delete` con `kind` = `expense` / `income` / `category` / `budget` / `loan` / `scheduled_payment` |
+| `list_house_members` | `list_houses` con `include_members: true` |
+| `get_fortnight` | `get_period_summary` con `period` + `include_movements: true` |
+
+### Reglas de lectura
 
 **v1.3.1:** el transporte HTTP exige Bearer válido antes de `initialize` / `tools/list`; sin token responde **401** + `WWW-Authenticate` con `resource_metadata` (RFC 9728, requerido por ChatGPT OAuth).
-
-**v1.3.0:** OAuth 2.1 + DCR.
 
 Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 
@@ -187,75 +245,13 @@ Estas reglas alinean las tools de lectura con Panel financiero y Liquidez:
 - **`totals`:** suma por billetera y categoría en **todo** el rango filtrado (todas las páginas).
 - **`totals_in_page`:** suma solo de la página actual (`limit`/`offset`).
 
-**`list_card_movements`**
+**`list_movements` (tarjeta)**
 
 - Incluye **`purchase`**, **`payment`**, **`scheduled_payment`** (cuota programada suelta) e **`installment`** (cuota de plan MSI) cuya fecha cae en `from`/`to` o en el ciclo actual (`use_current_cycle`).
 
-**Redescubrimiento de tools**
+### Import de estados de cuenta (fuera de MCP)
 
-- `serverInfo.version` **2.2.1** (hardening OAuth, ver arriba; antes 2.2.0 — P2: reportes/alertas, casa, categorías CRUD, presupuesto multi-asignación, reconciliación/MSI; import PDF/CSV documentado fuera de v2) y `tools.listChanged: true` para que clientes que cachearon v1 vuelvan a pedir `tools/list`.
-
-### Lectura P2 (scope `read`)
-
-| Tool | Qué hace |
-|---|---|
-| `get_period_summary` | Totales del periodo (ingresos, gastos, pagado/pendiente, saldos de fondo, resto de presupuesto). Misma lógica que `GET /api/reports?type=summary`. |
-| `get_alerts` | Alertas del periodo (ingreso faltante, compromiso alto, vencidos). Misma lógica que `GET /api/alerts`. |
-| `list_house_members` | Miembros de la casa (`ownerType=house`). Solo casas en allow-list + membresía. |
-| `get_card_reconciliation` | Inconsistencias en tarjetas del contexto. Misma lógica que `GET /api/credit-cards/reconciliation`. |
-| `get_card_cycle_reconciliation` | Saldo registrado vs esperado en el ciclo vigente de una tarjeta. |
-| `get_installment_portfolio` | Cuotas MSI activas y exposición restante en una tarjeta. |
-
-`list_categories` ahora incluye `kind` (`EXPENSE`/`INCOME`) y acepta filtro `kind: expense|income|all`.
-
-### Escritura P2 (scope `write`)
-
-| Tool | Qué hace | Nota |
-|---|---|---|
-| `transfer_to_house` | Aporte personal → casa (`USER_TO_HOUSE`) | Mismo POST `/api/transfers`. No es `transfer` wallet↔wallet. |
-| `create_category` / `update_category` / `delete_category` | CRUD categorías | `kind` EXPENSE\|INCOME; `delete_category` requiere `confirm: true`. |
-| `update_budget_allocations` | Reemplaza asignaciones de un presupuesto | Mismo PUT `/api/budgets/[id]/allocations`. |
-| `upsert_budget` | Acepta `allocations[]` multi-billetera/categoría | La suma debe igualar `amount`. |
-
-### Import de estados de cuenta (fuera de MCP v2)
-
-La UI importa PDF/CSV vía **multipart/form-data** (`POST /api/credit-cards/:id/statement-imports` y `/preview`). No hay API JSON limpia (URL, filas parseadas o asset id) reutilizable por agentes sin subir el archivo. **No hay tool MCP de import en v2** — sigue en la app web. Si en el futuro se expone un endpoint JSON, se podrá añadir una tool.
-
-### Escritura (scope `write`)
-
-| Tool | Qué hace | Nota |
-|---|---|---|
-| `add_expense` | Gasto en cualquier billetera | `is_paid` (default true); `already_in_balance` para bitácora sin mover saldo |
-| `update_expense` / `delete_expense` | Corregir o borrar gasto | `update_expense` acepta `is_paid`; `delete_expense` requiere `confirm: true` |
-| `set_expense_paid` | Marcar gasto pagado o pendiente | Mismo PATCH paid de la app; mueve saldo/deuda |
-| `add_income` | Ingreso en billetera de activo | Sube saldo |
-| `update_income` / `delete_income` | Corregir o borrar ingreso | `delete_income` requiere `confirm: true` |
-| `create_expense_template` / `update_expense_template` / `delete_expense_template` | CRUD plantillas de gasto | Flags `applies_first_fortnight` / `applies_second_fortnight` |
-| `create_income_template` / `update_income_template` / `delete_income_template` | CRUD plantillas de ingreso | Misma expansión que la UI al crear mes |
-| `create_month` | Crear mes / expandir plantillas | Misma regla que UI: año en curso, mes actual o futuro |
-| `regenerate_from_templates` | Regenerar quincena desde plantillas | `fortnight_id` o calendario |
-| `create_wallet` | Alta billetera CASH/DEBIT | Mismo POST /api/wallets |
-| `create_card` | Alta tarjeta de crédito | Mismo POST /api/credit-cards |
-| `create_goal` / `update_goal` | Alta o edición de meta | Billetera GOAL |
-| `adjust_wallet_balance` | Fija saldo efectivo/débito/meta | `confirm: true` |
-| `transfer` | Entre billeteras de activo/metas | No es pago de tarjeta |
-| `contribute_goal` / `withdraw_goal` | Aportar o retirar de una meta | Transfer interna |
-| `create_loan` / `update_loan` / `add_loan_payment` | Préstamos personales | `add_loan_payment`: `MARK_PAID` (descuenta wallet), `MARK_PAID_EXTERNAL`, `SKIP`; batch con `payment_ids` |
-| `delete_loan` | Elimina préstamo | `confirm: true` |
-| `upsert_budget` / `delete_budget` | Crear/actualizar o desactivar presupuesto | Soporta `allocations[]`; ver también `update_budget_allocations` |
-| `adjust_card_debt` | Fija deuda de tarjeta | `confirm: true` |
-| `update_card` | Corte, pago, límites | Idempotente |
-| `add_card_purchase` | Compra en tarjeta | `already_in_balance` opcional |
-| `add_card_payment` | Pago de tarjeta | `mode`: `external` (default) o `wallet` (descuenta billetera MiCasa) |
-| `pay_card` | Pagar tarjeta desde billetera | Alias de `add_card_payment` con `mode: wallet` |
-| `create_installment_plan` / `update_installment_plan` | Planes MSI | |
-| `create_scheduled_payment` | Cuota programada suelta en calendario de tarjeta | Mismo POST scheduled-payments |
-| `upsert_card_payment_plan` | Monto planeado de pago de tarjeta en quincena | Mismo PUT card-payment-plans del panel |
-| `delete_scheduled_payment` | Elimina cuota programada | `confirm: true` |
-
-Las tools declaran anotaciones MCP (`readOnlyHint`, `destructiveHint`, `idempotentHint`).
-
-Fuera de v2: **import PDF/CSV** vía MCP (solo multipart en la app), administración.
+La UI importa PDF/CSV vía **multipart/form-data** (`POST /api/credit-cards/:id/statement-imports` y `/preview`). No hay API JSON limpia (URL, filas parseadas o asset id) reutilizable por agentes sin subir el archivo. **No hay tool MCP de import** — sigue en la app web. Si en el futuro se expone un endpoint JSON, se podrá añadir una tool.
 
 ## Límites de uso
 

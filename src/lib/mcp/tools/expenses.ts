@@ -5,20 +5,15 @@ import { todayCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
 import { createCreditCardPurchase } from '@/lib/finance/credit-card.service';
 import {
   createExpense,
-  deleteExpense,
   toggleExpensePaid,
   updateExpense,
 } from '@/lib/finance/expense.service';
 import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
 import type { PaymentMethodType } from '@/generated/prisma/client';
 import { createCreditCardPurchaseSchema } from '@/schemas/credit-card.schema';
-import {
-  confirmSchema,
-  ownerIdSchema,
-  ownerTypeSchema,
-  runAgentTool,
-  type McpToolContext,
-} from '@/lib/mcp/tool-helpers';
+import { defineOwnerTool } from '@/lib/mcp/define-tool';
+import { McpToolError } from '@/lib/mcp/errors';
+import { categoryRef, dateYmd, walletRef } from '@/lib/mcp/schemas';
 import {
   calendarRangeBounds,
   resolveCategoryRef,
@@ -27,361 +22,314 @@ import {
   resolveWalletRef,
 } from '@/lib/mcp/resolvers';
 
-const ownerArgs = {
-  ownerType: ownerTypeSchema,
-  ownerId: ownerIdSchema,
-};
-
-const dateYmdSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato requerido: YYYY-MM-DD');
-
-const walletRefSchema = {
-  wallet_id: z.number().int().positive().optional(),
-  wallet_name: z.string().trim().min(1).optional(),
-};
-
-const categoryRefSchema = {
-  category_id: z.number().int().positive().optional(),
-  category_name: z.string().trim().min(1).optional(),
-};
-
 export function registerExpenseTools(server: McpServer) {
-  server.registerTool(
-    'add_expense',
-    {
-      title: 'Registrar gasto',
-      description:
-        'Registra un gasto en cualquier billetera del contexto. Débito/efectivo bajan saldo; tarjeta sube deuda. already_in_balance: true solo bitácora.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        ...walletRefSchema,
-        amount: z.number().positive(),
-        description: z.string().trim().min(1).max(200),
-        expense_date: dateYmdSchema
-          .optional()
-          .describe('Fecha del gasto (YYYY-MM-DD). Default: hoy CDMX.'),
-        ...categoryRefSchema,
-        already_in_balance: z.boolean().default(false),
-        is_paid: z
-          .boolean()
-          .default(true)
-          .describe(
-            'true = gasto pagado (mueve saldo/deuda); false = pendiente de pago en la quincena.',
-          ),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: false },
+  defineOwnerTool(server, {
+    name: 'add_expense',
+    title: 'Registrar gasto',
+    description:
+      'Registra un gasto en cualquier billetera del contexto. Efectivo/débito bajan saldo; en una tarjeta es una compra que sube la deuda (con installment_current/installment_total para MSI). already_in_balance: true solo deja bitácora sin mover saldo ni deuda.',
+    scope: 'write',
+    annotations: { destructiveHint: false, idempotentHint: false },
+    input: {
+      ...walletRef,
+      amount: z.number().positive(),
+      description: z.string().trim().min(1).max(200),
+      expense_date: dateYmd
+        .optional()
+        .describe('Fecha del gasto (YYYY-MM-DD). Default: hoy CDMX.'),
+      ...categoryRef,
+      already_in_balance: z
+        .boolean()
+        .default(false)
+        .describe('true si el gasto ya está reflejado en el saldo o la deuda actual.'),
+      is_paid: z
+        .boolean()
+        .default(true)
+        .describe(
+          'true = gasto pagado (mueve saldo); false = pendiente de pago en la quincena. Las compras con tarjeta siempre suben la deuda.',
+        ),
+      installment_current: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Solo tarjetas: mensualidad actual de una compra a MSI.'),
+      installment_total: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Solo tarjetas: total de mensualidades (MSI); requiere installment_current.'),
     },
-    async (args, ctx) =>
-      runAgentTool('add_expense', ctx as McpToolContext, args, 'write', async (agent) => {
-        const expenseDate = args.expense_date ?? todayCalendarDate();
-        const wallet = await resolveWalletRef(
-          agent.ownerFilter,
-          args.wallet_id,
-          args.wallet_name,
+    run: async (agent, args) => {
+      const expenseDate = args.expense_date ?? todayCalendarDate();
+      const wallet = await resolveWalletRef(
+        agent.ownerFilter,
+        args.wallet_id,
+        args.wallet_name,
+      );
+      const isCard = isCreditWalletType(wallet.type as PaymentMethodType);
+      const hasInstallments =
+        args.installment_current != null || args.installment_total != null;
+      if (hasInstallments && !isCard) {
+        throw new McpToolError(
+          'VALIDATION',
+          'installment_current / installment_total solo aplican a compras con tarjeta',
         );
-        const categoryId = await resolveCategoryRef(
-          agent.ownerFilter,
-          args.category_id,
-          args.category_name,
-        );
-        const fortnightId = await resolveFortnightIdForDate(agent, expenseDate);
+      }
 
-        if (isCreditWalletType(wallet.type as PaymentMethodType)) {
-          const purchaseInput = createCreditCardPurchaseSchema.parse({
-            fortnight_id: fortnightId,
-            category_id: categoryId ?? undefined,
-            description: args.description,
-            amount: args.amount,
-            payment_date: expenseDate,
-            already_in_card_balance: args.already_in_balance,
-          });
-          const purchase = await createCreditCardPurchase(
-            wallet.id,
-            agent.ownerFilter,
-            purchaseInput,
-          );
-          const card = await prisma.wallet.findUnique({
-            where: { id: wallet.id },
-            select: { amount: true },
-          });
-          return {
-            expense_id: purchase.id,
-            wallet_id: wallet.id,
-            wallet_name: wallet.name,
-            amount: args.amount,
-            date: expenseDate,
-            effect: 'debt_increase',
-            new_balance_or_debt: card ? Number(card.amount) : null,
-            already_in_balance: args.already_in_balance,
-          };
-        }
+      const categoryId = await resolveCategoryRef(
+        agent.ownerFilter,
+        args.category_id,
+        args.category_name,
+      );
+      const fortnightId = await resolveFortnightIdForDate(agent, expenseDate);
 
-        const created = await createExpense({
-          fortnightId,
-          categoryId,
+      if (isCard) {
+        const purchaseInput = createCreditCardPurchaseSchema.parse({
+          fortnight_id: fortnightId,
+          category_id: categoryId ?? undefined,
           description: args.description,
           amount: args.amount,
-          isPaid: args.is_paid,
-          paymentDate: expenseDate,
-          walletId: wallet.id,
-          applyWalletDelta: args.is_paid && !args.already_in_balance,
+          payment_date: expenseDate,
+          already_in_card_balance: args.already_in_balance,
+          credit_installment_current: args.installment_current ?? null,
+          credit_installment_total: args.installment_total ?? null,
         });
-
-        const updatedWallet = await prisma.wallet.findUnique({
+        const purchase = await createCreditCardPurchase(
+          wallet.id,
+          agent.ownerFilter,
+          purchaseInput,
+        );
+        const card = await prisma.wallet.findUnique({
           where: { id: wallet.id },
           select: { amount: true },
         });
-
         return {
-          expense_id: created.id,
+          expense_id: purchase.id,
           wallet_id: wallet.id,
           wallet_name: wallet.name,
           amount: args.amount,
           date: expenseDate,
-          effect: args.is_paid ? 'balance_decrease' : 'pending_expense',
-          new_balance_or_debt: updatedWallet ? Number(updatedWallet.amount) : null,
-          is_paid: args.is_paid,
+          effect: 'debt_increase',
+          new_balance_or_debt: card ? Number(card.amount) : null,
           already_in_balance: args.already_in_balance,
+          installment:
+            args.installment_current != null && args.installment_total != null
+              ? `${args.installment_current}/${args.installment_total}`
+              : null,
         };
-      }),
-  );
+      }
 
-  server.registerTool(
-    'list_expenses',
-    {
-      title: 'Listar gastos por rango',
-      description:
-        'Lista gastos del contexto en un rango de fechas con totales por billetera y categoría.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        from: dateYmdSchema.optional(),
-        to: dateYmdSchema.optional(),
-        last_n_days: z.number().int().min(1).max(366).optional(),
-        last_n_months: z.number().int().min(1).max(24).optional(),
-        wallet_id: z.number().int().positive().optional(),
-        wallet_name: z.string().trim().min(1).optional(),
-        category_id: z.number().int().positive().optional(),
-        category_name: z.string().trim().min(1).optional(),
-        limit: z.number().int().min(1).max(500).default(100),
-        offset: z.number().int().min(0).default(0),
-      }),
-      annotations: { readOnlyHint: true },
+      const created = await createExpense({
+        fortnightId,
+        categoryId,
+        description: args.description,
+        amount: args.amount,
+        isPaid: args.is_paid,
+        paymentDate: expenseDate,
+        walletId: wallet.id,
+        applyWalletDelta: args.is_paid && !args.already_in_balance,
+      });
+
+      const updatedWallet = await prisma.wallet.findUnique({
+        where: { id: wallet.id },
+        select: { amount: true },
+      });
+
+      return {
+        expense_id: created.id,
+        wallet_id: wallet.id,
+        wallet_name: wallet.name,
+        amount: args.amount,
+        date: expenseDate,
+        effect: args.is_paid ? 'balance_decrease' : 'pending_expense',
+        new_balance_or_debt: updatedWallet ? Number(updatedWallet.amount) : null,
+        is_paid: args.is_paid,
+        already_in_balance: args.already_in_balance,
+      };
     },
-    async (args, ctx) =>
-      runAgentTool('list_expenses', ctx as McpToolContext, args, 'read', async (agent) => {
-        const range = resolveDateRange(args);
-        const { fromDate, toDate } = calendarRangeBounds(range);
+  });
 
-        let walletId = args.wallet_id;
-        if (args.wallet_name && walletId == null) {
-          walletId = (
-            await resolveWalletRef(agent.ownerFilter, undefined, args.wallet_name)
-          ).id;
-        }
-
-        let categoryId = args.category_id;
-        if (args.category_name && categoryId == null) {
-          categoryId =
-            (await resolveCategoryRef(
-              agent.ownerFilter,
-              undefined,
-              args.category_name,
-            )) ?? undefined;
-        }
-
-        const where = {
-          ...agent.ownerFilter,
-          OR: [
-            { payment_date: { gte: fromDate, lte: toDate } },
-            {
-              AND: [
-                { payment_date: null },
-                { created_at: { gte: fromDate, lte: toDate } },
-              ],
-            },
-          ],
-          ...(walletId != null ? { wallet_id: walletId } : {}),
-          ...(categoryId != null ? { category_id: categoryId } : {}),
-        };
-
-        const [total, expenses, expensesForTotals] = await Promise.all([
-          prisma.expense.count({ where }),
-          prisma.expense.findMany({
-            where,
-            include: {
-              wallet: { select: { id: true, name: true, type: true } },
-              category: { select: { id: true, name: true } },
-            },
-            orderBy: [{ payment_date: 'desc' }, { created_at: 'desc' }],
-            skip: args.offset,
-            take: args.limit,
-          }),
-          prisma.expense.findMany({
-            where,
-            select: {
-              amount: true,
-              wallet: { select: { name: true } },
-              category: { select: { name: true } },
-            },
-          }),
-        ]);
-
-        const totalsByWallet = new Map<string, number>();
-        const totalsByCategory = new Map<string, number>();
-        const rangeTotalsByWallet = new Map<string, number>();
-        const rangeTotalsByCategory = new Map<string, number>();
-
-        for (const expense of expensesForTotals) {
-          const walletKey = expense.wallet?.name ?? 'Sin billetera';
-          rangeTotalsByWallet.set(
-            walletKey,
-            (rangeTotalsByWallet.get(walletKey) ?? 0) + Number(expense.amount),
-          );
-          const categoryKey = expense.category?.name ?? 'Sin categoría';
-          rangeTotalsByCategory.set(
-            categoryKey,
-            (rangeTotalsByCategory.get(categoryKey) ?? 0) + Number(expense.amount),
-          );
-        }
-
-        for (const expense of expenses) {
-          const walletKey = expense.wallet?.name ?? 'Sin billetera';
-          totalsByWallet.set(
-            walletKey,
-            (totalsByWallet.get(walletKey) ?? 0) + Number(expense.amount),
-          );
-          const categoryKey = expense.category?.name ?? 'Sin categoría';
-          totalsByCategory.set(
-            categoryKey,
-            (totalsByCategory.get(categoryKey) ?? 0) + Number(expense.amount),
-          );
-        }
-
-        return {
-          from: range.from,
-          to: range.to,
-          total_count: total,
-          offset: args.offset,
-          limit: args.limit,
-          expenses: expenses.map((expense) => ({
-            id: expense.id,
-            date: formatCalendarDate(expense.payment_date ?? expense.created_at),
-            description: expense.description,
-            amount: Number(expense.amount),
-            wallet_id: expense.wallet_id,
-            wallet_name: expense.wallet?.name ?? null,
-            wallet_type: expense.wallet?.type ?? null,
-            category_id: expense.category_id,
-            category_name: expense.category?.name ?? null,
-            is_paid: expense.is_paid,
-            effect:
-              expense.wallet?.type &&
-              isCreditWalletType(expense.wallet.type as PaymentMethodType)
-                ? 'debt_increase'
-                : 'balance_decrease',
-          })),
-          totals: {
-            by_wallet: Object.fromEntries(rangeTotalsByWallet),
-            by_category: Object.fromEntries(rangeTotalsByCategory),
-          },
-          totals_in_page: {
-            by_wallet: Object.fromEntries(totalsByWallet),
-            by_category: Object.fromEntries(totalsByCategory),
-          },
-        };
-      }),
-  );
-
-  server.registerTool(
-    'update_expense',
-    {
-      title: 'Editar gasto',
-      description:
-        'Corrige monto, billetera, categoría, fecha o descripción. Recalcula saldo/deuda sin tocar otras billeteras.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        expense_id: z.number().int().positive(),
-        amount: z.number().positive().optional(),
-        description: z.string().trim().min(1).max(200).optional(),
-        expense_date: dateYmdSchema.optional(),
-        wallet_id: z.number().int().positive().optional(),
-        wallet_name: z.string().trim().min(1).optional(),
-        category_id: z.number().int().positive().optional(),
-        category_name: z.string().trim().min(1).optional(),
-        is_paid: z
-          .boolean()
-          .optional()
-          .describe(
-            'true = pagado (mueve saldo/deuda); false = pendiente. Usa set_expense_paid para solo cambiar el estado.',
-          ),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: true },
+  defineOwnerTool(server, {
+    name: 'list_expenses',
+    title: 'Listar gastos por rango',
+    description:
+      'Lista gastos del contexto en un rango de fechas (default últimos 30 días), paginados, con totales del rango completo por billetera y categoría.',
+    scope: 'read',
+    input: {
+      from: dateYmd.optional(),
+      to: dateYmd.optional(),
+      last_n_days: z.number().int().min(1).max(366).optional(),
+      last_n_months: z.number().int().min(1).max(24).optional(),
+      ...walletRef,
+      ...categoryRef,
+      limit: z.number().int().min(1).max(500).default(100),
+      offset: z.number().int().min(0).default(0),
     },
-    async (args, ctx) =>
-      runAgentTool('update_expense', ctx as McpToolContext, args, 'write', async (agent) => {
-        let walletId: number | null | undefined;
-        if (args.wallet_id != null || args.wallet_name) {
-          const wallet = await resolveWalletRef(
+    run: async (agent, args) => {
+      const range = resolveDateRange(args);
+      const { fromDate, toDate } = calendarRangeBounds(range);
+
+      let walletId = args.wallet_id;
+      if (args.wallet_name && walletId == null) {
+        walletId = (
+          await resolveWalletRef(agent.ownerFilter, undefined, args.wallet_name)
+        ).id;
+      }
+
+      let categoryId = args.category_id;
+      if (args.category_name && categoryId == null) {
+        categoryId =
+          (await resolveCategoryRef(
             agent.ownerFilter,
-            args.wallet_id,
-            args.wallet_name,
-          );
-          walletId = wallet.id;
-        }
+            undefined,
+            args.category_name,
+          )) ?? undefined;
+      }
 
-        let categoryId: number | undefined;
-        if (args.category_id != null || args.category_name) {
-          categoryId =
-            (await resolveCategoryRef(
-              agent.ownerFilter,
-              args.category_id,
-              args.category_name,
-            )) ?? undefined;
-        }
+      const where = {
+        ...agent.ownerFilter,
+        OR: [
+          { payment_date: { gte: fromDate, lte: toDate } },
+          {
+            AND: [
+              { payment_date: null },
+              { created_at: { gte: fromDate, lte: toDate } },
+            ],
+          },
+        ],
+        ...(walletId != null ? { wallet_id: walletId } : {}),
+        ...(categoryId != null ? { category_id: categoryId } : {}),
+      };
 
-        let fortnightId: number | undefined;
-        if (args.expense_date) {
-          fortnightId = await resolveFortnightIdForDate(agent, args.expense_date);
-        }
+      const [total, expenses, expensesForTotals] = await Promise.all([
+        prisma.expense.count({ where }),
+        prisma.expense.findMany({
+          where,
+          include: {
+            wallet: { select: { id: true, name: true, type: true } },
+            category: { select: { id: true, name: true } },
+          },
+          orderBy: [{ payment_date: 'desc' }, { created_at: 'desc' }],
+          skip: args.offset,
+          take: args.limit,
+        }),
+        prisma.expense.findMany({
+          where,
+          select: {
+            amount: true,
+            wallet: { select: { name: true } },
+            category: { select: { name: true } },
+          },
+        }),
+      ]);
 
-        const updated = await updateExpense({
-          id: args.expense_id,
-          ownerFilter: agent.ownerFilter,
-          ...(args.amount != null ? { amount: args.amount } : {}),
-          ...(args.description != null ? { description: args.description } : {}),
-          ...(args.expense_date != null ? { paymentDate: args.expense_date } : {}),
-          ...(fortnightId != null ? { fortnightId } : {}),
-          ...(walletId !== undefined ? { walletId } : {}),
-          ...(categoryId != null ? { categoryId } : {}),
-          ...(args.is_paid !== undefined ? { isPaid: args.is_paid } : {}),
-        });
+      const totalsByWallet = new Map<string, number>();
+      const totalsByCategory = new Map<string, number>();
+      const rangeTotalsByWallet = new Map<string, number>();
+      const rangeTotalsByCategory = new Map<string, number>();
 
-        return { expense: updated };
-      }),
-  );
+      for (const expense of expensesForTotals) {
+        const walletKey = expense.wallet?.name ?? 'Sin billetera';
+        rangeTotalsByWallet.set(
+          walletKey,
+          (rangeTotalsByWallet.get(walletKey) ?? 0) + Number(expense.amount),
+        );
+        const categoryKey = expense.category?.name ?? 'Sin categoría';
+        rangeTotalsByCategory.set(
+          categoryKey,
+          (rangeTotalsByCategory.get(categoryKey) ?? 0) + Number(expense.amount),
+        );
+      }
 
-  server.registerTool(
-    'set_expense_paid',
-    {
-      title: 'Marcar gasto pagado o pendiente',
-      description:
-        'Cambia el estado de pago de un gasto (PATCH paid de la app). Mueve saldo/deuda al marcar pagado; revierte al desmarcar.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        expense_id: z.number().int().positive(),
-        is_paid: z.boolean().describe('true = pagado; false = pendiente en la quincena.'),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: true },
+      for (const expense of expenses) {
+        const walletKey = expense.wallet?.name ?? 'Sin billetera';
+        totalsByWallet.set(
+          walletKey,
+          (totalsByWallet.get(walletKey) ?? 0) + Number(expense.amount),
+        );
+        const categoryKey = expense.category?.name ?? 'Sin categoría';
+        totalsByCategory.set(
+          categoryKey,
+          (totalsByCategory.get(categoryKey) ?? 0) + Number(expense.amount),
+        );
+      }
+
+      return {
+        from: range.from,
+        to: range.to,
+        total_count: total,
+        offset: args.offset,
+        limit: args.limit,
+        expenses: expenses.map((expense) => ({
+          id: expense.id,
+          date: formatCalendarDate(expense.payment_date ?? expense.created_at),
+          description: expense.description,
+          amount: Number(expense.amount),
+          wallet_id: expense.wallet_id,
+          wallet_name: expense.wallet?.name ?? null,
+          wallet_type: expense.wallet?.type ?? null,
+          category_id: expense.category_id,
+          category_name: expense.category?.name ?? null,
+          is_paid: expense.is_paid,
+          effect:
+            expense.wallet?.type &&
+            isCreditWalletType(expense.wallet.type as PaymentMethodType)
+              ? 'debt_increase'
+              : 'balance_decrease',
+        })),
+        totals: {
+          by_wallet: Object.fromEntries(rangeTotalsByWallet),
+          by_category: Object.fromEntries(rangeTotalsByCategory),
+        },
+        totals_in_page: {
+          by_wallet: Object.fromEntries(totalsByWallet),
+          by_category: Object.fromEntries(totalsByCategory),
+        },
+      };
     },
-    async (args, ctx) =>
-      runAgentTool('set_expense_paid', ctx as McpToolContext, args, 'write', async (agent) => {
+  });
+
+  defineOwnerTool(server, {
+    name: 'update_expense',
+    title: 'Editar gasto o marcarlo pagado',
+    description:
+      'Corrige monto, billetera, categoría, fecha o descripción y recalcula saldo/deuda sin tocar otras billeteras. Con solo is_paid marca el gasto pagado (mueve saldo/deuda) o pendiente (lo revierte).',
+    scope: 'write',
+    annotations: { destructiveHint: false, idempotentHint: true },
+    input: {
+      expense_id: z.number().int().positive(),
+      amount: z.number().positive().optional(),
+      description: z.string().trim().min(1).max(200).optional(),
+      expense_date: dateYmd.optional(),
+      ...walletRef,
+      ...categoryRef,
+      is_paid: z
+        .boolean()
+        .optional()
+        .describe('true = pagado (mueve saldo/deuda); false = pendiente en la quincena.'),
+    },
+    run: async (agent, args) => {
+      const editsFields =
+        args.amount != null ||
+        args.description != null ||
+        args.expense_date != null ||
+        args.wallet_id != null ||
+        args.wallet_name != null ||
+        args.category_id != null ||
+        args.category_name != null;
+
+      if (!editsFields) {
+        if (args.is_paid === undefined) {
+          throw new McpToolError('VALIDATION', 'Indica al menos un campo a cambiar');
+        }
+        // Same path as the app's "pagado" toggle (keeps its transfer / loan guards).
         const expense = await toggleExpensePaid({
           id: args.expense_id,
           paid: args.is_paid,
           ownerFilter: agent.ownerFilter,
         });
-
         return {
           expense_id: expense.id,
           is_paid: expense.is_paid,
@@ -389,29 +337,46 @@ export function registerExpenseTools(server: McpServer) {
           description: expense.description,
           wallet_name: expense.wallet?.name ?? 'Efectivo',
         };
-      }),
-  );
+      }
 
-  server.registerTool(
-    'delete_expense',
-    {
-      title: 'Eliminar gasto',
-      description:
-        'Elimina un gasto y revierte su efecto en saldo o deuda. Requiere confirm: true.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        expense_id: z.number().int().positive(),
-        confirm: confirmSchema,
-      }),
-      annotations: { destructiveHint: true, idempotentHint: true },
+      let walletId: number | null | undefined;
+      if (args.wallet_id != null || args.wallet_name) {
+        const wallet = await resolveWalletRef(
+          agent.ownerFilter,
+          args.wallet_id,
+          args.wallet_name,
+        );
+        walletId = wallet.id;
+      }
+
+      let categoryId: number | undefined;
+      if (args.category_id != null || args.category_name) {
+        categoryId =
+          (await resolveCategoryRef(
+            agent.ownerFilter,
+            args.category_id,
+            args.category_name,
+          )) ?? undefined;
+      }
+
+      let fortnightId: number | undefined;
+      if (args.expense_date) {
+        fortnightId = await resolveFortnightIdForDate(agent, args.expense_date);
+      }
+
+      const updated = await updateExpense({
+        id: args.expense_id,
+        ownerFilter: agent.ownerFilter,
+        ...(args.amount != null ? { amount: args.amount } : {}),
+        ...(args.description != null ? { description: args.description } : {}),
+        ...(args.expense_date != null ? { paymentDate: args.expense_date } : {}),
+        ...(fortnightId != null ? { fortnightId } : {}),
+        ...(walletId !== undefined ? { walletId } : {}),
+        ...(categoryId != null ? { categoryId } : {}),
+        ...(args.is_paid !== undefined ? { isPaid: args.is_paid } : {}),
+      });
+
+      return { expense: updated };
     },
-    async (args, ctx) =>
-      runAgentTool('delete_expense', ctx as McpToolContext, args, 'write', async (agent) => {
-        await deleteExpense({
-          id: args.expense_id,
-          ownerFilter: agent.ownerFilter,
-        });
-        return { deleted: true, expense_id: args.expense_id };
-      }),
-  );
+  });
 }

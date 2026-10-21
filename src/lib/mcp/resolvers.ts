@@ -8,6 +8,8 @@ import {
 } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { FortnightPeriod } from '@/generated/prisma/client';
+import { findFortnightByCalendarPeriod } from '@/features/monthly/server/monthly.queries';
 import type { AgentContext } from '@/lib/server/resolve-agent-context';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { McpToolError } from '@/lib/mcp/errors';
@@ -178,6 +180,37 @@ export async function resolveFortnightIdForDate(
     month,
     period,
   });
+  return fortnight.id;
+}
+
+/**
+ * Fortnight from `fortnight_id` or `year` + `month` + `period` (it must
+ * exist; `create_month` creates them).
+ */
+export async function resolveFortnightRef(
+  agent: Pick<AgentContext, 'ownerFilter'>,
+  input: {
+    fortnight_id?: number;
+    year?: number;
+    month?: number;
+    period?: 'FIRST' | 'SECOND';
+  },
+): Promise<number> {
+  if (input.fortnight_id != null) return input.fortnight_id;
+  if (input.year == null || input.month == null || input.period == null) {
+    throw new McpToolError('VALIDATION', 'Indica fortnight_id o year + month + period');
+  }
+  const fortnight = await findFortnightByCalendarPeriod(
+    agent.ownerFilter,
+    input.year,
+    input.month,
+    input.period === 'SECOND' ? FortnightPeriod.SECOND : FortnightPeriod.FIRST,
+  );
+  if (!fortnight) {
+    throw new McpToolError('NOT_FOUND', 'Quincena no encontrada', {
+      hint: 'Usa create_month para crear las quincenas del mes.',
+    });
+  }
   return fortnight.id;
 }
 

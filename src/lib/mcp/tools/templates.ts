@@ -3,10 +3,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import type { McpServer } from '@modelcontextprotocol/server';
 import prisma from '@/lib/prisma';
 import { deriveLegacyDueDayForTemplate } from '@/lib/finance/expense-template-due';
-import {
-  assertOwnedCategoryOfKind,
-  CategoryServiceError,
-} from '@/lib/finance/category.service';
+import { assertOwnedCategoryOfKind } from '@/lib/finance/category.service';
 import {
   createExpenseTemplateSchema,
   updateExpenseTemplateSchema,
@@ -15,19 +12,11 @@ import {
   createIncomeTemplateSchema,
   updateIncomeTemplateSchema,
 } from '@/schemas/income-template.schema';
-import {
-  confirmSchema,
-  ownerIdSchema,
-  ownerTypeSchema,
-  runAgentTool,
-  type McpToolContext,
-} from '@/lib/mcp/tool-helpers';
+import type { AgentContext } from '@/lib/server/resolve-agent-context';
+import { defineOwnerTool } from '@/lib/mcp/define-tool';
+import { McpToolError } from '@/lib/mcp/errors';
+import { categoryRef, walletRef } from '@/lib/mcp/schemas';
 import { resolveCategoryRef, resolveWalletRef } from '@/lib/mcp/resolvers';
-
-const ownerArgs = {
-  ownerType: ownerTypeSchema,
-  ownerId: ownerIdSchema,
-};
 
 const prismaDueFieldsFromPayload = (validated: {
   dueDayFirst?: number | null | undefined;
@@ -106,551 +95,454 @@ const formatIncomeTemplate = (template: {
   user_id: template.user_id,
 });
 
+const templateKindSchema = z
+  .enum(['expense', 'income'])
+  .describe('expense = plantilla de gasto recurrente; income = plantilla de ingreso.');
+
+const EXPENSE_ONLY_FIELDS = [
+  'wallet_id',
+  'wallet_name',
+  'due_day_first',
+  'due_day_second',
+  'cutoff_day',
+  'is_recurring',
+  'is_subscription',
+] as const;
+const INCOME_ONLY_FIELDS = ['source'] as const;
+
+const templateFields = {
+  ...categoryRef,
+  ...walletRef,
+  suggested_amount: z.number().positive().nullable().optional(),
+  active: z.boolean().optional().describe('Default true.'),
+  applies_first_fortnight: z.boolean().optional().describe('Se expande en FIRST. Default false.'),
+  applies_second_fortnight: z.boolean().optional().describe('Se expande en SECOND. Default false.'),
+  due_day_first: z
+    .number()
+    .int()
+    .min(1)
+    .max(15)
+    .nullable()
+    .optional()
+    .describe('Solo expense: día de pago en FIRST.'),
+  due_day_second: z
+    .number()
+    .int()
+    .min(16)
+    .max(31)
+    .nullable()
+    .optional()
+    .describe('Solo expense: día de pago en SECOND.'),
+  cutoff_day: z
+    .number()
+    .int()
+    .min(1)
+    .max(31)
+    .nullable()
+    .optional()
+    .describe('Solo expense: día de corte.'),
+  is_recurring: z.boolean().optional().describe('Solo expense. Default true.'),
+  is_subscription: z.boolean().optional().describe('Solo expense. Default false.'),
+  source: z
+    .string()
+    .trim()
+    .max(255)
+    .nullable()
+    .optional()
+    .describe('Solo income: origen (p. ej. Nómina).'),
+};
+
+type TemplateArgs = {
+  kind: 'expense' | 'income';
+  name?: string;
+  category_id?: number;
+  category_name?: string;
+  wallet_id?: number;
+  wallet_name?: string;
+  suggested_amount?: number | null;
+  active?: boolean;
+  applies_first_fortnight?: boolean;
+  applies_second_fortnight?: boolean;
+  due_day_first?: number | null;
+  due_day_second?: number | null;
+  cutoff_day?: number | null;
+  is_recurring?: boolean;
+  is_subscription?: boolean;
+  source?: string | null;
+};
+
+/** Rejects fields of the other template kind. */
+const assertFieldsForTemplateKind = (args: TemplateArgs) => {
+  const foreign = (args.kind === 'expense' ? INCOME_ONLY_FIELDS : EXPENSE_ONLY_FIELDS).filter(
+    (field) => args[field] !== undefined,
+  );
+  if (foreign.length > 0) {
+    throw new McpToolError(
+      'VALIDATION',
+      `${foreign.join(', ')} no aplica a plantillas de tipo ${args.kind}`,
+    );
+  }
+};
+
+const templateNotFound = (kind: 'expense' | 'income') =>
+  new McpToolError(
+    'NOT_FOUND',
+    kind === 'expense' ? 'Plantilla de gasto no encontrada' : 'Plantilla de ingresos no encontrada',
+    { hint: `Usa list_templates con kind ${kind} para ver los ids válidos.` },
+  );
+
+const createExpenseTemplate = async (agent: AgentContext, args: TemplateArgs & { name: string }) => {
+  const categoryId = await resolveCategoryRef(
+    agent.ownerFilter,
+    args.category_id,
+    args.category_name,
+    { required: true },
+  );
+
+  let walletId: number | undefined;
+  if (args.wallet_id != null || args.wallet_name) {
+    walletId = (
+      await resolveWalletRef(agent.ownerFilter, args.wallet_id, args.wallet_name)
+    ).id;
+  }
+
+  const validated = createExpenseTemplateSchema.parse({
+    name: args.name,
+    categoryId,
+    suggestedAmount: args.suggested_amount ?? undefined,
+    paymentMethodId: walletId,
+    active: args.active ?? true,
+    dueDayFirst: args.due_day_first ?? null,
+    dueDaySecond: args.due_day_second ?? null,
+    cutoffDay: args.cutoff_day ?? null,
+    isRecurring: args.is_recurring ?? true,
+    appliesFirstFortnight: args.applies_first_fortnight ?? false,
+    appliesSecondFortnight: args.applies_second_fortnight ?? false,
+    isSubscription: args.is_subscription ?? false,
+  });
+
+  const dueFields = prismaDueFieldsFromPayload(validated);
+  const template = await prisma.expenseTemplate.create({
+    data: {
+      name: validated.name,
+      category_id: validated.categoryId,
+      suggested_amount: validated.suggestedAmount
+        ? validated.suggestedAmount.toString()
+        : null,
+      wallet_id: validated.paymentMethodId ?? undefined,
+      active: validated.active ?? true,
+      ...dueFields,
+      cutoff_day: validated.cutoffDay ?? null,
+      is_recurring: validated.isRecurring,
+      applies_first_fortnight: validated.appliesFirstFortnight,
+      applies_second_fortnight: validated.appliesSecondFortnight,
+      is_subscription: validated.isSubscription,
+      user_id: agent.ownerType === 'user' ? agent.ownerId : null,
+      house_id: agent.ownerType === 'house' ? agent.ownerId : null,
+    },
+    include: {
+      category: { select: { name: true, icon: true } },
+      wallet: { select: { id: true, name: true } },
+    },
+  });
+
+  return formatExpenseTemplate(template);
+};
+
+const updateExpenseTemplate = async (
+  agent: AgentContext,
+  templateId: number,
+  args: TemplateArgs,
+) => {
+  const existing = await prisma.expenseTemplate.findFirst({
+    where: { id: templateId, ...agent.ownerFilter },
+  });
+  if (!existing) throw templateNotFound('expense');
+
+  let categoryId = existing.category_id;
+  if (args.category_id != null || args.category_name) {
+    categoryId =
+      (await resolveCategoryRef(
+        agent.ownerFilter,
+        args.category_id,
+        args.category_name,
+        { required: true },
+      )) ?? categoryId;
+  }
+
+  let walletId: number | null | undefined;
+  if (args.wallet_id !== undefined) {
+    walletId = args.wallet_id;
+  } else if (args.wallet_name) {
+    walletId = (
+      await resolveWalletRef(agent.ownerFilter, undefined, args.wallet_name)
+    ).id;
+  }
+
+  const validated = updateExpenseTemplateSchema.parse({
+    name: args.name ?? existing.name,
+    categoryId,
+    suggestedAmount:
+      args.suggested_amount ??
+      (existing.suggested_amount ? Number(existing.suggested_amount) : undefined),
+    paymentMethodId: walletId === undefined ? existing.wallet_id : walletId,
+    active: args.active ?? existing.active,
+    dueDayFirst:
+      args.due_day_first !== undefined
+        ? args.due_day_first
+        : existing.due_day_first_fortnight,
+    dueDaySecond:
+      args.due_day_second !== undefined
+        ? args.due_day_second
+        : existing.due_day_second_fortnight,
+    cutoffDay: args.cutoff_day !== undefined ? args.cutoff_day : existing.cutoff_day,
+    isRecurring: args.is_recurring ?? existing.is_recurring,
+    appliesFirstFortnight:
+      args.applies_first_fortnight ?? existing.applies_first_fortnight,
+    appliesSecondFortnight:
+      args.applies_second_fortnight ?? existing.applies_second_fortnight,
+    isSubscription: args.is_subscription ?? existing.is_subscription,
+  });
+
+  const updateData: Prisma.ExpenseTemplateUncheckedUpdateInput = {
+    name: validated.name,
+    category_id: validated.categoryId,
+    suggested_amount: validated.suggestedAmount?.toString(),
+    wallet_id: validated.paymentMethodId ?? null,
+    active: validated.active,
+    ...prismaDueFieldsFromPayload(validated),
+    cutoff_day: validated.cutoffDay ?? null,
+    is_recurring: validated.isRecurring,
+    applies_first_fortnight: validated.appliesFirstFortnight,
+    applies_second_fortnight: validated.appliesSecondFortnight,
+    is_subscription: validated.isSubscription,
+  };
+
+  const template = await prisma.expenseTemplate.update({
+    where: { id: templateId },
+    data: updateData,
+    include: {
+      category: { select: { name: true, icon: true } },
+      wallet: { select: { id: true, name: true } },
+    },
+  });
+
+  return formatExpenseTemplate(template);
+};
+
+const createIncomeTemplate = async (agent: AgentContext, args: TemplateArgs & { name: string }) => {
+  const categoryId = await resolveCategoryRef(
+    agent.ownerFilter,
+    args.category_id,
+    args.category_name,
+    { required: true },
+  );
+
+  const validated = createIncomeTemplateSchema.parse({
+    name: args.name,
+    categoryId,
+    suggestedAmount: args.suggested_amount ?? null,
+    source: args.source ?? null,
+    appliesFirstFortnight: args.applies_first_fortnight ?? false,
+    appliesSecondFortnight: args.applies_second_fortnight ?? false,
+    active: args.active ?? true,
+  });
+
+  await assertOwnedCategoryOfKind(
+    prisma,
+    agent.ownerType,
+    agent.ownerId,
+    validated.categoryId,
+    'INCOME',
+  );
+
+  const template = await prisma.incomeTemplate.create({
+    data: {
+      name: validated.name,
+      suggested_amount: validated.suggestedAmount
+        ? validated.suggestedAmount.toString()
+        : null,
+      source: validated.source ?? null,
+      category_id: validated.categoryId,
+      applies_first_fortnight: validated.appliesFirstFortnight,
+      applies_second_fortnight: validated.appliesSecondFortnight,
+      active: validated.active ?? true,
+      user_id: agent.ownerType === 'user' ? agent.ownerId : null,
+      house_id: agent.ownerType === 'house' ? agent.ownerId : null,
+    },
+    include: {
+      category: { select: { id: true, name: true, icon: true } },
+      user: { select: { id: true, name: true } },
+    },
+  });
+
+  return formatIncomeTemplate(template);
+};
+
+const updateIncomeTemplate = async (
+  agent: AgentContext,
+  templateId: number,
+  args: TemplateArgs,
+) => {
+  const existing = await prisma.incomeTemplate.findFirst({
+    where: { id: templateId, ...agent.ownerFilter },
+  });
+  if (!existing) throw templateNotFound('income');
+
+  const validated = updateIncomeTemplateSchema.parse({
+    ...(args.name != null ? { name: args.name } : {}),
+    ...(args.suggested_amount !== undefined
+      ? { suggestedAmount: args.suggested_amount }
+      : {}),
+    ...(args.source !== undefined ? { source: args.source } : {}),
+    ...(args.applies_first_fortnight !== undefined
+      ? { appliesFirstFortnight: args.applies_first_fortnight }
+      : {}),
+    ...(args.applies_second_fortnight !== undefined
+      ? { appliesSecondFortnight: args.applies_second_fortnight }
+      : {}),
+    ...(args.active !== undefined ? { active: args.active } : {}),
+  });
+
+  let categoryId = existing.category_id;
+  if (args.category_id != null || args.category_name) {
+    categoryId =
+      (await resolveCategoryRef(
+        agent.ownerFilter,
+        args.category_id,
+        args.category_name,
+        { required: true },
+      )) ?? categoryId;
+    validated.categoryId = categoryId ?? undefined;
+  }
+
+  if (validated.categoryId != null) {
+    await assertOwnedCategoryOfKind(
+      prisma,
+      agent.ownerType,
+      agent.ownerId,
+      validated.categoryId,
+      'INCOME',
+    );
+  }
+
+  const updateData: Record<string, unknown> = {};
+  if (validated.name !== undefined) updateData.name = validated.name;
+  if (validated.suggestedAmount !== undefined) {
+    updateData.suggested_amount =
+      validated.suggestedAmount === null ? null : validated.suggestedAmount.toString();
+  }
+  if (validated.source !== undefined) updateData.source = validated.source;
+  if (validated.categoryId !== undefined) {
+    updateData.category_id = validated.categoryId;
+  } else if (categoryId != null) {
+    updateData.category_id = categoryId;
+  }
+  if (validated.appliesFirstFortnight !== undefined) {
+    updateData.applies_first_fortnight = validated.appliesFirstFortnight;
+  }
+  if (validated.appliesSecondFortnight !== undefined) {
+    updateData.applies_second_fortnight = validated.appliesSecondFortnight;
+  }
+  if (validated.active !== undefined) updateData.active = validated.active;
+
+  const template = await prisma.incomeTemplate.update({
+    where: { id: templateId },
+    data: updateData,
+    include: {
+      category: { select: { id: true, name: true, icon: true } },
+      user: { select: { id: true, name: true } },
+    },
+  });
+
+  return formatIncomeTemplate(template);
+};
+
 export function registerTemplateTools(server: McpServer) {
-  server.registerTool(
-    'list_expense_templates',
-    {
-      title: 'Listar plantillas de gasto',
-      description:
-        'Plantillas recurrentes de gasto con flags applies_first_fortnight / applies_second_fortnight.',
-      inputSchema: z.object(ownerArgs),
-      annotations: { readOnlyHint: true },
+  defineOwnerTool(server, {
+    name: 'list_templates',
+    title: 'Listar plantillas',
+    description:
+      'Plantillas recurrentes de gasto y/o ingreso; applies_first_fortnight / applies_second_fortnight deciden en qué quincena las expande create_month.',
+    scope: 'read',
+    input: {
+      kind: z
+        .enum(['expense', 'income', 'all'])
+        .default('all')
+        .describe('expense, income o all (default).'),
     },
-    async (args, ctx) =>
-      runAgentTool(
-        'list_expense_templates',
-        ctx as McpToolContext,
-        args,
-        'read',
-        async (agent) => {
-          const templates = await prisma.expenseTemplate.findMany({
-            where: agent.ownerFilter,
-            include: {
-              category: { select: { name: true, icon: true } },
-              wallet: { select: { id: true, name: true } },
-            },
-            orderBy: [{ active: 'desc' }, { name: 'asc' }],
-          });
-          return { templates: templates.map(formatExpenseTemplate) };
-        },
-      ),
-  );
-
-  server.registerTool(
-    'create_expense_template',
-    {
-      title: 'Crear plantilla de gasto',
-      description:
-        'Alta de plantilla de gasto (mismo POST /api/expense-templates). Flags FIRST/SECOND controlan en qué quincena se expande.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        name: z.string().trim().min(1),
-        category_id: z.number().int().positive().optional(),
-        category_name: z.string().trim().min(1).optional(),
-        wallet_id: z.number().int().positive().optional(),
-        wallet_name: z.string().trim().min(1).optional(),
-        suggested_amount: z.number().positive().optional(),
-        active: z.boolean().default(true),
-        applies_first_fortnight: z.boolean().default(false),
-        applies_second_fortnight: z.boolean().default(false),
-        due_day_first: z.number().int().min(1).max(15).optional().nullable(),
-        due_day_second: z.number().int().min(16).max(31).optional().nullable(),
-        cutoff_day: z.number().int().min(1).max(31).optional().nullable(),
-        is_recurring: z.boolean().default(true),
-        is_subscription: z.boolean().default(false),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: false },
+    run: async (agent, args) => {
+      const [expenseTemplates, incomeTemplates] = await Promise.all([
+        args.kind === 'income'
+          ? null
+          : prisma.expenseTemplate.findMany({
+              where: agent.ownerFilter,
+              include: {
+                category: { select: { name: true, icon: true } },
+                wallet: { select: { id: true, name: true } },
+              },
+              orderBy: [{ active: 'desc' }, { name: 'asc' }],
+            }),
+        args.kind === 'expense'
+          ? null
+          : prisma.incomeTemplate.findMany({
+              where: agent.ownerFilter,
+              include: {
+                category: { select: { id: true, name: true, icon: true } },
+                user: { select: { id: true, name: true } },
+              },
+              orderBy: { name: 'asc' },
+            }),
+      ]);
+      return {
+        ...(expenseTemplates
+          ? { expense_templates: expenseTemplates.map(formatExpenseTemplate) }
+          : {}),
+        ...(incomeTemplates
+          ? { income_templates: incomeTemplates.map(formatIncomeTemplate) }
+          : {}),
+      };
     },
-    async (args, ctx) =>
-      runAgentTool(
-        'create_expense_template',
-        ctx as McpToolContext,
-        args,
-        'write',
-        async (agent) => {
-          const categoryId = await resolveCategoryRef(
-            agent.ownerFilter,
-            args.category_id,
-            args.category_name,
-            { required: true },
-          );
+  });
 
-          let walletId: number | undefined;
-          if (args.wallet_id != null || args.wallet_name) {
-            walletId = (
-              await resolveWalletRef(
-                agent.ownerFilter,
-                args.wallet_id,
-                args.wallet_name,
-              )
-            ).id;
-          }
-
-          const validated = createExpenseTemplateSchema.parse({
-            name: args.name,
-            categoryId,
-            suggestedAmount: args.suggested_amount,
-            paymentMethodId: walletId,
-            active: args.active,
-            dueDayFirst: args.due_day_first ?? null,
-            dueDaySecond: args.due_day_second ?? null,
-            cutoffDay: args.cutoff_day ?? null,
-            isRecurring: args.is_recurring,
-            appliesFirstFortnight: args.applies_first_fortnight,
-            appliesSecondFortnight: args.applies_second_fortnight,
-            isSubscription: args.is_subscription,
-          });
-
-          const dueFields = prismaDueFieldsFromPayload(validated);
-          const template = await prisma.expenseTemplate.create({
-            data: {
-              name: validated.name,
-              category_id: validated.categoryId,
-              suggested_amount: validated.suggestedAmount
-                ? validated.suggestedAmount.toString()
-                : null,
-              wallet_id: validated.paymentMethodId ?? undefined,
-              active: validated.active ?? true,
-              ...dueFields,
-              cutoff_day: validated.cutoffDay ?? null,
-              is_recurring: validated.isRecurring,
-              applies_first_fortnight: validated.appliesFirstFortnight,
-              applies_second_fortnight: validated.appliesSecondFortnight,
-              is_subscription: validated.isSubscription,
-              user_id: agent.ownerType === 'user' ? agent.ownerId : null,
-              house_id: agent.ownerType === 'house' ? agent.ownerId : null,
-            },
-            include: {
-              category: { select: { name: true, icon: true } },
-              wallet: { select: { id: true, name: true } },
-            },
-          });
-
-          return formatExpenseTemplate(template);
-        },
-      ),
-  );
-
-  server.registerTool(
-    'update_expense_template',
-    {
-      title: 'Actualizar plantilla de gasto',
-      description: 'Edita plantilla de gasto (mismo PUT /api/expense-templates).',
-      inputSchema: z.object({
-        ...ownerArgs,
-        template_id: z.number().int().positive(),
-        name: z.string().trim().min(1).optional(),
-        category_id: z.number().int().positive().optional(),
-        category_name: z.string().trim().min(1).optional(),
-        wallet_id: z.number().int().positive().optional().nullable(),
-        wallet_name: z.string().trim().min(1).optional(),
-        suggested_amount: z.number().positive().optional(),
-        active: z.boolean().optional(),
-        applies_first_fortnight: z.boolean().optional(),
-        applies_second_fortnight: z.boolean().optional(),
-        due_day_first: z.number().int().min(1).max(15).optional().nullable(),
-        due_day_second: z.number().int().min(16).max(31).optional().nullable(),
-        cutoff_day: z.number().int().min(1).max(31).optional().nullable(),
-        is_recurring: z.boolean().optional(),
-        is_subscription: z.boolean().optional(),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: true },
+  defineOwnerTool(server, {
+    name: 'create_template',
+    title: 'Crear plantilla',
+    description:
+      'Alta de plantilla de gasto (kind expense: billetera, días de pago, corte, suscripción) o de ingreso (kind income: source).',
+    scope: 'write',
+    annotations: { destructiveHint: false, idempotentHint: false },
+    input: {
+      kind: templateKindSchema,
+      name: z.string().trim().min(1),
+      ...templateFields,
     },
-    async (args, ctx) =>
-      runAgentTool(
-        'update_expense_template',
-        ctx as McpToolContext,
-        args,
-        'write',
-        async (agent) => {
-          const existing = await prisma.expenseTemplate.findFirst({
-            where: { id: args.template_id, ...agent.ownerFilter },
-          });
-          if (!existing) {
-            throw new Error('Plantilla de gasto no encontrada');
-          }
-
-          let categoryId = existing.category_id;
-          if (args.category_id != null || args.category_name) {
-            categoryId =
-              (await resolveCategoryRef(
-                agent.ownerFilter,
-                args.category_id,
-                args.category_name,
-                { required: true },
-              )) ?? categoryId;
-          }
-
-          let walletId: number | null | undefined;
-          if (args.wallet_id !== undefined) {
-            walletId = args.wallet_id;
-          } else if (args.wallet_name) {
-            walletId = (
-              await resolveWalletRef(
-                agent.ownerFilter,
-                undefined,
-                args.wallet_name,
-              )
-            ).id;
-          }
-
-          const validated = updateExpenseTemplateSchema.parse({
-            name: args.name ?? existing.name,
-            categoryId,
-            suggestedAmount:
-              args.suggested_amount ??
-              (existing.suggested_amount
-                ? Number(existing.suggested_amount)
-                : undefined),
-            paymentMethodId: walletId === undefined ? existing.wallet_id : walletId,
-            active: args.active ?? existing.active,
-            dueDayFirst:
-              args.due_day_first !== undefined
-                ? args.due_day_first
-                : existing.due_day_first_fortnight,
-            dueDaySecond:
-              args.due_day_second !== undefined
-                ? args.due_day_second
-                : existing.due_day_second_fortnight,
-            cutoffDay:
-              args.cutoff_day !== undefined ? args.cutoff_day : existing.cutoff_day,
-            isRecurring: args.is_recurring ?? existing.is_recurring,
-            appliesFirstFortnight:
-              args.applies_first_fortnight ?? existing.applies_first_fortnight,
-            appliesSecondFortnight:
-              args.applies_second_fortnight ?? existing.applies_second_fortnight,
-            isSubscription: args.is_subscription ?? existing.is_subscription,
-          });
-
-          const updateData: Prisma.ExpenseTemplateUncheckedUpdateInput = {
-            name: validated.name,
-            category_id: validated.categoryId,
-            suggested_amount: validated.suggestedAmount?.toString(),
-            wallet_id: validated.paymentMethodId ?? null,
-            active: validated.active,
-            ...prismaDueFieldsFromPayload(validated),
-            cutoff_day: validated.cutoffDay ?? null,
-            is_recurring: validated.isRecurring,
-            applies_first_fortnight: validated.appliesFirstFortnight,
-            applies_second_fortnight: validated.appliesSecondFortnight,
-            is_subscription: validated.isSubscription,
-          };
-
-          const template = await prisma.expenseTemplate.update({
-            where: { id: args.template_id },
-            data: updateData,
-            include: {
-              category: { select: { name: true, icon: true } },
-              wallet: { select: { id: true, name: true } },
-            },
-          });
-
-          return formatExpenseTemplate(template);
-        },
-      ),
-  );
-
-  server.registerTool(
-    'delete_expense_template',
-    {
-      title: 'Eliminar plantilla de gasto',
-      description:
-        'Elimina plantilla y desvincula gastos generados. Requiere confirm: true.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        template_id: z.number().int().positive(),
-        confirm: confirmSchema,
-      }),
-      annotations: { destructiveHint: true, idempotentHint: true },
+    run: async (agent, args) => {
+      assertFieldsForTemplateKind(args);
+      return args.kind === 'expense'
+        ? createExpenseTemplate(agent, args)
+        : createIncomeTemplate(agent, args);
     },
-    async (args, ctx) =>
-      runAgentTool(
-        'delete_expense_template',
-        ctx as McpToolContext,
-        args,
-        'write',
-        async (agent) => {
-          const existing = await prisma.expenseTemplate.findFirst({
-            where: { id: args.template_id, ...agent.ownerFilter },
-          });
-          if (!existing) {
-            throw new Error('Plantilla de gasto no encontrada');
-          }
+  });
 
-          const result = await prisma.$transaction(async (tx) => {
-            const detached = await tx.expense.updateMany({
-              where: { expense_template_id: args.template_id },
-              data: { expense_template_id: null },
-            });
-            await tx.expenseTemplate.delete({ where: { id: args.template_id } });
-            return detached.count;
-          });
-
-          return {
-            deleted: true,
-            template_id: args.template_id,
-            detached_expense_count: result,
-          };
-        },
-      ),
-  );
-
-  server.registerTool(
-    'list_income_templates',
-    {
-      title: 'Listar plantillas de ingreso',
-      description:
-        'Plantillas de ingreso con flags applies_first_fortnight / applies_second_fortnight.',
-      inputSchema: z.object(ownerArgs),
-      annotations: { readOnlyHint: true },
+  defineOwnerTool(server, {
+    name: 'update_template',
+    title: 'Actualizar plantilla',
+    description:
+      'Edita una plantilla de gasto o de ingreso; solo cambian los campos enviados. Para borrarla usa delete con kind expense_template o income_template.',
+    scope: 'write',
+    annotations: { destructiveHint: false, idempotentHint: true },
+    input: {
+      kind: templateKindSchema,
+      template_id: z.number().int().positive().describe('Id de list_templates.'),
+      name: z.string().trim().min(1).optional(),
+      ...templateFields,
     },
-    async (args, ctx) =>
-      runAgentTool(
-        'list_income_templates',
-        ctx as McpToolContext,
-        args,
-        'read',
-        async (agent) => {
-          const templates = await prisma.incomeTemplate.findMany({
-            where: agent.ownerFilter,
-            include: {
-              category: { select: { id: true, name: true, icon: true } },
-              user: { select: { id: true, name: true } },
-            },
-            orderBy: { name: 'asc' },
-          });
-          return { templates: templates.map(formatIncomeTemplate) };
-        },
-      ),
-  );
-
-  server.registerTool(
-    'create_income_template',
-    {
-      title: 'Crear plantilla de ingreso',
-      description:
-        'Alta de plantilla de ingreso (mismo POST /api/income-templates).',
-      inputSchema: z.object({
-        ...ownerArgs,
-        name: z.string().trim().min(1),
-        category_id: z.number().int().positive().optional(),
-        category_name: z.string().trim().min(1).optional(),
-        suggested_amount: z.number().positive().optional().nullable(),
-        source: z.string().trim().max(255).optional().nullable(),
-        applies_first_fortnight: z.boolean().default(false),
-        applies_second_fortnight: z.boolean().default(false),
-        active: z.boolean().default(true),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: false },
+    run: async (agent, args) => {
+      assertFieldsForTemplateKind(args);
+      return args.kind === 'expense'
+        ? updateExpenseTemplate(agent, args.template_id, args)
+        : updateIncomeTemplate(agent, args.template_id, args);
     },
-    async (args, ctx) =>
-      runAgentTool(
-        'create_income_template',
-        ctx as McpToolContext,
-        args,
-        'write',
-        async (agent) => {
-          const categoryId = await resolveCategoryRef(
-            agent.ownerFilter,
-            args.category_id,
-            args.category_name,
-            { required: true },
-          );
-
-          const validated = createIncomeTemplateSchema.parse({
-            name: args.name,
-            categoryId,
-            suggestedAmount: args.suggested_amount ?? null,
-            source: args.source ?? null,
-            appliesFirstFortnight: args.applies_first_fortnight,
-            appliesSecondFortnight: args.applies_second_fortnight,
-            active: args.active,
-          });
-
-          try {
-            await assertOwnedCategoryOfKind(
-              prisma,
-              agent.ownerType,
-              agent.ownerId,
-              validated.categoryId,
-              'INCOME',
-            );
-          } catch (error) {
-            if (error instanceof CategoryServiceError) {
-              throw new Error(error.message);
-            }
-            throw error;
-          }
-
-          const template = await prisma.incomeTemplate.create({
-            data: {
-              name: validated.name,
-              suggested_amount: validated.suggestedAmount
-                ? validated.suggestedAmount.toString()
-                : null,
-              source: validated.source ?? null,
-              category_id: validated.categoryId,
-              applies_first_fortnight: validated.appliesFirstFortnight,
-              applies_second_fortnight: validated.appliesSecondFortnight,
-              active: validated.active ?? true,
-              user_id: agent.ownerType === 'user' ? agent.ownerId : null,
-              house_id: agent.ownerType === 'house' ? agent.ownerId : null,
-            },
-            include: {
-              category: { select: { id: true, name: true, icon: true } },
-              user: { select: { id: true, name: true } },
-            },
-          });
-
-          return formatIncomeTemplate(template);
-        },
-      ),
-  );
-
-  server.registerTool(
-    'update_income_template',
-    {
-      title: 'Actualizar plantilla de ingreso',
-      description: 'Edita plantilla de ingreso (mismo PUT /api/income-templates).',
-      inputSchema: z.object({
-        ...ownerArgs,
-        template_id: z.number().int().positive(),
-        name: z.string().trim().min(1).optional(),
-        category_id: z.number().int().positive().optional(),
-        category_name: z.string().trim().min(1).optional(),
-        suggested_amount: z.number().positive().optional().nullable(),
-        source: z.string().trim().max(255).optional().nullable(),
-        applies_first_fortnight: z.boolean().optional(),
-        applies_second_fortnight: z.boolean().optional(),
-        active: z.boolean().optional(),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: true },
-    },
-    async (args, ctx) =>
-      runAgentTool(
-        'update_income_template',
-        ctx as McpToolContext,
-        args,
-        'write',
-        async (agent) => {
-          const existing = await prisma.incomeTemplate.findFirst({
-            where: { id: args.template_id, ...agent.ownerFilter },
-          });
-          if (!existing) {
-            throw new Error('Plantilla de ingresos no encontrada');
-          }
-
-          const validated = updateIncomeTemplateSchema.parse({
-            ...(args.name != null ? { name: args.name } : {}),
-            ...(args.suggested_amount !== undefined
-              ? { suggestedAmount: args.suggested_amount }
-              : {}),
-            ...(args.source !== undefined ? { source: args.source } : {}),
-            ...(args.applies_first_fortnight !== undefined
-              ? { appliesFirstFortnight: args.applies_first_fortnight }
-              : {}),
-            ...(args.applies_second_fortnight !== undefined
-              ? { appliesSecondFortnight: args.applies_second_fortnight }
-              : {}),
-            ...(args.active !== undefined ? { active: args.active } : {}),
-          });
-
-          let categoryId = existing.category_id;
-          if (args.category_id != null || args.category_name) {
-            categoryId =
-              (await resolveCategoryRef(
-                agent.ownerFilter,
-                args.category_id,
-                args.category_name,
-                { required: true },
-              )) ?? categoryId;
-            validated.categoryId = categoryId ?? undefined;
-          }
-
-          if (validated.categoryId != null) {
-            await assertOwnedCategoryOfKind(
-              prisma,
-              agent.ownerType,
-              agent.ownerId,
-              validated.categoryId,
-              'INCOME',
-            );
-          }
-
-          const updateData: Record<string, unknown> = {};
-          if (validated.name !== undefined) updateData.name = validated.name;
-          if (validated.suggestedAmount !== undefined) {
-            updateData.suggested_amount =
-              validated.suggestedAmount === null
-                ? null
-                : validated.suggestedAmount.toString();
-          }
-          if (validated.source !== undefined) updateData.source = validated.source;
-          if (validated.categoryId !== undefined) {
-            updateData.category_id = validated.categoryId;
-          } else if (categoryId != null) {
-            updateData.category_id = categoryId;
-          }
-          if (validated.appliesFirstFortnight !== undefined) {
-            updateData.applies_first_fortnight = validated.appliesFirstFortnight;
-          }
-          if (validated.appliesSecondFortnight !== undefined) {
-            updateData.applies_second_fortnight = validated.appliesSecondFortnight;
-          }
-          if (validated.active !== undefined) updateData.active = validated.active;
-
-          const template = await prisma.incomeTemplate.update({
-            where: { id: args.template_id },
-            data: updateData,
-            include: {
-              category: { select: { id: true, name: true, icon: true } },
-              user: { select: { id: true, name: true } },
-            },
-          });
-
-          return formatIncomeTemplate(template);
-        },
-      ),
-  );
-
-  server.registerTool(
-    'delete_income_template',
-    {
-      title: 'Eliminar plantilla de ingreso',
-      description:
-        'Elimina plantilla de ingreso si no está en uso. Requiere confirm: true.',
-      inputSchema: z.object({
-        ...ownerArgs,
-        template_id: z.number().int().positive(),
-        confirm: confirmSchema,
-      }),
-      annotations: { destructiveHint: true, idempotentHint: true },
-    },
-    async (args, ctx) =>
-      runAgentTool(
-        'delete_income_template',
-        ctx as McpToolContext,
-        args,
-        'write',
-        async (agent) => {
-          const existing = await prisma.incomeTemplate.findFirst({
-            where: { id: args.template_id, ...agent.ownerFilter },
-          });
-          if (!existing) {
-            throw new Error('Plantilla de ingresos no encontrada');
-          }
-
-          const relatedIncome = await prisma.income.findFirst({
-            where: { income_template_id: args.template_id },
-          });
-          if (relatedIncome) {
-            throw new Error('La plantilla de ingresos está en uso y no puede eliminarse');
-          }
-
-          await prisma.incomeTemplate.delete({ where: { id: args.template_id } });
-
-          return { deleted: true, template_id: args.template_id };
-        },
-      ),
-  );
+  });
 }

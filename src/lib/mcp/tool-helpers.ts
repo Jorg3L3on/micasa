@@ -29,24 +29,6 @@ export type McpToolContext = {
   http?: { req?: Request; authInfo?: AuthInfo };
 };
 
-export const ownerTypeSchema = z
-  .enum(['user', 'house'])
-  .describe(
-    'Contexto financiero: "user" (finanzas personales) o "house" (casa compartida). Usa list_houses primero para descubrir los ids.',
-  );
-
-export const ownerIdSchema = z
-  .number()
-  .int()
-  .positive()
-  .describe('Id del usuario (ownerType=user) o de la casa (ownerType=house).');
-
-export const confirmSchema = z
-  .literal(true)
-  .describe(
-    'Confirmación explícita requerida: esta operación modifica saldos o elimina datos.',
-  );
-
 type McpTextResult = {
   content: Array<{ type: 'text'; text: string }>;
   isError?: boolean;
@@ -61,12 +43,9 @@ const errorPayloadResult = (payload: McpErrorPayload): McpTextResult => ({
   isError: true,
 });
 
-export const errorResult = (message: string): McpTextResult =>
-  errorPayloadResult({ error: message, code: 'VALIDATION' });
-
 /**
- * Owner args during the v2 → v3 migration: tools on `defineOwnerTool` send
- * snake_case, tools still on `registerTool` send camelCase.
+ * Owner args: `defineOwnerTool` normalizes the v2 camelCase alias to
+ * snake_case; direct callers (tests) may still pass camelCase.
  */
 type OwnerToolArgs =
   | { owner_type: 'user' | 'house'; owner_id: number }
