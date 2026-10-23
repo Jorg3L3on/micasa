@@ -58,6 +58,11 @@ jobs:
           npx prisma migrate deploy
           npm run test:coverage
 
+      - name: Audit trigger tests (real Postgres)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: npm run test:db
+
       - name: Cross-tenant isolation tests
         run: npm run test:isolation
 
