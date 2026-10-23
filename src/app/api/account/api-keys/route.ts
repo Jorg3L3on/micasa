@@ -12,6 +12,7 @@ import {
 import { AgentAuthError } from '@/lib/server/agent-auth-error';
 import type { AgentContextEntry } from '@/schemas/agent-context.schema';
 import { withSessionActor } from '@/lib/server/with-session-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 const API_KEY_LIST_SELECT = {
   id: true,
@@ -130,6 +131,12 @@ export async function POST(request: NextRequest) {
       });
 
       await replaceApiKeyAllowedContexts(created.id, allowedContexts);
+      await recordAuthEvent('API_KEY_CREATED', {
+        userId,
+        apiKeyId: created.id,
+        request,
+        metadata: { name: input.name },
+      });
 
       const withContexts = await prisma.apiKey.findUniqueOrThrow({
         where: { id: created.id },

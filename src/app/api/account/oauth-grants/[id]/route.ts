@@ -9,6 +9,7 @@ import {
 } from '@/lib/server/agent-allowed-contexts';
 import { AgentAuthError } from '@/lib/server/agent-auth-error';
 import { withSessionActor } from '@/lib/server/with-session-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 const updateOAuthGrantContextsSchema = z.object({
   allowed_contexts: agentContextListUpdateSchema,
@@ -131,6 +132,11 @@ export async function DELETE(request: Request, context: RouteContext) {
       await prisma.mcpOAuthGrant.update({
         where: { id: resolved.grantId },
         data: { revoked_at: new Date() },
+      });
+      await recordAuthEvent('OAUTH_GRANT_REVOKED', {
+        userId: resolved.userId,
+        oauthGrantId: resolved.grantId,
+        request,
       });
 
       return NextResponse.json({ revoked: true });

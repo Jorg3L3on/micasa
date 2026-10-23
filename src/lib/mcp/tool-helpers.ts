@@ -27,6 +27,7 @@ import type { AgentContextEntry } from '@/schemas/agent-context.schema';
 import { toMcpShape } from '@/lib/mcp/shapes';
 import { runWithAuditActor } from '@/lib/server/audit/audit-context';
 import { agentActor } from '@/lib/server/audit/agent-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 /** Structural view of the SDK's ServerContext — only what the tools need. */
 export type McpToolContext = {
@@ -181,8 +182,9 @@ export async function runAgentTool(
   options?: { structured?: boolean },
 ): Promise<McpTextResult> {
   const { ownerType, ownerId } = readOwnerArgs(args);
+  let identity: AgentIdentity | undefined;
   try {
-    const identity = await resolveCallerIdentity(ctx);
+    identity = await resolveCallerIdentity(ctx);
     await enforceToolRateLimit(ctx, identity.rateLimitIdentity);
     assertScope(identity, scope);
 
@@ -201,6 +203,17 @@ export async function runAgentTool(
 
     return jsonResult(data, options);
   } catch (error) {
+    if (identity && error instanceof AgentAuthError && error.status === 403) {
+      // Valid token asking for a scope or context it was not granted.
+      await recordAuthEvent('AGENT_AUTH_FAILED', {
+        userId: identity.userId,
+        apiKeyId: identity.apiKeyId ?? null,
+        oauthGrantId: identity.oauthGrantId ?? null,
+        source: 'AGENT',
+        request: ctx.http?.req,
+        metadata: { reason: error.message, status: error.status, tool: toolName },
+      });
+    }
     logToolFailure(toolName, error, { owner_type: ownerType, owner_id: ownerId });
     return errorPayloadResult(toErrorPayload(error));
   }

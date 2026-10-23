@@ -14,7 +14,7 @@ export const jwtCallback = async ({ token, user }: { token: JWT; user?: User | n
     token.name = user.name;
     token.email = user.email;
     token.houses = user.houses?.map((h) => ({ id: h.id, name: h.name })) ?? [];
-    token.sid = globalThis.crypto.randomUUID();
+    token.sid = user.sid ?? globalThis.crypto.randomUUID();
   }
   if (!token.sid) token.sid = globalThis.crypto.randomUUID();
   return token;
@@ -29,4 +29,30 @@ export const sessionCallback = async ({ session, token }: { session: Session; to
     session.sid = token.sid;
   }
   return session;
+};
+
+/**
+ * NextAuth `events.signOut`: LOGOUT with the token's session id. Headers come
+ * from the sign-out request when Next exposes them.
+ */
+export const signOutEvent = async (
+  message: { token?: JWT | null } | { session?: unknown },
+): Promise<void> => {
+  const token = 'token' in message ? message.token : null;
+  if (!token) return;
+  const { recordAuthEvent } = await import('./server/audit/auth-events');
+  let request: { headers: Headers } | undefined;
+  try {
+    const { headers } = await import('next/headers');
+    request = { headers: await headers() };
+  } catch {
+    request = undefined;
+  }
+  const userId = Number(token.id);
+  await recordAuthEvent('LOGOUT', {
+    userId: Number.isFinite(userId) ? userId : null,
+    email: (token.email as string | undefined) ?? null,
+    sessionId: token.sid ?? null,
+    request,
+  });
 };

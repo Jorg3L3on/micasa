@@ -11,6 +11,8 @@ declare module 'next-auth' {
       is_system: boolean;
     };
     houses?: { id: number; name: string }[];
+    /** Session id minted at login (see auth-authorize.ts). */
+    sid?: string;
   }
 
   interface Session {

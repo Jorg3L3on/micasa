@@ -25,6 +25,7 @@ import {
   verifyPkceS256,
 } from '@/lib/server/mcp-oauth/tokens';
 import { isValidPkceVerifier } from '@/lib/server/mcp-oauth/token-auth';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 export const createAuthorizationCode = async (input: {
   clientId: string;
@@ -183,6 +184,12 @@ export const issueGrant = async (input: {
     );
     await replaceOAuthGrantAllowedContexts(grant.id, input.allowedContexts);
   }
+  await recordAuthEvent('OAUTH_GRANT_ISSUED', {
+    userId: input.userId,
+    oauthGrantId: grant.id,
+    source: 'AGENT',
+    metadata: { client_id: input.clientId },
+  });
 
   return {
     access_token: access.token,
@@ -290,6 +297,12 @@ export const revokeOAuthToken = async (token: string): Promise<void> => {
       where: { id: byAccess.id },
       data: { revoked_at: new Date() },
     });
+    await recordAuthEvent('OAUTH_GRANT_REVOKED', {
+      userId: byAccess.user_id,
+      oauthGrantId: byAccess.id,
+      source: 'AGENT',
+      metadata: { via: 'revocation_endpoint' },
+    });
     return;
   }
 
@@ -300,6 +313,12 @@ export const revokeOAuthToken = async (token: string): Promise<void> => {
     await prisma.mcpOAuthGrant.update({
       where: { id: byRefresh.id },
       data: { revoked_at: new Date() },
+    });
+    await recordAuthEvent('OAUTH_GRANT_REVOKED', {
+      userId: byRefresh.user_id,
+      oauthGrantId: byRefresh.id,
+      source: 'AGENT',
+      metadata: { via: 'revocation_endpoint' },
     });
   }
 };

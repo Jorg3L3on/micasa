@@ -105,7 +105,7 @@ export const auditRowsSince = async (c: PoolClient, sinceId: string): Promise<Au
     `SELECT id::text, txid::text, batch_id, label, request_id, session_id, source::text,
             actor_user_id, actor_name, api_key_id, oauth_grant_id, owner_type::text, owner_id,
             entity_type, entity_id, entity_label, action::text, changed_fields, before, after, metadata
-       FROM "AuditLog" WHERE id > $1::bigint ORDER BY id`,
+       FROM "AuditLog" a WHERE a.id > $1::bigint ORDER BY a.id`,
     [sinceId],
   )
   return rows

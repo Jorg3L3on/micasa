@@ -9,6 +9,7 @@ import {
 } from '@/lib/server/agent-allowed-contexts';
 import { AgentAuthError } from '@/lib/server/agent-auth-error';
 import { withSessionActor } from '@/lib/server/with-session-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 async function resolveOwnKeyId(
   params: Promise<{ id: string }>,
@@ -159,6 +160,11 @@ export async function DELETE(
       await prisma.apiKey.update({
         where: { id: resolved.keyId },
         data: { revoked_at: new Date() },
+      });
+      await recordAuthEvent('API_KEY_REVOKED', {
+        userId: resolved.userId,
+        apiKeyId: resolved.keyId,
+        request,
       });
 
       return NextResponse.json({ revoked: true }, { status: 200 });

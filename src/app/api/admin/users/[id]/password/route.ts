@@ -31,6 +31,7 @@ export async function POST(request: Request, context: RouteContext) {
         admin: admin,
         targetUserId,
         temporaryPassword: parsed.data.temporaryPassword,
+        request,
       });
 
       if (!result.ok) {

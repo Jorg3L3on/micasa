@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { updateAccountSchema } from '@/schemas/account.schema';
 import { withSessionActor } from '@/lib/server/with-session-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 export async function PATCH(request: NextRequest) {
   return withSessionActor(request, async () => {
@@ -87,6 +88,14 @@ export async function PATCH(request: NextRequest) {
         where: { id: userId },
         data: updateData,
       });
+      if (updateData.password) {
+        await recordAuthEvent('PASSWORD_CHANGED', {
+          userId,
+          email: user.email,
+          sessionId: session.sid ?? null,
+          request,
+        });
+      }
 
       return NextResponse.json({
         name: updateData.name != null ? user.name : undefined,

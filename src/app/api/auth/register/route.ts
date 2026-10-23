@@ -10,6 +10,7 @@ import { enforceRateLimit } from '@/lib/server/rate-limit';
 import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
 import { runWithAuditActor } from '@/lib/server/audit/audit-context';
 import { routeActor } from '@/lib/server/audit/route-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 /**
  * Signup runs against a remote Postgres (Neon) in dev and prod. Keep the
@@ -89,6 +90,8 @@ export async function POST(request: NextRequest) {
 
         return { user: u, house: h };
       }, REGISTER_TRANSACTION_OPTIONS);
+
+      await recordAuthEvent('REGISTER', { userId: user.id, email: user.email, request });
 
       return NextResponse.json(
         {
