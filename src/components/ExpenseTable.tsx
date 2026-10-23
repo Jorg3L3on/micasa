@@ -35,7 +35,8 @@ import {
 } from '@/components/motion/swipeable-list';
 import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-balance';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ChevronDown, MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, History, MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
+import { AuditHistoryOverlay } from '@/components/audit/AuditHistoryOverlay';
 import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
 import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -328,6 +329,7 @@ export default function ExpenseTable({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<TransactionRow | null>(null);
+  const [historyExpense, setHistoryExpense] = useState<TransactionRow | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [payingExpense, setPayingExpense] = useState<TransactionRow | null>(null);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
@@ -989,6 +991,10 @@ export default function ExpenseTable({
                               <Pencil className="mr-2 h-4 w-4" data-icon="inline-start" />
                               Modificar gasto
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setHistoryExpense(e)}>
+                              <History className="mr-2 h-4 w-4" data-icon="inline-start" />
+                              Historial
+                            </DropdownMenuItem>
                             {e.is_paid ? (
                               <DropdownMenuItem
                                 onClick={() => handleOpenUnpayConfirm(e)}
@@ -1081,6 +1087,18 @@ export default function ExpenseTable({
           )}
         </ul>
       </div>
+
+      {historyExpense ? (
+        <AuditHistoryOverlay
+          open
+          onOpenChange={(open) => {
+            if (!open) setHistoryExpense(null);
+          }}
+          entityType="Expense"
+          entityId={historyExpense.id}
+          title={`Historial: ${historyExpense.description}`}
+        />
+      ) : null}
 
       {/* Edit Expense Dialog */}
       {editingExpense && (

@@ -77,7 +77,7 @@ async function main() {
   }
 }
 
-runWithAuditActor({ source: 'SYSTEM', actorName: 'Script', label: 'Script: repair-card-payment-inconsistencies' }, main)
+runWithAuditActor({ source: 'SYSTEM', label: 'Script: repair-card-payment-inconsistencies' }, main)
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;

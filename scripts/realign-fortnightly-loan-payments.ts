@@ -74,6 +74,6 @@ async function main() {
   );
 }
 
-runWithAuditActor({ source: 'SYSTEM', actorName: 'Script', label: 'Script: realign-fortnightly-loan-payments' }, main)
+runWithAuditActor({ source: 'SYSTEM', label: 'Script: realign-fortnightly-loan-payments' }, main)
   .catch(console.error)
   .finally(() => prisma.$disconnect());

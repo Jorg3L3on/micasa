@@ -35,7 +35,15 @@ export type AuditActor = {
 
 export type AuditActorInput = Omit<AuditActor, 'batchId'> & { batchId?: string }
 
-const storage = new AsyncLocalStorage<{ actor: AuditActor }>()
+/**
+ * One store per process. Next.js instantiates server modules more than once
+ * (route handlers, server components, HMR), while the Prisma client in
+ * src/lib/prisma.ts is a `globalThis` singleton: a module-level store would
+ * leave the client reading a different store than the entry point wrote.
+ */
+const STORAGE_KEY = Symbol.for('micasa.auditActorStorage')
+const globalStore = globalThis as unknown as Record<symbol, AsyncLocalStorage<{ actor: AuditActor }> | undefined>
+const storage = (globalStore[STORAGE_KEY] ??= new AsyncLocalStorage<{ actor: AuditActor }>())
 
 export const runWithAuditActor = <T>(actor: AuditActorInput, fn: () => T): T =>
   storage.run({ actor: { ...actor, batchId: actor.batchId ?? randomUUID() } }, fn)

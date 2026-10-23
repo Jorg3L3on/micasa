@@ -114,7 +114,7 @@ async function main() {
   );
 }
 
-runWithAuditActor({ source: 'SYSTEM', actorName: 'Script', label: 'Script: seed-categories' }, main)
+runWithAuditActor({ source: 'SYSTEM', label: 'Script: seed-categories' }, main)
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;

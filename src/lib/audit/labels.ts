@@ -198,7 +198,7 @@ export const FIELD_LABELS: Readonly<Record<string, Readonly<Record<string, Field
   },
   Loan: {
     lender: { label: 'Prestamista', kind: 'text' },
-    lender_id: { label: 'Prestamista', kind: 'ref' },
+    lender_id: { label: 'Prestamista vinculado', kind: 'ref' },
     type: { label: 'Tipo', kind: 'enum' },
     principal_amount: { label: 'Monto prestado', kind: 'money' },
     payment_amount: { label: 'Pago', kind: 'money' },

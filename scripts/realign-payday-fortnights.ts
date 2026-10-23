@@ -200,7 +200,7 @@ async function main() {
   console.log(`Regenerated budget periods (total windows touched: ${periodsRegen}).`);
 }
 
-runWithAuditActor({ source: 'SYSTEM', actorName: 'Script', label: 'Script: realign-payday-fortnights' }, main)
+runWithAuditActor({ source: 'SYSTEM', label: 'Script: realign-payday-fortnights' }, main)
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;

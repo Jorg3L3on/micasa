@@ -31,3 +31,26 @@ export async function withOwnerContext<T>(
     () => handler(context),
   );
 }
+
+/**
+ * Server-component entry point: runs a data loader that may write (on-demand
+ * fortnights, budget period reconciliation) in the session user's audit scope.
+ * Each async server component opens its own: React renders children outside
+ * the parent's scope.
+ */
+export function withPageActor<T>(
+  context: OwnerContextSuccess,
+  route: string,
+  loader: () => Promise<T>,
+): Promise<T> {
+  return runWithAuditActor(
+    {
+      source: 'WEB',
+      userId: context.userId,
+      actorName: context.userName ?? null,
+      sessionId: context.sessionId ?? null,
+      metadata: { route: `page ${route}` },
+    },
+    loader,
+  );
+}

@@ -963,7 +963,7 @@ async function main() {
   console.log('✅ Database seeded with demo data');
 }
 
-runWithAuditActor({ source: 'SYSTEM', actorName: 'Seed', label: 'Seed' }, main).finally(async () => {
+runWithAuditActor({ source: 'SYSTEM', label: 'Seed' }, main).finally(async () => {
   await prisma.$disconnect();
 });
 

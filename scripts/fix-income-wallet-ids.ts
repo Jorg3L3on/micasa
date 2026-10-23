@@ -31,6 +31,6 @@ async function main() {
   console.log('Now run "Recibir quincena" again to properly credit the wallets.');
 }
 
-runWithAuditActor({ source: 'SYSTEM', actorName: 'Script', label: 'Script: fix-income-wallet-ids' }, main)
+runWithAuditActor({ source: 'SYSTEM', label: 'Script: fix-income-wallet-ids' }, main)
   .catch(console.error)
   .finally(() => prisma.$disconnect());

@@ -135,29 +135,104 @@ const actorDto = (row: {
   missingActor: row.missing_actor ?? row.metadata?.missing_actor === true,
 });
 
-const changesOf = (row: AuditLogRow): AuditChangeDto[] => {
+/** Reference columns shown by name instead of `#id`, and where the name lives. */
+const REF_TARGETS: Readonly<Record<string, { table: string; column: string }>> = {
+  wallet_id: { table: 'Wallet', column: 'name' },
+  source_wallet_id: { table: 'Wallet', column: 'name' },
+  credit_card_wallet_id: { table: 'Wallet', column: 'name' },
+  from_wallet_id: { table: 'Wallet', column: 'name' },
+  to_wallet_id: { table: 'Wallet', column: 'name' },
+  linked_wallet_id: { table: 'Wallet', column: 'name' },
+  category_id: { table: 'Category', column: 'name' },
+  parent_id: { table: 'Category', column: 'name' },
+  fortnight_id: { table: 'Fortnight', column: 'label' },
+  house_id: { table: 'House', column: 'name' },
+  user_id: { table: 'User', column: 'name' },
+  assignee_user_id: { table: 'User', column: 'name' },
+  owner_id: { table: 'User', column: 'name' },
+  created_by_user_id: { table: 'User', column: 'name' },
+  budget_id: { table: 'Budget', column: 'name' },
+  loan_id: { table: 'Loan', column: 'name' },
+  lender_id: { table: 'Lender', column: 'name' },
+  plan_id: { table: 'CreditCardInstallmentPlan', column: 'name' },
+  expense_template_id: { table: 'ExpenseTemplate', column: 'name' },
+  income_template_id: { table: 'IncomeTemplate', column: 'name' },
+};
+
+/** `table → id → name` for every reference on a page of rows (one query per table). */
+type RefNames = Map<string, Map<number, string>>;
+
+const resolveRefNames = async (rows: AuditLogRow[]): Promise<RefNames> => {
+  const wanted = new Map<string, Set<number>>();
+  for (const row of rows) {
+    for (const blob of [row.before, row.after]) {
+      for (const [field, value] of Object.entries(blob ?? {})) {
+        const target = REF_TARGETS[field];
+        if (!target || typeof value !== 'number') continue;
+        if (!wanted.has(target.table)) wanted.set(target.table, new Set());
+        wanted.get(target.table)!.add(value);
+      }
+    }
+  }
+  const names: RefNames = new Map();
+  await Promise.all(
+    [...wanted].map(async ([table, ids]) => {
+      const column = Object.values(REF_TARGETS).find((t) => t.table === table)!.column;
+      const found = await prisma.$queryRaw<{ id: number; name: string | null }[]>`
+        SELECT id, ${Prisma.raw(`"${column}"`)} AS name
+          FROM ${Prisma.raw(`"${table}"`)}
+         WHERE id IN (${Prisma.join([...ids])})`;
+      names.set(table, new Map(found.filter((r) => r.name).map((r) => [r.id, r.name!])));
+    }),
+  );
+  return names;
+};
+
+const displayValue = (model: string, field: string, value: unknown, refs: RefNames): string => {
+  const target = REF_TARGETS[field];
+  if (target && typeof value === 'number') {
+    const name = refs.get(target.table)?.get(value);
+    if (name) return name;
+  }
+  return formatAuditValue(model, field, value);
+};
+
+/** Name-like fields first, then the amount, then the rest by label. */
+const FIELD_PRIORITY = ['name', 'description', 'label', 'source', 'amount', 'total_amount'];
+const byPriorityThenLabel = (model: string) => (a: string, b: string) => {
+  const pa = FIELD_PRIORITY.indexOf(a);
+  const pb = FIELD_PRIORITY.indexOf(b);
+  if (pa !== pb) return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb);
+  return fieldSpec(model, a).label.localeCompare(fieldSpec(model, b).label, 'es');
+};
+
+const changesOf = (row: AuditLogRow, refs: RefNames): AuditChangeDto[] => {
   const model = row.entity_type;
+  const snapshot = row.action === 'CREATE' ? row.after : row.before;
   const fields =
     row.action === 'UPDATE'
       ? (row.changed_fields ?? [])
-      : Object.keys((row.action === 'CREATE' ? row.after : row.before) ?? {}).filter((field) => {
-          const value = (row.action === 'CREATE' ? row.after : row.before)?.[field];
+      : Object.keys(snapshot ?? {}).filter((field) => {
+          const value = snapshot?.[field];
           return value !== null && value !== '' && !(Array.isArray(value) && value.length === 0);
         });
   return fields
     .filter(isVisibleField)
+    .sort(byPriorityThenLabel(model))
     .map((field) => ({
       field,
       label: fieldSpec(model, field).label,
-      before: row.action === 'CREATE' ? null : formatAuditValue(model, field, row.before?.[field]),
-      after: row.action === 'DELETE' ? null : formatAuditValue(model, field, row.after?.[field]),
-    }));
+      before: row.action === 'CREATE' ? null : displayValue(model, field, row.before?.[field], refs),
+      after: row.action === 'DELETE' ? null : displayValue(model, field, row.after?.[field], refs),
+    }))
+    // e.g. a civil date whose stored time moved: nothing a person would see changed.
+    .filter((change) => row.action !== 'UPDATE' || change.before !== change.after);
 };
 
 const rowSummary = (action: AuditActionDto, entityType: string, label: string | null) =>
   `${ACTION_LABELS[action].verb} ${entityLabel(entityType)}${label ? `: ${label}` : ''}`;
 
-const rowDto = (row: AuditLogRow): AuditRowDto => ({
+const rowDto = (row: AuditLogRow, refs: RefNames): AuditRowDto => ({
   id: row.id.toString(),
   occurredAt: fromDatabaseTimestamp(row.occurred_at).toISOString(),
   batchKey: row.batch_key,
@@ -170,7 +245,7 @@ const rowDto = (row: AuditLogRow): AuditRowDto => ({
   entityId: row.entity_id,
   entityLabel: row.entity_label,
   summary: rowSummary(row.action, row.entity_type, row.entity_label),
-  changes: changesOf(row),
+  changes: changesOf(row, refs),
 });
 
 const ROW_COLUMNS = Prisma.sql`
@@ -196,8 +271,9 @@ export const listAuditRows = async (
      LIMIT ${q.limit + 1}`;
   const page = rows.slice(0, q.limit);
   const last = page[page.length - 1];
+  const refs = await resolveRefNames(page);
   return {
-    items: page.map(rowDto),
+    items: page.map((row) => rowDto(row, refs)),
     nextCursor: rows.length > q.limit && last ? encodeCursor(last.occurred_at, last.id) : null,
   };
 };
