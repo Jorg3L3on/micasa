@@ -50,6 +50,9 @@ jobs:
       - name: Calendar date anti-patterns
         run: npm run validate:calendar-dates
 
+      - name: Audit log coverage
+        run: npm run validate:audit-coverage
+
       - name: Unit tests with finance coverage gate
         env:
           # Local service only. 127.0.0.1 avoids localhost resolving to IPv6.

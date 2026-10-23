@@ -23,10 +23,11 @@
     "validate:metric-strips": "node scripts/validate-metric-strips.mjs",
     "validate:calendar-dates": "node scripts/validate-calendar-dates.mjs",
     "validate:prisma-imports": "node scripts/validate-prisma-imports.mjs",
+    "validate:audit-coverage": "tsx --tsconfig tsconfig.json scripts/validate-audit-coverage.ts",
     "generate:audit-triggers": "tsx --tsconfig tsconfig.json scripts/generate-audit-triggers.ts",
     "import:brand-assets": "node scripts/import-brand-assets.mjs",
     "generate:ios-splash": "node scripts/generate-ios-splash.mjs",
-    "ci": "npm run validate:metric-strips && npm run validate:prisma-imports && npm run validate:calendar-dates && prisma generate && npm run test:coverage && npm run test:isolation && npm run test:db && npm run build"
+    "ci": "npm run validate:metric-strips && npm run validate:prisma-imports && npm run validate:calendar-dates && npm run validate:audit-coverage && prisma generate && npm run test:coverage && npm run test:isolation && npm run test:db && npm run build"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",

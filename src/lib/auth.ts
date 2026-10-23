@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
+import { jwtCallback, sessionCallback } from './auth-callbacks';
 
 export const {
   handlers: { GET, POST },
@@ -70,23 +71,7 @@ export const {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.name = user.name;
-        token.email = user.email;
-        token.houses = user.houses?.map((h) => ({ id: h.id, name: h.name })) ?? [];
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-        session.user.name = token.name as string;
-        session.user.email = token.email as string;
-        session.user.houses = (token.houses ?? []) as { id: number; name: string }[];
-      }
-      return session;
-    },
+    jwt: jwtCallback,
+    session: sessionCallback,
   },
 });

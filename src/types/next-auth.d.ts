@@ -21,6 +21,8 @@ declare module 'next-auth' {
       company_is_system: boolean;
       houses: { id: number; name: string }[];
     };
+    /** One per login; copied onto audit rows and auth events. */
+    sid?: string;
   }
 }
 
@@ -30,5 +32,6 @@ declare module 'next-auth/jwt' {
     company_name?: string;
     company_is_system?: boolean;
     houses?: { id: number; name: string }[];
+    sid?: string;
   }
 }
