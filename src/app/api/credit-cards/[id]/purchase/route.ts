@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { createCreditCardPurchaseSchema } from '@/schemas/credit-card.schema';
 import { createCreditCardPurchase } from '@/lib/finance/credit-card.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
@@ -10,81 +10,82 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  let purchaseLogContext: {
+  // Assigned inside the withOwnerContext callback; `as` keeps the catch block
+  // from narrowing it to null.
+  let purchaseLogContext = null as {
     owner_type: string;
     owner_id: number;
     credit_card_wallet_id: number;
     amount: number;
-  } | null = null;
+  } | null;
 
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const { id } = await params;
+      const creditCardId = Number(id);
 
-    const { id } = await params;
-    const creditCardId = Number(id);
+      if (!id || Number.isNaN(creditCardId)) {
+        return NextResponse.json(
+          { error: 'Se requiere un id válido' },
+          { status: 400 },
+        );
+      }
 
-    if (!id || Number.isNaN(creditCardId)) {
-      return NextResponse.json(
-        { error: 'Se requiere un id válido' },
-        { status: 400 },
-      );
-    }
+      const body = await request.json();
+      const validatedData = createCreditCardPurchaseSchema.parse(body);
 
-    const body = await request.json();
-    const validatedData = createCreditCardPurchaseSchema.parse(body);
+      const [fortnight, category] = await Promise.all([
+        prisma.fortnight.findFirst({
+          where: { id: validatedData.fortnight_id, ...context.ownerFilter },
+          select: { id: true },
+        }),
+        prisma.category.findFirst({
+          where: {
+            id: validatedData.category_id,
+            kind: 'EXPENSE',
+            ...context.ownerFilter,
+          },
+          select: { id: true },
+        }),
+      ]);
 
-    const [fortnight, category] = await Promise.all([
-      prisma.fortnight.findFirst({
-        where: { id: validatedData.fortnight_id, ...context.ownerFilter },
-        select: { id: true },
-      }),
-      prisma.category.findFirst({
-        where: {
-          id: validatedData.category_id,
-          kind: 'EXPENSE',
-          ...context.ownerFilter,
-        },
-        select: { id: true },
-      }),
-    ]);
+      if (!fortnight) {
+        return NextResponse.json({ error: 'Quincena no encontrada' }, { status: 404 });
+      }
 
-    if (!fortnight) {
-      return NextResponse.json({ error: 'Quincena no encontrada' }, { status: 404 });
-    }
+      if (!category) {
+        return NextResponse.json({ error: 'Categoría no encontrada' }, { status: 404 });
+      }
 
-    if (!category) {
-      return NextResponse.json({ error: 'Categoría no encontrada' }, { status: 404 });
-    }
-
-    purchaseLogContext = {
-      owner_type: context.ownerType,
-      owner_id: context.ownerId,
-      credit_card_wallet_id: creditCardId,
-      amount: validatedData.amount,
-    };
-
-    const purchase = await createCreditCardPurchase(
-      creditCardId,
-      context.ownerFilter,
-      validatedData,
-    );
-
-    logFinanceEvent(
-      'info',
-      'credit_card.purchase.created',
-      {
-        credit_card_wallet_id: creditCardId,
-        expense_id: purchase.id,
-        amount: Number(purchase.amount),
-        already_in_card_balance: validatedData.already_in_card_balance === true,
+      purchaseLogContext = {
         owner_type: context.ownerType,
         owner_id: context.ownerId,
-      },
-      request,
-    );
+        credit_card_wallet_id: creditCardId,
+        amount: validatedData.amount,
+      };
 
-    return NextResponse.json(purchase, { status: 201 });
+      const purchase = await createCreditCardPurchase(
+        creditCardId,
+        context.ownerFilter,
+        validatedData,
+      );
+
+      logFinanceEvent(
+        'info',
+        'credit_card.purchase.created',
+        {
+          credit_card_wallet_id: creditCardId,
+          expense_id: purchase.id,
+          amount: Number(purchase.amount),
+          already_in_card_balance: validatedData.already_in_card_balance === true,
+          owner_type: context.ownerType,
+          owner_id: context.ownerId,
+        },
+        request,
+      );
+
+      return NextResponse.json(purchase, { status: 201 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

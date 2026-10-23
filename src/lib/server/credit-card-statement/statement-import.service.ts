@@ -16,6 +16,7 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { setAuditLabel } from '@/lib/server/audit/audit-context';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
   extractMercadoPagoStatementText,
@@ -625,7 +626,7 @@ async function runImport(
   };
 }
 
-const PROVIDER_LABELS: Record<StatementImportProvider, string> = {
+export const PROVIDER_LABELS: Record<StatementImportProvider, string> = {
   MERCADO_PAGO: 'Mercado Pago',
   CA_DEPARTAMENTAL: 'C&A Departamental',
   CA_EFECTIVO: 'C&A Efectivo',
@@ -637,6 +638,7 @@ export async function importStatementPdf(
   provider: StatementImportProvider,
   input: ImportInput,
 ): Promise<StatementImportResult> {
+  setAuditLabel(`Importación de estado de cuenta: ${PROVIDER_LABELS[provider]}`);
   const parsed = await parseStatementFromBuffer(provider, input.buffer);
   return runImport(parsed, provider, PROVIDER_LABELS[provider], input);
 }

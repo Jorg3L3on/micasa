@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { updateCreditCardSchema } from '@/schemas/credit-card.schema';
 import {
   deleteCreditCardForOwner,
@@ -27,12 +27,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-
-    const creditCardId = await parseCreditCardId(params);
-    const card = await getCreditCardByOwner(creditCardId, context.ownerFilter);
-    return NextResponse.json(card, { status: 200 });
+    return await withOwnerContext(request, async (context) => {
+      const creditCardId = await parseCreditCardId(params);
+      const card = await getCreditCardByOwner(creditCardId, context.ownerFilter);
+      return NextResponse.json(card, { status: 200 });
+    });
   } catch (error) {
     if (
       error &&
@@ -68,20 +67,19 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const creditCardId = await parseCreditCardId(params);
+      const body = await request.json();
+      const validatedData = updateCreditCardSchema.parse(body);
 
-    const creditCardId = await parseCreditCardId(params);
-    const body = await request.json();
-    const validatedData = updateCreditCardSchema.parse(body);
+      const card = await updateCreditCardForOwner(
+        creditCardId,
+        validatedData,
+        context.ownerFilter,
+      );
 
-    const card = await updateCreditCardForOwner(
-      creditCardId,
-      validatedData,
-      context.ownerFilter,
-    );
-
-    return NextResponse.json(card, { status: 200 });
+      return NextResponse.json(card, { status: 200 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -128,16 +126,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const creditCardId = await parseCreditCardId(params);
+      await deleteCreditCardForOwner(creditCardId, context.ownerFilter);
 
-    const creditCardId = await parseCreditCardId(params);
-    await deleteCreditCardForOwner(creditCardId, context.ownerFilter);
-
-    return NextResponse.json(
-      { message: 'Tarjeta eliminada correctamente' },
-      { status: 200 },
-    );
+      return NextResponse.json(
+        { message: 'Tarjeta eliminada correctamente' },
+        { status: 200 },
+      );
+    });
   } catch (error) {
     if (
       error &&

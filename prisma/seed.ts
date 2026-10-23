@@ -18,10 +18,13 @@ import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows
 import { getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
 import { generateLoanPaymentSchedule } from '@/lib/finance/loan-schedule';
 import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
+import { runWithAuditActor } from '@/lib/server/audit/audit-context';
+import { withAuditLayer } from '@/lib/server/audit/prisma-audit-layer';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+// Audit layer: seed rows are recorded as SYSTEM with the "Seed" label.
+const prisma = withAuditLayer(new PrismaClient({ adapter }));
 
 async function requireCategory(
   owner: { user_id: number } | { house_id: number },
@@ -960,7 +963,7 @@ async function main() {
   console.log('✅ Database seeded with demo data');
 }
 
-main().finally(async () => {
+runWithAuditActor({ source: 'SYSTEM', actorName: 'Seed', label: 'Seed' }, main).finally(async () => {
   await prisma.$disconnect();
 });
 

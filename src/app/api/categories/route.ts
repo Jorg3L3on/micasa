@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   createCategorySchema,
   updateCategorySchema,
@@ -45,19 +45,19 @@ const listKindSchema = z.enum(['expense', 'income', 'all']);
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerType, ownerId } = context;
 
-    const { searchParams } = new URL(request.url);
-    const kindParam = listKindSchema.parse(
-      searchParams.get('kind') ?? 'expense',
-    );
+      const { searchParams } = new URL(request.url);
+      const kindParam = listKindSchema.parse(
+        searchParams.get('kind') ?? 'expense',
+      );
 
-    const categories = await listCategoriesForOwner(ownerType, ownerId, kindParam);
+      const categories = await listCategoriesForOwner(ownerType, ownerId, kindParam);
 
-    return NextResponse.json(categories.map(serializeCategory), {
-      status: 200,
+      return NextResponse.json(categories.map(serializeCategory), {
+        status: 200,
+      });
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -77,15 +77,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 /** POST /categories – create category (optional parentId for one-level child). */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerType, ownerId } = context;
 
-    const body = await request.json();
-    const validatedData = createCategorySchema.parse(body);
-    const category = await createCategoryForOwner(ownerType, ownerId, validatedData);
+      const body = await request.json();
+      const validatedData = createCategorySchema.parse(body);
+      const category = await createCategoryForOwner(ownerType, ownerId, validatedData);
 
-    return NextResponse.json(serializeCategory(category), { status: 201 });
+      return NextResponse.json(serializeCategory(category), { status: 201 });
+    });
   } catch (error) {
     if (error instanceof CategoryServiceError) {
       return NextResponse.json(
@@ -115,30 +115,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  */
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerType, ownerId } = context;
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    if (!id || isNaN(Number(id))) {
-      return NextResponse.json(
-        { error: 'Se requiere un parámetro id válido' },
-        { status: 400 },
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'Se requiere un parámetro id válido' },
+          { status: 400 },
+        );
+      }
+
+      const body = await request.json();
+      const validatedData = updateCategorySchema.parse(body);
+      const category = await updateCategoryForOwner(
+        ownerType,
+        ownerId,
+        Number(id),
+        validatedData,
       );
-    }
 
-    const body = await request.json();
-    const validatedData = updateCategorySchema.parse(body);
-    const category = await updateCategoryForOwner(
-      ownerType,
-      ownerId,
-      Number(id),
-      validatedData,
-    );
-
-    return NextResponse.json(serializeCategory(category), { status: 200 });
+      return NextResponse.json(serializeCategory(category), { status: 200 });
+    });
   } catch (error) {
     if (error instanceof CategoryServiceError) {
       return NextResponse.json(
@@ -178,26 +178,26 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerType, ownerId } = context;
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    if (!id || isNaN(Number(id))) {
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'Se requiere un parámetro id válido' },
+          { status: 400 },
+        );
+      }
+
+      await deleteCategoryForOwner(ownerType, ownerId, Number(id));
+
       return NextResponse.json(
-        { error: 'Se requiere un parámetro id válido' },
-        { status: 400 },
+        { message: 'Categoría eliminada correctamente' },
+        { status: 200 },
       );
-    }
-
-    await deleteCategoryForOwner(ownerType, ownerId, Number(id));
-
-    return NextResponse.json(
-      { message: 'Categoría eliminada correctamente' },
-      { status: 200 },
-    );
+    });
   } catch (error) {
     if (error instanceof CategoryServiceError) {
       return NextResponse.json(

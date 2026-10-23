@@ -6,7 +6,7 @@
  *    EXCLUDED_MODELS (src/lib/server/audit/audited-models.ts), or a listed
  *    model no longer exists.
  * 2. A route under src/app/api/** exports POST/PUT/PATCH/DELETE without opening
- *    an actor scope (withOwnerContext, withAdmin, runWithAuditActor,
+ *    an actor scope (withOwnerContext, withSessionActor, withAdmin, runWithAuditActor,
  *    runAgentTool…) and is not in ROUTES_WITHOUT_ACTOR with its reason.
  * 3. App code calls $executeRaw / $executeRawUnsafe outside a $transaction callback.
  * 4. `set_config('micasa.audit_actor', …, false)` or a session-level
@@ -53,14 +53,18 @@ for (const listed of [...AUDITED_MODEL_NAMES, ...Object.keys(EXCLUDED_MODELS)]) 
  * Mutating routes that legitimately open no actor scope here, with the reason.
  * Keys are paths relative to src/app/api.
  */
-export const ROUTES_WITHOUT_ACTOR: Readonly<Record<string, string>> = {
+const ROUTES_WITHOUT_ACTOR: Readonly<Record<string, string>> = {
   'auth/[...nextauth]/route.ts': 'NextAuth handlers; sign-in only reads, sign-out writes an AuthEvent (not audited)',
+  'mcp/route.ts': 'MCP transport; each tool opens its AGENT scope in runAgentTool / runAgentUserTool',
+  'oauth/token/route.ts': 'Writes OAuth codes and grants only (excluded models; lifecycle recorded as AuthEvent)',
+  'oauth/revoke/route.ts': 'Writes OAuth grants only (excluded model; lifecycle recorded as AuthEvent)',
+  'oauth/register/route.ts': 'Dynamic OAuth client registration (excluded model)',
+  'oauth/consent/route.ts': 'Writes OAuth codes only (excluded models)',
 }
 
-/** Turn on once every route is migrated (MIC-I7-4). */
-const ROUTE_RULE_ENABLED = false
+const ROUTE_RULE_ENABLED = true
 
-const ACTOR_SCOPE_CALLS = /\b(withOwnerContext|withAdmin|runWithAuditActor|runAgentTool|runAgentUserTool|withAuditedRoute)\s*\(/
+const ACTOR_SCOPE_CALLS = /\b(withOwnerContext|withAdmin|runWithAuditActor|runAgentTool|runAgentUserTool|withSessionActor)\s*\(/
 const MUTATING_EXPORT = /export\s+(const|async\s+function|function)\s+(POST|PUT|PATCH|DELETE)\b/
 
 if (ROUTE_RULE_ENABLED) {
@@ -70,6 +74,9 @@ if (ROUTE_RULE_ENABLED) {
     if (!MUTATING_EXPORT.test(source)) continue
     const key = path.relative(apiDir, file).split(path.sep).join('/')
     if (key in ROUTES_WITHOUT_ACTOR) continue
+    if (/\bgetOwnerContext\s*\(/.test(source)) {
+      errors.push(`${rel(file)}: calls getOwnerContext directly; use withOwnerContext so writes carry the actor`)
+    }
     if (!ACTOR_SCOPE_CALLS.test(source)) {
       errors.push(
         `${rel(file)}: mutating route without an actor scope. Wrap the handler in withOwnerContext / withAdmin ` +

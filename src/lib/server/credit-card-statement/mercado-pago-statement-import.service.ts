@@ -10,6 +10,7 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { setAuditLabel } from '@/lib/server/audit/audit-context';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
   extractMercadoPagoStatementText,
@@ -117,6 +118,7 @@ export async function importMercadoPagoStatementPdf(input: {
   skipDuplicates: boolean;
   createdByUserId: number;
 }): Promise<MercadoPagoImportResult> {
+  setAuditLabel('Importación de estado de cuenta: Mercado Pago');
   const {
     buffer,
     fileName,

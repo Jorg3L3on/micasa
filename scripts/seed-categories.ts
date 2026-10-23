@@ -11,6 +11,7 @@
  *   npm run seed:categories -- --house-id=3
  */
 import prisma from '../src/lib/prisma';
+import { runWithAuditActor } from '../src/lib/server/audit/audit-context';
 import {
   ensureDefaultCategoriesForOwner,
   type CategoryOwnerRef,
@@ -113,7 +114,7 @@ async function main() {
   );
 }
 
-main()
+runWithAuditActor({ source: 'SYSTEM', actorName: 'Script', label: 'Script: seed-categories' }, main)
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;

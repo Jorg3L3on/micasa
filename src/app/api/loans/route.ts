@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { reportApiError } from '@/lib/observability/report-error';
 import {
   createLoanForOwner,
@@ -14,16 +14,16 @@ export async function GET(request: NextRequest) {
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
 
-    const loans = await listLoansByOwner(context.ownerFilter);
-    return NextResponse.json(loans, { status: 200 });
+      const loans = await listLoansByOwner(context.ownerFilter);
+      return NextResponse.json(loans, { status: 200 });
+    });
   } catch (error) {
     console.error('Error fetching loans:', error);
     reportApiError(error, { route, status: 500, owner });
@@ -40,23 +40,23 @@ export async function POST(request: NextRequest) {
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
-    const body = await request.json();
-    const input = createLoanSchema.parse(body);
-    const loan = await createLoanForOwner(
-      context.ownerType,
-      context.ownerId,
-      context.ownerFilter,
-      input,
-    );
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
+      const body = await request.json();
+      const input = createLoanSchema.parse(body);
+      const loan = await createLoanForOwner(
+        context.ownerType,
+        context.ownerId,
+        context.ownerFilter,
+        input,
+      );
 
-    return NextResponse.json(loan, { status: 201 });
+      return NextResponse.json(loan, { status: 201 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

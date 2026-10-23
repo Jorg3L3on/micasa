@@ -8,6 +8,7 @@ import {
   loanDueDateForStorage,
 } from '../src/lib/finance/loan-schedule';
 import prisma from '../src/lib/prisma';
+import { runWithAuditActor } from '../src/lib/server/audit/audit-context';
 
 async function main() {
   const loans = await prisma.loan.findMany({
@@ -73,6 +74,6 @@ async function main() {
   );
 }
 
-main()
+runWithAuditActor({ source: 'SYSTEM', actorName: 'Script', label: 'Script: realign-fortnightly-loan-payments' }, main)
   .catch(console.error)
   .finally(() => prisma.$disconnect());

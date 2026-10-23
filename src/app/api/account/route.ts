@@ -3,97 +3,100 @@ import { compare, hash } from 'bcryptjs';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { updateAccountSchema } from '@/schemas/account.schema';
+import { withSessionActor } from '@/lib/server/with-session-actor';
 
 export async function PATCH(request: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+  return withSessionActor(request, async () => {
+    try {
+      const session = await auth();
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+      }
 
-    const body = await request.json();
-    const parsed = updateAccountSchema.safeParse(body);
+      const body = await request.json();
+      const parsed = updateAccountSchema.safeParse(body);
 
-    if (!parsed.success) {
-      const first = parsed.error.issues[0];
-      const path = first?.path?.[0];
-      const message = first?.message ?? 'Datos inválidos';
-      return NextResponse.json(
-        { error: message, field: path },
-        { status: 400 }
-      );
-    }
-
-    const { name, currentPassword, newPassword, confirmPassword } = parsed.data;
-    const userId = Number(session.user.id);
-    if (isNaN(userId)) {
-      return NextResponse.json({ error: 'Usuario inválido' }, { status: 400 });
-    }
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { password: true },
-    });
-
-    if (!existingUser) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
-    }
-
-    const updateData: { name?: string; password?: string } = {};
-
-    if (name != null && name.trim().length > 0) {
-      updateData.name = name.trim();
-    }
-
-    const wantsNewPassword =
-      newPassword != null && String(newPassword).trim().length > 0;
-    if (wantsNewPassword) {
-      if (newPassword !== confirmPassword) {
+      if (!parsed.success) {
+        const first = parsed.error.issues[0];
+        const path = first?.path?.[0];
+        const message = first?.message ?? 'Datos inválidos';
         return NextResponse.json(
-          { error: 'Las contraseñas no coinciden', field: 'confirmPassword' },
+          { error: message, field: path },
           { status: 400 }
         );
       }
 
-      const currentPasswordValue = String(currentPassword ?? '').trim();
-      const isCurrentPasswordValid = await compare(
-        currentPasswordValue,
-        existingUser.password
-      );
+      const { name, currentPassword, newPassword, confirmPassword } = parsed.data;
+      const userId = Number(session.user.id);
+      if (isNaN(userId)) {
+        return NextResponse.json({ error: 'Usuario inválido' }, { status: 400 });
+      }
 
-      if (!isCurrentPasswordValid) {
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { password: true },
+      });
+
+      if (!existingUser) {
+        return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+      }
+
+      const updateData: { name?: string; password?: string } = {};
+
+      if (name != null && name.trim().length > 0) {
+        updateData.name = name.trim();
+      }
+
+      const wantsNewPassword =
+        newPassword != null && String(newPassword).trim().length > 0;
+      if (wantsNewPassword) {
+        if (newPassword !== confirmPassword) {
+          return NextResponse.json(
+            { error: 'Las contraseñas no coinciden', field: 'confirmPassword' },
+            { status: 400 }
+          );
+        }
+
+        const currentPasswordValue = String(currentPassword ?? '').trim();
+        const isCurrentPasswordValid = await compare(
+          currentPasswordValue,
+          existingUser.password
+        );
+
+        if (!isCurrentPasswordValid) {
+          return NextResponse.json(
+            {
+              error: 'La contraseña actual no es correcta',
+              field: 'currentPassword',
+            },
+            { status: 400 }
+          );
+        }
+
+        updateData.password = await hash(String(newPassword).trim(), 10);
+      }
+
+      if (Object.keys(updateData).length === 0) {
         return NextResponse.json(
-          {
-            error: 'La contraseña actual no es correcta',
-            field: 'currentPassword',
-          },
+          { error: 'No hay cambios para aplicar' },
           { status: 400 }
         );
       }
 
-      updateData.password = await hash(String(newPassword).trim(), 10);
-    }
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
 
-    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({
+        name: updateData.name != null ? user.name : undefined,
+      });
+    } catch (e) {
+      console.error('Account update error:', e);
       return NextResponse.json(
-        { error: 'No hay cambios para aplicar' },
-        { status: 400 }
+        { error: 'Error al actualizar la cuenta. Inténtalo de nuevo.' },
+        { status: 500 }
       );
     }
-
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-    });
-
-    return NextResponse.json({
-      name: updateData.name != null ? user.name : undefined,
-    });
-  } catch (e) {
-    console.error('Account update error:', e);
-    return NextResponse.json(
-      { error: 'Error al actualizar la cuenta. Inténtalo de nuevo.' },
-      { status: 500 }
-    );
-  }
+  });
 }
