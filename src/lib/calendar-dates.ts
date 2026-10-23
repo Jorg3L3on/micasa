@@ -208,6 +208,22 @@ function zonedLocalTimeToUtc(
   return new Date(utcMs);
 }
 
+/**
+ * Real instant of a `timestamp` column read back through Prisma: its UTC parts
+ * are the Mexico City wall clock the write shim stored (`toDatabaseTimestamp`).
+ */
+export function fromDatabaseTimestamp(stored: Date): Date {
+  if (Number.isNaN(stored.getTime())) return stored;
+  const ymd = stored.toISOString().slice(0, 10);
+  return zonedLocalTimeToUtc(
+    ymd,
+    stored.getUTCHours(),
+    stored.getUTCMinutes(),
+    stored.getUTCSeconds(),
+    stored.getUTCMilliseconds(),
+  );
+}
+
 /** Inclusive range start: midnight on civil day in Mexico City. */
 export function startOfCalendarDay(ymd: string): Date {
   return zonedLocalTimeToUtc(ymd, 0, 0, 0, 0);
