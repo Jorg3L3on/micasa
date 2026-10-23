@@ -34,6 +34,16 @@ export type AuditScope =
 export const auditScopeFromOwner = (ownerType: 'user' | 'house', ownerId: number): AuditScope =>
   ownerType === 'house' ? { ownerType: 'HOUSE', ownerId } : { ownerType: 'USER', ownerId };
 
+/**
+ * /admin/audit: every tenant, optionally narrowed to one owner or to writes
+ * made outside the app. Includes the older AdminAuditLog rows as ADMIN changes.
+ */
+export type AdminAuditScope = { kind: 'admin'; owner?: AuditScope; missingActor?: boolean };
+
+type AnyScope = AuditScope | AdminAuditScope;
+
+const isAdminScope = (scope: AnyScope): scope is AdminAuditScope => 'kind' in scope;
+
 export const EXPORT_ROW_LIMIT = 5000;
 
 // --- cursors -------------------------------------------------------------------
@@ -46,7 +56,8 @@ const decodeCursor = (cursor: string | undefined): { at: string; id: string } | 
   if (!cursor) return null;
   try {
     const [at, id] = Buffer.from(cursor, 'base64url').toString('utf8').split('|');
-    if (!at || !id || !/^\d+$/.test(id) || Number.isNaN(Date.parse(`${at}Z`))) return null;
+    // Ids are negative for merged AdminAuditLog rows (admin view).
+    if (!at || !id || !/^-?\d+$/.test(id) || Number.isNaN(Date.parse(`${at}Z`))) return null;
     return { at, id };
   } catch {
     return null;
@@ -64,12 +75,41 @@ const nextDayStart = (ymd: string) => {
 
 const batchKeySql = Prisma.sql`coalesce(a.batch_id, 'tx:' || a.txid::text)`;
 
-/** WHERE clause for AuditLog rows of one scope (alias `a`). */
-const auditFilterSql = (scope: AuditScope, q: Partial<AuditQuery>): Prisma.Sql => {
-  const parts: Prisma.Sql[] = [
-    Prisma.sql`a.owner_type = ${scope.ownerType}::"AuditOwnerType"`,
-    Prisma.sql`a.owner_id = ${scope.ownerId}`,
-  ];
+/**
+ * Rows to read (alias `a`). The admin view merges the older AdminAuditLog as
+ * ADMIN changes to the target user (negative ids, batch `admin:<id>`).
+ */
+const auditSourceSql = (scope: AnyScope): Prisma.Sql =>
+  isAdminScope(scope)
+    ? Prisma.sql`(
+        SELECT id, occurred_at, txid, batch_id, label, request_id, session_id, source, actor_user_id,
+               actor_name, api_key_id, oauth_grant_id, owner_type, owner_id, entity_type, entity_id,
+               entity_label, action, changed_fields, before, after, metadata
+          FROM "AuditLog"
+        UNION ALL
+        SELECT -l.id, l.created_at, 0, 'admin:' || l.id,
+               CASE l.action WHEN 'admin.password_override' THEN 'Soporte asignó una contraseña temporal' ELSE l.action END,
+               NULL, NULL, 'ADMIN'::"AuditSource", l.actor_user_id, actor.name, NULL, NULL,
+               CASE WHEN l.target_user_id IS NULL THEN NULL ELSE 'USER'::"AuditOwnerType" END, l.target_user_id,
+               'User', coalesce(l.target_user_id::text, ''), target.name, 'UPDATE'::"AuditAction",
+               ARRAY[]::text[], NULL, NULL,
+               coalesce(l.metadata, '{}'::jsonb) - 'target_email' || '{"legacy_admin_log": true}'::jsonb
+          FROM "AdminAuditLog" l
+          LEFT JOIN "User" actor ON actor.id = l.actor_user_id
+          LEFT JOIN "User" target ON target.id = l.target_user_id
+      )`
+    : Prisma.sql`"AuditLog"`;
+
+/** WHERE clause for audit rows of one scope (alias `a`). */
+const auditFilterSql = (scope: AnyScope, q: Partial<AuditQuery>): Prisma.Sql => {
+  const owner = isAdminScope(scope) ? scope.owner : scope;
+  const parts: Prisma.Sql[] = [Prisma.sql`TRUE`];
+  if (owner) {
+    parts.push(Prisma.sql`a.owner_type = ${owner.ownerType}::"AuditOwnerType"`, Prisma.sql`a.owner_id = ${owner.ownerId}`);
+  }
+  if (isAdminScope(scope) && scope.missingActor) {
+    parts.push(Prisma.sql`coalesce(a.metadata->>'missing_actor', 'false') = 'true'`);
+  }
   if (q.batchId) {
     parts.push(
       q.batchId.startsWith('tx:') && /^tx:\d+$/.test(q.batchId)
@@ -256,7 +296,7 @@ const ROW_COLUMNS = Prisma.sql`
 // --- rows ------------------------------------------------------------------------
 
 export const listAuditRows = async (
-  scope: AuditScope,
+  scope: AnyScope,
   q: Partial<AuditQuery> & { limit: number },
 ): Promise<AuditPage<AuditRowDto>> => {
   const cursor = decodeCursor(q.cursor);
@@ -265,7 +305,7 @@ export const listAuditRows = async (
     : auditFilterSql(scope, q);
   const rows = await prisma.$queryRaw<AuditLogRow[]>`
     SELECT ${ROW_COLUMNS}
-      FROM "AuditLog" a
+      FROM ${auditSourceSql(scope)} a
      WHERE ${where}
      ORDER BY a.occurred_at DESC, a.id DESC
      LIMIT ${q.limit + 1}`;
@@ -321,7 +361,7 @@ export const batchSummary = (b: Pick<
 };
 
 export const listAuditBatches = async (
-  scope: AuditScope,
+  scope: AnyScope,
   q: Partial<AuditQuery> & { limit: number },
 ): Promise<AuditPage<AuditBatchDto>> => {
   const cursor = decodeCursor(q.cursor);
@@ -349,7 +389,7 @@ export const listAuditBatches = async (
            bool_or(coalesce(a.metadata->>'missing_actor', 'false') = 'true') AS missing_actor,
            max(a.metadata->>'agent') AS agent,
            max(a.metadata->>'tool') AS tool
-      FROM "AuditLog" a
+      FROM ${auditSourceSql(scope)} a
      WHERE ${auditFilterSql(scope, q)}
      GROUP BY 1
      ${having}
@@ -418,7 +458,7 @@ export const auditRowsToCsv = (rows: AuditRowDto[]): string => {
   return `${lines.join('\n')}\n`;
 };
 
-export const exportAuditRows = async (scope: AuditScope, q: Partial<AuditQuery>): Promise<AuditRowDto[]> => {
+export const exportAuditRows = async (scope: AnyScope, q: Partial<AuditQuery>): Promise<AuditRowDto[]> => {
   const { items } = await listAuditRows(scope, { ...q, cursor: undefined, limit: EXPORT_ROW_LIMIT });
   return items;
 };
@@ -470,6 +510,30 @@ export const listAuditSessions = async (
 
   const parts: Prisma.Sql[] = [Prisma.sql`e.user_id IN (${Prisma.join(userIds)})`];
   if (kinds) parts.push(Prisma.sql`e.kind::text IN (${Prisma.join([...kinds])})`);
+  return querySessions(parts, scope, q);
+};
+
+/**
+ * /admin/audit → Sesiones: every event, including failed logins on unknown
+ * emails (no user), filterable by user, kind, IP and date.
+ */
+export const listAdminSessions = async (
+  q: Partial<AuditSessionsQuery> & { limit: number; ip?: string; unknownOnly?: boolean },
+): Promise<AuditPage<AuthEventDto>> => {
+  const parts: Prisma.Sql[] = [Prisma.sql`TRUE`];
+  if (q.userId) parts.push(Prisma.sql`e.user_id = ${q.userId}`);
+  if (q.unknownOnly) parts.push(Prisma.sql`e.user_id IS NULL`);
+  if (q.kind) parts.push(Prisma.sql`e.kind::text = ${q.kind}`);
+  if (q.ip) parts.push(Prisma.sql`e.ip = ${q.ip}`);
+  return querySessions(parts, null, q);
+};
+
+/** Shared tail: date / cursor filters, the page, and each login's change count. */
+const querySessions = async (
+  parts: Prisma.Sql[],
+  countScope: AuditScope | null,
+  q: Partial<AuditSessionsQuery> & { limit: number },
+): Promise<AuditPage<AuthEventDto>> => {
   if (q.from) parts.push(Prisma.sql`e.occurred_at >= ${dayStart(q.from)}::timestamp`);
   if (q.to) parts.push(Prisma.sql`e.occurred_at < ${nextDayStart(q.to)}::timestamp`);
   const cursor = decodeCursor(q.cursor);
@@ -485,15 +549,17 @@ export const listAuditSessions = async (
      LIMIT ${q.limit + 1}`;
   const page = rows.slice(0, q.limit);
 
-  // Changes made with each login's session, in this context.
+  // Changes made with each login's session (in this context, or anywhere for admins).
   const sessionIds = [...new Set(page.filter((r) => r.kind === 'LOGIN' && r.session_id).map((r) => r.session_id!))];
   const activity = new Map<string, { count: number; last: Date }>();
   if (sessionIds.length) {
+    const ownerSql = countScope
+      ? Prisma.sql`AND a.owner_type = ${countScope.ownerType}::"AuditOwnerType" AND a.owner_id = ${countScope.ownerId}`
+      : Prisma.empty;
     const counts = await prisma.$queryRaw<{ session_id: string; count: number; last: Date }[]>`
       SELECT a.session_id, count(*)::int AS count, max(a.occurred_at) AS last
         FROM "AuditLog" a
-       WHERE a.session_id IN (${Prisma.join(sessionIds)})
-         AND a.owner_type = ${scope.ownerType}::"AuditOwnerType" AND a.owner_id = ${scope.ownerId}
+       WHERE a.session_id IN (${Prisma.join(sessionIds)}) ${ownerSql}
        GROUP BY a.session_id`;
     for (const c of counts) activity.set(c.session_id, { count: c.count, last: c.last });
   }

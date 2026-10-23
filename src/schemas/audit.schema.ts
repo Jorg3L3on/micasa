@@ -61,3 +61,18 @@ export type AuditSessionsQuery = z.infer<typeof auditSessionsQuerySchema>;
 /** Plain object from URLSearchParams (empty values dropped). */
 export const searchParamsObject = (params: URLSearchParams): Record<string, string> =>
   Object.fromEntries([...params.entries()].filter(([, v]) => v !== ''));
+
+/** GET /api/admin/audit: the user filters plus owner and "Fuera de la app". */
+export const adminAuditQuerySchema = auditQuerySchema.extend({
+  ownerType: z.enum(['user', 'house']).optional(),
+  ownerId: z.coerce.number().int().positive().optional(),
+  missingActor: flag.optional(),
+});
+
+export type AdminAuditQuery = z.infer<typeof adminAuditQuerySchema>;
+
+/** GET /api/admin/audit/sessions: every event, also failures on unknown emails. */
+export const adminAuditSessionsQuerySchema = auditSessionsQuerySchema.extend({
+  ip: z.string().max(64).optional(),
+  unknownOnly: flag.optional(),
+});

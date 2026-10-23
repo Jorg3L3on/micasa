@@ -16,12 +16,10 @@ import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchAuditSessions } from '@/lib/api/audit';
 import { formatAuditRelative } from '@/lib/audit/format';
 import { STATUS_SOFT_CLASS, STATUS_TEXT_CLASS } from '@/lib/status-tone';
 import { cn } from '@/lib/utils';
-import type { AuthEventDto } from '@/types/audit';
-import type { FinanceContextType } from '@/types/finance-context';
+import type { AuditPage, AuthEventDto } from '@/types/audit';
 
 const KIND_COPY: Record<string, { label: string; icon: LucideIcon; tone?: 'overdue' | 'success' | 'info' }> = {
   LOGIN: { label: 'Inició sesión', icon: LogIn, tone: 'success' },
@@ -40,6 +38,7 @@ const KIND_COPY: Record<string, { label: string; icon: LucideIcon; tone?: 'overd
 const REASON_COPY: Record<string, string> = {
   wrong_password: 'contraseña incorrecta',
   inactive: 'cuenta desactivada',
+  unknown_email: 'correo no registrado',
 };
 
 const eventDetail = (event: AuthEventDto): string | null => {
@@ -55,15 +54,17 @@ const eventDetail = (event: AuthEventDto): string | null => {
  * House: every member's logins, logouts and failed attempts.
  */
 export function AuditSessionsPanel({
-  context,
-  isHouse,
-  userId,
+  loadEvents,
+  showPerson,
+  emptyDescription,
   onShowSessionChanges,
 }: {
-  context: FinanceContextType;
-  isHouse: boolean;
-  userId?: number;
-  onShowSessionChanges: (event: AuthEventDto) => void;
+  /** One page of events (memoize: a new function reloads the list). */
+  loadEvents: (cursor?: string) => Promise<AuditPage<AuthEventDto>>;
+  /** Name each event's person (house context, admin). */
+  showPerson: boolean;
+  emptyDescription: string;
+  onShowSessionChanges?: (event: AuthEventDto) => void;
 }) {
   const [events, setEvents] = useState<AuthEventDto[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -75,7 +76,7 @@ export function AuditSessionsPanel({
       setLoading(true);
       setError(null);
       try {
-        const page = await fetchAuditSessions({ userId }, context, after);
+        const page = await loadEvents(after);
         setEvents((prev) => (after ? [...prev, ...page.items] : page.items));
         setCursor(page.nextCursor);
       } catch (err) {
@@ -84,7 +85,7 @@ export function AuditSessionsPanel({
         setLoading(false);
       }
     },
-    [context, userId],
+    [loadEvents],
   );
 
   useEffect(() => {
@@ -106,11 +107,7 @@ export function AuditSessionsPanel({
             <EmptyState
               icon={LogIn}
               message="Sin sesiones registradas"
-              description={
-                isHouse
-                  ? 'Aquí aparecen los inicios y cierres de sesión de los miembros de la casa.'
-                  : 'Aquí aparecen tus inicios de sesión, cambios de contraseña y conexiones.'
-              }
+              description={emptyDescription}
             />
           ) : (
             <ul role="list" className="divide-y divide-border/60">
@@ -132,7 +129,11 @@ export function AuditSessionsPanel({
                     </span>
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <p className="text-sm">
-                        {isHouse && event.userName ? <span className="font-semibold">{event.userName} · </span> : null}
+                        {showPerson ? (
+                          <span className="font-semibold">
+                            {event.userName ?? (event.metadata?.unknown_email ? 'Correo desconocido' : 'Sin usuario')} ·{' '}
+                          </span>
+                        ) : null}
                         {copy.label}
                         {detail ? <span className="text-muted-foreground"> · {detail}</span> : null}
                       </p>
@@ -140,7 +141,7 @@ export function AuditSessionsPanel({
                         {formatAuditRelative(event.occurredAt)}
                         {device ? ` · ${device}` : ''}
                       </p>
-                      {event.kind === 'LOGIN' && event.changeCount ? (
+                      {event.kind === 'LOGIN' && event.changeCount && onShowSessionChanges ? (
                         <Button
                           type="button"
                           variant="link"

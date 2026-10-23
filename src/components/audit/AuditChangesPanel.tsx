@@ -7,11 +7,9 @@ import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchAuditBatches, fetchAuditRows, type AuditFilters } from '@/lib/api/audit';
 import { auditDay, formatAuditDayHeading, formatAuditTime } from '@/lib/audit/format';
 import { cn } from '@/lib/utils';
-import type { AuditBatchDto, AuditRowDto } from '@/types/audit';
-import type { FinanceContextType } from '@/types/finance-context';
+import type { AuditBatchDto, AuditPage, AuditRowDto } from '@/types/audit';
 import { AuditSourceBadge, auditActorName } from './audit-parts';
 
 type BatchState = { rows: AuditRowDto[]; loading: boolean; error: string | null };
@@ -21,12 +19,14 @@ type BatchState = { rows: AuditRowDto[]; loading: boolean; error: string | null 
  * by day. Expanding a batch lists its rows; a row opens the diff.
  */
 export function AuditChangesPanel({
-  context,
-  filters,
+  loadBatches,
+  loadBatchRows: fetchBatchRows,
   onOpenRow,
 }: {
-  context: FinanceContextType;
-  filters: AuditFilters;
+  /** One page of batch summaries (memoize: a new function reloads the list). */
+  loadBatches: (cursor?: string) => Promise<AuditPage<AuditBatchDto>>;
+  /** The rows of one batch. */
+  loadBatchRows: (batchKey: string) => Promise<AuditPage<AuditRowDto>>;
   onOpenRow: (row: AuditRowDto) => void;
 }) {
   const [batches, setBatches] = useState<AuditBatchDto[]>([]);
@@ -40,7 +40,7 @@ export function AuditChangesPanel({
       setLoading(true);
       setError(null);
       try {
-        const page = await fetchAuditBatches(filters, context, after);
+        const page = await loadBatches(after);
         setBatches((prev) => (after ? [...prev, ...page.items] : page.items));
         setCursor(page.nextCursor);
       } catch (err) {
@@ -49,7 +49,7 @@ export function AuditChangesPanel({
         setLoading(false);
       }
     },
-    [context, filters],
+    [loadBatches],
   );
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export function AuditChangesPanel({
     async (batchKey: string): Promise<AuditRowDto[]> => {
       setExpanded((prev) => ({ ...prev, [batchKey]: { rows: prev[batchKey]?.rows ?? [], loading: true, error: null } }));
       try {
-        const page = await fetchAuditRows({ ...filters, batchId: batchKey }, context);
+        const page = await fetchBatchRows(batchKey);
         setExpanded((prev) => ({ ...prev, [batchKey]: { rows: page.items, loading: false, error: null } }));
         return page.items;
       } catch (err) {
@@ -70,7 +70,7 @@ export function AuditChangesPanel({
         return [];
       }
     },
-    [context, filters],
+    [fetchBatchRows],
   );
 
   const toggleBatch = async (batch: AuditBatchDto) => {

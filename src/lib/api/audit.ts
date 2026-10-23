@@ -18,7 +18,7 @@ export type AuditFilters = {
 };
 
 export const auditQueryString = (
-  filters: AuditFilters,
+  filters: Record<string, string | number | boolean | undefined>,
   extra: Record<string, string | number | undefined> = {},
 ): string => {
   const params = new URLSearchParams();

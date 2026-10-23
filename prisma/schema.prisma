@@ -300,6 +300,11 @@ model McpOAuthTokenAttempt {
 }
 
 /**
+ * DEPRECATED (MIC-I7): superseded by AuditLog + AuthEvent. Every action that
+ * writes here also writes the new tables (password override → AuthEvent
+ * PASSWORD_OVERRIDDEN); /admin/audit shows these rows merged as ADMIN changes.
+ * Kept for history until a later ticket removes it. Do not add new writers.
+ *
  * Append-only audit trail for platform-admin mutations (e.g. password override).
  * Never store plaintext secrets in metadata.
  */

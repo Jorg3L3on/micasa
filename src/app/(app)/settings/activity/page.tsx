@@ -16,7 +16,13 @@ import {
   useRegisterToolbarActions,
   type ToolbarOverflowItem,
 } from '@/context/toolbar-actions-context';
-import { auditExportHref, type AuditFilters } from '@/lib/api/audit';
+import {
+  auditExportHref,
+  fetchAuditBatches,
+  fetchAuditRows,
+  fetchAuditSessions,
+  type AuditFilters,
+} from '@/lib/api/audit';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import { formatAuditRelative } from '@/lib/audit/format';
 import { addCalendarDays, todayCalendarDate } from '@/lib/calendar-dates';
@@ -120,6 +126,20 @@ function ActivityView() {
     };
   }, [personId, entityType, action, period, includeFortnights, sessionFilter]);
 
+  const loadBatches = useCallback(
+    (cursor?: string) => fetchAuditBatches(filters, context, cursor),
+    [filters, context],
+  );
+  const loadBatchRows = useCallback(
+    (batchKey: string) => fetchAuditRows({ ...filters, batchId: batchKey }, context),
+    [filters, context],
+  );
+  const sessionsUserId = isHouse ? (personId ?? undefined) : undefined;
+  const loadEvents = useCallback(
+    (cursor?: string) => fetchAuditSessions({ userId: sessionsUserId }, context, cursor),
+    [sessionsUserId, context],
+  );
+
   const activeCount =
     (personId ? 1 : 0) + (entityType ? 1 : 0) + (action !== 'ALL' ? 1 : 0) + (period !== 'all' ? 1 : 0) + (includeFortnights ? 1 : 0);
 
@@ -197,12 +217,16 @@ function ActivityView() {
         ) : null}
 
         {tab === 'changes' ? (
-          <AuditChangesPanel context={context} filters={filters} onOpenRow={setDetailRow} />
+          <AuditChangesPanel loadBatches={loadBatches} loadBatchRows={loadBatchRows} onOpenRow={setDetailRow} />
         ) : (
           <AuditSessionsPanel
-            context={context}
-            isHouse={isHouse}
-            userId={isHouse ? (personId ?? undefined) : undefined}
+            loadEvents={loadEvents}
+            showPerson={isHouse}
+            emptyDescription={
+              isHouse
+                ? 'Aquí aparecen los inicios y cierres de sesión de los miembros de la casa.'
+                : 'Aquí aparecen tus inicios de sesión, cambios de contraseña y conexiones.'
+            }
             onShowSessionChanges={showSessionChanges}
           />
         )}
