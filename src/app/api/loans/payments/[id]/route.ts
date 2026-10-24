@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { updateLoanPaymentForOwner } from '@/lib/finance/loan.service';
 import { reportApiError } from '@/lib/observability/report-error';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { updateLoanPaymentSchema } from '@/schemas/loan.schema';
 
 export async function PATCH(
@@ -14,31 +14,31 @@ export async function PATCH(
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
-    const { id } = await params;
-    const paymentId = Number(id);
-    if (!Number.isInteger(paymentId) || paymentId <= 0) {
-      return NextResponse.json(
-        { error: 'El id del pago es inválido' },
-        { status: 400 },
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
+      const { id } = await params;
+      const paymentId = Number(id);
+      if (!Number.isInteger(paymentId) || paymentId <= 0) {
+        return NextResponse.json(
+          { error: 'El id del pago es inválido' },
+          { status: 400 },
+        );
+      }
+
+      const body = await request.json();
+      const input = updateLoanPaymentSchema.parse(body);
+      const payment = await updateLoanPaymentForOwner(
+        paymentId,
+        context.ownerFilter,
+        input,
       );
-    }
 
-    const body = await request.json();
-    const input = updateLoanPaymentSchema.parse(body);
-    const payment = await updateLoanPaymentForOwner(
-      paymentId,
-      context.ownerFilter,
-      input,
-    );
-
-    return NextResponse.json(payment, { status: 200 });
+      return NextResponse.json(payment, { status: 200 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

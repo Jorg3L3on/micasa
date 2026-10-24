@@ -8,6 +8,8 @@ import {
   validateSelectableContexts,
 } from '@/lib/server/agent-allowed-contexts';
 import { AgentAuthError } from '@/lib/server/agent-auth-error';
+import { withSessionActor } from '@/lib/server/with-session-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 async function resolveOwnKeyId(
   params: Promise<{ id: string }>,
@@ -56,113 +58,122 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const resolved = await resolveOwnKeyId(params);
-    if ('error' in resolved) return resolved.error;
+  return withSessionActor(request, async () => {
+    try {
+      const resolved = await resolveOwnKeyId(params);
+      if ('error' in resolved) return resolved.error;
 
-    const body = await request.json();
-    const renameInput = renameApiKeySchema.safeParse(body);
-    const contextsInput = updateApiKeyContextsSchema.safeParse(body);
+      const body = await request.json();
+      const renameInput = renameApiKeySchema.safeParse(body);
+      const contextsInput = updateApiKeyContextsSchema.safeParse(body);
 
-    if (!renameInput.success && !contextsInput.success) {
+      if (!renameInput.success && !contextsInput.success) {
+        return NextResponse.json(
+          {
+            error: 'Error de validación',
+            details: renameInput.error?.issues ?? contextsInput.error?.issues,
+          },
+          { status: 400 },
+        );
+      }
+
+      if (renameInput.success) {
+        await prisma.apiKey.update({
+          where: { id: resolved.keyId },
+          data: { name: renameInput.data.name },
+        });
+      }
+
+      if (contextsInput.success) {
+        const validated = await validateSelectableContexts(
+          resolved.userId,
+          contextsInput.data.allowed_contexts,
+          { allowEmpty: true },
+        );
+        await replaceApiKeyAllowedContexts(resolved.keyId, validated);
+      }
+
+      if (renameInput.success && !contextsInput.success) {
+        return NextResponse.json(
+          { id: resolved.keyId, name: renameInput.data.name },
+          { status: 200 },
+        );
+      }
+
+      const updated = await prisma.apiKey.findUnique({
+        where: { id: resolved.keyId },
+        select: {
+          id: true,
+          name: true,
+          allowedContexts: { select: { owner_type: true, owner_id: true } },
+        },
+      });
+
+      if (!updated) {
+        return NextResponse.json(
+          { error: 'Conexión no encontrada' },
+          { status: 404 },
+        );
+      }
+
       return NextResponse.json(
         {
-          error: 'Error de validación',
-          details: renameInput.error?.issues ?? contextsInput.error?.issues,
+          id: updated.id,
+          name: updated.name,
+          allowed_contexts: updated.allowedContexts.map((row) => ({
+            ownerType: row.owner_type === 'USER' ? 'user' : 'house',
+            ownerId: row.owner_id,
+          })),
         },
-        { status: 400 },
-      );
-    }
-
-    if (renameInput.success) {
-      await prisma.apiKey.update({
-        where: { id: resolved.keyId },
-        data: { name: renameInput.data.name },
-      });
-    }
-
-    if (contextsInput.success) {
-      const validated = await validateSelectableContexts(
-        resolved.userId,
-        contextsInput.data.allowed_contexts,
-        { allowEmpty: true },
-      );
-      await replaceApiKeyAllowedContexts(resolved.keyId, validated);
-    }
-
-    if (renameInput.success && !contextsInput.success) {
-      return NextResponse.json(
-        { id: resolved.keyId, name: renameInput.data.name },
         { status: 200 },
       );
-    }
-
-    const updated = await prisma.apiKey.findUnique({
-      where: { id: resolved.keyId },
-      select: {
-        id: true,
-        name: true,
-        allowedContexts: { select: { owner_type: true, owner_id: true } },
-      },
-    });
-
-    if (!updated) {
+    } catch (error) {
+      if (error instanceof AgentAuthError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          { error: 'Error de validación', details: error.issues },
+          { status: 400 },
+        );
+      }
+      console.error('Error renaming api key:', error);
       return NextResponse.json(
-        { error: 'Conexión no encontrada' },
-        { status: 404 },
+        { error: 'No se pudo renombrar la conexión' },
+        { status: 500 },
       );
     }
-
-    return NextResponse.json(
-      {
-        id: updated.id,
-        name: updated.name,
-        allowed_contexts: updated.allowedContexts.map((row) => ({
-          ownerType: row.owner_type === 'USER' ? 'user' : 'house',
-          ownerId: row.owner_id,
-        })),
-      },
-      { status: 200 },
-    );
-  } catch (error) {
-    if (error instanceof AgentAuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Error de validación', details: error.issues },
-        { status: 400 },
-      );
-    }
-    console.error('Error renaming api key:', error);
-    return NextResponse.json(
-      { error: 'No se pudo renombrar la conexión' },
-      { status: 500 },
-    );
-  }
+  });
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const resolved = await resolveOwnKeyId(params);
-    if ('error' in resolved) return resolved.error;
+  return withSessionActor(request, async () => {
+    try {
+      const resolved = await resolveOwnKeyId(params);
+      if ('error' in resolved) return resolved.error;
 
-    // Revocation, not deletion: the row stays for audit; the Bearer stops
-    // working immediately (resolveAgentUser rejects revoked keys).
-    await prisma.apiKey.update({
-      where: { id: resolved.keyId },
-      data: { revoked_at: new Date() },
-    });
+      // Revocation, not deletion: the row stays for audit; the Bearer stops
+      // working immediately (resolveAgentUser rejects revoked keys).
+      await prisma.apiKey.update({
+        where: { id: resolved.keyId },
+        data: { revoked_at: new Date() },
+      });
+      await recordAuthEvent('API_KEY_REVOKED', {
+        userId: resolved.userId,
+        apiKeyId: resolved.keyId,
+        request,
+      });
 
-    return NextResponse.json({ revoked: true }, { status: 200 });
-  } catch (error) {
-    console.error('Error revoking api key:', error);
-    return NextResponse.json(
-      { error: 'No se pudo revocar la conexión' },
-      { status: 500 },
-    );
-  }
+      return NextResponse.json({ revoked: true }, { status: 200 });
+    } catch (error) {
+      console.error('Error revoking api key:', error);
+      return NextResponse.json(
+        { error: 'No se pudo revocar la conexión' },
+        { status: 500 },
+      );
+    }
+  });
 }

@@ -25,6 +25,9 @@ import {
 } from '@/lib/mcp/errors';
 import type { AgentContextEntry } from '@/schemas/agent-context.schema';
 import { toMcpShape } from '@/lib/mcp/shapes';
+import { runWithAuditActor } from '@/lib/server/audit/audit-context';
+import { agentActor } from '@/lib/server/audit/agent-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 /** Structural view of the SDK's ServerContext — only what the tools need. */
 export type McpToolContext = {
@@ -179,13 +182,15 @@ export async function runAgentTool(
   options?: { structured?: boolean },
 ): Promise<McpTextResult> {
   const { ownerType, ownerId } = readOwnerArgs(args);
+  let identity: AgentIdentity | undefined;
   try {
-    const identity = await resolveCallerIdentity(ctx);
+    identity = await resolveCallerIdentity(ctx);
     await enforceToolRateLimit(ctx, identity.rateLimitIdentity);
     assertScope(identity, scope);
 
     const agent = await resolveAgentContextForIdentity(identity, ownerType, ownerId);
-    const data = await fn(agent);
+    const actor = await agentActor(toolName, identity, ctx.http?.req);
+    const data = await runWithAuditActor(actor, () => fn(agent));
 
     logFinanceEvent('info', 'mcp.tool.invoked', {
       tool: toolName,
@@ -198,6 +203,17 @@ export async function runAgentTool(
 
     return jsonResult(data, options);
   } catch (error) {
+    if (identity && error instanceof AgentAuthError && error.status === 403) {
+      // Valid token asking for a scope or context it was not granted.
+      await recordAuthEvent('AGENT_AUTH_FAILED', {
+        userId: identity.userId,
+        apiKeyId: identity.apiKeyId ?? null,
+        oauthGrantId: identity.oauthGrantId ?? null,
+        source: 'AGENT',
+        request: ctx.http?.req,
+        metadata: { reason: error.message, status: error.status, tool: toolName },
+      });
+    }
     logToolFailure(toolName, error, { owner_type: ownerType, owner_id: ownerId });
     return errorPayloadResult(toErrorPayload(error));
   }
@@ -222,7 +238,8 @@ export async function runAgentUserTool(
     await enforceToolRateLimit(ctx, identity.rateLimitIdentity);
 
     const allowedContexts = await loadAllowedContextsForIdentity(identity);
-    const data = await fn({ ...identity, allowedContexts });
+    const actor = await agentActor(toolName, identity, ctx.http?.req);
+    const data = await runWithAuditActor(actor, () => fn({ ...identity, allowedContexts }));
 
     logFinanceEvent('info', 'mcp.tool.invoked', {
       tool: toolName,

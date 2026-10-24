@@ -132,6 +132,10 @@ model User {
   admin_audit_logs_as_actor  AdminAuditLog[] @relation("AdminAuditActor")
   admin_audit_logs_as_target AdminAuditLog[] @relation("AdminAuditTarget")
 
+  audit_logs_as_actor        AuditLog[]      @relation("AuditLogActor")
+  auth_events                AuthEvent[]     @relation("AuthEventUser")
+  auth_events_as_actor       AuthEvent[]     @relation("AuthEventActor")
+
   // Shared
   memberships HouseMember[]
   ownedHouses House[]
@@ -296,6 +300,11 @@ model McpOAuthTokenAttempt {
 }
 
 /**
+ * DEPRECATED (MIC-I7): superseded by AuditLog + AuthEvent. Every action that
+ * writes here also writes the new tables (password override → AuthEvent
+ * PASSWORD_OVERRIDDEN); /admin/audit shows these rows merged as ADMIN changes.
+ * Kept for history until a later ticket removes it. Do not add new writers.
+ *
  * Append-only audit trail for platform-admin mutations (e.g. password override).
  * Never store plaintext secrets in metadata.
  */
@@ -313,6 +322,113 @@ model AdminAuditLog {
   @@index([actor_user_id, created_at])
   @@index([target_user_id, created_at])
   @@index([action, created_at])
+}
+
+/// Who caused an audited change or an auth event.
+enum AuditSource {
+  WEB
+  AGENT
+  ADMIN
+  SYSTEM
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum AuditOwnerType {
+  USER
+  HOUSE
+}
+
+enum AuthEventKind {
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  REGISTER
+  PASSWORD_CHANGED
+  PASSWORD_OVERRIDDEN
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  OAUTH_GRANT_ISSUED
+  OAUTH_GRANT_REVOKED
+  AGENT_AUTH_FAILED
+}
+
+/**
+ * Append-only record of every insert, update and delete on the audited finance
+ * tables. Written only by the Postgres trigger `audit.row_change()` (see
+ * `src/lib/server/audit/audited-models.ts`); UPDATE and DELETE raise, except
+ * the FK `SetNull` on `actor_user_id` when a user is deleted.
+ */
+model AuditLog {
+  id             BigInt          @id @default(autoincrement())
+  occurred_at    DateTime        @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  /// `pg_current_xact_id()`: groups the rows of one transaction even without a batch id.
+  txid           BigInt
+  batch_id       String?
+  label          String?
+  request_id     String?
+  session_id     String?
+  source         AuditSource
+  actor_user_id  Int?
+  actor_name     String?
+  api_key_id     Int?
+  oauth_grant_id Int?
+  owner_type     AuditOwnerType?
+  owner_id       Int?
+  entity_type    String
+  entity_id      String
+  entity_label   String?
+  action         AuditAction
+  changed_fields String[]        @default([])
+  before         Json?
+  after          Json?
+  metadata       Json?
+
+  actor User? @relation("AuditLogActor", fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@index([owner_type, owner_id, occurred_at(sort: Desc), id(sort: Desc)])
+  @@index([entity_type, entity_id, occurred_at])
+  @@index([actor_user_id, occurred_at])
+  @@index([session_id])
+  @@index([batch_id])
+  @@index([txid])
+}
+
+/**
+ * Append-only record of logins, failed logins, logouts, registration, password
+ * changes and agent token lifecycle. Written by the app (`recordAuthEvent`).
+ * Never stores a password, a hash, a raw user agent or an unknown email.
+ */
+model AuthEvent {
+  id             BigInt        @id @default(autoincrement())
+  occurred_at    DateTime      @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+  kind           AuthEventKind
+  user_id        Int?
+  /// Only when it matches an existing user; unknown emails are never stored.
+  email          String?
+  session_id     String?
+  source         AuditSource
+  ip             String?
+  /// Browser and OS family only (e.g. "Safari · iOS").
+  user_agent     String?
+  request_id     String?
+  api_key_id     Int?
+  oauth_grant_id Int?
+  /// The admin, for PASSWORD_OVERRIDDEN.
+  actor_user_id  Int?
+  metadata       Json?
+
+  user  User? @relation("AuthEventUser", fields: [user_id], references: [id], onDelete: SetNull)
+  actor User? @relation("AuthEventActor", fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id, occurred_at(sort: Desc)])
+  @@index([kind, occurred_at])
+  @@index([ip, occurred_at])
+  @@index([session_id])
 }
 
 model Fortnight {

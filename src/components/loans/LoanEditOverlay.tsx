@@ -6,6 +6,7 @@ import {
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
   OVERLAY_ROW_INPUT_CLASS,
+  OVERLAY_SECONDARY_BUTTON_CLASS,
   OVERLAY_ROW_TEXTAREA_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
   OverlayErrorBanner,
@@ -49,6 +50,8 @@ type LoanEditOverlayProps = {
     value: LoanEditFormState[K],
   ) => void;
   onSubmit: () => void;
+  /** Opens the loan's Historial (Actividad). */
+  onShowHistory?: () => void;
 };
 
 const FieldError = ({ id, message }: { id: string; message?: string }) => {
@@ -71,6 +74,7 @@ export const LoanEditOverlay = ({
   submitting,
   onFieldChange,
   onSubmit,
+  onShowHistory,
 }: LoanEditOverlayProps) => {
   return (
     <ResponsiveOverlay
@@ -196,6 +200,17 @@ export const LoanEditOverlay = ({
           >
             {submitting ? 'Guardando…' : 'Guardar'}
           </Button>
+          {onShowHistory ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className={OVERLAY_SECONDARY_BUTTON_CLASS}
+              onClick={onShowHistory}
+              disabled={submitting}
+            >
+              Ver historial
+            </Button>
+          ) : null}
         </form>
       )}
     </ResponsiveOverlay>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { createBudget } from '@/lib/finance/budget.service';
 import { listActivePeriods } from '@/lib/finance/budget-period.service';
 import { createBudgetSchema } from '@/schemas/budget.schema';
@@ -9,12 +9,12 @@ type ErrorWithCode = Error & { code?: string };
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const periods = await listActivePeriods(ownerFilter, new Date());
-    return NextResponse.json(periods, { status: 200 });
+      const periods = await listActivePeriods(ownerFilter, new Date());
+      return NextResponse.json(periods, { status: 200 });
+    });
   } catch (error) {
     console.error('Error fetching active budget periods:', error);
     return NextResponse.json({ error: 'Failed to fetch budgets' }, { status: 500 });
@@ -23,14 +23,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerType, ownerId } = context;
 
-    const body = await request.json();
-    const data = createBudgetSchema.parse(body);
-    const budget = await createBudget(ownerType, ownerId, data);
-    return NextResponse.json(budget, { status: 201 });
+      const body = await request.json();
+      const data = createBudgetSchema.parse(body);
+      const budget = await createBudget(ownerType, ownerId, data);
+      return NextResponse.json(budget, { status: 201 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation error', details: error.issues }, { status: 400 });

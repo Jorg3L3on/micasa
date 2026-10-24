@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   listWalletMetricsByOwner,
   parseMetricsMonths,
@@ -7,15 +7,15 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { searchParams } = new URL(request.url);
-    const months = parseMetricsMonths(searchParams.get('months'));
+      const { searchParams } = new URL(request.url);
+      const months = parseMetricsMonths(searchParams.get('months'));
 
-    const metrics = await listWalletMetricsByOwner(ownerFilter, months);
-    return NextResponse.json(metrics, { status: 200 });
+      const metrics = await listWalletMetricsByOwner(ownerFilter, months);
+      return NextResponse.json(metrics, { status: 200 });
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Unknown error fetching wallet metrics';

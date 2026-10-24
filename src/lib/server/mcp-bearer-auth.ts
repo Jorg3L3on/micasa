@@ -3,6 +3,8 @@ import {
   resolveAgentIdentity,
   type AgentIdentity,
 } from '@/lib/server/resolve-agent-context';
+import { AgentAuthError } from '@/lib/server/agent-auth-error';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 /** Key under `AuthInfo.extra` where the resolved credential travels to tools. */
 export const MCP_AGENT_IDENTITY_KEY = 'micasa_agent';
@@ -14,7 +16,7 @@ export const MCP_AGENT_IDENTITY_KEY = 'micasa_agent';
  * of resolving the token a second time.
  */
 export async function verifyMcpBearerToken(
-  _request: Request,
+  request: Request,
   bearerToken?: string,
 ): Promise<AuthInfo | undefined> {
   if (!bearerToken?.trim()) return undefined;
@@ -30,7 +32,16 @@ export async function verifyMcpBearerToken(
       scopes: agent.scopes,
       extra: { [MCP_AGENT_IDENTITY_KEY]: agent satisfies AgentIdentity },
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof AgentAuthError) {
+      await recordAuthEvent('AGENT_AUTH_FAILED', {
+        userId: error.userId ?? null,
+        apiKeyId: error.apiKeyId ?? null,
+        source: 'AGENT',
+        request,
+        metadata: { reason: error.message, status: error.status },
+      });
+    }
     return undefined;
   }
 }
