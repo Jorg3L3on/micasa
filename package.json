@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:isolation": "vitest run --config vitest.isolation.config.ts",
+    "test:db": "vitest run --config vitest.db.config.ts",
     "backfill:fortnightly-loan-payments": "tsx --tsconfig tsconfig.json scripts/realign-fortnightly-loan-payments.ts",
     "realign:payday-fortnights": "tsx --tsconfig tsconfig.json scripts/realign-payday-fortnights.ts",
     "repair:card-payments": "tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts",
@@ -22,9 +23,11 @@
     "validate:metric-strips": "node scripts/validate-metric-strips.mjs",
     "validate:calendar-dates": "node scripts/validate-calendar-dates.mjs",
     "validate:prisma-imports": "node scripts/validate-prisma-imports.mjs",
+    "validate:audit-coverage": "tsx --tsconfig tsconfig.json scripts/validate-audit-coverage.ts",
+    "generate:audit-triggers": "tsx --tsconfig tsconfig.json scripts/generate-audit-triggers.ts",
     "import:brand-assets": "node scripts/import-brand-assets.mjs",
     "generate:ios-splash": "node scripts/generate-ios-splash.mjs",
-    "ci": "npm run validate:metric-strips && npm run validate:prisma-imports && npm run validate:calendar-dates && prisma generate && npm run test:coverage && npm run test:isolation && npm run build"
+    "ci": "npm run validate:metric-strips && npm run validate:prisma-imports && npm run validate:calendar-dates && npm run validate:audit-coverage && prisma generate && npm run test:coverage && npm run test:isolation && npm run test:db && npm run build"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",

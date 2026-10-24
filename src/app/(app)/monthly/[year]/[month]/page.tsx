@@ -9,6 +9,7 @@ import { getMonthlyPanelShellData } from '@/features/monthly/server/monthly.serv
 import { MonthlyPanelContentSuspense } from '@/features/monthly/server/MonthlyPanelContentSection';
 import { fortnightCalendarKey } from '@/features/monthly/server/monthly.queries';
 import { getOwnerContextFromPageSearchParams } from '@/lib/server/get-owner-context';
+import { withPageActor } from '@/lib/server/with-owner-context';
 import MonthlyHeader from '@/components/MonthlyHeader';
 import CreateNextMonthButton from '@/components/CreateNextMonthButton';
 import { MonthlyPanelLayout } from '@/components/monthly/MonthlyPanelLayout';
@@ -95,16 +96,18 @@ export default async function MonthlyPage({
 
   let shell;
   try {
-    shell = await getMonthlyPanelShellData({
-      ownerFilter: ownerContext.ownerFilter,
-      year,
-      month,
-      prevYear,
-      prevMonthStr,
-      nextYear,
-      nextMonthStr,
-      isCurrentMonth,
-    });
+    shell = await withPageActor(ownerContext, '/monthly', () =>
+      getMonthlyPanelShellData({
+        ownerFilter: ownerContext.ownerFilter,
+        year,
+        month,
+        prevYear,
+        prevMonthStr,
+        nextYear,
+        nextMonthStr,
+        isCurrentMonth,
+      }),
+    );
   } catch (error) {
     console.error('Error loading monthly financial panel:', error);
     return (
@@ -294,6 +297,7 @@ export default async function MonthlyPage({
     >
       <MonthlyPanelContentSuspense
         ownerFilter={ownerContext.ownerFilter}
+        pageOwner={ownerContext}
         ownerKey={ownerKey}
         year={year}
         month={month}

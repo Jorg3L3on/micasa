@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { reportApiError } from '@/lib/observability/report-error';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 import prisma from '@/lib/prisma';
@@ -29,70 +29,70 @@ export async function GET(
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
 
-    const { id } = await params;
-    const walletId = Number(id);
-    if (!id || Number.isNaN(walletId)) {
-      return NextResponse.json({ error: 'Se requiere un id válido' }, { status: 400 });
-    }
+      const { id } = await params;
+      const walletId = Number(id);
+      if (!id || Number.isNaN(walletId)) {
+        return NextResponse.json({ error: 'Se requiere un id válido' }, { status: 400 });
+      }
 
-    const card = await prisma.wallet.findFirst({
-      where: {
-        id: walletId,
-        ...context.ownerFilter,
-        type: { in: [...creditCardWalletTypes] },
-      },
-      select: { id: true },
+      const card = await prisma.wallet.findFirst({
+        where: {
+          id: walletId,
+          ...context.ownerFilter,
+          type: { in: [...creditCardWalletTypes] },
+        },
+        select: { id: true },
+      });
+      if (!card) {
+        return NextResponse.json({ error: 'Tarjeta no encontrada' }, { status: 404 });
+      }
+
+      const rows = await prisma.creditCardStatementImport.findMany({
+        where: { wallet_id: walletId },
+        orderBy: { created_at: 'desc' },
+        select: {
+          id: true,
+          provider: true,
+          created_at: true,
+          period_start: true,
+          period_end: true,
+          account_number: true,
+          statement_issue_date: true,
+          payment_due_date: true,
+          total_due: true,
+          minimum_payment: true,
+          file_name: true,
+          parse_warnings: true,
+          _count: { select: { expenses: true } },
+        },
+      });
+
+      const payload = rows.map((r) => ({
+        id: r.id,
+        provider: r.provider,
+        created_at: r.created_at.toISOString(),
+        period_start: r.period_start?.toISOString() ?? null,
+        period_end: r.period_end?.toISOString() ?? null,
+        account_number: r.account_number,
+        statement_issue_date: r.statement_issue_date?.toISOString() ?? null,
+        payment_due_date: r.payment_due_date?.toISOString() ?? null,
+        total_due: r.total_due != null ? Number(r.total_due) : null,
+        minimum_payment: r.minimum_payment != null ? Number(r.minimum_payment) : null,
+        file_name: r.file_name,
+        has_file: r.file_name != null,
+        expense_count: r._count.expenses,
+        parse_warnings: r.parse_warnings,
+      }));
+
+      return NextResponse.json(payload, { status: 200 });
     });
-    if (!card) {
-      return NextResponse.json({ error: 'Tarjeta no encontrada' }, { status: 404 });
-    }
-
-    const rows = await prisma.creditCardStatementImport.findMany({
-      where: { wallet_id: walletId },
-      orderBy: { created_at: 'desc' },
-      select: {
-        id: true,
-        provider: true,
-        created_at: true,
-        period_start: true,
-        period_end: true,
-        account_number: true,
-        statement_issue_date: true,
-        payment_due_date: true,
-        total_due: true,
-        minimum_payment: true,
-        file_name: true,
-        parse_warnings: true,
-        _count: { select: { expenses: true } },
-      },
-    });
-
-    const payload = rows.map((r) => ({
-      id: r.id,
-      provider: r.provider,
-      created_at: r.created_at.toISOString(),
-      period_start: r.period_start?.toISOString() ?? null,
-      period_end: r.period_end?.toISOString() ?? null,
-      account_number: r.account_number,
-      statement_issue_date: r.statement_issue_date?.toISOString() ?? null,
-      payment_due_date: r.payment_due_date?.toISOString() ?? null,
-      total_due: r.total_due != null ? Number(r.total_due) : null,
-      minimum_payment: r.minimum_payment != null ? Number(r.minimum_payment) : null,
-      file_name: r.file_name,
-      has_file: r.file_name != null,
-      expense_count: r._count.expenses,
-      parse_warnings: r.parse_warnings,
-    }));
-
-    return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     console.error('statement-imports GET', error);
     reportApiError(error, { route, status: 500, owner });
@@ -112,118 +112,118 @@ export async function POST(
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
-    const session = await auth();
-    const createdBy = session?.user?.id ? Number(session.user.id) : NaN;
-    if (Number.isNaN(createdBy)) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const limited = await enforceRateLimit(
-      request,
-      'mutation:statement-import',
-      createdBy,
-    );
-    if (limited) return limited;
-
-    const { id } = await params;
-    const walletId = Number(id);
-    if (!id || Number.isNaN(walletId)) {
-      return NextResponse.json({ error: 'Se requiere un id válido' }, { status: 400 });
-    }
-
-    const contentType = request.headers.get('content-type') ?? '';
-    if (!contentType.includes('multipart/form-data')) {
-      return NextResponse.json(
-        { error: 'Se espera multipart/form-data con el archivo en "file"' },
-        { status: 400 },
-      );
-    }
-
-    const formData = await request.formData();
-    const file = formData.get('file');
-    if (!(file instanceof File)) {
-      return NextResponse.json(
-        { error: 'Falta el archivo (campo "file")' },
-        { status: 400 },
-      );
-    }
-
-    const buf = Buffer.from(await file.arrayBuffer());
-    if (buf.length > MAX_FILE_BYTES) {
-      return NextResponse.json(
-        {
-          error: `El archivo supera ${Math.floor(MAX_FILE_BYTES / (1024 * 1024))} MB`,
-        },
-        { status: 413 },
-      );
-    }
-
-    const providerRaw = String(formData.get('provider') ?? '').toUpperCase();
-    const validProviders: string[] = Object.values(StatementImportProvider);
-    if (!providerRaw || !validProviders.includes(providerRaw)) {
-      return NextResponse.json(
-        {
-          error: `Proveedor no válido. Opciones: ${validProviders.join(', ')}`,
-        },
-        { status: 400 },
-      );
-    }
-    const provider = providerRaw as StatementImportProvider;
-
-    const storeFile = formData.get('store_file') !== 'false';
-    const skipDuplicates = formData.get('skip_duplicates') === 'true';
-    const importCharges = formData.get('import_charges') !== 'false';
-    const importPayments = formData.get('import_payments') !== 'false';
-    const importMsiSchedule = formData.get('import_msi_schedule') !== 'false';
-    const adjustWalletDebt = formData.get('adjust_wallet_debt') !== 'false';
-    const categoryField = formData.get('category_id');
-    let categoryId: number | null = null;
-    if (typeof categoryField === 'string' && categoryField.trim()) {
-      const n = Number(categoryField);
-      if (!Number.isNaN(n)) {
-        categoryId = n;
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
+      const session = await auth();
+      const createdBy = session?.user?.id ? Number(session.user.id) : NaN;
+      if (Number.isNaN(createdBy)) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
       }
-    }
 
-    const result = await importStatementPdf(provider, {
-      buffer: buf,
-      fileName: file.name || 'estado-cuenta.pdf',
-      mimeType: file.type || 'application/pdf',
-      storeFile,
-      creditCardWalletId: walletId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-      ownerFilter: context.ownerFilter,
-      categoryId,
-      skipDuplicates,
-      createdByUserId: createdBy,
-      commitOptions: {
-        import_charges: importCharges,
-        import_payments: importPayments,
-        import_msi_schedule: importMsiSchedule,
-        adjust_wallet_debt: adjustWalletDebt,
-      },
+      const limited = await enforceRateLimit(
+        request,
+        'mutation:statement-import',
+        createdBy,
+      );
+      if (limited) return limited;
+
+      const { id } = await params;
+      const walletId = Number(id);
+      if (!id || Number.isNaN(walletId)) {
+        return NextResponse.json({ error: 'Se requiere un id válido' }, { status: 400 });
+      }
+
+      const contentType = request.headers.get('content-type') ?? '';
+      if (!contentType.includes('multipart/form-data')) {
+        return NextResponse.json(
+          { error: 'Se espera multipart/form-data con el archivo en "file"' },
+          { status: 400 },
+        );
+      }
+
+      const formData = await request.formData();
+      const file = formData.get('file');
+      if (!(file instanceof File)) {
+        return NextResponse.json(
+          { error: 'Falta el archivo (campo "file")' },
+          { status: 400 },
+        );
+      }
+
+      const buf = Buffer.from(await file.arrayBuffer());
+      if (buf.length > MAX_FILE_BYTES) {
+        return NextResponse.json(
+          {
+            error: `El archivo supera ${Math.floor(MAX_FILE_BYTES / (1024 * 1024))} MB`,
+          },
+          { status: 413 },
+        );
+      }
+
+      const providerRaw = String(formData.get('provider') ?? '').toUpperCase();
+      const validProviders: string[] = Object.values(StatementImportProvider);
+      if (!providerRaw || !validProviders.includes(providerRaw)) {
+        return NextResponse.json(
+          {
+            error: `Proveedor no válido. Opciones: ${validProviders.join(', ')}`,
+          },
+          { status: 400 },
+        );
+      }
+      const provider = providerRaw as StatementImportProvider;
+
+      const storeFile = formData.get('store_file') !== 'false';
+      const skipDuplicates = formData.get('skip_duplicates') === 'true';
+      const importCharges = formData.get('import_charges') !== 'false';
+      const importPayments = formData.get('import_payments') !== 'false';
+      const importMsiSchedule = formData.get('import_msi_schedule') !== 'false';
+      const adjustWalletDebt = formData.get('adjust_wallet_debt') !== 'false';
+      const categoryField = formData.get('category_id');
+      let categoryId: number | null = null;
+      if (typeof categoryField === 'string' && categoryField.trim()) {
+        const n = Number(categoryField);
+        if (!Number.isNaN(n)) {
+          categoryId = n;
+        }
+      }
+
+      const result = await importStatementPdf(provider, {
+        buffer: buf,
+        fileName: file.name || 'estado-cuenta.pdf',
+        mimeType: file.type || 'application/pdf',
+        storeFile,
+        creditCardWalletId: walletId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+        ownerFilter: context.ownerFilter,
+        categoryId,
+        skipDuplicates,
+        createdByUserId: createdBy,
+        commitOptions: {
+          import_charges: importCharges,
+          import_payments: importPayments,
+          import_msi_schedule: importMsiSchedule,
+          adjust_wallet_debt: adjustWalletDebt,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          import_id: result.importId,
+          expenses_created: result.expensesCreated,
+          payments_created: result.paymentsCreated,
+          scheduled_created: result.scheduledCreated,
+          duplicates_skipped: result.duplicatesSkipped,
+          lines_skipped: result.linesSkipped,
+          warnings: result.warnings,
+        },
+        { status: 201 },
+      );
     });
-
-    return NextResponse.json(
-      {
-        import_id: result.importId,
-        expenses_created: result.expensesCreated,
-        payments_created: result.paymentsCreated,
-        scheduled_created: result.scheduledCreated,
-        duplicates_skipped: result.duplicatesSkipped,
-        lines_skipped: result.linesSkipped,
-        warnings: result.warnings,
-      },
-      { status: 201 },
-    );
   } catch (error) {
     if (
       error &&

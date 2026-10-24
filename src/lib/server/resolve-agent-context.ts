@@ -110,21 +110,25 @@ export async function resolveAgentIdentity(token: string): Promise<AgentIdentity
     include: { user: { select: { id: true, active: true } } },
   });
 
-  if (!apiKey || apiKey.revoked_at != null) {
+  if (!apiKey) {
     throw unauthorized();
+  }
+  const credential = { userId: apiKey.user_id, apiKeyId: apiKey.id };
+  if (apiKey.revoked_at != null) {
+    throw unauthorized('Token de agente revocado').forCredential(credential);
   }
 
   if (apiKey.expires_at != null && apiKey.expires_at.getTime() <= Date.now()) {
-    throw unauthorized('Token de agente expirado');
+    throw unauthorized('Token de agente expirado').forCredential(credential);
   }
 
   const matches = await verifyAgentToken(token, apiKey.key_hash);
   if (!matches) {
-    throw unauthorized();
+    throw unauthorized().forCredential(credential);
   }
 
   if (!apiKey.user.active) {
-    throw forbidden('Usuario inactivo');
+    throw forbidden('Usuario inactivo').forCredential(credential);
   }
 
   prisma.apiKey

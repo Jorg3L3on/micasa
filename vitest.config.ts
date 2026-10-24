@@ -32,7 +32,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    exclude: ['src/**/*.isolation.test.ts'],
+    exclude: ['src/**/*.isolation.test.ts', 'src/test/db/**'],
     coverage: {
       provider: 'v8',
       include: ['src/lib/finance/**/*.ts'],

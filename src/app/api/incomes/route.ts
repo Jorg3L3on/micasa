@@ -1,7 +1,7 @@
 import { coerceToCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import prisma from '@/lib/prisma';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { createUserToHouseTransfer } from '@/lib/finance/transfer.service';
@@ -96,27 +96,27 @@ function serializeIncome(i: {
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { searchParams } = new URL(request.url);
-    const fortnightIdRaw = searchParams.get('fortnightId');
-    const fortnightId = fortnightIdRaw ? parseInt(fortnightIdRaw, 10) : NaN;
-    if (Number.isNaN(fortnightId) || fortnightId < 1) {
-      return NextResponse.json(
-        { error: 'Valid fortnightId parameter is required' },
-        { status: 400 },
-      );
-    }
+      const { searchParams } = new URL(request.url);
+      const fortnightIdRaw = searchParams.get('fortnightId');
+      const fortnightId = fortnightIdRaw ? parseInt(fortnightIdRaw, 10) : NaN;
+      if (Number.isNaN(fortnightId) || fortnightId < 1) {
+        return NextResponse.json(
+          { error: 'Valid fortnightId parameter is required' },
+          { status: 400 },
+        );
+      }
 
-    const incomes = await prisma.income.findMany({
-      where: { ...ownerFilter, fortnight_id: fortnightId },
-      orderBy: { received_at: 'asc' },
-    });
+      const incomes = await prisma.income.findMany({
+        where: { ...ownerFilter, fortnight_id: fortnightId },
+        orderBy: { received_at: 'asc' },
+      });
 
-    return NextResponse.json(incomes.map(serializeIncome), {
-      status: 200,
+      return NextResponse.json(incomes.map(serializeIncome), {
+        status: 200,
+      });
     });
   } catch (error) {
     console.error('Error fetching incomes:', error);
@@ -129,113 +129,113 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter, ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter, ownerType, ownerId } = context;
 
-    const { searchParams } = new URL(request.url);
-    const idRaw = searchParams.get('id');
-    const id = idRaw ? parseInt(idRaw, 10) : NaN;
-    if (Number.isNaN(id) || id < 1) {
-      return NextResponse.json(
-        { error: 'Valid id parameter is required' },
-        { status: 400 },
-      );
-    }
-
-    const body = await request.json();
-    const validated = updateIncomeAmountSchema.parse(body);
-
-    const income = await prisma.income.findFirst({
-      where: { id, ...ownerFilter },
-    });
-    if (!income) {
-      return NextResponse.json(
-        { error: 'Income not found' },
-        { status: 404 },
-      );
-    }
-
-    const oldAmount = Number(income.amount);
-    const newAmount = validated.amount;
-    const oldWalletId = income.wallet_id;
-    const wasCredited =
-      income.wallet_credited === true ||
-      (income.wallet_credited == null && oldWalletId != null);
-
-    if (validated.category_id !== undefined) {
-      await assertOwnedCategoryOfKind(
-        prisma,
-        ownerType,
-        ownerId,
-        validated.category_id,
-        'INCOME',
-      );
-    }
-
-    if (validated.planned === true && !wasCredited) {
-      const plannedUpdate = await prisma.income.update({
-        where: { id },
-        data: {
-          amount: newAmount,
-          ...(validated.category_id !== undefined
-            ? { category_id: validated.category_id }
-            : {}),
-        },
-      });
-      return NextResponse.json(serializeIncome(plannedUpdate), { status: 200 });
-    }
-
-    let nextCategoryId = income.category_id;
-    if (validated.category_id !== undefined) {
-      nextCategoryId = validated.category_id;
-    } else if (income.category_id == null) {
-      return NextResponse.json(
-        {
-          error:
-            'La categoría es requerida. Asigna una categoría de ingreso a este registro.',
-        },
-        { status: 400 },
-      );
-    }
-
-    const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
-
-    const fundingWallet = await prisma.wallet.findFirst({
-      where: { id: newWalletId, ...ownerFilter },
-      select: { id: true, type: true },
-    });
-    assertIncomeFundingWallet(fundingWallet);
-
-    const updated = await prisma.$transaction(async (tx) => {
-      if (!wasCredited && newWalletId != null) {
-        await applyWalletAmountDelta(tx, newWalletId, newAmount);
-      } else if (wasCredited && oldWalletId != null && newWalletId != null) {
-        if (oldWalletId === newWalletId) {
-          if (validated.force_wallet_credit === true) {
-            await applyWalletAmountDelta(tx, newWalletId, newAmount);
-          } else {
-            const delta = newAmount - oldAmount;
-            if (delta !== 0) await applyWalletAmountDelta(tx, newWalletId, delta);
-          }
-        } else {
-          await applyWalletAmountDelta(tx, oldWalletId, -oldAmount);
-          await applyWalletAmountDelta(tx, newWalletId, newAmount);
-        }
+      const { searchParams } = new URL(request.url);
+      const idRaw = searchParams.get('id');
+      const id = idRaw ? parseInt(idRaw, 10) : NaN;
+      if (Number.isNaN(id) || id < 1) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
       }
 
-      return tx.income.update({
-        where: { id },
-        data: {
-          amount: newAmount,
-          wallet_id: newWalletId,
-          wallet_credited: true,
-          category_id: nextCategoryId,
-        },
-      });
-    });
+      const body = await request.json();
+      const validated = updateIncomeAmountSchema.parse(body);
 
-    return NextResponse.json(serializeIncome(updated), { status: 200 });
+      const income = await prisma.income.findFirst({
+        where: { id, ...ownerFilter },
+      });
+      if (!income) {
+        return NextResponse.json(
+          { error: 'Income not found' },
+          { status: 404 },
+        );
+      }
+
+      const oldAmount = Number(income.amount);
+      const newAmount = validated.amount;
+      const oldWalletId = income.wallet_id;
+      const wasCredited =
+        income.wallet_credited === true ||
+        (income.wallet_credited == null && oldWalletId != null);
+
+      if (validated.category_id !== undefined) {
+        await assertOwnedCategoryOfKind(
+          prisma,
+          ownerType,
+          ownerId,
+          validated.category_id,
+          'INCOME',
+        );
+      }
+
+      if (validated.planned === true && !wasCredited) {
+        const plannedUpdate = await prisma.income.update({
+          where: { id },
+          data: {
+            amount: newAmount,
+            ...(validated.category_id !== undefined
+              ? { category_id: validated.category_id }
+              : {}),
+          },
+        });
+        return NextResponse.json(serializeIncome(plannedUpdate), { status: 200 });
+      }
+
+      let nextCategoryId = income.category_id;
+      if (validated.category_id !== undefined) {
+        nextCategoryId = validated.category_id;
+      } else if (income.category_id == null) {
+        return NextResponse.json(
+          {
+            error:
+              'La categoría es requerida. Asigna una categoría de ingreso a este registro.',
+          },
+          { status: 400 },
+        );
+      }
+
+      const newWalletId = resolveIncomeWalletId(oldWalletId, validated.wallet_id);
+
+      const fundingWallet = await prisma.wallet.findFirst({
+        where: { id: newWalletId, ...ownerFilter },
+        select: { id: true, type: true },
+      });
+      assertIncomeFundingWallet(fundingWallet);
+
+      const updated = await prisma.$transaction(async (tx) => {
+        if (!wasCredited && newWalletId != null) {
+          await applyWalletAmountDelta(tx, newWalletId, newAmount);
+        } else if (wasCredited && oldWalletId != null && newWalletId != null) {
+          if (oldWalletId === newWalletId) {
+            if (validated.force_wallet_credit === true) {
+              await applyWalletAmountDelta(tx, newWalletId, newAmount);
+            } else {
+              const delta = newAmount - oldAmount;
+              if (delta !== 0) await applyWalletAmountDelta(tx, newWalletId, delta);
+            }
+          } else {
+            await applyWalletAmountDelta(tx, oldWalletId, -oldAmount);
+            await applyWalletAmountDelta(tx, newWalletId, newAmount);
+          }
+        }
+
+        return tx.income.update({
+          where: { id },
+          data: {
+            amount: newAmount,
+            wallet_id: newWalletId,
+            wallet_credited: true,
+            category_id: nextCategoryId,
+          },
+        });
+      });
+
+      return NextResponse.json(serializeIncome(updated), { status: 200 });
+    });
   } catch (error) {
     if (error instanceof IncomeServiceError) {
       return NextResponse.json(
@@ -265,99 +265,107 @@ export async function PUT(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerType, ownerId, ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerType, ownerId, ownerFilter } = context;
 
-    const ownerData: { user_id?: number | null; house_id?: number | null } =
-      ownerType === 'user'
-        ? { user_id: ownerId, house_id: null }
-        : { user_id: null, house_id: ownerId };
+      const ownerData: { user_id?: number | null; house_id?: number | null } =
+        ownerType === 'user'
+          ? { user_id: ownerId, house_id: null }
+          : { user_id: null, house_id: ownerId };
 
-    const body = await request.json();
-    const validated = createIncomeSchema.parse(body);
+      const body = await request.json();
+      const validated = createIncomeSchema.parse(body);
 
-    await assertOwnedCategoryOfKind(
-      prisma,
-      ownerType,
-      ownerId,
-      validated.category_id,
-      'INCOME',
-    );
+      await assertOwnedCategoryOfKind(
+        prisma,
+        ownerType,
+        ownerId,
+        validated.category_id,
+        'INCOME',
+      );
 
-    if (validated.planned === true) {
-      const plannedWalletId = validated.wallet_id;
-      if (plannedWalletId == null) {
+      if (validated.planned === true) {
+        const plannedWalletId = validated.wallet_id;
+        if (plannedWalletId == null) {
+          return NextResponse.json(
+            { error: 'La billetera es requerida' },
+            { status: 400 },
+          );
+        }
+        const plannedWallet = await prisma.wallet.findFirst({
+          where: { id: plannedWalletId, ...ownerFilter },
+          select: { id: true, type: true },
+        });
+        assertIncomeFundingWallet(plannedWallet);
+
+        const ref = getCalendarFortnightRefForYmd(validated.received_at);
+        const fortnight = await resolveOrCreateFortnight({
+          ownerType,
+          ownerId,
+          year: ref.year,
+          month: ref.month,
+          period: ref.period,
+        });
+        const created = await prisma.income.create({
+          data: {
+            fortnight_id: fortnight.id,
+            amount: validated.amount,
+            source:
+              validated.source && validated.source.length > 0
+                ? validated.source
+                : null,
+            received_at: coerceToCalendarDate(validated.received_at),
+            category_id: validated.category_id,
+            wallet_id: plannedWalletId,
+            ...ownerFilter,
+          },
+        });
+        return NextResponse.json(serializeIncome(created), { status: 201 });
+      }
+
+      const fortnightId = validated.fortnight_id;
+      const walletIdRequired = validated.wallet_id;
+      if (fortnightId == null || walletIdRequired == null) {
         return NextResponse.json(
-          { error: 'La billetera es requerida' },
+          { error: 'La quincena y la billetera son requeridas' },
           { status: 400 },
         );
       }
-      const plannedWallet = await prisma.wallet.findFirst({
-        where: { id: plannedWalletId, ...ownerFilter },
-        select: { id: true, type: true },
-      });
-      assertIncomeFundingWallet(plannedWallet);
 
-      const ref = getCalendarFortnightRefForYmd(validated.received_at);
-      const fortnight = await resolveOrCreateFortnight({
-        ownerType,
-        ownerId,
-        year: ref.year,
-        month: ref.month,
-        period: ref.period,
-      });
-      const created = await prisma.income.create({
-        data: {
-          fortnight_id: fortnight.id,
-          amount: validated.amount,
-          source:
-            validated.source && validated.source.length > 0
-              ? validated.source
-              : null,
-          received_at: coerceToCalendarDate(validated.received_at),
-          category_id: validated.category_id,
-          wallet_id: plannedWalletId,
-          ...ownerFilter,
+      const fortnight = await prisma.fortnight.findUnique({
+        where: { id: fortnightId },
+        select: {
+          id: true,
+          user_id: true,
+          house_id: true,
+          year: true,
+          month: true,
+          period: true,
         },
       });
-      return NextResponse.json(serializeIncome(created), { status: 201 });
-    }
 
-    const fortnightId = validated.fortnight_id;
-    const walletIdRequired = validated.wallet_id;
-    if (fortnightId == null || walletIdRequired == null) {
-      return NextResponse.json(
-        { error: 'La quincena y la billetera son requeridas' },
-        { status: 400 },
-      );
-    }
+      if (
+        !fortnight ||
+        (fortnight.user_id == null && fortnight.house_id == null) ||
+        (fortnight.user_id != null && fortnight.house_id != null)
+      ) {
+        return NextResponse.json(
+          { error: 'Invalid fortnight for this income' },
+          { status: 400 },
+        );
+      }
 
-    const fortnight = await prisma.fortnight.findUnique({
-      where: { id: fortnightId },
-      select: {
-        id: true,
-        user_id: true,
-        house_id: true,
-        year: true,
-        month: true,
-        period: true,
-      },
-    });
-
-    if (
-      !fortnight ||
-      (fortnight.user_id == null && fortnight.house_id == null) ||
-      (fortnight.user_id != null && fortnight.house_id != null)
-    ) {
-      return NextResponse.json(
-        { error: 'Invalid fortnight for this income' },
-        { status: 400 },
-      );
-    }
-
-    if (ownerType === 'user') {
-      if (fortnight.user_id !== ownerId || fortnight.house_id != null) {
+      if (ownerType === 'user') {
+        if (fortnight.user_id !== ownerId || fortnight.house_id != null) {
+          return NextResponse.json(
+            {
+              error:
+                'Fortnight does not belong to the same owner (user/house) as the income',
+            },
+            { status: 400 },
+          );
+        }
+      } else if (fortnight.house_id !== ownerId || fortnight.user_id != null) {
         return NextResponse.json(
           {
             error:
@@ -366,123 +374,115 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
-    } else if (fortnight.house_id !== ownerId || fortnight.user_id != null) {
-      return NextResponse.json(
-        {
-          error:
-            'Fortnight does not belong to the same owner (user/house) as the income',
-        },
-        { status: 400 },
-      );
-    }
 
-    const transferFromUserId = validated.transfer_from_user_id;
+      const transferFromUserId = validated.transfer_from_user_id;
 
-    if (ownerType === 'house' && transferFromUserId != null) {
-      const membership = await prisma.houseMember.findFirst({
-        where: {
-          house_id: ownerId,
-          user_id: transferFromUserId,
-        },
-      });
+      if (ownerType === 'house' && transferFromUserId != null) {
+        const membership = await prisma.houseMember.findFirst({
+          where: {
+            house_id: ownerId,
+            user_id: transferFromUserId,
+          },
+        });
 
-      if (!membership) {
-        return NextResponse.json(
-          { error: 'User is not a member of this house' },
-          { status: 400 },
-        );
-      }
+        if (!membership) {
+          return NextResponse.json(
+            { error: 'User is not a member of this house' },
+            { status: 400 },
+          );
+        }
 
-      const userFortnight = await resolveOrCreateFortnight({
-        ownerType: 'user',
-        ownerId: transferFromUserId,
-        year: fortnight.year,
-        month: fortnight.month,
-        period: fortnight.period,
-      });
+        const userFortnight = await resolveOrCreateFortnight({
+          ownerType: 'user',
+          ownerId: transferFromUserId,
+          year: fortnight.year,
+          month: fortnight.month,
+          period: fortnight.period,
+        });
 
-      const transfer = await createUserToHouseTransfer({
-        userId: transferFromUserId,
-        houseId: ownerId,
-        amount: validated.amount,
-        userFortnightId: userFortnight.id,
-        houseFortnightId: fortnightId,
-        note:
-          validated.source && validated.source.length > 0
-            ? validated.source
-            : null,
-        date: coerceToCalendarDate(validated.received_at),
-        userWalletId: null,
-        houseWalletId: walletIdRequired,
-      });
-
-      type TransferWithHouseIncome = {
-        house_income: {
-          id: number;
-          amount: unknown;
-          source: string | null;
-          received_at: Date;
-          fortnight_id: number;
-          house_id: number;
-          wallet_id: number | null;
-          category_id: number | null;
-        };
-      };
-      const houseIncome = (transfer as unknown as TransferWithHouseIncome)
-        .house_income;
-
-      const withCategory = await prisma.income.update({
-        where: { id: houseIncome.id },
-        data: { category_id: validated.category_id },
-      });
-
-      return NextResponse.json(
-        {
-          id: withCategory.id,
-          amount: withCategory.amount,
-          source: withCategory.source,
-          received_at: withCategory.received_at,
-          fortnight_id: withCategory.fortnight_id,
-          house_id: withCategory.house_id,
-          user_id: null,
-          wallet_id: withCategory.wallet_id ?? null,
-          category_id: withCategory.category_id,
-        },
-        { status: 201 },
-      );
-    }
-
-    const walletId = walletIdRequired;
-    const fundingWallet = await prisma.wallet.findFirst({
-      where: { id: walletId, ...ownerFilter },
-      select: { id: true, type: true },
-    });
-    assertIncomeFundingWallet(fundingWallet);
-
-    const created = await prisma.$transaction(async (tx) => {
-      const income = await tx.income.create({
-        data: {
-          fortnight_id: fortnightId,
+        const transfer = await createUserToHouseTransfer({
+          userId: transferFromUserId,
+          houseId: ownerId,
           amount: validated.amount,
-          source:
+          userFortnightId: userFortnight.id,
+          houseFortnightId: fortnightId,
+          note:
             validated.source && validated.source.length > 0
               ? validated.source
               : null,
-          received_at: coerceToCalendarDate(validated.received_at),
-          income_template_id: validated.income_template_id ?? null,
-          wallet_id: walletId,
-          wallet_credited: true,
-          category_id: validated.category_id,
-          ...ownerData,
-        },
+          date: coerceToCalendarDate(validated.received_at),
+          userWalletId: null,
+          houseWalletId: walletIdRequired,
+        });
+
+        type TransferWithHouseIncome = {
+          house_income: {
+            id: number;
+            amount: unknown;
+            source: string | null;
+            received_at: Date;
+            fortnight_id: number;
+            house_id: number;
+            wallet_id: number | null;
+            category_id: number | null;
+          };
+        };
+        const houseIncome = (transfer as unknown as TransferWithHouseIncome)
+          .house_income;
+
+        const withCategory = await prisma.income.update({
+          where: { id: houseIncome.id },
+          data: { category_id: validated.category_id },
+        });
+
+        return NextResponse.json(
+          {
+            id: withCategory.id,
+            amount: withCategory.amount,
+            source: withCategory.source,
+            received_at: withCategory.received_at,
+            fortnight_id: withCategory.fortnight_id,
+            house_id: withCategory.house_id,
+            user_id: null,
+            wallet_id: withCategory.wallet_id ?? null,
+            category_id: withCategory.category_id,
+          },
+          { status: 201 },
+        );
+      }
+
+      const walletId = walletIdRequired;
+      const fundingWallet = await prisma.wallet.findFirst({
+        where: { id: walletId, ...ownerFilter },
+        select: { id: true, type: true },
+      });
+      assertIncomeFundingWallet(fundingWallet);
+
+      const created = await prisma.$transaction(async (tx) => {
+        const income = await tx.income.create({
+          data: {
+            fortnight_id: fortnightId,
+            amount: validated.amount,
+            source:
+              validated.source && validated.source.length > 0
+                ? validated.source
+                : null,
+            received_at: coerceToCalendarDate(validated.received_at),
+            income_template_id: validated.income_template_id ?? null,
+            wallet_id: walletId,
+            wallet_credited: true,
+            category_id: validated.category_id,
+            ...ownerData,
+          },
+        });
+
+        await applyWalletAmountDelta(tx, walletId, validated.amount);
+
+        return income;
       });
 
-      await applyWalletAmountDelta(tx, walletId, validated.amount);
-
-      return income;
+      return NextResponse.json(serializeIncome(created), { status: 201 });
     });
-
-    return NextResponse.json(serializeIncome(created), { status: 201 });
   } catch (error) {
     if (
       error instanceof CategoryServiceError ||

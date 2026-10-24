@@ -5,6 +5,9 @@ import prisma from '@/lib/prisma';
 export type AdminContext = {
   userId: number;
   email: string;
+  name?: string;
+  /** JWT `sid` of the admin's session (audit). */
+  sessionId?: string;
 };
 
 /** Parse `MICASA_ADMIN_EMAILS` (comma-separated) into a lowercase email set. */
@@ -46,13 +49,13 @@ export const requireAdmin = async (): Promise<AdminContext | null> => {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, is_admin: true, active: true },
+    select: { id: true, email: true, name: true, is_admin: true, active: true },
   });
 
   if (!user || !user.active) return null;
   if (!userHasAdminAccess(user)) return null;
 
-  return { userId: user.id, email: user.email };
+  return { userId: user.id, email: user.email, name: user.name, sessionId: session?.sid };
 };
 
 /** API helper: 401 if anonymous, 403 if authenticated but not admin. */

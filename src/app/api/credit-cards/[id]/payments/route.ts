@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { listCreditCardPaymentsByOwner } from '@/lib/finance/credit-card.service';
 
 export async function GET(
@@ -7,25 +7,24 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const { id } = await params;
+      const creditCardId = Number(id);
 
-    const { id } = await params;
-    const creditCardId = Number(id);
+      if (!id || Number.isNaN(creditCardId)) {
+        return NextResponse.json(
+          { error: 'Se requiere un id válido' },
+          { status: 400 },
+        );
+      }
 
-    if (!id || Number.isNaN(creditCardId)) {
-      return NextResponse.json(
-        { error: 'Se requiere un id válido' },
-        { status: 400 },
+      const payments = await listCreditCardPaymentsByOwner(
+        creditCardId,
+        context.ownerFilter,
       );
-    }
 
-    const payments = await listCreditCardPaymentsByOwner(
-      creditCardId,
-      context.ownerFilter,
-    );
-
-    return NextResponse.json(payments, { status: 200 });
+      return NextResponse.json(payments, { status: 200 });
+    });
   } catch (error) {
     if (
       error &&

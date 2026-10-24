@@ -15,10 +15,12 @@ import {
   ArrowLeftRight,
   Diff,
   Download,
+  History,
   Pencil,
   SlidersHorizontal,
   Upload,
 } from 'lucide-react';
+import { AuditHistoryOverlay } from '@/components/audit/AuditHistoryOverlay';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
@@ -574,6 +576,7 @@ export default function WalletDetailPage() {
     [],
   );
 
+  const [historyOpen, setHistoryOpen] = useState(false);
   const overflowItems = useMemo((): ToolbarOverflowItem[] => {
     if (!wallet) return [];
     const items: ToolbarOverflowItem[] = [];
@@ -612,6 +615,12 @@ export default function WalletDetailPage() {
       label: 'Exportar CSV',
       onClick: handleExportCsv,
       icon: <Download data-icon="inline-start" />,
+    });
+    items.push({
+      key: 'history',
+      label: 'Historial',
+      onClick: () => setHistoryOpen(true),
+      icon: <History data-icon="inline-start" />,
     });
     return items;
   }, [
@@ -858,6 +867,15 @@ export default function WalletDetailPage() {
           error={paymentError}
           fortnightId={paymentFortnightId}
           onConfirm={handleCreditPaymentSubmit}
+        />
+      ) : null}
+      {wallet ? (
+        <AuditHistoryOverlay
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          entityType="Wallet"
+          entityId={wallet.id}
+          title={`Historial: ${wallet.name}`}
         />
       ) : null}
     </div>

@@ -64,6 +64,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AuditHistoryOverlay } from '@/components/audit/AuditHistoryOverlay';
 
 type BudgetsView = 'budgets' | 'templates';
 type BudgetStatus = 'active' | 'history' | 'scheduled';
@@ -230,6 +231,7 @@ function BudgetRow({
   onOpenEdit,
   onOpenAllocations,
   onOpenDeactivate,
+  onOpenHistory,
   context,
   expenseCache,
 }: {
@@ -239,6 +241,7 @@ function BudgetRow({
   onOpenEdit: (budgetId: number) => void;
   onOpenAllocations: (budgetId: number) => void;
   onOpenDeactivate: (budgetId: number) => void;
+  onOpenHistory: (budgetId: number, name: string) => void;
   context: ReturnType<typeof useFinanceContext>['context'];
   expenseCache: ReturnType<typeof useExpenseGroupCache>;
 }) {
@@ -300,6 +303,9 @@ function BudgetRow({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onOpenAllocations(period.budget_id)}>
                   Editar asignaciones
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onOpenHistory(period.budget_id, period.name)}>
+                  Historial
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -387,6 +393,7 @@ export default function BudgetsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedBudget, setSelectedBudget] = useState<BudgetListItem | null>(null);
+  const [budgetHistory, setBudgetHistory] = useState<{ id: number; name: string } | null>(null);
   const [templateSections, setTemplateSections] = useState({ activeOpen: true, inactiveOpen: false });
 
   const updateQuery = useCallback(
@@ -829,6 +836,7 @@ export default function BudgetsPage() {
                     onOpenEdit={openTemplateEdit}
                     onOpenAllocations={openTemplateAllocations}
                     onOpenDeactivate={openTemplateDeactivate}
+                    onOpenHistory={(id, name) => setBudgetHistory({ id, name })}
                     context={context}
                     expenseCache={expenseCache}
                   />
@@ -925,6 +933,9 @@ export default function BudgetsPage() {
                               <DropdownMenuItem onClick={() => openTemplateAllocations(template.id)}>
                                 Editar asignaciones
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setBudgetHistory({ id: template.id, name: template.name })}>
+                                Historial
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => openTemplateDeactivate(template.id)}>
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -986,6 +997,17 @@ export default function BudgetsPage() {
         </Card>
       )}
 
+      {budgetHistory ? (
+        <AuditHistoryOverlay
+          open
+          onOpenChange={(open) => {
+            if (!open) setBudgetHistory(null);
+          }}
+          entityType="Budget"
+          entityId={budgetHistory.id}
+          title={`Historial: ${budgetHistory.name}`}
+        />
+      ) : null}
       <BudgetFormDialog
         open={createDialogOpen}
         onOpenChange={(open) => {

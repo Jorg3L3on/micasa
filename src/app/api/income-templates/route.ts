@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   createIncomeTemplateSchema,
   updateIncomeTemplateSchema,
@@ -17,52 +17,12 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const templates = await listIncomeTemplatesForOwner(ownerFilter);
+      const templates = await listIncomeTemplatesForOwner(ownerFilter);
 
-    const formatted = templates.map((template) => ({
-      id: template.id,
-      name: template.name,
-      suggestedAmount: template.suggested_amount
-        ? Number(template.suggested_amount)
-        : null,
-      source: template.source,
-      categoryId: template.category_id,
-      walletId: template.wallet_id,
-      categoryName: template.category?.name ?? null,
-      categoryIcon: template.category?.icon ?? null,
-      appliesFirstFortnight: template.applies_first_fortnight,
-      appliesSecondFortnight: template.applies_second_fortnight,
-      active: template.active,
-      userId: template.user_id,
-      userName: template.user?.name ?? null,
-    }));
-
-    return NextResponse.json(formatted, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching income templates:', error);
-    return NextResponse.json(
-      { error: 'Error al obtener las plantillas de ingresos' },
-      { status: 500 },
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-
-    const body = await request.json();
-    const validatedData = createIncomeTemplateSchema.parse(body);
-
-    const template = await createIncomeTemplateForOwner(context, validatedData);
-
-    return NextResponse.json(
-      {
+      const formatted = templates.map((template) => ({
         id: template.id,
         name: template.name,
         suggestedAmount: template.suggested_amount
@@ -78,9 +38,48 @@ export async function POST(request: NextRequest) {
         active: template.active,
         userId: template.user_id,
         userName: template.user?.name ?? null,
-      },
-      { status: 201 },
+      }));
+
+      return NextResponse.json(formatted, { status: 200 });
+    });
+  } catch (error) {
+    console.error('Error fetching income templates:', error);
+    return NextResponse.json(
+      { error: 'Error al obtener las plantillas de ingresos' },
+      { status: 500 },
     );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    return await withOwnerContext(request, async (context) => {
+      const body = await request.json();
+      const validatedData = createIncomeTemplateSchema.parse(body);
+
+      const template = await createIncomeTemplateForOwner(context, validatedData);
+
+      return NextResponse.json(
+        {
+          id: template.id,
+          name: template.name,
+          suggestedAmount: template.suggested_amount
+            ? Number(template.suggested_amount)
+            : null,
+          source: template.source,
+          categoryId: template.category_id,
+          walletId: template.wallet_id,
+          categoryName: template.category?.name ?? null,
+          categoryIcon: template.category?.icon ?? null,
+          appliesFirstFortnight: template.applies_first_fortnight,
+          appliesSecondFortnight: template.applies_second_fortnight,
+          active: template.active,
+          userId: template.user_id,
+          userName: template.user?.name ?? null,
+        },
+        { status: 201 },
+      );
+    });
   } catch (error) {
     if (
       error instanceof CategoryServiceError ||
@@ -121,44 +120,43 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'El parámetro id es requerido' },
+          { status: 400 },
+        );
+      }
 
-    if (!id || isNaN(Number(id))) {
+      const body = await request.json();
+      const validatedData = updateIncomeTemplateSchema.parse(body);
+
+      const template = await updateIncomeTemplateForOwner(Number(id), context, validatedData);
+
       return NextResponse.json(
-        { error: 'El parámetro id es requerido' },
-        { status: 400 },
+        {
+          id: template.id,
+          name: template.name,
+          suggestedAmount: template.suggested_amount
+            ? Number(template.suggested_amount)
+            : null,
+          source: template.source,
+          categoryId: template.category_id,
+          walletId: template.wallet_id,
+          categoryName: template.category?.name ?? null,
+          categoryIcon: template.category?.icon ?? null,
+          appliesFirstFortnight: template.applies_first_fortnight,
+          appliesSecondFortnight: template.applies_second_fortnight,
+          active: template.active,
+          userId: template.user_id,
+          userName: template.user?.name ?? null,
+        },
+        { status: 200 },
       );
-    }
-
-    const body = await request.json();
-    const validatedData = updateIncomeTemplateSchema.parse(body);
-
-    const template = await updateIncomeTemplateForOwner(Number(id), context, validatedData);
-
-    return NextResponse.json(
-      {
-        id: template.id,
-        name: template.name,
-        suggestedAmount: template.suggested_amount
-          ? Number(template.suggested_amount)
-          : null,
-        source: template.source,
-        categoryId: template.category_id,
-        walletId: template.wallet_id,
-        categoryName: template.category?.name ?? null,
-        categoryIcon: template.category?.icon ?? null,
-        appliesFirstFortnight: template.applies_first_fortnight,
-        appliesSecondFortnight: template.applies_second_fortnight,
-        active: template.active,
-        userId: template.user_id,
-        userName: template.user?.name ?? null,
-      },
-      { status: 200 },
-    );
+    });
   } catch (error) {
     if (
       error instanceof CategoryServiceError ||
@@ -199,26 +197,26 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    if (!id || isNaN(Number(id))) {
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'El parámetro id es requerido' },
+          { status: 400 },
+        );
+      }
+
+      await deleteIncomeTemplateForOwner(Number(id), ownerFilter);
+
       return NextResponse.json(
-        { error: 'El parámetro id es requerido' },
-        { status: 400 },
+        { message: 'Plantilla de ingresos eliminada correctamente' },
+        { status: 200 },
       );
-    }
-
-    await deleteIncomeTemplateForOwner(Number(id), ownerFilter);
-
-    return NextResponse.json(
-      { message: 'Plantilla de ingresos eliminada correctamente' },
-      { status: 200 },
-    );
+    });
   } catch (error) {
     if (error instanceof DomainError && error.code !== 'P2025') {
       return NextResponse.json({ error: error.message }, { status: error.status });

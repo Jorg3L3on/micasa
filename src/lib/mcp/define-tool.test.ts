@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type { AuthInfo } from '@modelcontextprotocol/server';
 
+const { recordAuthEvent } = vi.hoisted(() => ({ recordAuthEvent: vi.fn() }));
+vi.mock('@/lib/server/audit/auth-events', () => ({ recordAuthEvent }));
+
 const {
   findUniqueApiKey,
   findFirstMembership,
@@ -36,6 +39,7 @@ import { McpToolError } from '@/lib/mcp/errors';
 import { DomainError } from '@/lib/finance/domain-error';
 import { runAgentTool } from '@/lib/mcp/tool-helpers';
 import { connectInMemoryMcp } from '@/lib/mcp/testing/in-memory-client';
+import { getAuditActor, type AuditActor } from '@/lib/server/audit/audit-context';
 
 const stampedAuthInfo = (scopes: Array<'read' | 'write'> = ['read', 'write']): AuthInfo => ({
   token: 'micasa_oauth_token-ya-verificado-por-el-transporte',
@@ -299,6 +303,68 @@ describe('identidad del transporte', () => {
     expect(result.isError).toBeUndefined();
     expect(order).toEqual(['rate_limit', 'allow_list']);
     expect(checkRateLimit).toHaveBeenCalledWith(expect.any(Request), 'mcp:tool', -9);
+  });
+
+  it('runs the tool in an AGENT audit scope attributed to the OAuth grant', async () => {
+    checkRateLimit.mockResolvedValue({ limited: false, retryAfterSeconds: 0, remaining: 119 });
+    findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 42 }]);
+    let seen: AuditActor | null = null;
+
+    const result = await runAgentTool(
+      'create_expense',
+      {
+        http: {
+          req: new Request('http://localhost/api/mcp', { method: 'POST' }),
+          authInfo: stampedAuthInfo(),
+        },
+      },
+      { owner_type: 'house', owner_id: 42 },
+      'write',
+      async () => {
+        seen = getAuditActor();
+        return { ok: true };
+      },
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(seen).toMatchObject({
+      source: 'AGENT',
+      userId: 2,
+      oauthGrantId: 9,
+      apiKeyId: null,
+      metadata: { tool: 'create_expense' },
+    });
+    expect(getAuditActor()).toBeNull();
+  });
+
+  it('records AGENT_AUTH_FAILED when a valid token asks for a context outside its allow-list', async () => {
+    checkRateLimit.mockResolvedValue({ limited: false, retryAfterSeconds: 0, remaining: 119 });
+    findManyAllowedContexts.mockResolvedValue([{ owner_type: 'HOUSE', owner_id: 42 }]);
+    recordAuthEvent.mockClear();
+
+    const result = await runAgentTool(
+      'create_expense',
+      {
+        http: {
+          req: new Request('http://localhost/api/mcp', { method: 'POST' }),
+          authInfo: stampedAuthInfo(),
+        },
+      },
+      { owner_type: 'house', owner_id: 77 },
+      'write',
+      async () => ({ ok: true }),
+    );
+
+    expect(result.isError).toBe(true);
+    expect(recordAuthEvent).toHaveBeenCalledWith(
+      'AGENT_AUTH_FAILED',
+      expect.objectContaining({
+        userId: 2,
+        oauthGrantId: 9,
+        source: 'AGENT',
+        metadata: expect.objectContaining({ status: 403, tool: 'create_expense' }),
+      }),
+    );
   });
 
   it('con el límite alcanzado devuelve RATE_LIMITED sin tocar la base', async () => {

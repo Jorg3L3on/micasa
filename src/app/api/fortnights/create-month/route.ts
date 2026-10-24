@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   expandExpenseTemplatesForFortnight,
   expandIncomeTemplatesForFortnight,
@@ -10,6 +10,7 @@ import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { generatePeriodsForMonth } from '@/lib/finance/budget-period.service';
 import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
 import { planningMonthCreateError } from '@/lib/finance/planning-month';
+import { setAuditLabel } from '@/lib/server/audit/audit-context';
 
 const createMonthSchema = z.object({
   year: z.number().int().min(2010).max(2030),
@@ -18,155 +19,156 @@ const createMonthSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerType, ownerId, ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      setAuditLabel('Crear mes');
+      const { ownerType, ownerId, ownerFilter } = context;
 
-    const body = await request.json();
-    const { year, month } = createMonthSchema.parse(body);
+      const body = await request.json();
+      const { year, month } = createMonthSchema.parse(body);
 
-    const monthError = planningMonthCreateError(year, month);
-    if (monthError) {
-      return NextResponse.json({ error: monthError }, { status: 400 });
-    }
+      const monthError = planningMonthCreateError(year, month);
+      if (monthError) {
+        return NextResponse.json({ error: monthError }, { status: 400 });
+      }
 
-    const existingFirst = await prisma.fortnight.findFirst({
-      where: {
-        ...ownerFilter,
+      const existingFirst = await prisma.fortnight.findFirst({
+        where: {
+          ...ownerFilter,
+          year,
+          month,
+          period: 'FIRST',
+        },
+      });
+      const existingSecond = await prisma.fortnight.findFirst({
+        where: {
+          ...ownerFilter,
+          year,
+          month,
+          period: 'SECOND',
+        },
+      });
+
+      const created: { id: number; label: string; period: string }[] = [];
+      const expensesByPeriod: {
+        FIRST: { count: number; names: string[] };
+        SECOND: { count: number; names: string[] };
+      } = { FIRST: { count: 0, names: [] }, SECOND: { count: 0, names: [] } };
+      const incomeTemplatesByPeriod: {
+        FIRST: { count: number; names: string[] };
+        SECOND: { count: number; names: string[] };
+      } = {
+        FIRST: { count: 0, names: [] },
+        SECOND: { count: 0, names: [] },
+      };
+
+      if (!existingFirst) {
+        const first = await resolveOrCreateFortnight({
+          ownerType,
+          ownerId,
+          year,
+          month,
+          period: 'FIRST',
+          label: formatFortnightPeriodTitle('FIRST', month, year),
+        });
+        created.push({
+          id: first.id,
+          label: first.label,
+          period: 'FIRST',
+        });
+        expensesByPeriod.FIRST = await expandExpenseTemplatesForFortnight(
+          first.id,
+          'FIRST',
+        );
+        incomeTemplatesByPeriod.FIRST =
+          await expandIncomeTemplatesForFortnight(first.id, 'FIRST');
+      }
+
+      if (!existingSecond) {
+        const second = await resolveOrCreateFortnight({
+          ownerType,
+          ownerId,
+          year,
+          month,
+          period: 'SECOND',
+          label: formatFortnightPeriodTitle('SECOND', month, year),
+        });
+        created.push({
+          id: second.id,
+          label: second.label,
+          period: 'SECOND',
+        });
+        expensesByPeriod.SECOND = await expandExpenseTemplatesForFortnight(
+          second.id,
+          'SECOND',
+        );
+        incomeTemplatesByPeriod.SECOND =
+          await expandIncomeTemplatesForFortnight(second.id, 'SECOND');
+      }
+
+      // When one fortnight already existed, run both template expansions now.
+      // This keeps month creation idempotent after partial failures.
+      if (existingFirst) {
+        expensesByPeriod.FIRST = await expandExpenseTemplatesForFortnight(
+          existingFirst.id,
+          'FIRST',
+        );
+        incomeTemplatesByPeriod.FIRST =
+          await expandIncomeTemplatesForFortnight(existingFirst.id, 'FIRST');
+      }
+      if (existingSecond) {
+        expensesByPeriod.SECOND = await expandExpenseTemplatesForFortnight(
+          existingSecond.id,
+          'SECOND',
+        );
+        incomeTemplatesByPeriod.SECOND =
+          await expandIncomeTemplatesForFortnight(existingSecond.id, 'SECOND');
+      }
+
+      const { total: budgetPeriodsCreated } = await generatePeriodsForMonth(
         year,
         month,
-        period: 'FIRST',
-      },
+        ownerFilter,
+      );
+
+      const totalExpenses =
+        expensesByPeriod.FIRST.count + expensesByPeriod.SECOND.count;
+      const totalIncomeFromTemplates =
+        incomeTemplatesByPeriod.FIRST.count +
+        incomeTemplatesByPeriod.SECOND.count;
+
+      return NextResponse.json(
+        {
+          message:
+            created.length === 2
+              ? 'Mes creado: ambas quincenas creadas'
+              : created.length === 1
+                ? `Quincena(s) creada(s): ${created
+                    .map((c) => c.label)
+                    .join(', ')}`
+                : 'Quincenas existentes: se sincronizaron plantillas de gastos e ingresos',
+          created,
+          year,
+          month,
+          expensesCreated: {
+            firstFortnight: expensesByPeriod.FIRST,
+            secondFortnight: expensesByPeriod.SECOND,
+            total: totalExpenses,
+          },
+          incomeCreated: {
+            firstFortnight: incomeTemplatesByPeriod.FIRST.count,
+            secondFortnight: incomeTemplatesByPeriod.SECOND.count,
+            total: totalIncomeFromTemplates,
+          },
+          incomeTemplatesCreated: {
+            firstFortnight: incomeTemplatesByPeriod.FIRST,
+            secondFortnight: incomeTemplatesByPeriod.SECOND,
+            total: totalIncomeFromTemplates,
+          },
+          budgetPeriodsCreated,
+        },
+        { status: created.length > 0 ? 201 : 200 },
+      );
     });
-    const existingSecond = await prisma.fortnight.findFirst({
-      where: {
-        ...ownerFilter,
-        year,
-        month,
-        period: 'SECOND',
-      },
-    });
-
-    const created: { id: number; label: string; period: string }[] = [];
-    const expensesByPeriod: {
-      FIRST: { count: number; names: string[] };
-      SECOND: { count: number; names: string[] };
-    } = { FIRST: { count: 0, names: [] }, SECOND: { count: 0, names: [] } };
-    const incomeTemplatesByPeriod: {
-      FIRST: { count: number; names: string[] };
-      SECOND: { count: number; names: string[] };
-    } = {
-      FIRST: { count: 0, names: [] },
-      SECOND: { count: 0, names: [] },
-    };
-
-    if (!existingFirst) {
-      const first = await resolveOrCreateFortnight({
-        ownerType,
-        ownerId,
-        year,
-        month,
-        period: 'FIRST',
-        label: formatFortnightPeriodTitle('FIRST', month, year),
-      });
-      created.push({
-        id: first.id,
-        label: first.label,
-        period: 'FIRST',
-      });
-      expensesByPeriod.FIRST = await expandExpenseTemplatesForFortnight(
-        first.id,
-        'FIRST',
-      );
-      incomeTemplatesByPeriod.FIRST =
-        await expandIncomeTemplatesForFortnight(first.id, 'FIRST');
-    }
-
-    if (!existingSecond) {
-      const second = await resolveOrCreateFortnight({
-        ownerType,
-        ownerId,
-        year,
-        month,
-        period: 'SECOND',
-        label: formatFortnightPeriodTitle('SECOND', month, year),
-      });
-      created.push({
-        id: second.id,
-        label: second.label,
-        period: 'SECOND',
-      });
-      expensesByPeriod.SECOND = await expandExpenseTemplatesForFortnight(
-        second.id,
-        'SECOND',
-      );
-      incomeTemplatesByPeriod.SECOND =
-        await expandIncomeTemplatesForFortnight(second.id, 'SECOND');
-    }
-
-    // When one fortnight already existed, run both template expansions now.
-    // This keeps month creation idempotent after partial failures.
-    if (existingFirst) {
-      expensesByPeriod.FIRST = await expandExpenseTemplatesForFortnight(
-        existingFirst.id,
-        'FIRST',
-      );
-      incomeTemplatesByPeriod.FIRST =
-        await expandIncomeTemplatesForFortnight(existingFirst.id, 'FIRST');
-    }
-    if (existingSecond) {
-      expensesByPeriod.SECOND = await expandExpenseTemplatesForFortnight(
-        existingSecond.id,
-        'SECOND',
-      );
-      incomeTemplatesByPeriod.SECOND =
-        await expandIncomeTemplatesForFortnight(existingSecond.id, 'SECOND');
-    }
-
-    const { total: budgetPeriodsCreated } = await generatePeriodsForMonth(
-      year,
-      month,
-      ownerFilter,
-    );
-
-    const totalExpenses =
-      expensesByPeriod.FIRST.count + expensesByPeriod.SECOND.count;
-    const totalIncomeFromTemplates =
-      incomeTemplatesByPeriod.FIRST.count +
-      incomeTemplatesByPeriod.SECOND.count;
-
-    return NextResponse.json(
-      {
-        message:
-          created.length === 2
-            ? 'Mes creado: ambas quincenas creadas'
-            : created.length === 1
-              ? `Quincena(s) creada(s): ${created
-                  .map((c) => c.label)
-                  .join(', ')}`
-              : 'Quincenas existentes: se sincronizaron plantillas de gastos e ingresos',
-        created,
-        year,
-        month,
-        expensesCreated: {
-          firstFortnight: expensesByPeriod.FIRST,
-          secondFortnight: expensesByPeriod.SECOND,
-          total: totalExpenses,
-        },
-        incomeCreated: {
-          firstFortnight: incomeTemplatesByPeriod.FIRST.count,
-          secondFortnight: incomeTemplatesByPeriod.SECOND.count,
-          total: totalIncomeFromTemplates,
-        },
-        incomeTemplatesCreated: {
-          firstFortnight: incomeTemplatesByPeriod.FIRST,
-          secondFortnight: incomeTemplatesByPeriod.SECOND,
-          total: totalIncomeFromTemplates,
-        },
-        budgetPeriodsCreated,
-      },
-      { status: created.length > 0 ? 201 : 200 },
-    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
