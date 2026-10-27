@@ -1,0 +1,196 @@
+'use client';
+
+import type { ReactNode } from 'react';
+import Link from 'next/link';
+import {
+  ArrowLeftRight,
+  CirclePlus,
+  MoreHorizontal,
+  Pencil,
+  SlidersHorizontal,
+  Trash2,
+} from 'lucide-react';
+import {
+  type PaymentMethodType,
+  PAYMENT_METHOD_LABELS,
+  isCreditOrStoreCardWalletType,
+} from '@/domain/payment-method';
+import { effectiveCreditLimit } from '@/lib/ui/wallet-cover-flow';
+import { cn, formatCurrency } from '@/lib/utils';
+import type { WalletListItem } from '@/types/catalog';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+export type WalletFlowActions = {
+  onTransfer: (wallet: WalletListItem) => void;
+  onIncome: (wallet: WalletListItem) => void;
+  onAdjustBalance: (wallet: WalletListItem) => void;
+  onEdit: (wallet: WalletListItem) => void;
+  onDelete: (wallet: WalletListItem) => void;
+};
+
+type WalletFlowDetailsProps = WalletFlowActions & {
+  wallet: WalletListItem;
+  detailHref: string;
+  isHouseContext?: boolean;
+};
+
+const Metric = ({ label, value }: { label: string; value: ReactNode }) => (
+  <div className="min-w-0">
+    <p className="text-caption text-muted-foreground">{label}</p>
+    <p className="truncate text-lg font-semibold tabular-nums leading-snug text-foreground">
+      {value}
+    </p>
+  </div>
+);
+
+const ACTION_BUTTON_CLASS =
+  'h-11 w-full justify-center gap-2 rounded-full md:w-auto md:min-w-32';
+
+/** Name, metrics and quick actions for the wallet centered in the cover flow. */
+export const WalletFlowDetails = ({
+  wallet,
+  detailHref,
+  isHouseContext = false,
+  onTransfer,
+  onIncome,
+  onAdjustBalance,
+  onEdit,
+  onDelete,
+}: WalletFlowDetailsProps) => {
+  const isCard = isCreditOrStoreCardWalletType(wallet.type);
+  const amount = Number(wallet.amount) || 0;
+  const limit = isCard ? effectiveCreditLimit(wallet) : null;
+  const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
+
+  const metrics = isCard ? (
+    <>
+      <Metric label="Usado" value={formatCurrency(amount)} />
+      <Metric
+        label="Disponible"
+        value={
+          limit != null && limit > 0 ? formatCurrency(limit - amount) : 'Sin línea'
+        }
+      />
+      <Metric
+        label="Próximo pago"
+        value={wallet.due_day != null ? `Día ${wallet.due_day}` : 'Sin fecha'}
+      />
+    </>
+  ) : (
+    <>
+      <Metric label="Saldo" value={formatCurrency(amount)} />
+      <Metric
+        label="Liquidez"
+        value={wallet.include_in_liquidity ? 'Incluida' : 'Excluida'}
+      />
+      <Metric
+        label={isHouseContext ? 'Responsable' : 'Tipo'}
+        value={
+          isHouseContext ? (wallet.assignee?.name ?? 'Compartida') : typeLabel
+        }
+      />
+    </>
+  );
+
+  return (
+    <div className="mt-4 w-full">
+      <div className="flex items-start justify-center gap-1 text-center">
+        <div className="min-w-0">
+          <h3 className="truncate text-lg font-semibold text-foreground">
+            {wallet.name}
+          </h3>
+          <p className="truncate text-body text-muted-foreground">
+            {isCard && wallet.cutoff_day != null && wallet.due_day != null
+              ? `${typeLabel} · Corte ${wallet.cutoff_day} · Pago ${wallet.due_day}`
+              : typeLabel}
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="size-8 shrink-0 rounded-full"
+              aria-label={`Más opciones para ${wallet.name}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem
+              onClick={() => onEdit(wallet)}
+              className="cursor-pointer"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onDelete(wallet)}
+              className="cursor-pointer text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Eliminar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:border-t md:border-border/60 md:pt-4">
+        <div className="grid grid-cols-3 gap-4 md:flex md:gap-8">{metrics}</div>
+        <div
+          className={cn(
+            'grid grid-cols-2 gap-2 md:flex md:flex-wrap md:justify-end'
+          )}
+          role="group"
+          aria-label={`Acciones de ${wallet.name}`}
+        >
+          {!isCard ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className={ACTION_BUTTON_CLASS}
+                onClick={() => onTransfer(wallet)}
+              >
+                <ArrowLeftRight className="h-4 w-4" aria-hidden />
+                Transferir
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className={ACTION_BUTTON_CLASS}
+                onClick={() => onIncome(wallet)}
+              >
+                <CirclePlus className="h-4 w-4" aria-hidden />
+                Registrar ingreso
+              </Button>
+            </>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            className={ACTION_BUTTON_CLASS}
+            onClick={() => onAdjustBalance(wallet)}
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden />
+            Ajustar saldo
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className={ACTION_BUTTON_CLASS}
+          >
+            <Link href={detailHref}>Detalles</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};

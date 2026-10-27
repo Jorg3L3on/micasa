@@ -75,8 +75,17 @@ import {
 } from '@/components/ui/tooltip';
 import type { WalletListItem } from '@/types/catalog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
-import { WalletListCard } from '@/components/wallets/WalletListCard';
-import { WalletCardsList } from '@/components/wallets/WalletCardsList';
+import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
+import { WalletFlowSection } from '@/components/wallets/WalletFlowSection';
+import { WalletsAttentionBlock } from '@/components/wallets/WalletsAttentionBlock';
+import { WalletsFirstEmptyState } from '@/components/wallets/WalletsFirstEmptyState';
+import { WalletsSummaryStrip } from '@/components/wallets/WalletsSummaryStrip';
+import {
+  buildAttentionItems,
+  groupWalletsBySection,
+  summarizeWallets,
+} from '@/lib/ui/wallet-cover-flow';
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
@@ -419,6 +428,8 @@ export default function WalletsPage() {
   );
   const [balanceWallet, setBalanceWallet] = useState<WalletListItem | null>(null);
   const [transferWallet, setTransferWallet] = useState<WalletListItem | null>(null);
+  const [incomeWallet, setIncomeWallet] = useState<WalletListItem | null>(null);
+  const [focusWalletId, setFocusWalletId] = useState<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -991,6 +1002,26 @@ export default function WalletsPage() {
 
   const handleFiltersSelectOpenChange = useToolbarFiltersSelectOpenChange();
 
+  const sections = useMemo(
+    () => groupWalletsBySection(displayWallets),
+    [displayWallets],
+  );
+  const totals = useMemo(() => summarizeWallets(wallets), [wallets]);
+  const attentionItems = useMemo(() => {
+    const [year, month, day] = todayCalendarDate().split('-').map(Number);
+    return buildAttentionItems(displayWallets, {
+      day,
+      daysInMonth: new Date(Date.UTC(year, month, 0)).getUTCDate(),
+    });
+  }, [displayWallets]);
+  const flowActions = {
+    onTransfer: openTransferDialog,
+    onIncome: setIncomeWallet,
+    onAdjustBalance: setBalanceWallet,
+    onEdit: openEditDialog,
+    onDelete: openDeleteDialog,
+  };
+
   useRegisterToolbarActions({
     search: {
       value: searchQuery,
@@ -1336,45 +1367,59 @@ export default function WalletsPage() {
           ) : error && wallets.length === 0 ? null : (
             <ContentEnter>
               {wallets.length === 0 ? (
-                <EmptyState message="No se encontraron billeteras" />
+                <WalletsFirstEmptyState onCreate={openCreateDialog} />
               ) : (
-                <div className="@container w-full min-w-0">
-                  <div className="mx-auto w-full max-w-full space-y-5 md:max-w-[min(100%,calc(32rem*2+1.25rem))] @min-[1045px]:!max-w-[min(100%,calc(32rem*3+1.25rem*2))]">
-                    {displayWallets.length === 0 ? (
-                      error ? null : (
-                        <EmptyState message="Ninguna billetera coincide con los filtros." />
-                      )
-                    ) : (
-                      <WalletCardsList
-                        wallets={displayWallets}
-                        renderCard={(wallet) => (
-                          <WalletListCard
-                            wallet={wallet}
-                            ownerQueryString={ownerQueryString}
-                            isHouseContext={isHouseContext}
-                            onEdit={openEditDialog}
-                            onTransfer={openTransferDialog}
-                            onDelete={openDeleteDialog}
-                            onOpenBalance={setBalanceWallet}
-                          />
-                        )}
+                <div className="mx-auto w-full min-w-0 max-w-3xl space-y-8">
+                  <WalletsSummaryStrip totals={totals} />
+                  <WalletsAttentionBlock
+                    items={attentionItems}
+                    onSelect={setFocusWalletId}
+                  />
+                  {displayWallets.length === 0 ? (
+                    error ? null : (
+                      <EmptyState
+                        message="Ninguna billetera coincide con los filtros."
+                        action={{
+                          label: 'Limpiar filtros',
+                          onClick: handleClearFilters,
+                          variant: 'outline',
+                        }}
                       />
-                    )}
+                    )
+                  ) : (
+                    <>
+                      <WalletFlowSection
+                        title="Efectivo y débito"
+                        wallets={sections.funding}
+                        ownerQueryString={ownerQueryString}
+                        isHouseContext={isHouseContext}
+                        focusWalletId={focusWalletId}
+                        {...flowActions}
+                      />
+                      <WalletFlowSection
+                        title="Tarjetas de crédito"
+                        wallets={sections.credit}
+                        ownerQueryString={ownerQueryString}
+                        isHouseContext={isHouseContext}
+                        focusWalletId={focusWalletId}
+                        {...flowActions}
+                      />
+                    </>
+                  )}
 
-                    {filtersReady && !loading ? (
-                      <div
-                        className="flex flex-wrap items-baseline justify-center gap-2"
-                        role="status"
-                        aria-live="polite"
-                      >
-                        <p className="text-body text-muted-foreground">
-                          {displayWallets.length} de {wallets.length}{' '}
-                          {wallets.length === 1 ? 'billetera' : 'billeteras'}
-                          {listIsFiltered ? ' · filtrado' : ''}
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
+                  {filtersReady && !loading ? (
+                    <div
+                      className="flex flex-wrap items-baseline justify-center gap-2"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <p className="text-body text-muted-foreground">
+                        {displayWallets.length} de {wallets.length}{' '}
+                        {wallets.length === 1 ? 'billetera' : 'billeteras'}
+                        {listIsFiltered ? ' · filtrado' : ''}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </ContentEnter>
@@ -1423,6 +1468,21 @@ export default function WalletsPage() {
                 ? { ...prev, amount: newAmount }
                 : prev,
             );
+          }}
+        />
+      ) : null}
+
+      {incomeWallet && context ? (
+        <WalletQuickIncomeDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setIncomeWallet(null);
+          }}
+          walletId={incomeWallet.id}
+          walletName={incomeWallet.name}
+          context={context}
+          onSuccess={async () => {
+            await fetchWallets();
           }}
         />
       ) : null}
