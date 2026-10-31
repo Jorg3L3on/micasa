@@ -1,5 +1,7 @@
 import { auth } from '@/lib/auth';
 import { getAppHomeHref, getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
+import { buildAuthorizePath, buildOAuthLoginPath } from '@/lib/oauth-consent';
+import { resolveConsentDocument } from '@/lib/server/mcp-oauth/consent-document-csp';
 import { NextResponse } from 'next/server';
 
 /** Routes that must stay reachable without a session (landing + auth + legal). */
@@ -12,9 +14,42 @@ const PUBLIC_PATHS = new Set([
   '/offline',
 ]);
 
-const proxy = auth((req) => {
+const proxy = auth(async (req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
+
+  // Document CSP for the no-JS consent form: form-action is 'self' plus the
+  // origin of the redirect_uri only after that URI is allowed for the client.
+  if (pathname === '/oauth/consent') {
+    if (!req.auth?.user?.id) {
+      const authorizePath = buildAuthorizePath({
+        client_id: req.nextUrl.searchParams.get('client_id') ?? undefined,
+        redirect_uri: req.nextUrl.searchParams.get('redirect_uri') ?? undefined,
+        state: req.nextUrl.searchParams.get('state') ?? undefined,
+        scope: req.nextUrl.searchParams.get('scope') ?? undefined,
+        code_challenge: req.nextUrl.searchParams.get('code_challenge') ?? undefined,
+        code_challenge_method:
+          req.nextUrl.searchParams.get('code_challenge_method') ?? undefined,
+        resource: req.nextUrl.searchParams.get('resource') ?? undefined,
+      });
+      const loginPath = authorizePath ? buildOAuthLoginPath(authorizePath) : '/login';
+      return NextResponse.redirect(new URL(loginPath, req.url));
+    }
+
+    const response = NextResponse.next();
+    try {
+      const document = await resolveConsentDocument(
+        req.nextUrl.searchParams.get('client_id') ?? undefined,
+        req.nextUrl.searchParams.get('redirect_uri') ?? undefined,
+      );
+      if (document.ok) {
+        response.headers.set('Content-Security-Policy', document.csp);
+      }
+    } catch (error) {
+      console.error('OAuth consent CSP:', error);
+    }
+    return response;
+  }
 
   // OAuth DCR at issuer root: GET /register stays the signup page; POST/OPTIONS → DCR handler.
   if (

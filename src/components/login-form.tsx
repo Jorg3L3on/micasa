@@ -6,6 +6,7 @@ import { signIn } from 'next-auth/react';
 
 import { cn } from '@/lib/utils';
 import { getAppHomeHref } from '@/lib/fortnight-calendar';
+import { safeCallbackPath } from '@/lib/safe-callback-url';
 import { ErrorBanner } from '@/components/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +27,7 @@ export function LoginForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryString = searchParams.toString();
+  const callbackUrl = safeCallbackPath(searchParams.get('callbackUrl'));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +52,14 @@ export function LoginForm({
         return;
       }
 
-      router.push(getAppHomeHref(queryString));
+      if (callbackUrl) {
+        window.location.assign(callbackUrl);
+        return;
+      }
+
+      const homeQuery = new URLSearchParams(queryString);
+      homeQuery.delete('callbackUrl');
+      router.push(getAppHomeHref(homeQuery));
       router.refresh();
     } catch (e) {
       console.error(e);

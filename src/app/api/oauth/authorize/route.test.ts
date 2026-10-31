@@ -50,7 +50,11 @@ describe('GET /api/oauth/authorize CORS', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
-    expect(response.headers.get('Location')).toContain('/login');
+    const location = new URL(response.headers.get('Location')!);
+    expect(location.pathname).toBe('/login');
+    const callback = location.searchParams.get('callbackUrl') ?? '';
+    expect(callback.startsWith('/api/oauth/authorize?')).toBe(true);
+    expect(callback).toContain('redirect_uri=');
   });
 
   it('302 redirect to consent includes Access-Control-Allow-Origin', async () => {
