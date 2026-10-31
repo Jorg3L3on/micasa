@@ -141,6 +141,7 @@ export async function applyPlannerLayerToDueItems(
         cycle_count: true,
         valid_until: true,
         anchor_statement_end: true,
+        over_debt_reason: true,
         updated_at: true,
         created_at: true,
         fortnight: { select: { year: true, month: true } },
@@ -176,6 +177,7 @@ export async function applyPlannerLayerToDueItems(
     item.planScope = active.scope;
     item.planCycleCount = active.cycleCount;
     item.planValidUntil = active.validUntil;
+    item.overDebtReason = active.overDebtReason;
     const paymentsAppliedToFortnight =
       fortnightPayments.get(item.walletId) ?? 0;
 

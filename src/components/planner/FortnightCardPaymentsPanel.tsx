@@ -32,6 +32,7 @@ import {
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
 import { EditCardPaymentPlanDialog } from '@/components/planner/EditCardPaymentPlanDialog';
+import { cardChargeErrorMessage } from '@/components/credit-cards/over-debt-reason';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import {
@@ -169,15 +170,16 @@ const FortnightCardPaymentsPanel = ({
           scope: data.scope,
           cycleCount: data.cycleCount,
           validUntil: data.validUntil,
+          ...(data.over_debt_reason
+            ? { over_debt_reason: data.over_debt_reason }
+            : {}),
         },
         context,
       );
       toast.success('Pago planeado guardado');
       await onPlanUpdated?.();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'No se pudo guardar el plan';
-      setPlanError(message);
+      setPlanError(cardChargeErrorMessage(error, 'No se pudo guardar el plan'));
       throw error;
     }
   };
@@ -576,6 +578,7 @@ const FortnightCardPaymentsPanel = ({
           initialScope={editingItem.planScope ?? 'this_cycle'}
           initialCycleCount={editingItem.planCycleCount}
           initialValidUntil={editingItem.planValidUntil}
+          initialOverDebtReason={editingItem.overDebtReason ?? null}
           hasCustomPlan={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0

@@ -84,6 +84,10 @@ import {
 import { clearFortnightCardPaymentPlan } from '@/lib/api/card-payment-plans';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import type { CreditCardExternalPaymentSubmitPayload } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
+import {
+  cardChargeErrorMessage,
+  type CardBankChargeReasonValue,
+} from '@/components/credit-cards/over-debt-reason';
 import { CreditCardExternalPaymentDialog } from '@/components/credit-cards/CreditCardExternalPaymentDialog';
 import { downloadCreditCardStatementCsv } from '@/lib/finance/credit-card-statement-csv';
 import { downloadCreditCardStatementPdf } from '@/lib/finance/credit-card-statement-pdf';
@@ -198,6 +202,8 @@ export default function CreditCardDetailPage() {
   const [paymentPrefillAmount, setPaymentPrefillAmount] = useState<
     number | null
   >(null);
+  const [paymentBankChargeReason, setPaymentBankChargeReason] =
+    useState<CardBankChargeReasonValue | null>(null);
 
   const cardRef = useRef(card);
   cardRef.current = card;
@@ -370,9 +376,7 @@ export default function CreditCardDetailPage() {
       setPaymentPrefillAmount(null);
       await loadData();
     } catch (err) {
-      setPaymentError(
-        err instanceof Error ? err.message : 'Error al registrar el pago',
-      );
+      setPaymentError(cardChargeErrorMessage(err, 'Error al registrar el pago'));
     } finally {
       setPaymentSubmitting(false);
     }
@@ -392,9 +396,7 @@ export default function CreditCardDetailPage() {
       await loadData();
     } catch (err) {
       setPaymentError(
-        err instanceof Error
-          ? err.message
-          : 'Error al registrar el pago histórico',
+        cardChargeErrorMessage(err, 'Error al registrar el pago histórico'),
       );
     } finally {
       setPaymentSubmitting(false);
@@ -407,6 +409,7 @@ export default function CreditCardDetailPage() {
       setPaymentPrefillAmount(
         periodObligationPrefillAmount(item.periodObligation),
       );
+      setPaymentBankChargeReason(item.overDebtReason ?? null);
       setPaymentDialogOpen(true);
     },
     [],
@@ -541,6 +544,7 @@ export default function CreditCardDetailPage() {
         current?.periodObligation ?? statement?.period_obligation,
       ),
     );
+    setPaymentBankChargeReason(current?.overDebtReason ?? null);
     setPaymentDialogOpen(true);
   }, [paymentPlanItems, statement?.period_obligation]);
 
@@ -553,11 +557,14 @@ export default function CreditCardDetailPage() {
   }, []);
 
   const handleOpenExternalPayment = useCallback(() => {
+    const current =
+      paymentPlanItems.find((item) => item.isCurrentFortnight) ?? null;
     setPaymentPrefillAmount(
       periodObligationPrefillAmount(statement?.period_obligation),
     );
+    setPaymentBankChargeReason(current?.overDebtReason ?? null);
     setExternalPaymentDialogOpen(true);
-  }, [statement?.period_obligation]);
+  }, [paymentPlanItems, statement?.period_obligation]);
 
   const daysUntilDue = useMemo(() => {
     if (!statement) return 0;
@@ -870,10 +877,13 @@ export default function CreditCardDetailPage() {
             setPaymentError(null);
             setPaymentFortnightId(undefined);
             setPaymentPrefillAmount(null);
+            setPaymentBankChargeReason(null);
           }
         }}
         fundingWalletOptions={fundingWalletOptions}
         prefillAmount={paymentPrefillAmount}
+        recordedDebt={statement.outstanding_balance}
+        initialBankChargeReason={paymentBankChargeReason}
         submitting={paymentSubmitting}
         error={paymentError}
         fortnightId={paymentFortnightId}
@@ -884,9 +894,14 @@ export default function CreditCardDetailPage() {
         open={externalPaymentDialogOpen}
         onOpenChange={(open) => {
           setExternalPaymentDialogOpen(open);
-          if (!open) setPaymentError(null);
+          if (!open) {
+            setPaymentError(null);
+            setPaymentBankChargeReason(null);
+          }
         }}
         prefillAmount={paymentPrefillAmount}
+        recordedDebt={statement.outstanding_balance}
+        initialBankChargeReason={paymentBankChargeReason}
         submitting={paymentSubmitting}
         error={paymentError}
         onConfirm={handleExternalPaymentSubmit}
