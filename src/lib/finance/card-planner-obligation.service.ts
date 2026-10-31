@@ -121,6 +121,7 @@ export async function applyPlannerLayerToDueItems(
         todayYmd,
       });
       item.isStaleFullyCoveredPlan = false;
+      item.hasStatementImport = item.obligationAmountSource === 'import';
       applyPeriodObligation(item);
     }
     return;
@@ -193,6 +194,7 @@ export async function applyPlannerLayerToDueItems(
       });
       Object.assign(item, fields);
       item.declaredZero = explicitZero;
+      item.hasStatementImport = item.obligationAmountSource === 'import';
       applyPeriodObligation(item);
       continue;
     }
@@ -226,6 +228,7 @@ export async function applyPlannerLayerToDueItems(
       paymentsAppliedToFortnight,
     });
     item.declaredZero = explicitZero;
+    item.hasStatementImport = item.obligationAmountSource === 'import';
     applyPeriodObligation(item);
   }
 }
@@ -252,6 +255,7 @@ export const toCreditCardPaymentPlanView = (input: {
     statementPayoff: input.fields.statementPayoff,
     minimumPayment: input.fields.minimumPayment,
     declaredZero: input.fields.declaredZero,
+    hasStatementImport: input.fields.obligationAmountSource === 'import',
     plannerStatus: input.fields.plannerStatus,
     effectiveAmount: input.fields.effectiveAmount,
     remainingPlannerAmount: input.fields.remainingPlannerAmount,

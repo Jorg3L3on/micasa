@@ -102,6 +102,10 @@ export type PlannerCardStatementDueSummary = {
   cardCount: number;
   /** Tarjetas con deuda y vencimiento sin pago del corte. No cuentan como $0. */
   obligationGapCount?: number;
+  /** Slice of `total` above recorded debt. Not added again to Toca pagar. */
+  bankChargesEstimate?: number;
+  /** That slice when there is no statement import. */
+  overRecordedEstimate?: number;
 };
 
 /** Cuotas de préstamo pendientes pagadas desde billetera. */
@@ -354,6 +358,8 @@ export type DuePaymentItem = {
   /** Plan guardado ya cubierto por pagos al corte; no inflar pendientes. */
   isStaleFullyCoveredPlan?: boolean;
   obligationAmountSource?: CardObligationAmountSource;
+  /** True when this cycle's figure comes from a statement import. */
+  hasStatementImport?: boolean;
   isEstimate?: boolean;
   /** Null = corte desconocido. 0 = el corte dice que no queda nada. */
   statementPayoff?: number | null;

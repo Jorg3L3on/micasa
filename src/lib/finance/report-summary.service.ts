@@ -69,6 +69,8 @@ export type ReportSummaryResult = {
     total: number;
     cardCount: number;
     obligationGapCount?: number;
+    bankChargesEstimate?: number;
+    overRecordedEstimate?: number;
   } | null;
   /** Cuotas pendientes pagadas desde billetera (pestaña Préstamos). */
   planningWalletLoanDue?: { total: number; count: number } | null;
@@ -220,6 +222,8 @@ export const getReportSummary = async (
   let planningCardStatementDueCardCount = 0;
   let planningCardStatementDueKnownCount = 0;
   let planningCardStatementDueGapCount = 0;
+  let planningCardBankChargesEstimate = 0;
+  let planningCardOverRecordedEstimate = 0;
   let planningWalletLoanDueTotal = 0;
   let planningWalletLoanDueCount = 0;
   let planningPayrollLoanDeductionTotal = 0;
@@ -251,6 +255,8 @@ export const getReportSummary = async (
     planningCardStatementDueCardCount = cardDue.cardCount;
     planningCardStatementDueKnownCount = cardDue.knownPendingCount;
     planningCardStatementDueGapCount = cardDue.obligationGapCount;
+    planningCardBankChargesEstimate = cardDue.bankChargesEstimate;
+    planningCardOverRecordedEstimate = cardDue.overRecordedEstimate;
     planningWalletLoanDueTotal = loanDue.wallet.total;
     planningWalletLoanDueCount = loanDue.wallet.count;
     planningPayrollLoanDeductionTotal = loanDue.payroll.total;
@@ -506,6 +512,8 @@ export const getReportSummary = async (
                   total: planningCardStatementDueTotal,
                   cardCount: planningCardStatementDueCardCount,
                   obligationGapCount: planningCardStatementDueGapCount,
+                  bankChargesEstimate: planningCardBankChargesEstimate,
+                  overRecordedEstimate: planningCardOverRecordedEstimate,
                 }
               : null,
           planningWalletLoanDue:

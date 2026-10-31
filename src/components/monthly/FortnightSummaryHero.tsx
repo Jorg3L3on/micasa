@@ -85,14 +85,18 @@ const CompositionInfo = ({ compositionRows }: CompositionInfoProps) => {
         </p>
         <ul className="space-y-1">
           {compositionRows.map((row) => (
-            <li
-              key={row.label}
-              className="flex items-baseline justify-between gap-3 text-xs"
-            >
-              <span className="text-background/85">{row.label}</span>
-              <span className="font-sans tabular-nums">
-                {formatCurrency(row.amount)}
-              </span>
+            <li key={row.key ?? row.label} className="text-xs">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-background/85">{row.label}</span>
+                <span className="font-sans tabular-nums">
+                  {formatCurrency(row.amount)}
+                </span>
+              </div>
+              {row.note ? (
+                <p className="mt-0.5 text-caption leading-snug text-background/70">
+                  {row.note}
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>
