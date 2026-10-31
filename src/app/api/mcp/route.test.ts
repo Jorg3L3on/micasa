@@ -89,7 +89,10 @@ describe('POST /api/mcp transport auth', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(resolveAgentIdentityMock).toHaveBeenCalledWith(API_KEY_TOKEN);
+    expect(resolveAgentIdentityMock).toHaveBeenCalledWith(
+      API_KEY_TOKEN,
+      expect.any(Request),
+    );
     expect(response.headers.get('WWW-Authenticate')).toBeNull();
   });
 
@@ -101,7 +104,10 @@ describe('POST /api/mcp transport auth', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(resolveAgentIdentityMock).toHaveBeenCalledWith(OAUTH_TOKEN);
+    expect(resolveAgentIdentityMock).toHaveBeenCalledWith(
+      OAUTH_TOKEN,
+      expect.any(Request),
+    );
     expect(response.headers.get('WWW-Authenticate')).toBeNull();
   });
 

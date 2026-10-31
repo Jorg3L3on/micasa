@@ -323,7 +323,16 @@ export const revokeOAuthToken = async (token: string): Promise<void> => {
   }
 };
 
-export const resolveOAuthGrantUser = async (accessToken: string) => {
+/**
+ * `request` lets the RFC 8707 audience check derive the issuer the same way
+ * the 401 challenge and the metadata endpoints do (NEXTAUTH_URL, else the
+ * request origin). Without it an unset NEXTAUTH_URL falls back to localhost
+ * and every access token is rejected.
+ */
+export const resolveOAuthGrantUser = async (
+  accessToken: string,
+  request?: Request,
+) => {
   if (accessToken.length <= OAUTH_TOKEN_LOOKUP_LENGTH) return null;
   const prefix = accessToken.slice(0, OAUTH_TOKEN_LOOKUP_LENGTH);
   const grant = await prisma.mcpOAuthGrant.findUnique({
@@ -340,7 +349,9 @@ export const resolveOAuthGrantUser = async (accessToken: string) => {
   if (!verifyOAuthSecret(accessToken, grant.token_hash)) return null;
   if (!grant.user.active) return null;
   // RFC 8707 audience: the token is only valid for this MCP resource.
-  if (!mcpResourcesMatch(grant.resource, getMcpResourceUrl())) return null;
+  if (!mcpResourcesMatch(grant.resource, getMcpResourceUrl(request), request)) {
+    return null;
+  }
 
   prisma.mcpOAuthGrant
     .update({

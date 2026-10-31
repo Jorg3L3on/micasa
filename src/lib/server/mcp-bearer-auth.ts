@@ -22,7 +22,7 @@ export async function verifyMcpBearerToken(
   if (!bearerToken?.trim()) return undefined;
 
   try {
-    const agent = await resolveAgentIdentity(bearerToken);
+    const agent = await resolveAgentIdentity(bearerToken, request);
     return {
       token: bearerToken,
       clientId:
