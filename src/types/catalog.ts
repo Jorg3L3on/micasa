@@ -365,6 +365,8 @@ export type DuePaymentItem = {
   planScope?: 'this_cycle' | 'n_cycles' | 'until_date' | null;
   planCycleCount?: number | null;
   planValidUntil?: string | null;
+  /** Motivo guardado cuando el plan supera la deuda. Null si no aplica. */
+  overDebtReason?: 'INTEREST' | 'LATE_FEE' | 'OTHER' | null;
   /** Obligación del periodo. `amount: null` es dato faltante, no $0. */
   periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   /** @deprecated Use remainingPlannerAmount */
@@ -397,6 +399,8 @@ export type CreditCardPaymentPlanView = {
   planScope?: 'this_cycle' | 'n_cycles' | 'until_date' | null;
   planCycleCount?: number | null;
   planValidUntil?: string | null;
+  /** Motivo guardado cuando el plan supera la deuda. Null si no aplica. */
+  overDebtReason?: 'INTEREST' | 'LATE_FEE' | 'OTHER' | null;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */

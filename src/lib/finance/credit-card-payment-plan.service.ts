@@ -62,6 +62,7 @@ const planSelect = {
   cycle_count: true,
   valid_until: true,
   anchor_statement_end: true,
+  over_debt_reason: true,
   updated_at: true,
   created_at: true,
   fortnight_id: true,
@@ -269,6 +270,7 @@ export async function getCreditCardPaymentPlanViews(
         planScope: active.scope,
         planCycleCount: active.cycleCount,
         planValidUntil: active.validUntil,
+        overDebtReason: active.overDebtReason,
       };
     }),
   );

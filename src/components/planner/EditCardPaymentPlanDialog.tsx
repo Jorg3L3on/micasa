@@ -32,6 +32,11 @@ import {
   OverlayErrorBanner,
   OverlayHint,
 } from '@/components/overlay/overlay-form';
+import { OverDebtReasonFields } from '@/components/credit-cards/over-debt-reason-field';
+import {
+  cardDebtExcess,
+  type CardBankChargeReasonValue,
+} from '@/components/credit-cards/over-debt-reason';
 
 type EditCardPaymentPlanDialogProps = {
   open: boolean;
@@ -48,6 +53,8 @@ type EditCardPaymentPlanDialogProps = {
   initialScope?: CardPaymentPlanFormValues['scope'];
   initialCycleCount?: number | null;
   initialValidUntil?: string | null;
+  /** Reason already saved on the plan, used when the amount sits above the debt. */
+  initialOverDebtReason?: CardBankChargeReasonValue | null;
   hasCustomPlan: boolean;
   error?: string | null;
 };
@@ -66,6 +73,7 @@ export const EditCardPaymentPlanDialog = ({
   initialScope = 'this_cycle',
   initialCycleCount = null,
   initialValidUntil = null,
+  initialOverDebtReason = null,
   hasCustomPlan,
   error,
 }: EditCardPaymentPlanDialogProps) => {
@@ -76,6 +84,7 @@ export const EditCardPaymentPlanDialog = ({
       scope: initialScope,
       cycleCount: initialCycleCount ?? 2,
       validUntil: initialValidUntil ?? '',
+      over_debt_reason: initialOverDebtReason,
     },
   });
 
@@ -86,6 +95,7 @@ export const EditCardPaymentPlanDialog = ({
         scope: initialScope,
         cycleCount: initialCycleCount ?? 2,
         validUntil: initialValidUntil ?? '',
+        over_debt_reason: initialOverDebtReason,
       });
     }
   }, [
@@ -94,17 +104,25 @@ export const EditCardPaymentPlanDialog = ({
     initialScope,
     initialCycleCount,
     initialValidUntil,
+    initialOverDebtReason,
     form,
   ]);
 
   const scope = useWatch({ control: form.control, name: 'scope' });
+  const plannedAmount = useWatch({ control: form.control, name: 'plannedAmount' });
+  const overDebtReason = useWatch({ control: form.control, name: 'over_debt_reason' });
+  const excess = cardDebtExcess(plannedAmount, outstandingBalance);
+  const reasonMissing = excess > 0 && overDebtReason == null;
 
   const handleSubmit = async (data: CardPaymentPlanFormValues) => {
     try {
+      const aboveDebt = cardDebtExcess(data.plannedAmount, outstandingBalance) > 0;
+      if (aboveDebt && data.over_debt_reason == null) return;
       await onSave({
         ...data,
         cycleCount: data.scope === 'n_cycles' ? data.cycleCount : undefined,
         validUntil: data.scope === 'until_date' ? data.validUntil : undefined,
+        over_debt_reason: aboveDebt ? data.over_debt_reason : null,
       });
       onOpenChange(false);
     } catch {
@@ -259,9 +277,21 @@ export const EditCardPaymentPlanDialog = ({
               />
             ) : null}
           </div>
+          <FormField
+            control={form.control}
+            name="over_debt_reason"
+            render={({ field }) => (
+              <OverDebtReasonFields
+                excess={excess}
+                reason={field.value ?? null}
+                onReasonChange={field.onChange}
+                onSelectOpenChange={handleSelectOpenChange}
+              />
+            )}
+          />
           <Button
             type="submit"
-            disabled={form.formState.isSubmitting}
+            disabled={form.formState.isSubmitting || reasonMissing}
             className={OVERLAY_PRIMARY_BUTTON_CLASS}
           >
             {form.formState.isSubmitting ? 'Guardando…' : 'Guardar'}
