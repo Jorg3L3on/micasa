@@ -78,7 +78,11 @@ describe('resolveConsentDocument', () => {
       client.client_id,
       'https://client.example.test/cb',
     );
-    expect(result).toEqual({ ok: false, reason: 'redirect_uri' });
+    expect(result).toEqual({
+      ok: false,
+      reason: 'redirect_uri',
+      csp: "form-action 'self'",
+    });
   });
 
   it('does not allow an origin for an unknown client', async () => {

@@ -9,6 +9,8 @@ import {
   isTrustedCimdHost,
   validateRedirectUri,
 } from '@/lib/server/mcp-oauth/cimd';
+import { logOAuthRedirectRejection } from '@/lib/server/mcp-oauth/oauth-token-log';
+import { registrationRedirectRejectionReason } from '@/lib/server/mcp-oauth/registration-uris';
 import { hashOAuthSecret, verifyOAuthSecret } from '@/lib/server/mcp-oauth/tokens';
 import { checkRateLimit } from '@/lib/server/rate-limit';
 
@@ -85,13 +87,27 @@ export const resolveOAuthClient = async (
   const metadata = await fetchClientIdMetadataDocument(clientId);
   if (!metadata) return null;
 
+  const redirectUris = metadata.redirect_uris.filter((uri) => {
+    const reason = registrationRedirectRejectionReason(uri);
+    if (!reason) return true;
+    logOAuthRedirectRejection({ reason, clientId, redirectUri: uri });
+    return false;
+  });
+  if (redirectUris.length === 0) {
+    logOAuthRedirectRejection({
+      reason: 'no_allowed_redirect_uri',
+      clientId,
+    });
+    return null;
+  }
+
   const authMethod = metadata.token_endpoint_auth_method ?? 'none';
 
   const created = await prisma.mcpOAuthClient.create({
     data: {
       client_id: clientId,
       client_name: clampOAuthClientName(metadata.client_name, 'OAuth client'),
-      redirect_uris: metadata.redirect_uris,
+      redirect_uris: redirectUris,
       grant_types: metadata.grant_types ?? ['authorization_code', 'refresh_token'],
       response_types: metadata.response_types ?? ['code'],
       token_endpoint_auth_method: authMethod,
@@ -162,12 +178,39 @@ export const tokenClientIdMatchesCode = (
   );
 };
 
+const rejectRedirectUri = (
+  client: ResolvedOAuthClient,
+  redirectUri: string,
+  reason: string,
+): never => {
+  logOAuthRedirectRejection({
+    reason,
+    clientId: client.client_id,
+    redirectUri,
+  });
+  throw new Error('redirect_uri no autorizado para este cliente');
+};
+
+/**
+ * Accepts a redirect_uri only when it is exactly one of the strings stored
+ * for this client (https, loopback http, or reverse-DNS custom scheme).
+ * ChatGPT's trusted CIMD may also use its fixed connector callbacks.
+ */
 export const assertRedirectUriAllowed = (
   client: ResolvedOAuthClient,
   redirectUri: string,
 ): void => {
-  if (!validateRedirectUri(redirectUri, client.redirect_uris, client.client_id)) {
-    throw new Error('redirect_uri no autorizado para este cliente');
+  const shapeReason = registrationRedirectRejectionReason(redirectUri);
+  const registered = validateRedirectUri(
+    redirectUri,
+    client.redirect_uris,
+    client.client_id,
+  );
+  if (!registered) {
+    rejectRedirectUri(client, redirectUri, shapeReason ?? 'not_registered');
+  }
+  if (shapeReason) {
+    rejectRedirectUri(client, redirectUri, shapeReason);
   }
 };
 
