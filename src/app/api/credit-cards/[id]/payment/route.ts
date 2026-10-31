@@ -58,6 +58,7 @@ export async function POST(
           credit_card_wallet_id: creditCardId,
           source_wallet_id: payment.source_wallet_id,
           amount: payment.amount,
+          bank_charge_expense_id: payment.bank_charge_expense_id,
           owner_type: context.ownerType,
           owner_id: context.ownerId,
         },
@@ -99,10 +100,18 @@ export async function POST(
       error &&
       typeof error === 'object' &&
       'code' in error &&
-      error.code === 'INVALID_PAYMENT_AMOUNT'
+      (error.code === 'BANK_CHARGE_REQUIRED' ||
+        error.code === 'INVALID_PAYMENT_AMOUNT' ||
+        error.code === 'CARD_BALANCE_NEGATIVE')
     ) {
       return NextResponse.json(
-        { error: 'El monto del pago no puede superar la deuda actual de la tarjeta' },
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : 'El pago supera la deuda registrada. Indica el cargo del banco.',
+          code: error.code,
+        },
         { status: 400 },
       );
     }

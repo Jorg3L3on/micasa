@@ -39,6 +39,7 @@ export async function DELETE(
           payment_id: result.id,
           amount: result.amount,
           expense_id: result.expense_id,
+          bank_charge_expense_id: result.bank_charge_expense_id,
           owner_type: context.ownerType,
           owner_id: context.ownerId,
         },

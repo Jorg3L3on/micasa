@@ -11,6 +11,7 @@ import {
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { setAuditLabel } from '@/lib/server/audit/audit-context';
+import { statementChargeDedupeWhere } from '@/lib/finance/card-bank-charge';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
   extractMercadoPagoStatementText,
@@ -224,12 +225,13 @@ export async function importMercadoPagoStatementPdf(input: {
 
       if (skipDuplicates) {
         const dup = await tx.expense.findFirst({
-          where: {
-            wallet_id: creditCardWalletId,
+          where: statementChargeDedupeWhere({
+            walletId: creditCardWalletId,
             amount: mov.amount,
             description: mov.description,
-            payment_date: { gte: start, lte: end },
-          },
+            start,
+            end,
+          }),
         });
         if (dup) {
           duplicatesSkipped += 1;
