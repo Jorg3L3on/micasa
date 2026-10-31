@@ -28,8 +28,15 @@ describe('buildOAuthFormActionCsp', () => {
     expect(csp).not.toContain('chat.openai.com');
   });
 
+  it('allows a validated reverse-DNS custom scheme', () => {
+    expect(buildOAuthFormActionCsp('com.ejemplo.app:/cb')).toBe(
+      "form-action 'self' com.ejemplo.app:",
+    );
+  });
+
   it('drops non-http redirect URIs', () => {
     expect(buildOAuthFormActionCsp('javascript:alert(1)')).toBeNull();
+    expect(buildOAuthFormActionCsp('http://evil.example.test/cb')).toBeNull();
   });
 });
 
@@ -45,6 +52,31 @@ describe('oauth consent CSP is not a static ChatGPT allowlist', () => {
 
 describe('interpretConsentResponse', () => {
   const login = '/login?callbackUrl=%2Fapi%2Foauth%2Fauthorize';
+
+  it('follows a custom-scheme redirect_to', () => {
+    expect(
+      interpretConsentResponse(
+        200,
+        { redirect_to: 'com.ejemplo.app:/cb?code=abc&state=s' },
+        login,
+      ),
+    ).toEqual({
+      type: 'redirect',
+      url: 'com.ejemplo.app:/cb?code=abc&state=s',
+    });
+  });
+
+  it('does not follow a javascript redirect_to', () => {
+    const result = interpretConsentResponse(
+      200,
+      { redirect_to: 'javascript:alert(1)' },
+      login,
+    );
+    expect(result).toEqual({
+      type: 'inline',
+      error: { message: OAUTH_CONSENT_COPY.generic },
+    });
+  });
 
   it('follows redirect_to on success', () => {
     expect(

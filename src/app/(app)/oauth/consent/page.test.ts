@@ -114,7 +114,9 @@ describe('OAuth consent page CSP', () => {
       redirect_uri: 'https://client.example.test/cb',
     });
     expect(html).toContain('La dirección de retorno no está permitida.');
-    expect(html).not.toContain('form-action');
+    expect(html).toContain("form-action 'self'");
+    expect(html).not.toContain('https://client.example.test');
+    expect(html).not.toContain('chat.openai.com');
   });
 
   it('sends an expired session back to the same authorize URL', async () => {

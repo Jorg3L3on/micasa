@@ -69,7 +69,14 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
 
   const document = await resolveConsentDocument(clientId, redirectUri);
   if (!document.ok) {
-    return <ConsentMessage>{messageForConsentErrorCode(document.reason)}</ConsentMessage>;
+    return (
+      <>
+        {document.csp ? (
+          <meta httpEquiv="Content-Security-Policy" content={document.csp} />
+        ) : null}
+        <ConsentMessage>{messageForConsentErrorCode(document.reason)}</ConsentMessage>
+      </>
+    );
   }
 
   const userId = Number(session.user.id);

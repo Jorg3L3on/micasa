@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { buildOAuthFormActionCsp } from '@/lib/oauth-consent';
+import {
+  buildOAuthFormActionCsp,
+  OAUTH_FORM_ACTION_SELF_CSP,
+} from '@/lib/oauth-consent';
 import {
   assertRedirectUriAllowed,
   resolveOAuthClient,
@@ -8,7 +11,12 @@ import {
 
 export type ConsentDocumentResult =
   | { ok: true; csp: string; client: ResolvedOAuthClient }
-  | { ok: false; reason: 'invalid_client' | 'redirect_uri' | 'invalid_request' };
+  | {
+      ok: false;
+      reason: 'invalid_client' | 'redirect_uri' | 'invalid_request';
+      /** Set only after redirect_uri was rejected: `form-action 'self'`. */
+      csp?: string;
+    };
 
 /**
  * Resolves the consent document's form-action policy. The client origin is
@@ -28,10 +36,9 @@ export const resolveConsentDocument = async (
   try {
     assertRedirectUriAllowed(client, redirectUri);
   } catch {
-    return { ok: false, reason: 'redirect_uri' };
+    return { ok: false, reason: 'redirect_uri', csp: OAUTH_FORM_ACTION_SELF_CSP };
   }
 
-  const csp = buildOAuthFormActionCsp(redirectUri);
-  if (!csp) return { ok: false, reason: 'invalid_request' };
+  const csp = buildOAuthFormActionCsp(redirectUri) ?? OAUTH_FORM_ACTION_SELF_CSP;
   return { ok: true, csp, client };
 };

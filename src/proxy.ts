@@ -20,6 +20,7 @@ const proxy = auth(async (req) => {
 
   // Document CSP for the no-JS consent form: form-action is 'self' plus the
   // origin of the redirect_uri only after that URI is allowed for the client.
+  // A rejected redirect_uri stays on form-action 'self' (no foreign origin).
   if (pathname === '/oauth/consent') {
     if (!req.auth?.user?.id) {
       const authorizePath = buildAuthorizePath({
@@ -42,7 +43,7 @@ const proxy = auth(async (req) => {
         req.nextUrl.searchParams.get('client_id') ?? undefined,
         req.nextUrl.searchParams.get('redirect_uri') ?? undefined,
       );
-      if (document.ok) {
+      if (document.csp) {
         response.headers.set('Content-Security-Policy', document.csp);
       }
     } catch (error) {

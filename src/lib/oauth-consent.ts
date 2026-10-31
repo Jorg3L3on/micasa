@@ -3,6 +3,7 @@
  * `form-action` CSP. The origin is only appended after redirect_uri has
  * already been validated for the client.
  */
+import { registrationRedirectRejectionReason } from '@/lib/server/mcp-oauth/registration-uris';
 
 export const OAUTH_CONSENT_COPY = {
   invalidClient: 'Cliente inválido.',
@@ -97,19 +98,31 @@ export const buildOAuthLoginPath = (authorizePath: string): string =>
 const isHttpProtocol = (protocol: string): boolean =>
   protocol === 'https:' || protocol === 'http:';
 
+/** Consent document CSP when redirect_uri was rejected: no foreign origin. */
+export const OAUTH_FORM_ACTION_SELF_CSP = "form-action 'self'";
+
+const PRIVATE_SCHEME = /^[a-z][a-z0-9.-]+$/;
+
 /**
  * `form-action 'self' <origin>` for one already-validated redirect_uri.
- * Returns null when the URI has no http(s) origin to allow.
+ * https and loopback http contribute that origin. A reverse-DNS custom
+ * scheme contributes the scheme source (`com.ejemplo.app:`). Anything else
+ * returns null so the caller does not reflect it into CSP.
  */
 export const buildOAuthFormActionCsp = (
   validatedRedirectUri: string,
 ): string | null => {
+  if (registrationRedirectRejectionReason(validatedRedirectUri)) return null;
   try {
     const url = new URL(validatedRedirectUri);
-    if (!isHttpProtocol(url.protocol)) return null;
-    const origin = url.origin;
-    if (!origin || origin === 'null' || /[\s;,]/.test(origin)) return null;
-    return `form-action 'self' ${origin}`;
+    if (isHttpProtocol(url.protocol)) {
+      const origin = url.origin;
+      if (!origin || origin === 'null' || /[\s;,]/.test(origin)) return null;
+      return `form-action 'self' ${origin}`;
+    }
+    const scheme = url.protocol.slice(0, -1).toLowerCase();
+    if (!PRIVATE_SCHEME.test(scheme)) return null;
+    return `form-action 'self' ${scheme}:`;
   } catch {
     return null;
   }
@@ -126,14 +139,6 @@ export const buildOAuthClientErrorUrl = (
   if (description) redirect.searchParams.set('error_description', description);
   if (state) redirect.searchParams.set('state', state);
   return redirect.toString();
-};
-
-const isHttpUrl = (value: string): boolean => {
-  try {
-    return isHttpProtocol(new URL(value).protocol);
-  } catch {
-    return false;
-  }
 };
 
 const readString = (body: Record<string, unknown>, key: string): string =>
@@ -165,7 +170,7 @@ export const interpretConsentResponse = (
     status >= 200 &&
     status < 300 &&
     redirectTo &&
-    isHttpUrl(redirectTo)
+    registrationRedirectRejectionReason(redirectTo) === null
   ) {
     return { type: 'redirect', url: redirectTo };
   }

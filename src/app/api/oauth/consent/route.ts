@@ -29,10 +29,17 @@ import {
   validateSelectableContexts,
 } from '@/lib/server/agent-allowed-contexts';
 import { AgentAuthError } from '@/lib/server/agent-auth-error';
+import { logOAuthRedirectRejection } from '@/lib/server/mcp-oauth/oauth-token-log';
+import {
+  isAllowedRegistrationRedirectUri,
+  registrationRedirectRejectionReason,
+} from '@/lib/server/mcp-oauth/registration-uris';
 
 const consentFieldsSchema = z.object({
   client_id: z.string().min(1),
-  redirect_uri: z.string().url(),
+  redirect_uri: z.string().max(2048).refine(isAllowedRegistrationRedirectUri, {
+    message: 'redirect_uri debe ser https, http en loopback o un esquema privado reverse-DNS',
+  }),
   state: z.string().optional(),
   scope: z.string().optional(),
   code_challenge: z.string().min(43).max(128),
@@ -227,7 +234,15 @@ const readClientAndRedirect = async (
 ): Promise<ClientRedirectResolution> => {
   const clientId = scalarConsentField(fields, 'client_id');
   const redirectUri = scalarConsentField(fields, 'redirect_uri');
-  if (!clientId || !redirectUri || !z.string().url().safeParse(redirectUri).success) {
+  if (!clientId || !redirectUri) {
+    return { status: 'unchecked' };
+  }
+  if (!isAllowedRegistrationRedirectUri(redirectUri)) {
+    logOAuthRedirectRejection({
+      reason: registrationRedirectRejectionReason(redirectUri) ?? 'invalid_redirect_uri',
+      clientId,
+      redirectUri,
+    });
     return { status: 'unchecked' };
   }
 
