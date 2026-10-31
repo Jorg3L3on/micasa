@@ -29,6 +29,29 @@ const write = (
 });
 
 describe('planned override validity', () => {
+  it('keeps the winning write’s over-debt reason for payment prefill', () => {
+    const september = cycle(2026, 9);
+    const active = selectActivePlannedOverride(
+      [
+        write({ amount: 100, updatedAt: 1, overDebtReason: 'LATE_FEE' }),
+        write({ amount: 800, updatedAt: 2, overDebtReason: 'INTEREST' }),
+      ],
+      september,
+      card,
+    );
+    expect(active.overDebtReason).toBe('INTEREST');
+    expect(active.plannedOverride).toBe(800);
+  });
+
+  it('drops an unknown over-debt reason', () => {
+    const stored = toStoredPaymentPlanWrite({
+      planned_amount: 900,
+      declared_zero: false,
+      over_debt_reason: 'TIP',
+    });
+    expect(stored.overDebtReason).toBeNull();
+  });
+
   it('keeps the latest write when the plan is edited several times', () => {
     const september = cycle(2026, 9);
     const active = selectActivePlannedOverride(

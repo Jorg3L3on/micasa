@@ -78,6 +78,7 @@ export const cardPaymentPlanFormSchema = z
     scope: cardPaymentPlanScopeSchema,
     cycleCount: z.number().int().min(1).max(36).optional(),
     validUntil: z.string().optional(),
+    over_debt_reason: cardBankChargeReasonSchema.nullish(),
   })
   .superRefine((data, ctx) => {
     refineScope(
@@ -91,3 +92,4 @@ export const cardPaymentPlanFormSchema = z
 
 export type CardPaymentPlanInput = z.infer<typeof cardPaymentPlanSchema>;
 export type CardPaymentPlanFormValues = z.infer<typeof cardPaymentPlanFormSchema>;
+export type CardBankChargeReasonValue = z.infer<typeof cardBankChargeReasonSchema>;
