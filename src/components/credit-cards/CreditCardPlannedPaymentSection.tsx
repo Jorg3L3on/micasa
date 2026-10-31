@@ -299,6 +299,11 @@ export const CreditCardPlannedPaymentSection = ({
                       </>
                     ) : null}
                   </p>
+                  {item.periodObligation?.overRecordedMessage ? (
+                    <p className="mt-0.5 text-caption text-muted-foreground">
+                      {item.periodObligation.overRecordedMessage}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span

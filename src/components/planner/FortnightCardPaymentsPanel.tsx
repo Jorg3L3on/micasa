@@ -389,6 +389,11 @@ const FortnightCardPaymentsPanel = ({
                       </>
                     ) : null}
                   </div>
+                  {item.periodObligation?.overRecordedMessage ? (
+                    <p className="text-caption text-muted-foreground">
+                      {item.periodObligation.overRecordedMessage}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1.5">

@@ -94,6 +94,7 @@ export const buildCardPlannerObligation = (input: {
     statementIsEstimate: input.statement.isEstimate,
     minimumPayment: input.statement.minimumPayment,
     plannedOverride: plannedGross,
+    hasStatementImport: input.statement.obligationAmountSource === 'import',
     paymentsNotInPayoff: Math.max(
       0,
       input.paymentsAppliedToFortnight -

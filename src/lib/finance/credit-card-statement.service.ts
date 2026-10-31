@@ -8,7 +8,10 @@ import {
   isStalePastDueGap,
   plannerAsOfForCardMonth,
 } from '@/lib/finance/card-obligation-cycle';
-import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
+import {
+  applyPeriodObligation,
+  BANK_CHARGES_ESTIMATE_KEY,
+} from '@/lib/finance/card-period-obligation';
 import {
   getCardPeriodObligation,
   panelSnapshotFromDueItem,
@@ -1698,14 +1701,24 @@ export function getDuePaymentsForPlannerMonth(
   );
 }
 
-const sumCardDueItems = (
-  items: DuePaymentItem[],
-): {
+type PlannerCardDueSum = {
   total: number;
   cardCount: number;
   knownPendingCount: number;
   obligationGapCount: number;
-} => {
+  /** Planned slice above recorded debt. Already inside `total`. */
+  bankChargesEstimate: number;
+  /** That slice on cycles with no statement import. */
+  overRecordedEstimate: number;
+};
+
+const bankChargeAmount = (
+  snapshot: ReturnType<typeof panelSnapshotFromDueItem>,
+): number =>
+  snapshot.breakdown.find((row) => row.key === BANK_CHARGES_ESTIMATE_KEY)
+    ?.amount ?? 0;
+
+const sumCardDueItems = (items: DuePaymentItem[]): PlannerCardDueSum => {
   const snapshots = items.map((item) => panelSnapshotFromDueItem(item));
   const total = snapshots.reduce(
     (sum, snapshot) =>
@@ -1717,7 +1730,23 @@ const sumCardDueItems = (
   const knownPendingCount = snapshots.filter(
     (snapshot) => snapshot.countsInKnownTotal && (snapshot.knownCashAmount ?? 0) > 0,
   ).length;
-  return { total, cardCount, knownPendingCount, obligationGapCount };
+  const bankChargesEstimate = snapshots.reduce(
+    (sum, snapshot) => sum + bankChargeAmount(snapshot),
+    0,
+  );
+  const overRecordedEstimate = snapshots.reduce(
+    (sum, snapshot) =>
+      sum + (snapshot.overRecordedMessage ? bankChargeAmount(snapshot) : 0),
+    0,
+  );
+  return {
+    total,
+    cardCount,
+    knownPendingCount,
+    obligationGapCount,
+    bankChargesEstimate,
+    overRecordedEstimate,
+  };
 };
 
 /** Suma el pago conocido de tarjetas con corte en la quincena. Los huecos no entran como $0. */
@@ -1726,12 +1755,7 @@ export async function sumPlannerCardDueForFortnight(
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{
-  total: number;
-  cardCount: number;
-  knownPendingCount: number;
-  obligationGapCount: number;
-}> {
+): Promise<PlannerCardDueSum> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
@@ -1746,12 +1770,7 @@ export async function sumPlannerCardDueForMonth(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
-): Promise<{
-  total: number;
-  cardCount: number;
-  knownPendingCount: number;
-  obligationGapCount: number;
-}> {
+): Promise<PlannerCardDueSum> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
@@ -1766,12 +1785,7 @@ export async function sumPlannerCardDueForPeriodScope(
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{
-  total: number;
-  cardCount: number;
-  knownPendingCount: number;
-  obligationGapCount: number;
-}> {
+): Promise<PlannerCardDueSum> {
   if (view === 'month') {
     return sumPlannerCardDueForMonth(ownerFilter, year, month);
   }

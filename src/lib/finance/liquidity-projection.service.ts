@@ -8,8 +8,10 @@ import {
 import { formatLoanDueYmd } from '@/lib/finance/loan-schedule';
 import { toStoredPaymentPlanWrite } from '@/lib/finance/card-payment-plan-scope';
 import {
+  describePlannedOverDebt,
   exposedAnnualRate,
   exposedMinimumDue,
+  type CardObligationBreakdownRow,
 } from '@/lib/finance/card-period-obligation';
 import { getCardPeriodObligation } from '@/lib/finance/card-period-surfaces';
 import prisma from '@/lib/prisma';
@@ -91,6 +93,15 @@ export type LiquidityObligationItem = {
   payments_applied_to_fortnight?: number;
   remaining_planner_amount?: number;
   planner_status?: PlannerCardPaymentStatusUi;
+  /** Slice of `next_due_payment` above recorded debt. Absent at or below the debt. */
+  breakdown?: CardObligationBreakdownRow[];
+  /** Set with the breakdown when this cycle has no statement import. */
+  over_recorded_message?: string | null;
+};
+
+type CardCycleCashContext = {
+  outstandingBalance: number;
+  hasStatementImport: boolean;
 };
 
 export type LiquidityMilestone = {
@@ -588,12 +599,14 @@ const planKey = (fortnightId: number, walletId: number): string =>
 
 /**
  * A card whose fortnight plan is already paid should not re-enter the cash plan
- * as the full statement remainder. Statement `next_due_payment` stays intact.
+ * as the full statement remainder. A higher fortnight plan replaces
+ * `next_due_payment` on the same due date so the extra is one cash line.
  */
 const annotateFortnightCardPlans = async (
   byDueDate: Map<string, LiquidityObligationItem[]>,
   ownerFilter: OwnerFilter,
   asOfStr: string,
+  cardCycleContext: Map<string, CardCycleCashContext>,
 ) => {
   const cards: LiquidityObligationItem[] = [];
   for (const items of byDueDate.values()) {
@@ -681,6 +694,25 @@ const annotateFortnightCardPlans = async (
     item.planned_fortnight_payment = planned;
     item.payments_applied_to_fortnight = paid;
     item.remaining_planner_amount = remaining;
+    if (remaining > item.next_due_payment) {
+      const context = cardCycleContext.get(
+        `${item.wallet_id}:${item.statement_due_date}`,
+      );
+      const detail = describePlannedOverDebt({
+        planned,
+        outstandingBalance: context?.outstandingBalance ?? 0,
+        paymentsApplied: paid,
+        hasStatementImport: context?.hasStatementImport === true,
+      });
+      item.next_due_payment = remaining;
+      if (detail.breakdown.length > 0) {
+        item.breakdown = detail.breakdown;
+        item.over_recorded_message = detail.overRecordedMessage;
+      } else {
+        delete item.breakdown;
+        delete item.over_recorded_message;
+      }
+    }
     item.planner_status = derivePlannerStatus({
       remainingPlannerAmount: remaining,
       paymentsAppliedToFortnight: paid,
@@ -896,6 +928,7 @@ export const getLiquidityProjection = async (
   );
 
   const byDueDate = new Map<string, LiquidityObligationItem[]>();
+  const cardCycleContext = new Map<string, CardCycleCashContext>();
   let unresolvedCardObligationCount = 0;
   const unresolvedCardObligations: Array<{
     wallet_id: number;
@@ -1008,6 +1041,7 @@ export const getLiquidityProjection = async (
           cutoffDay: meta.cutoff_day,
           dueDay: meta.due_day,
           paymentsApplied: row.payments_applied_to_statement,
+          hasStatementImport: source === 'import',
         });
 
         if (periodObligation.confidence === 'missing') {
@@ -1033,6 +1067,21 @@ export const getLiquidityProjection = async (
 
         if (omitZero && nextDue === 0) continue;
 
+        const overDebt =
+          periodObligation.breakdown != null &&
+          periodObligation.breakdown.length > 0
+            ? {
+                breakdown: periodObligation.breakdown,
+                over_recorded_message:
+                  periodObligation.overRecordedMessage ?? null,
+              }
+            : {};
+
+        cardCycleContext.set(`${id}:${dueStr}`, {
+          outstandingBalance: cardOutstandingById.get(id) ?? 0,
+          hasStatementImport: source === 'import',
+        });
+
         chunk.push({
           source: 'credit_card_statement',
           wallet_id: id,
@@ -1052,6 +1101,7 @@ export const getLiquidityProjection = async (
           cat_annual: exposedAnnualRate(meta.cat_annual),
           ...(row.is_estimate ? { is_estimate: true } : {}),
           ...(stressAdj > 0 ? { stress_adjustment: stressAdj } : {}),
+          ...overDebt,
         });
       }
 
@@ -1069,7 +1119,12 @@ export const getLiquidityProjection = async (
     }
   }
 
-  await annotateFortnightCardPlans(byDueDate, input.ownerFilter, asOfStr);
+  await annotateFortnightCardPlans(
+    byDueDate,
+    input.ownerFilter,
+    asOfStr,
+    cardCycleContext,
+  );
 
   if (includeUnpaid) {
     const unpaidMap = await collectUnpaidFundingObligations(
