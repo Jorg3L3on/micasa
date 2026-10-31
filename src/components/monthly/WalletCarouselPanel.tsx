@@ -776,6 +776,7 @@ export const WalletCarouselPanel = ({
               incomeDefaults={{ walletId: dialogWallet.id }}
               onSaveExpense={handleCreateExpense}
               onSaveIncome={handleCreateIncome}
+              onBatchSaved={() => void onRefresh()}
               expenseError={expenseError}
               incomeError={incomeError}
             />

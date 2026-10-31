@@ -1223,6 +1223,7 @@ export default function FortnightColumn({
         }}
         onSaveExpense={handleAddExpense}
         onSaveIncome={handleAddIncome}
+        onBatchSaved={() => void refreshData()}
         defaultDate={getDefaultDateForFortnight(year, month, period)}
         expenseError={addExpenseError && addExpenseDialogOpen ? addExpenseError : null}
         incomeError={addIncomeError && addExpenseDialogOpen ? addIncomeError : null}

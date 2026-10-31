@@ -7,6 +7,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
@@ -48,6 +49,8 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import BatchEntrySheet from '@/components/transactions/BatchEntrySheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   DateStepper,
   FieldClearButton,
@@ -57,6 +60,7 @@ import {
   OVERLAY_PRIMARY_BUTTON_CLASS,
   OVERLAY_ROW_INPUT_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
+  OVERLAY_SECONDARY_BUTTON_CLASS,
   OverlayErrorBanner,
   OverlayHint,
 } from '@/components/overlay/overlay-form';
@@ -75,6 +79,8 @@ type AddTransactionDialogProps = {
   incomeDefaults?: Partial<AddIncomeFormValues>;
   expenseError?: string | null;
   incomeError?: string | null;
+  /** Refresh the caller's data after rows were saved from "Agregar varios". */
+  onBatchSaved?: () => void;
 };
 
 function emptyExpense(date: string): AddExpenseFormValues {
@@ -112,8 +118,12 @@ export default function AddTransactionDialog({
   incomeDefaults,
   expenseError,
   incomeError,
+  onBatchSaved,
 }: AddTransactionDialogProps) {
   const { context } = useFinanceContext();
+  const router = useRouter();
+  const isMobile = useIsMobile();
+  const [batchOpen, setBatchOpen] = useState(false);
   const [tab, setTab] = useState<TransactionTab>('expense');
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [incomeCategories, setIncomeCategories] = useState<CategoryOption[]>(
@@ -663,9 +673,28 @@ export default function AddTransactionDialog({
       >
         {isSubmitting ? 'Guardando…' : 'Guardar'}
       </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={isSubmitting}
+        className={cn(OVERLAY_SECONDARY_BUTTON_CLASS, 'text-primary-text')}
+        onClick={() => {
+          onOpenChange(false);
+          if (isMobile) setBatchOpen(true);
+          else router.push('/transactions/batch');
+        }}
+      >
+        Agregar varios
+      </Button>
         </div>
       )}
     </ResponsiveOverlay>
+    <BatchEntrySheet
+      open={batchOpen}
+      onOpenChange={setBatchOpen}
+      defaultDate={resolvedDate}
+      onSaved={() => onBatchSaved?.()}
+    />
     <InsufficientWalletExpenseDialog
       open={confirmWithoutDelta}
       onOpenChange={setConfirmWithoutDelta}

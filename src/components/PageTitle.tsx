@@ -194,6 +194,10 @@ export function getPageTitle(pathname: string): {
     return { title: 'Préstamos', isHome: false, showBack };
   }
 
+  if (segments[0] === 'transactions' && segments[1] === 'batch') {
+    return { title: 'Agregar movimientos', isHome: false, showBack };
+  }
+
   if (segments[0] === 'transactions') {
     return { title: 'Operaciones', isHome: false, showBack };
   }
