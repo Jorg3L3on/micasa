@@ -38,7 +38,10 @@ describe('verifyMcpBearerToken', () => {
       API_KEY_TOKEN,
     );
 
-    expect(resolveAgentIdentityMock).toHaveBeenCalledWith(API_KEY_TOKEN);
+    expect(resolveAgentIdentityMock).toHaveBeenCalledWith(
+      API_KEY_TOKEN,
+      expect.any(Request),
+    );
     expect(result).toEqual({
       token: API_KEY_TOKEN,
       clientId: 'api-key:42',

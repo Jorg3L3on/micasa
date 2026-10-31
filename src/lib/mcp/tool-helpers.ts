@@ -94,7 +94,7 @@ const resolveCallerIdentity = async (ctx: McpToolContext): Promise<AgentIdentity
   );
   if (stamped.success) return stamped.data;
   const token = parseBearerToken(ctx.http?.req?.headers.get('authorization'));
-  return resolveAgentIdentity(token);
+  return resolveAgentIdentity(token, ctx.http?.req);
 };
 
 /**

@@ -83,9 +83,12 @@ export type AgentUser = AgentIdentity & {
  * Resolves the credential behind a bearer token: legacy `micasa_…` API keys
  * (Ajustes → Conexiones) or OAuth access tokens (`micasa_oauth_…`).
  */
-export async function resolveAgentIdentity(token: string): Promise<AgentIdentity> {
+export async function resolveAgentIdentity(
+  token: string,
+  request?: Request,
+): Promise<AgentIdentity> {
   if (isOAuthAccessToken(token)) {
-    const oauthUser = await resolveOAuthGrantUser(token);
+    const oauthUser = await resolveOAuthGrantUser(token, request);
     if (!oauthUser) throw unauthorized('Token OAuth inválido o expirado');
     return {
       userId: oauthUser.userId,
