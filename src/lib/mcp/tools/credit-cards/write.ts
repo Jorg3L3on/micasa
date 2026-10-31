@@ -143,7 +143,7 @@ export function registerCardWriteTools(server: McpServer) {
     name: 'add_card_payment',
     title: 'Registrar pago de tarjeta',
     description:
-      'Registra un pago de tarjeta. mode external: pago hecho fuera de MiCasa (no descuenta billeteras). mode wallet: descuenta una billetera de efectivo/débito del contexto y puede registrar el gasto en la quincena. Si el monto supera la deuda registrada, envía bank_charge.reason (INTEREST, LATE_FEE u OTHER): el exceso se anota como gasto en la tarjeta.',
+      'Registra un pago de tarjeta. mode external: pago hecho fuera de MiCasa (no descuenta billeteras). mode wallet: descuenta una billetera de efectivo/débito del contexto y puede registrar el gasto en la quincena. Si supera la deuda, envía bank_charge.',
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
@@ -178,9 +178,7 @@ export function registerCardWriteTools(server: McpServer) {
           reason: z.enum(['INTEREST', 'LATE_FEE', 'OTHER']),
         })
         .optional()
-        .describe(
-          'Obligatorio si el pago supera la deuda registrada. reason: INTEREST (intereses), LATE_FEE (comisión por atraso) u OTHER.',
-        ),
+        .describe('Si el pago supera la deuda: INTEREST, LATE_FEE u OTHER.'),
     },
     run: (agent, args) => executeCardPayment(agent, args),
   });
