@@ -13,7 +13,6 @@ import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type {
   CreateCreditCardInput,
   CreateCreditCardPurchaseInput,
-  NormalizedCreditCardPaymentInput,
   UpdateCreditCardInput,
 } from '@/schemas/credit-card.schema';
 import { coverScheduledPaymentForCardPayment } from '@/lib/finance/credit-card-scheduled-payment.service';
@@ -341,6 +340,34 @@ export async function createCreditCardPurchase(
   });
 }
 
+type BankChargeInput = { reason: CardBankChargeReason } | null;
+
+/**
+ * Callers may omit the optional keys. `normalizeCreditCardPaymentInput`
+ * always sets them, including explicit `undefined`, so both shapes are accepted.
+ */
+type CreditCardPaymentCommand =
+  | {
+      mode: 'external';
+      amount: number;
+      paid_at: string;
+      note?: string | null;
+      adjusts_debt?: boolean;
+      bank_charge?: BankChargeInput;
+    }
+  | {
+      mode: 'wallet';
+      amount: number;
+      paid_at: string;
+      note?: string | null;
+      source_wallet_id: number;
+      create_fortnight_expense?: boolean;
+      fortnight_id?: number;
+      category_id?: number;
+      expense_description?: string | null;
+      bank_charge?: BankChargeInput;
+    };
+
 const bookBankChargeExpense = async (
   tx: PaymentTx,
   ownerFilter: OwnerFilter,
@@ -393,7 +420,7 @@ const bookBankChargeExpense = async (
 export async function createCreditCardPayment(
   creditCardId: number,
   ownerFilter: OwnerFilter,
-  input: NormalizedCreditCardPaymentInput,
+  input: CreditCardPaymentCommand,
 ) {
   const result = await prisma.$transaction(async (tx) => {
     const creditCardWallet = await tx.wallet.findFirst({
@@ -481,7 +508,7 @@ export async function createCreditCardPayment(
           ownerFilter,
           creditCardWallet,
           input.paid_at,
-          input.bank_charge.reason as CardBankChargeReason,
+          input.bank_charge.reason,
           excess,
         );
       }
