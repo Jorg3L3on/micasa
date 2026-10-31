@@ -1,14 +1,11 @@
-import { parseCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withOwnerContext } from '@/lib/server/with-owner-context';
 import prisma from '@/lib/prisma';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
-import {
-  applyWalletAmountDelta,
-  isSpendableCashWalletType,
-} from '@/lib/finance/wallet-accounting';
+import { isSpendableCashWalletType } from '@/lib/finance/wallet-accounting';
+import { createWalletIncomeRecord } from '@/lib/finance/income.service';
 import { dateStringSchema } from '@/schemas/common.schema';
 import {
   assertOwnedCategoryOfKind,
@@ -84,21 +81,16 @@ export async function POST(
           ? { user_id: ownerId, house_id: null }
           : { user_id: null, house_id: ownerId };
 
-      const created = await prisma.$transaction(async (tx) => {
-        const income = await tx.income.create({
-          data: {
-            fortnight_id: fortnight.id,
-            amount: data.amount,
-            source: data.source,
-            received_at: parseCalendarDate(data.date),
-            wallet_id: walletId,
-            category_id: data.category_id,
-            ...ownerData,
-          },
-        });
-        await applyWalletAmountDelta(tx, walletId, data.amount);
-        return income;
-      });
+      const created = await prisma.$transaction((tx) =>
+        createWalletIncomeRecord(tx, ownerData, {
+          fortnightId: fortnight.id,
+          walletId,
+          categoryId: data.category_id,
+          amount: data.amount,
+          source: data.source,
+          date: data.date,
+        }),
+      );
 
       return NextResponse.json(
         {

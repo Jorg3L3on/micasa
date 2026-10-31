@@ -59,8 +59,9 @@ export async function findExpenseTemplateForOwner(id: number, ownerFilter: Owner
 export function createExpenseTemplateForOwner(
   owner: TemplateOwner,
   validated: CreateExpenseTemplateInput,
+  client: Prisma.TransactionClient | typeof prisma = prisma,
 ) {
-  return prisma.expenseTemplate.create({
+  return client.expenseTemplate.create({
     data: {
       name: validated.name,
       category_id: validated.categoryId,

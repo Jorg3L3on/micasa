@@ -1,10 +1,14 @@
-import { coerceToCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
+import {
+  coerceToCalendarDate,
+  formatCalendarDate,
+  parseCalendarDate,
+} from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
 import {
   applyWalletAmountDelta,
   isFundingWalletType,
 } from '@/lib/finance/wallet-accounting';
-import type { PaymentMethodType } from '@/generated/prisma/client';
+import type { PaymentMethodType, Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { DomainError } from '@/lib/finance/domain-error';
 
@@ -257,4 +261,39 @@ export async function deleteIncomeForOwner(
   });
 
   return { deleted: true, income_id: id };
+}
+
+export type CreateWalletIncomeRecordInput = {
+  fortnightId: number;
+  walletId: number;
+  categoryId: number;
+  amount: number;
+  source: string;
+  /** `YYYY-MM-DD` civil day (Mexico City). */
+  date: string;
+};
+
+/**
+ * Income recorded from a wallet (quick capture / `POST /api/wallets/:id/incomes`):
+ * creates the row and credits the wallet in the caller's transaction. Shared by
+ * the wallet route and the batch service so both apply the same accounting.
+ */
+export async function createWalletIncomeRecord(
+  tx: Prisma.TransactionClient,
+  ownerData: { user_id: number | null; house_id: number | null },
+  input: CreateWalletIncomeRecordInput,
+) {
+  const income = await tx.income.create({
+    data: {
+      fortnight_id: input.fortnightId,
+      amount: input.amount,
+      source: input.source,
+      received_at: parseCalendarDate(input.date),
+      wallet_id: input.walletId,
+      category_id: input.categoryId,
+      ...ownerData,
+    },
+  });
+  await applyWalletAmountDelta(tx, input.walletId, input.amount);
+  return income;
 }
