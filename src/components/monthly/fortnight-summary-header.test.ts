@@ -129,4 +129,58 @@ describe('getDueToPayComposition', () => {
       }),
     ).toEqual([]);
   });
+
+  it('adds the estimated bank-charge row and the no-import sentence', () => {
+    expect(
+      getDueToPayComposition({
+        pagado: 0,
+        pendiente: 1_000,
+        statementDue: 1_000,
+        bankChargesEstimate: 850,
+        overRecordedEstimate: 850,
+      }),
+    ).toEqual([
+      { label: 'Pendiente de gastos', amount: 1_000 },
+      { label: 'De eso, estado de cuenta', amount: 1_000 },
+      {
+        key: 'bank_charges_estimate',
+        label: 'Cargos del banco (estimado)',
+        amount: 850,
+        note: 'El estado de cuenta pide más que lo registrado: +$850.00',
+      },
+    ]);
+  });
+
+  it('omits the sentence when the extra comes from an imported statement', () => {
+    expect(
+      getDueToPayComposition({
+        pagado: 0,
+        pendiente: 1_000,
+        bankChargesEstimate: 850,
+        overRecordedEstimate: 0,
+      }),
+    ).toEqual([
+      { label: 'Pendiente de gastos', amount: 1_000 },
+      {
+        key: 'bank_charges_estimate',
+        label: 'Cargos del banco (estimado)',
+        amount: 850,
+      },
+    ]);
+  });
+
+  it('omits the bank-charge row when the estimate is zero', () => {
+    expect(
+      getDueToPayComposition({
+        pagado: 0,
+        pendiente: 150,
+        statementDue: 150,
+        bankChargesEstimate: 0,
+        overRecordedEstimate: 0,
+      }),
+    ).toEqual([
+      { label: 'Pendiente de gastos', amount: 150 },
+      { label: 'De eso, estado de cuenta', amount: 150 },
+    ]);
+  });
 });

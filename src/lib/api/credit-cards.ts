@@ -219,6 +219,7 @@ export async function createCreditCardPayment(
         category_id?: number;
         expense_description?: string | null;
         fortnight_id?: number;
+        bank_charge?: { reason: 'INTEREST' | 'LATE_FEE' | 'OTHER' } | null;
       }
     | {
         mode: 'external';
@@ -226,6 +227,7 @@ export async function createCreditCardPayment(
         paid_at: string;
         note?: string | null;
         adjusts_debt?: boolean;
+        bank_charge?: { reason: 'INTEREST' | 'LATE_FEE' | 'OTHER' } | null;
       },
   context?: FinanceContextType,
 ) {

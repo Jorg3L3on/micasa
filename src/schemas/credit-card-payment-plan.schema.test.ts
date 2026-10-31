@@ -28,6 +28,24 @@ describe('cardPaymentPlanSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('accepts over_debt_reason when the plan may sit above the debt', () => {
+    const parsed = cardPaymentPlanSchema.parse({
+      walletId: 1,
+      plannedAmount: 1000,
+      over_debt_reason: 'INTEREST',
+    });
+    expect(parsed.over_debt_reason).toBe('INTEREST');
+  });
+
+  it('rejects an unknown over_debt_reason', () => {
+    const result = cardPaymentPlanSchema.safeParse({
+      walletId: 1,
+      plannedAmount: 150,
+      over_debt_reason: 'UNKNOWN',
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('cardPaymentPlanFormSchema', () => {

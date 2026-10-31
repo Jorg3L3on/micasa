@@ -9,6 +9,7 @@ import {
   mcpResourcesMatch,
   normalizeMcpResourceUrl,
 } from '@/lib/server/mcp-oauth/config';
+import { buildOAuthLoginPath } from '@/lib/oauth-consent';
 import { oauthErrorResponse, oauthOptionsResponse, withOAuthCors } from '@/lib/server/mcp-oauth/cors';
 
 const requiredParams = [
@@ -80,8 +81,7 @@ export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     const callback = `${url.pathname}${url.search}`;
-    const loginUrl = new URL('/login', url.origin);
-    loginUrl.searchParams.set('callbackUrl', callback);
+    const loginUrl = new URL(buildOAuthLoginPath(callback), url.origin);
     return withOAuthCors(Response.redirect(loginUrl));
   }
 

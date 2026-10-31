@@ -231,6 +231,16 @@ export const OverlayErrorBanner = ({ children }: { children: ReactNode }) => (
   <ErrorBanner>{children}</ErrorBanner>
 );
 
+/** Amber notice under a card when a value needs attention before saving. */
+export const OverlayWarning = ({ children }: { children: ReactNode }) => (
+  <p
+    role="status"
+    className="rounded-lg border border-status-pending/30 bg-status-pending/10 px-3 py-2 text-xs leading-snug text-status-pending"
+  >
+    {children}
+  </p>
+);
+
 /** Helper or context copy above/below a grouped card. */
 export const OverlayHint = ({
   children,

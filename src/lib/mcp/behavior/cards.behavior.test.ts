@@ -102,11 +102,19 @@ const db = vi.hoisted(() => {
         table('category').find((c) => matches(c, where)) ?? null,
       ),
       findMany: vi.fn(async () => []),
+      create: vi.fn(async ({ data }: { data: Row }) => insert('category', data)),
     },
     fortnight: {
       findFirst: vi.fn(async ({ where }: { where: Where }) =>
         table('fortnight').find((f) => matches(f, where)) ?? null,
       ),
+      create: vi.fn(async ({ data }: { data: Row }) => insert('fortnight', data)),
+      update: vi.fn(async ({ where, data }: { where: { id: number }; data: Row }) => {
+        const row = table('fortnight').find((f) => f.id === where.id);
+        if (!row) throw new Error(`fortnight ${where.id} not found`);
+        applyData(row, data);
+        return { ...row };
+      }),
     },
     expense: {
       create: vi.fn(async ({ data }: { data: Row }) => insert('expense', data)),
@@ -209,6 +217,8 @@ const db = vi.hoisted(() => {
 
 vi.mock('@/lib/prisma', () => ({ default: db.client }));
 
+import { parseCalendarDate } from '@/lib/calendar-dates';
+import { getFortnightYmdBounds } from '@/lib/fortnight-calendar';
 import { registerCreditCardTools } from '@/lib/mcp/tools/credit-cards';
 import { authPrismaMocks, callTool, HOUSE, HOUSE_ID } from '@/lib/mcp/behavior/harness';
 
@@ -257,6 +267,7 @@ beforeEach(() => {
       house_id: HOUSE_ID,
     },
   );
+  const octoberFirst = getFortnightYmdBounds(2026, 10, 'FIRST');
   db.table('fortnight').push({
     id: 31,
     year: 2026,
@@ -264,6 +275,8 @@ beforeEach(() => {
     period: 'FIRST',
     user_id: null,
     house_id: HOUSE_ID,
+    start_date: parseCalendarDate(octoberFirst.startYmd),
+    end_date: parseCalendarDate(octoberFirst.endYmd),
   });
   db.table('category').push({
     id: 12,
@@ -401,6 +414,58 @@ describe('add_card_payment', () => {
       status: 'PAID',
       credit_card_payment_id: body.payment_id,
     });
+  });
+
+  it('pays recorded debt of 150 plus a declared bank charge and leaves the card at 0', async () => {
+    wallet(CARD_ID).amount = 150;
+
+    const { isError, body } = await call('add_card_payment', {
+      card_id: CARD_ID,
+      mode: 'external',
+      amount: 200,
+      paid_at: '2026-10-05',
+      bank_charge: { reason: 'INTEREST' },
+    });
+
+    expect(isError).toBeFalsy();
+    expect(body).toMatchObject({ amount: 200, mode: 'external' });
+    expect(wallet(CARD_ID).amount).toBe(0);
+    expect(body.bank_charge_expense_id).toEqual(expect.any(Number));
+
+    const charges = db.table('expense');
+    expect(charges).toHaveLength(1);
+    expect(charges[0]).toMatchObject({
+      id: body.bank_charge_expense_id,
+      wallet_id: CARD_ID,
+      amount: 50,
+      description: 'Intereses',
+      is_paid: true,
+      house_id: HOUSE_ID,
+      user_id: null,
+    });
+    expect(db.table('cardPayment')[0]).toMatchObject({
+      amount: 200,
+      bank_charge_expense_id: charges[0]!.id,
+    });
+
+    const categories = db
+      .table('category')
+      .filter((row) => row.name === 'Intereses y comisiones');
+    expect(categories).toHaveLength(1);
+
+    wallet(CARD_ID).amount = 0;
+    const second = await call('add_card_payment', {
+      card_id: CARD_ID,
+      mode: 'external',
+      amount: 50,
+      paid_at: '2026-10-06',
+      bank_charge: { reason: 'LATE_FEE' },
+    });
+    expect(second.isError).toBeFalsy();
+    expect(wallet(CARD_ID).amount).toBe(0);
+    expect(
+      db.table('category').filter((row) => row.name === 'Intereses y comisiones'),
+    ).toHaveLength(1);
   });
 
   it('mode wallet without enough balance is rejected and writes nothing', async () => {

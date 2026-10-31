@@ -121,6 +121,7 @@ export async function applyPlannerLayerToDueItems(
         todayYmd,
       });
       item.isStaleFullyCoveredPlan = false;
+      item.hasStatementImport = item.obligationAmountSource === 'import';
       applyPeriodObligation(item);
     }
     return;
@@ -141,6 +142,7 @@ export async function applyPlannerLayerToDueItems(
         cycle_count: true,
         valid_until: true,
         anchor_statement_end: true,
+        over_debt_reason: true,
         updated_at: true,
         created_at: true,
         fortnight: { select: { year: true, month: true } },
@@ -176,6 +178,7 @@ export async function applyPlannerLayerToDueItems(
     item.planScope = active.scope;
     item.planCycleCount = active.cycleCount;
     item.planValidUntil = active.validUntil;
+    item.overDebtReason = active.overDebtReason;
     const paymentsAppliedToFortnight =
       fortnightPayments.get(item.walletId) ?? 0;
 
@@ -191,6 +194,7 @@ export async function applyPlannerLayerToDueItems(
       });
       Object.assign(item, fields);
       item.declaredZero = explicitZero;
+      item.hasStatementImport = item.obligationAmountSource === 'import';
       applyPeriodObligation(item);
       continue;
     }
@@ -224,6 +228,7 @@ export async function applyPlannerLayerToDueItems(
       paymentsAppliedToFortnight,
     });
     item.declaredZero = explicitZero;
+    item.hasStatementImport = item.obligationAmountSource === 'import';
     applyPeriodObligation(item);
   }
 }
@@ -250,6 +255,7 @@ export const toCreditCardPaymentPlanView = (input: {
     statementPayoff: input.fields.statementPayoff,
     minimumPayment: input.fields.minimumPayment,
     declaredZero: input.fields.declaredZero,
+    hasStatementImport: input.fields.obligationAmountSource === 'import',
     plannerStatus: input.fields.plannerStatus,
     effectiveAmount: input.fields.effectiveAmount,
     remainingPlannerAmount: input.fields.remainingPlannerAmount,

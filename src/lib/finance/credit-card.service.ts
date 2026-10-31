@@ -3,13 +3,16 @@ import {
   coerceToCalendarDayStart,
   formatCalendarDate,
 } from '@/lib/calendar-dates';
-import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
+import {
+  CardBankChargeReason,
+  PaymentMethodType,
+  type Prisma,
+} from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type {
   CreateCreditCardInput,
   CreateCreditCardPurchaseInput,
-  NormalizedCreditCardPaymentInput,
   UpdateCreditCardInput,
 } from '@/schemas/credit-card.schema';
 import { coverScheduledPaymentForCardPayment } from '@/lib/finance/credit-card-scheduled-payment.service';
@@ -31,6 +34,16 @@ import {
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { DomainError } from '@/lib/finance/domain-error';
+import {
+  BANK_CHARGE_REQUIRED,
+  BANK_CHARGE_REQUIRED_MESSAGE,
+  bankChargeExpenseDescription,
+  ensureBankChargeCategoryId,
+} from '@/lib/finance/card-bank-charge';
+
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+type PaymentTx = Prisma.TransactionClient;
 
 const creditCardWalletTypes: PaymentMethodType[] = [
   PaymentMethodType.CREDIT_CARD,
@@ -327,10 +340,87 @@ export async function createCreditCardPurchase(
   });
 }
 
+type BankChargeInput = { reason: CardBankChargeReason } | null;
+
+/**
+ * Callers may omit the optional keys. `normalizeCreditCardPaymentInput`
+ * always sets them, including explicit `undefined`, so both shapes are accepted.
+ */
+type CreditCardPaymentCommand =
+  | {
+      mode: 'external';
+      amount: number;
+      paid_at: string;
+      note?: string | null;
+      adjusts_debt?: boolean;
+      bank_charge?: BankChargeInput;
+    }
+  | {
+      mode: 'wallet';
+      amount: number;
+      paid_at: string;
+      note?: string | null;
+      source_wallet_id: number;
+      create_fortnight_expense?: boolean;
+      fortnight_id?: number;
+      category_id?: number;
+      expense_description?: string | null;
+      bank_charge?: BankChargeInput;
+    };
+
+const bookBankChargeExpense = async (
+  tx: PaymentTx,
+  ownerFilter: OwnerFilter,
+  creditCardWallet: {
+    id: number;
+    user_id: number | null;
+    house_id: number | null;
+  },
+  paidAtInput: string,
+  reason: CardBankChargeReason,
+  excess: number,
+): Promise<number> => {
+  const categoryId = await ensureBankChargeCategoryId(tx, ownerFilter);
+  const paidYmd = formatCalendarDate(coerceToCalendarDate(paidAtInput));
+  const { year, month, period } = getCalendarFortnightRefForYmd(paidYmd);
+  const ownerUserId = creditCardWallet.user_id;
+  const ownerHouseId = creditCardWallet.house_id;
+  if (ownerUserId == null && ownerHouseId == null) {
+    throw new DomainError('INVALID_CARD_OWNER', 'Titular de tarjeta inválido');
+  }
+
+  const fortnight = await resolveOrCreateFortnight({
+    ownerType: ownerUserId != null ? 'user' : 'house',
+    ownerId: ownerUserId != null ? ownerUserId : ownerHouseId!,
+    year,
+    month,
+    period,
+    tx,
+  });
+
+  const expense = await tx.expense.create({
+    data: {
+      fortnight_id: fortnight.id,
+      wallet_id: creditCardWallet.id,
+      category_id: categoryId,
+      description: bankChargeExpenseDescription(reason),
+      amount: excess,
+      is_paid: true,
+      payment_date: coerceToCalendarDayStart(paidAtInput),
+      expense_template_id: null,
+      user_id: fortnight.user_id,
+      house_id: fortnight.house_id,
+    },
+  });
+
+  await applyWalletAmountDelta(tx, creditCardWallet.id, excess);
+  return expense.id;
+};
+
 export async function createCreditCardPayment(
   creditCardId: number,
   ownerFilter: OwnerFilter,
-  input: NormalizedCreditCardPaymentInput,
+  input: CreditCardPaymentCommand,
 ) {
   const result = await prisma.$transaction(async (tx) => {
     const creditCardWallet = await tx.wallet.findFirst({
@@ -403,10 +493,24 @@ export async function createCreditCardPayment(
       }
     }
 
+    let bankChargeExpenseId: number | null = null;
     if (adjustsDebt) {
-      const currentDebt = toWalletAmountNumber(creditCardWallet);
-      if (input.amount > currentDebt) {
-        throw new DomainError('INVALID_PAYMENT_AMOUNT', 'El monto del pago no puede superar la deuda actual de la tarjeta');
+      const currentDebt = roundMoney(toWalletAmountNumber(creditCardWallet));
+      const excess = roundMoney(input.amount - currentDebt);
+      if (excess > 0) {
+        if (input.bank_charge == null) {
+          throw new DomainError(BANK_CHARGE_REQUIRED, BANK_CHARGE_REQUIRED_MESSAGE);
+        }
+        // Book the excess before the payment so the card never goes negative:
+        // debt + excess - payment = 0.
+        bankChargeExpenseId = await bookBankChargeExpense(
+          tx,
+          ownerFilter,
+          creditCardWallet,
+          input.paid_at,
+          input.bank_charge.reason,
+          excess,
+        );
       }
     }
 
@@ -418,6 +522,7 @@ export async function createCreditCardPayment(
         credit_card_wallet_id: creditCardWallet.id,
         source_wallet_id: sourceWallet?.id ?? null,
         adjusts_debt: adjustsDebt,
+        bank_charge_expense_id: bankChargeExpenseId,
         user_id: creditCardWallet.user_id,
         house_id: creditCardWallet.house_id,
       },
@@ -435,6 +540,19 @@ export async function createCreditCardPayment(
 
     if (adjustsDebt) {
       await applyWalletAmountDelta(tx, creditCardWallet.id, -input.amount);
+      const refreshed = await tx.wallet.findFirst({
+        where: { id: creditCardWallet.id },
+        select: { amount: true },
+      });
+      if (
+        refreshed != null &&
+        roundMoney(toWalletAmountNumber(refreshed)) < 0
+      ) {
+        throw new DomainError(
+          'CARD_BALANCE_NEGATIVE',
+          'El saldo de la tarjeta no puede quedar negativo',
+        );
+      }
     }
 
     let expenseId: number | null = null;
@@ -551,6 +669,7 @@ export async function createCreditCardPayment(
       credit_card_wallet_id: payment.credit_card_wallet_id,
       credit_card_wallet_name: payment.credit_card_wallet.name,
       expense_id: expenseId,
+      bank_charge_expense_id: payment.bank_charge_expense_id ?? null,
       adjusts_debt: payment.adjusts_debt,
       is_external: payment.source_wallet_id == null,
     };
@@ -564,7 +683,12 @@ export async function isCardPaymentGeneratedExpense(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0] = prisma,
 ): Promise<boolean> {
   const payment = await tx.creditCardPayment.findFirst({
-    where: { expense_id: expenseId },
+    where: {
+      OR: [
+        { expense_id: expenseId },
+        { bank_charge_expense_id: expenseId },
+      ],
+    },
     select: { id: true },
   });
   return payment != null;
@@ -593,6 +717,8 @@ export async function reverseCreditCardPayment(
         id: true,
         amount: true,
         expense_id: true,
+        bank_charge_expense_id: true,
+        bank_charge_expense: { select: { id: true, amount: true } },
         source_wallet_id: true,
         credit_card_wallet_id: true,
         adjusts_debt: true,
@@ -608,8 +734,22 @@ export async function reverseCreditCardPayment(
     if (payment.source_wallet_id != null) {
       await applyWalletAmountDelta(tx, payment.source_wallet_id, amount);
     }
+    // Put the payment back on the card before removing the charge. The other
+    // order would drive the balance negative (0 - excess).
     if (payment.adjusts_debt) {
       await applyWalletAmountDelta(tx, payment.credit_card_wallet_id, amount);
+    }
+
+    const charge = payment.bank_charge_expense;
+    if (charge != null) {
+      if (payment.adjusts_debt) {
+        await applyWalletAmountDelta(
+          tx,
+          payment.credit_card_wallet_id,
+          -Number(charge.amount),
+        );
+      }
+      await deleteCardPaymentGeneratedExpense(tx, charge.id);
     }
 
     if (payment.expense_id != null) {
@@ -622,6 +762,7 @@ export async function reverseCreditCardPayment(
       id: payment.id,
       amount,
       expense_id: payment.expense_id,
+      bank_charge_expense_id: payment.bank_charge_expense_id ?? null,
     };
   });
 }

@@ -25,7 +25,11 @@ export type CardPaymentPlanScopePayload = {
 
 export async function upsertFortnightCardPaymentPlan(
   fortnightId: number,
-  data: { walletId: number; plannedAmount: number } & CardPaymentPlanScopePayload,
+  data: {
+    walletId: number;
+    plannedAmount: number;
+    over_debt_reason?: 'INTEREST' | 'LATE_FEE' | 'OTHER' | null;
+  } & CardPaymentPlanScopePayload,
   context?: FinanceContextType,
 ) {
   return clientFetchFromApi<{
