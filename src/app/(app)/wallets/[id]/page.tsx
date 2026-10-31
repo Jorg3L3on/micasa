@@ -779,6 +779,7 @@ export default function WalletDetailPage() {
           incomeDefaults={{ walletId }}
           onSaveExpense={handleCreateExpense}
           onSaveIncome={handleCreateIncome}
+          onBatchSaved={() => void loadData()}
           expenseError={expenseError}
           incomeError={incomeError}
         />

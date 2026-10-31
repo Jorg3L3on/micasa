@@ -247,6 +247,15 @@ Open these components in the running app. Do not commit overlay screenshots.
 - Keep component filenames as `*Dialog` / `*Sheet`; the dual presentation is always on.
 - Portaled Select/popover menus call `handleSelectOpenChange` (render-prop arg or `useOverlaySelectOpenChange()`), so closing a menu does not dismiss the sheet.
 
+### Batch entry (Agregar movimientos)
+
+Capturing several gastos and ingresos in one go uses one editor (`src/components/transactions/BatchEntryEditor.tsx`) in two presentations. Below `md` it is the **Agregar movimientos** sheet (`BatchEntrySheet`, on `ResponsiveOverlay`, so the chrome rules above apply): one compact card per row, only the row being edited expanded, the others collapsed to name, category and amount. From `md` up it is the table at `/transactions/batch` (header columns, one row per movement, keyboard first). Both share the same row model.
+
+- A new row inherits wallet, date and kind from the row above; they stay editable. Name, amount and category start empty.
+- One full-width primary at the bottom (`Guardar N movimientos`) with a one-line count and total above it. "Agregar otro" is a dashed outline button, not a second primary.
+- Saving keeps the valid rows saved and leaves the failed ones on screen with the error under the row (`text-destructive`) or, for balance, the amber notice with **Guardar sin afectar saldo**.
+- Tables are not overlays, so the table uses the native date input; overlays keep `DateStepper`.
+
 ### Overlay chrome (Dialog and Sheet)
 
 Same language on both surfaces:

@@ -28,3 +28,11 @@ describe('getPageTitle fortnight titles', () => {
     );
   });
 });
+
+describe('getPageTitle batch entry', () => {
+  it('titles the batch entry route and keeps the back button', () => {
+    const result = getPageTitle('/transactions/batch');
+    expect(result.title).toBe('Agregar movimientos');
+    expect(result.showBack).toBe(true);
+  });
+});
