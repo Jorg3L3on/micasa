@@ -164,6 +164,7 @@ export const FIELD_LABELS: Readonly<Record<string, Readonly<Record<string, Field
   },
   CreditCardPayment: {
     adjusts_debt: { label: 'Ajusta la deuda', kind: 'boolean' },
+    bank_charge_expense_id: { label: 'Gasto del cargo bancario', kind: 'ref' },
   },
   CreditCardPaymentPlan: {
     planned_amount: { label: 'Monto planeado', kind: 'money' },
@@ -172,6 +173,7 @@ export const FIELD_LABELS: Readonly<Record<string, Readonly<Record<string, Field
     cycle_count: { label: 'Ciclos', kind: 'number' },
     valid_until: { label: 'Vigente hasta', kind: 'date' },
     anchor_statement_end: { label: 'Corte de referencia', kind: 'date' },
+    over_debt_reason: { label: 'Motivo sobre la deuda', kind: 'enum' },
   },
   CreditCardScheduledPayment: {},
   CreditCardInstallmentPlan: {
@@ -270,6 +272,9 @@ export const ENUM_VALUE_LABELS: Readonly<Record<string, string>> = {
   THIS_CYCLE: 'Este ciclo',
   N_CYCLES: 'Varios ciclos',
   UNTIL_DATE: 'Hasta una fecha',
+  INTEREST: 'Interés',
+  LATE_FEE: 'Cargo por atraso',
+  OTHER: 'Otro',
   MERCADO_PAGO: 'Mercado Pago',
   CA_DEPARTAMENTAL: 'C&A Departamental',
   CA_EFECTIVO: 'C&A Efectivo',

@@ -1,5 +1,9 @@
 import prisma from '@/lib/prisma';
-import { CardPaymentPlanScope, type FortnightPeriod } from '@/generated/prisma/client';
+import {
+  CardBankChargeReason,
+  CardPaymentPlanScope,
+  type FortnightPeriod,
+} from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { getCreditCardStatementByOwner } from '@/lib/finance/credit-card-statement.service';
 import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
@@ -75,7 +79,30 @@ export type UpsertCardPaymentPlanOptions = {
   scope?: CardPaymentPlanScopeKind;
   cycleCount?: number | null;
   validUntil?: string | null;
+  overDebtReason?: CardBankChargeReason | null;
 };
+
+export type UpsertCardPaymentPlanResult = {
+  credit_card_wallet_id: number;
+  fortnight_id: number;
+  planned_amount: { toString(): string } | number | string;
+  declared_zero: boolean;
+  scope: CardPaymentPlanScope | null;
+  cycle_count: number | null;
+  valid_until: Date | null;
+  over_debt_reason: CardBankChargeReason | null;
+  warning?: 'OVER_DEBT';
+  excess?: number;
+};
+
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+const isCardBankChargeReason = (
+  value: CardBankChargeReason | null | undefined,
+): value is CardBankChargeReason =>
+  value === CardBankChargeReason.INTEREST ||
+  value === CardBankChargeReason.LATE_FEE ||
+  value === CardBankChargeReason.OTHER;
 
 export async function getCreditCardPaymentPlanViews(
   ownerFilter: OwnerFilter,
@@ -305,7 +332,7 @@ export async function upsertCreditCardPaymentPlan(
   walletId: number,
   plannedAmount: number,
   options?: UpsertCardPaymentPlanOptions,
-) {
+): Promise<UpsertCardPaymentPlanResult> {
   const [fortnight, wallet] = await Promise.all([
     prisma.fortnight.findFirst({
       where: { id: fortnightId, ...ownerFilter },
@@ -343,8 +370,14 @@ export async function upsertCreditCardPaymentPlan(
   if (!declareZero && plannedAmount <= 0) {
     throw new DomainError('AMOUNT_INVALID', 'El monto planeado debe ser mayor a 0. Quita el monto planeado si no quieres un override.');
   }
-  if (!declareZero && plannedAmount > outstandingBalance) {
-    throw new DomainError('AMOUNT_EXCEEDS_BALANCE', 'El monto planeado no puede superar la deuda actual de la tarjeta');
+  const overDebt = !declareZero && plannedAmount > outstandingBalance;
+  const overDebtReason = overDebt ? options?.overDebtReason ?? null : null;
+  if (overDebt && !isCardBankChargeReason(overDebtReason)) {
+    throw new DomainError(
+      'OVER_DEBT_REASON_REQUIRED',
+      'El monto planeado supera la deuda registrada. Indica el motivo del cargo del banco.',
+      400,
+    );
   }
 
   const isUserContext = ownerFilter.user_id !== null;
@@ -370,7 +403,7 @@ export async function upsertCreditCardPaymentPlan(
     anchor_statement_end: anchorStatementEnd,
   };
 
-  return prisma.creditCardPaymentPlan.upsert({
+  const saved = await prisma.creditCardPaymentPlan.upsert({
     where: {
       credit_card_wallet_id_fortnight_id: {
         credit_card_wallet_id: walletId,
@@ -383,6 +416,7 @@ export async function upsertCreditCardPaymentPlan(
       planned_amount: storedAmount,
       declared_zero: declareZero,
       ...scopeData,
+      over_debt_reason: overDebtReason,
       user_id: isUserContext ? ownerFilter.user_id : null,
       house_id: !isUserContext ? ownerFilter.house_id : null,
     },
@@ -390,6 +424,7 @@ export async function upsertCreditCardPaymentPlan(
       planned_amount: storedAmount,
       declared_zero: declareZero,
       ...scopeData,
+      over_debt_reason: overDebtReason,
     },
     select: {
       credit_card_wallet_id: true,
@@ -399,8 +434,17 @@ export async function upsertCreditCardPaymentPlan(
       scope: true,
       cycle_count: true,
       valid_until: true,
+      over_debt_reason: true,
     },
   });
+
+  if (!overDebt) return saved;
+
+  return {
+    ...saved,
+    warning: 'OVER_DEBT',
+    excess: roundMoney(plannedAmount - outstandingBalance),
+  };
 }
 
 export async function clearCreditCardPaymentPlan(

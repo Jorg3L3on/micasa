@@ -43,23 +43,30 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           scope: validated.scope ?? 'this_cycle',
           cycleCount: validated.cycleCount,
           validUntil: validated.validUntil,
+          overDebtReason: validated.over_debt_reason,
         },
       );
 
-      return NextResponse.json(
-        {
-          walletId: plan.credit_card_wallet_id,
-          fortnightId: plan.fortnight_id,
-          plannedAmount: Number(plan.planned_amount),
-          declaredZero: plan.declared_zero === true,
-          scope: plan.scope,
-          cycleCount: plan.cycle_count,
-          validUntil: plan.valid_until
-            ? formatStoredDateOnly(plan.valid_until)
-            : null,
-        },
-        { status: 200 },
-      );
+      const payload = {
+        walletId: plan.credit_card_wallet_id,
+        fortnightId: plan.fortnight_id,
+        plannedAmount: Number(plan.planned_amount),
+        declaredZero: plan.declared_zero === true,
+        scope: plan.scope,
+        cycleCount: plan.cycle_count,
+        validUntil: plan.valid_until
+          ? formatStoredDateOnly(plan.valid_until)
+          : null,
+      };
+
+      if (plan.warning === 'OVER_DEBT') {
+        return NextResponse.json(
+          { ...payload, warning: plan.warning, excess: plan.excess },
+          { status: 200 },
+        );
+      }
+
+      return NextResponse.json(payload, { status: 200 });
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -73,11 +80,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (code === 'FORTNIGHT_NOT_FOUND' || code === 'WALLET_NOT_FOUND') {
       return NextResponse.json({ error: (error as Error).message }, { status: 404 });
     }
-    if (
-      code === 'AMOUNT_EXCEEDS_BALANCE' ||
-      code === 'AMOUNT_INVALID' ||
-      code === 'SCOPE_INVALID'
-    ) {
+    if (code === 'OVER_DEBT_REASON_REQUIRED') {
+      return NextResponse.json(
+        { error: (error as Error).message, code: 'OVER_DEBT_REASON_REQUIRED' },
+        { status: 400 },
+      );
+    }
+    if (code === 'AMOUNT_INVALID' || code === 'SCOPE_INVALID') {
       return NextResponse.json({ error: (error as Error).message }, { status: 400 });
     }
 

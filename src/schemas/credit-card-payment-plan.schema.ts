@@ -6,6 +6,12 @@ export const cardPaymentPlanScopeSchema = z.enum([
   'until_date',
 ]);
 
+export const cardBankChargeReasonSchema = z.enum([
+  'INTEREST',
+  'LATE_FEE',
+  'OTHER',
+]);
+
 const scopeFields = {
   scope: cardPaymentPlanScopeSchema.optional(),
   cycleCount: z.number().int().min(1).max(36).optional(),
@@ -44,6 +50,7 @@ export const cardPaymentPlanSchema = z
     walletId: z.number().int().positive(),
     plannedAmount: z.number().positive().optional(),
     declareZero: z.boolean().optional(),
+    over_debt_reason: cardBankChargeReasonSchema.nullish(),
     ...scopeFields,
   })
   .superRefine((data, ctx) => {

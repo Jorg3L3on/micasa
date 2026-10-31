@@ -563,7 +563,8 @@ model Expense {
   statement_import    CreditCardStatementImport? @relation(fields: [statement_import_id], references: [id], onDelete: SetNull)
 
   transferAsUser      Transfer?          @relation("TransferUserExpense")
-  credit_card_payment CreditCardPayment?
+  credit_card_payment CreditCardPayment? @relation("CreditCardPaymentExpense")
+  bank_charge_payment CreditCardPayment? @relation("CreditCardPaymentBankCharge")
 
   @@index([user_id])
   @@index([house_id])
@@ -755,6 +756,13 @@ enum CardPaymentPlanScope {
   UNTIL_DATE
 }
 
+/// Why a card payment is larger than the debt already recorded on the card.
+enum CardBankChargeReason {
+  INTEREST
+  LATE_FEE
+  OTHER
+}
+
 /// Monto que planeas pagar a una TC. La vigencia es por ciclo de corte, no por quincena suelta.
 model CreditCardPaymentPlan {
   id                    Int      @id @default(autoincrement())
@@ -771,6 +779,8 @@ model CreditCardPaymentPlan {
   valid_until           DateTime? @db.Date
   /// Statement end (corte) the write is anchored to. Null rows derive it from the stored fortnight.
   anchor_statement_end  DateTime? @db.Date
+  /// Set only when planned_amount is above the recorded card debt.
+  over_debt_reason      CardBankChargeReason?
   user_id               Int?
   house_id              Int?
   created_at            DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
@@ -1034,13 +1044,16 @@ model CreditCardPayment {
   user_id               Int?
   house_id              Int?
   expense_id            Int?     @unique
+  /// Expense that books interest, a late fee, or another bank charge above the recorded debt.
+  bank_charge_expense_id Int?    @unique
   created_at            DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
 
   credit_card_wallet Wallet   @relation("CreditCardWalletPayments", fields: [credit_card_wallet_id], references: [id])
   source_wallet      Wallet?  @relation("CreditCardSourceWalletPayments", fields: [source_wallet_id], references: [id])
   user               User?    @relation(fields: [user_id], references: [id])
   house              House?   @relation(fields: [house_id], references: [id])
-  expense            Expense? @relation(fields: [expense_id], references: [id], onDelete: SetNull)
+  expense            Expense? @relation("CreditCardPaymentExpense", fields: [expense_id], references: [id], onDelete: SetNull)
+  bank_charge_expense Expense? @relation("CreditCardPaymentBankCharge", fields: [bank_charge_expense_id], references: [id], onDelete: SetNull)
   scheduled_payment       CreditCardScheduledPayment?
   installment_plan_payment CreditCardInstallmentPlanPayment?
 
