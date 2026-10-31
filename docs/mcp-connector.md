@@ -193,7 +193,7 @@ Toda tool responde los errores como `{"error": "…", "code": "…", "hint"?: "�
 | `create_template` / `update_template` | Plantillas | `kind: expense\|income`. Billetera opcional en ambas (en ingresos, solo efectivo/débito). |
 | `create_month` | Crear mes / expandir plantillas | Idempotente. |
 | `regenerate_from_templates` | Regenerar quincena desde plantillas | `fortnight_id` o calendario. `confirm: true`. |
-| `add_card_payment` | Pago de tarjeta | `mode`: `external` (default) o `wallet` (descuenta billetera MiCasa). |
+| `add_card_payment` | Pago de tarjeta | `mode`: `external` (default) o `wallet` (descuenta billetera MiCasa). Si el monto supera la deuda, `bank_charge.reason`: `INTEREST`, `LATE_FEE` u `OTHER`. |
 | `upsert_installment_plan` | Crea (sin `plan_id`) o actualiza un plan MSI | Al actualizar, `paid_installments` es obligatorio. |
 | `create_scheduled_payment` | Cuota programada suelta en calendario de tarjeta | |
 | `upsert_card_payment_plan` | Monto planeado de pago de tarjeta en quincena | |

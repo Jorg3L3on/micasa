@@ -51,6 +51,7 @@ const db = vi.hoisted(() => {
       loan_payment: null,
       transferAsUser: null,
       credit_card_payment: null,
+      bank_charge_payment: null,
     };
   };
 

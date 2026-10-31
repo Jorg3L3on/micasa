@@ -17,6 +17,7 @@ import {
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
 import { setAuditLabel } from '@/lib/server/audit/audit-context';
+import { statementChargeDedupeWhere } from '@/lib/finance/card-bank-charge';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
   extractMercadoPagoStatementText,
@@ -517,14 +518,14 @@ async function runImport(
 
       if (skipDuplicates) {
         const dup = await tx.expense.findFirst({
-          where: {
-            wallet_id: creditCardWalletId,
+          where: statementChargeDedupeWhere({
+            walletId: creditCardWalletId,
             amount: mov.amount,
             description: mov.description,
-            payment_date: { gte: start, lte: end },
-            /** Evita que dos filas idénticas del mismo PDF se salten entre sí. */
-            NOT: { statement_import_id: createdImport.id },
-          },
+            start,
+            end,
+            excludeStatementImportId: createdImport.id,
+          }),
         });
         if (dup) {
           duplicatesSkipped += 1;

@@ -146,6 +146,7 @@ describe('pay_card wallet payload', () => {
       fortnight_id: undefined,
       category_id: undefined,
       expense_description: null,
+      bank_charge: null,
     });
   });
 });

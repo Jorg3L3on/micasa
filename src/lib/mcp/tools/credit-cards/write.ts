@@ -43,6 +43,7 @@ type CardPaymentToolArgs = {
   category_id?: number;
   category_name?: string;
   expense_description?: string;
+  bank_charge?: { reason: 'INTEREST' | 'LATE_FEE' | 'OTHER' };
 };
 
 const executeCardPayment = async (
@@ -60,6 +61,7 @@ const executeCardPayment = async (
         paid_at: paidAt,
         note: args.note ?? null,
         adjusts_debt: args.adjusts_debt ?? true,
+        bank_charge: args.bank_charge,
       }),
     );
     const payment = await createCreditCardPayment(
@@ -73,6 +75,7 @@ const executeCardPayment = async (
       amount: payment.amount,
       paid_at: paidAt,
       adjusts_debt: args.adjusts_debt ?? true,
+      bank_charge_expense_id: payment.bank_charge_expense_id,
     };
   }
 
@@ -109,6 +112,7 @@ const executeCardPayment = async (
       fortnight_id: args.fortnight_id,
       category_id: categoryId,
       expense_description: args.expense_description ?? null,
+      bank_charge: args.bank_charge,
     }),
   );
   const payment = await createCreditCardPayment(
@@ -125,6 +129,7 @@ const executeCardPayment = async (
     source_wallet_id: sourceWallet.id,
     source_wallet_name: sourceWallet.name,
     expense_id: payment.expense_id ?? null,
+    bank_charge_expense_id: payment.bank_charge_expense_id,
   };
 };
 
@@ -138,7 +143,7 @@ export function registerCardWriteTools(server: McpServer) {
     name: 'add_card_payment',
     title: 'Registrar pago de tarjeta',
     description:
-      'Registra un pago de tarjeta. mode external: pago hecho fuera de MiCasa (no descuenta billeteras). mode wallet: descuenta una billetera de efectivo/débito del contexto y puede registrar el gasto en la quincena.',
+      'Registra un pago de tarjeta. mode external: pago hecho fuera de MiCasa (no descuenta billeteras). mode wallet: descuenta una billetera de efectivo/débito del contexto y puede registrar el gasto en la quincena. Si supera la deuda, envía bank_charge.',
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
@@ -168,6 +173,12 @@ export function registerCardWriteTools(server: McpServer) {
       fortnight_id: z.number().int().positive().optional().describe('mode wallet: quincena del gasto; default la de paid_at.'),
       ...categoryRef,
       expense_description: z.string().trim().max(200).optional().describe('mode wallet: concepto del gasto en la quincena.'),
+      bank_charge: z
+        .object({
+          reason: z.enum(['INTEREST', 'LATE_FEE', 'OTHER']),
+        })
+        .optional()
+        .describe('Si el pago supera la deuda: INTEREST, LATE_FEE u OTHER.'),
     },
     run: (agent, args) => executeCardPayment(agent, args),
   });

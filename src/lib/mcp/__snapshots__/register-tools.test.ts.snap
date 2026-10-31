@@ -11,6 +11,7 @@ exports[`MCP tool registry > tools/list coincide con el snapshot (nombres, anota
     "properties": [
       "adjusts_debt",
       "amount",
+      "bank_charge",
       "card_id",
       "category_id",
       "category_name",
