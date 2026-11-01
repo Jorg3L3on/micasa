@@ -2,14 +2,7 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
-import {
-  ArrowLeftRight,
-  CirclePlus,
-  MoreHorizontal,
-  Pencil,
-  SlidersHorizontal,
-  Trash2,
-} from 'lucide-react';
+import { ArrowLeftRight, CirclePlus, SlidersHorizontal } from 'lucide-react';
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
@@ -20,19 +13,11 @@ import { effectiveCreditLimit } from '@/lib/ui/wallet-cover-flow';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 export type WalletFlowActions = {
   onTransfer: (wallet: WalletListItem) => void;
   onIncome: (wallet: WalletListItem) => void;
   onAdjustBalance: (wallet: WalletListItem) => void;
-  onEdit: (wallet: WalletListItem) => void;
-  onDelete: (wallet: WalletListItem) => void;
 };
 
 type WalletFlowDetailsProps = WalletFlowActions & {
@@ -56,7 +41,7 @@ const Metric = ({
   direction: 1 | -1;
   className?: string;
 }) => (
-  <div className={cn('min-w-0', className)}>
+  <div className={cn('min-w-0 text-center', className)}>
     <p className="truncate text-caption text-muted-foreground">
       <RollingText text={label} direction={direction} />
     </p>
@@ -82,8 +67,6 @@ export const WalletFlowDetails = ({
   onTransfer,
   onIncome,
   onAdjustBalance,
-  onEdit,
-  onDelete,
 }: WalletFlowDetailsProps) => {
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const amount = Number(wallet.amount) || 0;
@@ -114,30 +97,26 @@ export const WalletFlowDetails = ({
   ) : (
     <>
       <Metric label="Saldo" value={{ amount }} direction={direction} />
-      <Metric
-        label="Liquidez"
-        value={{
-          text: wallet.include_in_liquidity ? 'Incluida' : 'Excluida',
-        }}
-        direction={direction}
-      />
-      <Metric
-        // The type already sits under the wallet name, so phones skip it.
-        className={isHouseContext ? undefined : 'hidden md:block'}
-        label={isHouseContext ? 'Responsable' : 'Tipo'}
-        value={{
-          text: isHouseContext
-            ? (wallet.assignee?.name ?? 'Compartida')
-            : typeLabel,
-        }}
-        direction={direction}
-      />
+      {wallet.include_in_liquidity ? null : (
+        <Metric
+          label="Liquidez"
+          value={{ text: 'Excluida' }}
+          direction={direction}
+        />
+      )}
+      {isHouseContext ? (
+        <Metric
+          label="Responsable"
+          value={{ text: wallet.assignee?.name ?? 'Compartida' }}
+          direction={direction}
+        />
+      ) : null}
     </>
   );
 
   return (
     <div className="mt-4 w-full">
-      <div className="flex items-start justify-center gap-1 text-center">
+      <div className="text-center">
         <motion.div
           key={wallet.id}
           className="min-w-0"
@@ -149,55 +128,19 @@ export const WalletFlowDetails = ({
             {wallet.name}
           </h3>
           <p className="truncate text-body text-muted-foreground">
-            {isCard && wallet.cutoff_day != null && wallet.due_day != null
-              ? `${typeLabel} · Corte ${wallet.cutoff_day} · Pago ${wallet.due_day}`
+            {isCard && wallet.cutoff_day != null
+              ? `${typeLabel} · Corte ${wallet.cutoff_day}`
               : typeLabel}
           </p>
         </motion.div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="size-8 shrink-0 rounded-full"
-              aria-label={`Más opciones para ${wallet.name}`}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem
-              onClick={() => onEdit(wallet)}
-              className="cursor-pointer"
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDelete(wallet)}
-              className="cursor-pointer text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Eliminar
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
-      <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:border-t md:border-border/60 md:pt-4">
-        <div
-          className={cn(
-            'grid gap-4 md:flex md:gap-8',
-            isCard || isHouseContext ? 'grid-cols-3' : 'grid-cols-2',
-          )}
-        >
+      <div className="mt-5 flex flex-col items-center gap-4 md:border-t md:border-border/60 md:pt-4">
+        <div className="flex w-full flex-wrap justify-center gap-x-8 gap-y-3">
           {metrics}
         </div>
         <div
-          className={cn(
-            'grid grid-cols-2 gap-2 md:flex md:flex-wrap md:justify-end'
-          )}
+          className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap md:justify-center"
           role="group"
           aria-label={`Acciones de ${wallet.name}`}
         >

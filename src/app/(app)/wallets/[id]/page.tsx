@@ -17,12 +17,14 @@ import {
   Download,
   Pencil,
   SlidersHorizontal,
+  Trash2,
   Upload,
 } from 'lucide-react';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import WalletForm from '@/components/WalletForm';
+import { useWalletDelete } from '@/components/wallets/use-wallet-delete';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
@@ -574,6 +576,8 @@ export default function WalletDetailPage() {
     [],
   );
 
+  const { requestDelete, dialog: deleteDialog } = useWalletDelete(wallet, context);
+
   const overflowItems = useMemo((): ToolbarOverflowItem[] => {
     if (!wallet) return [];
     const items: ToolbarOverflowItem[] = [];
@@ -607,12 +611,21 @@ export default function WalletDetailPage() {
         icon: <Upload data-icon="inline-start" />,
       });
     }
-    items.push({
-      key: 'export',
-      label: 'Exportar CSV',
-      onClick: handleExportCsv,
-      icon: <Download data-icon="inline-start" />,
-    });
+    items.push(
+      {
+        key: 'export',
+        label: 'Exportar CSV',
+        onClick: handleExportCsv,
+        icon: <Download data-icon="inline-start" />,
+      },
+      {
+        key: 'delete',
+        label: 'Eliminar billetera',
+        onClick: requestDelete,
+        icon: <Trash2 data-icon="inline-start" />,
+        destructive: true,
+      },
+    );
     return items;
   }, [
     wallet,
@@ -622,6 +635,7 @@ export default function WalletDetailPage() {
     handleOpenBalance,
     handleOpenEdit,
     handleOpenImport,
+    requestDelete,
   ]);
 
   useRegisterToolbarActions({
@@ -803,6 +817,8 @@ export default function WalletDetailPage() {
           onSuccess={loadData}
         />
       ) : null}
+
+      {deleteDialog}
 
       <WalletForm
         open={editOpen}

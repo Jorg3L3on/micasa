@@ -18,12 +18,14 @@ import {
   Pencil,
   ShoppingCart,
   SlidersHorizontal,
+  Trash2,
   Upload,
   Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import WalletForm from '@/components/WalletForm';
+import { useWalletDelete } from '@/components/wallets/use-wallet-delete';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
@@ -616,6 +618,8 @@ export default function CreditCardDetailPage() {
     [],
   );
 
+  const { requestDelete, dialog: deleteDialog } = useWalletDelete(card, context);
+
   const overflowItems = useMemo((): ToolbarOverflowItem[] => {
     if (!card) return [];
     return [
@@ -661,6 +665,13 @@ export default function CreditCardDetailPage() {
         onClick: handleExportPdf,
         icon: <FileText data-icon="inline-start" />,
       },
+      {
+        key: 'delete',
+        label: 'Eliminar tarjeta',
+        onClick: requestDelete,
+        icon: <Trash2 data-icon="inline-start" />,
+        destructive: true,
+      },
     ];
   }, [
     card,
@@ -671,6 +682,7 @@ export default function CreditCardDetailPage() {
     handleOpenExternalPayment,
     handleOpenImport,
     handleOpenBalance,
+    requestDelete,
   ]);
 
   useRegisterToolbarActions({
@@ -951,6 +963,8 @@ export default function CreditCardDetailPage() {
             : undefined
         }
       />
+
+      {deleteDialog}
 
       <WalletForm
         open={editCardDialogOpen}

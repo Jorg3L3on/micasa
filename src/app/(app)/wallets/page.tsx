@@ -23,7 +23,6 @@ import EmptyState from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/error-banner';
 import WalletForm from '@/components/WalletForm';
 import { WalletFormValues } from '@/schemas/wallet.schema';
-import WalletDeleteDialog from '@/components/wallets/WalletDeleteDialog';
 import { useFinanceContext } from '@/context/finance-context';
 import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import {
@@ -34,18 +33,9 @@ import {
 import {
   buildOwnerQuery,
   clientFetchFromApi,
-  type ClientApiError,
 } from '@/lib/api/client-fetch';
-import {
-  createCreditCard,
-  deleteCreditCard,
-  updateCreditCard,
-} from '@/lib/api/credit-cards';
-import {
-  createWallet,
-  deleteWallet,
-  updateWallet,
-} from '@/lib/api/wallets';
+import { createCreditCard } from '@/lib/api/credit-cards';
+import { createWallet } from '@/lib/api/wallets';
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_OPTIONS,
@@ -100,7 +90,6 @@ import {
   setWalletListCache,
   walletListOwnerKey,
 } from '@/lib/ui/wallet-list-cache';
-import { cn } from '@/lib/utils';
 import { FilterChip } from '@/components/filter-chip';
 
 const CREDIT_TYPES: PaymentMethodType[] = ['CREDIT_CARD', 'DEPARTMENT_STORE_CARD'];
@@ -422,11 +411,6 @@ export default function WalletsPage() {
   const [loading, setLoading] = useState(() => !cacheHit);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedWallet, setSelectedWallet] = useState<WalletListItem | null>(
-    null,
-  );
   const [balanceWallet, setBalanceWallet] = useState<WalletListItem | null>(null);
   const [transferWallet, setTransferWallet] = useState<WalletListItem | null>(null);
   const [incomeWallet, setIncomeWallet] = useState<WalletListItem | null>(null);
@@ -909,76 +893,6 @@ export default function WalletsPage() {
     }
   };
 
-  const handleEdit = async (data: WalletFormValues) => {
-    if (!selectedWallet) return;
-    try {
-      setFormError(null);
-      if (isCreditType(selectedWallet.type)) {
-        await updateCreditCard(selectedWallet.id, data, context);
-        toast.success('Tarjeta actualizada');
-      } else {
-        await updateWallet(selectedWallet.id, data, context);
-        toast.success('Billetera actualizada');
-      }
-      await fetchWallets();
-      setEditDialogOpen(false);
-      setSelectedWallet(null);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Error al actualizar';
-      setFormError(message);
-      throw err;
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!selectedWallet) return;
-    try {
-      setError(null);
-      if (isCreditType(selectedWallet.type)) {
-        await deleteCreditCard(selectedWallet.id, context);
-      } else {
-        await deleteWallet(selectedWallet.id, context);
-      }
-      toast.success('Eliminada');
-      await fetchWallets();
-      setDeleteDialogOpen(false);
-      setSelectedWallet(null);
-    } catch (err) {
-      const apiErr = err as ClientApiError;
-      const message =
-        err instanceof Error ? err.message : 'Error al eliminar';
-      if (
-        apiErr.status === 409 ||
-        message.includes('409') ||
-        message.includes('in use') ||
-        message.includes('Conflict') ||
-        message.includes('related') ||
-        message.includes('asociadas')
-      ) {
-        setError(
-          message.includes('Desactívala')
-            ? message
-            : 'Está en uso y no puede eliminarse. Desactívala desde Editar si ya no la usas.',
-        );
-      } else {
-        setError(message);
-      }
-    }
-  };
-
-  const openEditDialog = useCallback((wallet: WalletListItem) => {
-    setSelectedWallet(wallet);
-    setEditDialogOpen(true);
-    setFormError(null);
-  }, []);
-
-  const openDeleteDialog = useCallback((wallet: WalletListItem) => {
-    setSelectedWallet(wallet);
-    setDeleteDialogOpen(true);
-    setError(null);
-  }, []);
-
   const openTransferDialog = useCallback((wallet: WalletListItem) => {
     setTransferWallet(wallet);
   }, []);
@@ -1020,8 +934,6 @@ export default function WalletsPage() {
     onTransfer: openTransferDialog,
     onIncome: setIncomeWallet,
     onAdjustBalance: setBalanceWallet,
-    onEdit: openEditDialog,
-    onDelete: openDeleteDialog,
   };
 
   useRegisterToolbarActions({
@@ -1343,7 +1255,7 @@ export default function WalletsPage() {
       </ToolbarFiltersPortal>
 
       <div className="relative z-0">
-      {error && !deleteDialogOpen ? (
+      {error ? (
         <ErrorBanner className="mb-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span>{error}</span>
@@ -1520,67 +1432,6 @@ export default function WalletsPage() {
         }}
       />
 
-      {selectedWallet && (
-        <>
-          <WalletForm
-            open={editDialogOpen}
-            onOpenChange={(open) => {
-              setEditDialogOpen(open);
-              if (!open) {
-                setSelectedWallet(null);
-                setFormError(null);
-              }
-            }}
-            onSave={handleEdit}
-            mode="edit"
-            showAmountField={!isCreditType(selectedWallet.type)}
-            defaultValues={{
-              name: selectedWallet.name,
-              amount: selectedWallet.amount ?? 0,
-              credit_limit: selectedWallet.credit_limit ?? null,
-              temporary_credit_limit: selectedWallet.temporary_credit_limit ?? null,
-              type: selectedWallet.type as PaymentMethodType,
-              provider_icon_key: selectedWallet.provider_icon_key ?? null,
-              active: selectedWallet.active,
-              include_in_liquidity: selectedWallet.include_in_liquidity ?? true,
-              cutoff_day: selectedWallet.cutoff_day,
-              due_day: selectedWallet.due_day,
-              minimum_payment: selectedWallet.minimum_payment ?? null,
-              apr_annual: selectedWallet.apr_annual ?? null,
-              cat_annual: selectedWallet.cat_annual ?? null,
-              goal_amount: null,
-              goal_due_date: null,
-              assignee_user_id: selectedWallet.assignee_user_id ?? null,
-            }}
-            allowedTypes={['CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'DEPARTMENT_STORE_CARD']}
-            error={formError && editDialogOpen ? formError : null}
-          />
-
-          <WalletDeleteDialog
-            open={deleteDialogOpen}
-            onOpenChange={(open) => {
-              setDeleteDialogOpen(open);
-              if (!open) {
-                setSelectedWallet(null);
-                setError(null);
-              }
-            }}
-            onConfirm={handleDelete}
-            title={
-              isCreditType(selectedWallet.type)
-                ? 'Eliminar tarjeta'
-                : 'Eliminar billetera'
-            }
-            description={
-              isCreditType(selectedWallet.type)
-                ? '¿Estás seguro de querer eliminar esta tarjeta? Esta acción no puede deshacerse.'
-                : '¿Estás seguro de querer eliminar esta billetera? Esta acción no puede deshacerse.'
-            }
-            itemName={selectedWallet.name}
-            error={error}
-          />
-        </>
-      )}
     </div>
     </MobilePullToRefresh>
     </DirectionalTransition>
