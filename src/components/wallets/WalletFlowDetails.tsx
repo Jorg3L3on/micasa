@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -16,6 +15,7 @@ import {
   PAYMENT_METHOD_LABELS,
   isCreditOrStoreCardWalletType,
 } from '@/domain/payment-method';
+import { RollingNumber, RollingText } from '@/components/ui/rolling-number';
 import { effectiveCreditLimit } from '@/lib/ui/wallet-cover-flow';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
@@ -43,11 +43,27 @@ type WalletFlowDetailsProps = WalletFlowActions & {
   direction?: 1 | -1;
 };
 
-const Metric = ({ label, value }: { label: string; value: ReactNode }) => (
+type MetricValue = { amount: number } | { text: string };
+
+const Metric = ({
+  label,
+  value,
+  direction,
+}: {
+  label: string;
+  value: MetricValue;
+  direction: 1 | -1;
+}) => (
   <div className="min-w-0">
-    <p className="text-caption text-muted-foreground">{label}</p>
-    <p className="truncate text-lg font-semibold tabular-nums leading-snug text-foreground">
-      {value}
+    <p className="truncate text-caption text-muted-foreground">
+      <RollingText text={label} direction={direction} />
+    </p>
+    <p className="truncate text-lg font-semibold leading-snug text-foreground">
+      {'amount' in value ? (
+        <RollingNumber text={formatCurrency(value.amount)} />
+      ) : (
+        <RollingText text={value.text} direction={direction} />
+      )}
     </p>
   </div>
 );
@@ -75,30 +91,42 @@ export const WalletFlowDetails = ({
 
   const metrics = isCard ? (
     <>
-      <Metric label="Usado" value={formatCurrency(amount)} />
+      <Metric label="Usado" value={{ amount }} direction={direction} />
       <Metric
         label="Disponible"
         value={
-          limit != null && limit > 0 ? formatCurrency(limit - amount) : 'Sin línea'
+          limit != null && limit > 0
+            ? { amount: limit - amount }
+            : { text: 'Sin línea' }
         }
+        direction={direction}
       />
       <Metric
         label="Próximo pago"
-        value={wallet.due_day != null ? `Día ${wallet.due_day}` : 'Sin fecha'}
+        value={{
+          text: wallet.due_day != null ? `Día ${wallet.due_day}` : 'Sin fecha',
+        }}
+        direction={direction}
       />
     </>
   ) : (
     <>
-      <Metric label="Saldo" value={formatCurrency(amount)} />
+      <Metric label="Saldo" value={{ amount }} direction={direction} />
       <Metric
         label="Liquidez"
-        value={wallet.include_in_liquidity ? 'Incluida' : 'Excluida'}
+        value={{
+          text: wallet.include_in_liquidity ? 'Incluida' : 'Excluida',
+        }}
+        direction={direction}
       />
       <Metric
         label={isHouseContext ? 'Responsable' : 'Tipo'}
-        value={
-          isHouseContext ? (wallet.assignee?.name ?? 'Compartida') : typeLabel
-        }
+        value={{
+          text: isHouseContext
+            ? (wallet.assignee?.name ?? 'Compartida')
+            : typeLabel,
+        }}
+        direction={direction}
       />
     </>
   );
