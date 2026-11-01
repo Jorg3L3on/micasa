@@ -34,6 +34,8 @@ const SIDE_TURN_DEG = 38;
 export const coverFlowSlot = (
   offset: number,
   sideReach: number = WALLET_COVER_FLOW_SIDE_REACH,
+  /** Scales how much side cards dim; 1 is the default, 0.75 is a quarter less. */
+  dimming: number = 1,
 ): CoverFlowSlot => {
   const sign = offset < 0 ? -1 : 1;
   const distance = Math.abs(offset);
@@ -44,7 +46,7 @@ export const coverFlowSlot = (
     shift: sign * (SIDE_SHIFT * near + FAR_SHIFT * far),
     rotateY: -sign * SIDE_TURN_DEG * near + 0,
     scale: Math.max(0.7, 1 - 0.14 * near - 0.06 * far),
-    opacity: Math.max(0, (1 - 0.08 * near - 0.12 * far) * fade),
+    opacity: Math.max(0, (1 - (0.08 * near + 0.12 * far) * dimming) * fade),
     zIndex: Math.round(100 - distance * 10),
   };
 };

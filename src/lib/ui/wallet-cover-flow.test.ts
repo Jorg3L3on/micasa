@@ -37,6 +37,14 @@ describe('clampFlowIndex', () => {
   });
 });
 
+describe('coverFlowSlot dimming', () => {
+  it('dims side cards a quarter less at 0.75', () => {
+    const base = 1 - coverFlowSlot(1).opacity;
+    const softer = 1 - coverFlowSlot(1, 2, 0.75).opacity;
+    expect(softer).toBeCloseTo(base * 0.75);
+  });
+});
+
 describe('coverFlowSlot', () => {
   it('keeps side cards mostly opaque', () => {
     expect(coverFlowSlot(1).opacity).toBeGreaterThan(0.9);

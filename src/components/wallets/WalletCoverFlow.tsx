@@ -24,6 +24,7 @@ import {
   settleFlowIndex,
 } from '@/lib/ui/wallet-cover-flow';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { WalletListItem } from '@/types/catalog';
 import { WalletFlowFace } from '@/components/wallets/WalletFlowFace';
 
@@ -42,6 +43,8 @@ type FlowCardProps = {
   count: number;
   position: MotionValue<number>;
   reducedMotion: boolean;
+  /** Scales side-card dimming (see `coverFlowSlot`). */
+  dimming: number;
   isFront: boolean;
   onClick: () => void;
 };
@@ -52,19 +55,20 @@ const FlowCard = ({
   count,
   position,
   reducedMotion,
+  dimming,
   isFront,
   onClick,
 }: FlowCardProps) => {
   const offset = useTransform(position, (p) => index - p);
   const transform = useTransform(offset, (d) => {
-    const slot = coverFlowSlot(d);
+    const slot = coverFlowSlot(d, undefined, dimming);
     const turn = reducedMotion ? 0 : slot.rotateY;
     const scale = reducedMotion ? 1 : slot.scale;
     return `translateX(calc(-50% + var(--flow-w) * ${slot.shift})) scale(${scale}) rotateY(${turn}deg)`;
   });
-  const opacity = useTransform(offset, (d) => coverFlowSlot(d).opacity);
+  const opacity = useTransform(offset, (d) => coverFlowSlot(d, undefined, dimming).opacity);
   const pointerEvents = useTransform(offset, (d) =>
-    coverFlowSlot(d).opacity < 0.05 ? 'none' : 'auto',
+    coverFlowSlot(d, undefined, dimming).opacity < 0.05 ? 'none' : 'auto',
   );
   const zIndex = useTransform(offset, (d) => coverFlowSlot(d).zIndex);
   const visibility = useTransform(offset, (d) =>
@@ -130,6 +134,7 @@ export const WalletCoverFlow = ({
   const count = wallets.length;
   const active = clampFlowIndex(activeIndex, count);
   const reducedMotion = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
   const position = useMotionValue(active);
   const stageRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{
@@ -332,7 +337,7 @@ export const WalletCoverFlow = ({
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
         className={cn(
-          'relative mx-auto h-[calc(var(--flow-w)/1.586+4.5rem)] w-full touch-pan-y select-none overflow-hidden rounded-face outline-none [--flow-w:clamp(280px,76cqw,544px)] [perspective:1100px] focus-visible:ring-2 focus-visible:ring-ring',
+          'relative mx-auto h-[calc(var(--flow-w)/1.586+2.5rem)] md:h-[calc(var(--flow-w)/1.586+4.5rem)] w-full touch-pan-y select-none overflow-hidden rounded-face outline-none [--flow-w:clamp(280px,76cqw,544px)] [perspective:1100px] focus-visible:ring-2 focus-visible:ring-ring',
           dragging ? 'cursor-grabbing' : 'cursor-grab',
         )}
       >
@@ -344,6 +349,7 @@ export const WalletCoverFlow = ({
             count={count}
             position={position}
             reducedMotion={reducedMotion}
+            dimming={isMobile ? 0.75 : 1}
             isFront={index === active}
             onClick={() => handleCardClick(index)}
           />

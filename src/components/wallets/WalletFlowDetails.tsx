@@ -49,12 +49,14 @@ const Metric = ({
   label,
   value,
   direction,
+  className,
 }: {
   label: string;
   value: MetricValue;
   direction: 1 | -1;
+  className?: string;
 }) => (
-  <div className="min-w-0">
+  <div className={cn('min-w-0', className)}>
     <p className="truncate text-caption text-muted-foreground">
       <RollingText text={label} direction={direction} />
     </p>
@@ -120,6 +122,8 @@ export const WalletFlowDetails = ({
         direction={direction}
       />
       <Metric
+        // The type already sits under the wallet name, so phones skip it.
+        className={isHouseContext ? undefined : 'hidden md:block'}
         label={isHouseContext ? 'Responsable' : 'Tipo'}
         value={{
           text: isHouseContext
@@ -182,7 +186,14 @@ export const WalletFlowDetails = ({
       </div>
 
       <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:border-t md:border-border/60 md:pt-4">
-        <div className="grid grid-cols-3 gap-4 md:flex md:gap-8">{metrics}</div>
+        <div
+          className={cn(
+            'grid gap-4 md:flex md:gap-8',
+            isCard || isHouseContext ? 'grid-cols-3' : 'grid-cols-2',
+          )}
+        >
+          {metrics}
+        </div>
         <div
           className={cn(
             'grid grid-cols-2 gap-2 md:flex md:flex-wrap md:justify-end'
