@@ -54,12 +54,19 @@ type LiquidityFutureTimelineProps = {
   selectedMonthKey: string;
   onSelectMonth: (monthKey: string) => void;
   isRefreshing?: boolean;
+  /** Cash a "¿Y si…?" simulation adds per month; draws the dashed series. */
+  scenarioByMonth?: Map<string, number> | null;
 };
+
+/** Scenario series: --chart-2 lifted for contrast on navy (canvas v4). */
+const SCENARIO_STROKE = 'color-mix(in srgb, var(--chart-2) 70%, white)';
 
 type ChartPoint = {
   label: string;
   monthKey: string;
   monthDebt: number;
+  /** Month payments with the simulation; null when the simulation adds nothing that month. */
+  scenarioDebt: number | null;
   outstandingDebt: number;
   income: number;
   monthlyRemaining: number;
@@ -118,6 +125,20 @@ const DebtMonthTooltip = ({ active, payload, rows, selectedMonthKey }: DebtMonth
               {formatCurrency(point.monthDebt)}
             </dd>
           </div>
+          {point.scenarioDebt != null && Math.abs(point.scenarioDebt - point.monthDebt) >= 0.5 ? (
+            <div className="flex items-center justify-between gap-3">
+              <dt className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                <span
+                  className="h-0 w-3.5 shrink-0 border-t-2 border-dashed border-[color-mix(in_srgb,var(--chart-2)_70%,white)]"
+                  aria-hidden
+                />
+                <span className="truncate">Con esta simulación</span>
+              </dt>
+              <dd className="shrink-0 font-sans text-sm font-semibold tabular-nums text-foreground">
+                {formatCurrency(point.scenarioDebt)}
+              </dd>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between gap-3">
             <dt className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
               <span
@@ -342,6 +363,7 @@ export const LiquidityFutureTimeline = ({
   selectedMonthKey,
   onSelectMonth,
   isRefreshing = false,
+  scenarioByMonth = null,
 }: LiquidityFutureTimelineProps) => {
   // The brush is a desktop power feature; on phones the pills are the only range
   // control, so the chart gets the visible slice directly instead of brushing it.
@@ -370,10 +392,12 @@ export const LiquidityFutureTimeline = ({
                     event.title.replace(/^Terminas de pagar\s+/i, ''),
                   )
                   .join(', ');
+        const monthDebt = monthDebtPaymentsTotal(month.debt_items ?? []);
         return {
           label: formatShortMonthLabel(month.month_key),
           monthKey: month.month_key,
-          monthDebt: monthDebtPaymentsTotal(month.debt_items ?? []),
+          monthDebt,
+          scenarioDebt: scenarioByMonth ? monthDebt + (scenarioByMonth.get(month.month_key) ?? 0) : null,
           outstandingDebt: month.outstanding_debt_total ?? 0,
           income: month.expected_income_total,
           monthlyRemaining: month.monthly_remaining,
@@ -382,7 +406,11 @@ export const LiquidityFutureTimeline = ({
           eventNames: monthEvents.map((event) => stripPayoffPrefix(event.title)),
         };
       }),
-    [eventsByMonth, months],
+    [eventsByMonth, months, scenarioByMonth],
+  );
+  // Nothing to compare when the simulation adds no payment in any month.
+  const showScenario = chartRows.some(
+    (row) => row.scenarioDebt != null && Math.abs(row.scenarioDebt - row.monthDebt) >= 0.5,
   );
 
   const { startIndex, endIndex } = resolveVisibleIndexes(chartRows, visibleRange);
@@ -465,6 +493,14 @@ export const LiquidityFutureTimeline = ({
             </span>
             <span className="text-caption text-muted-foreground">Aquí terminas de pagar</span>
           </span>
+          {showScenario ? (
+            <span className="flex items-center gap-1.5">
+              <svg width="16" height="6" aria-hidden>
+                <line x1="0" y1="3" x2="16" y2="3" stroke={SCENARIO_STROKE} strokeWidth="2" strokeDasharray="4 3" />
+              </svg>
+              <span className="text-caption text-muted-foreground">Con esta simulación</span>
+            </span>
+          ) : null}
         </div>
 
         <div className={cn('-mx-1 h-72 sm:h-80 xl:h-[22rem]', BRUSH_STYLE_CLASS)}>
@@ -591,6 +627,20 @@ export const LiquidityFutureTimeline = ({
                 }}
                 isAnimationActive
               />
+              {showScenario ? (
+                <Line
+                  type="monotone"
+                  dataKey="scenarioDebt"
+                  name="Con esta simulación"
+                  yAxisId="payments"
+                  stroke={SCENARIO_STROKE}
+                  strokeWidth={2.25}
+                  strokeDasharray="5 4"
+                  dot={false}
+                  activeDot={{ r: 4, fill: SCENARIO_STROKE, stroke: CHART_COLOR.background, strokeWidth: 2 }}
+                  animationDuration={120}
+                />
+              ) : null}
               <Line
                 type="monotone"
                 dataKey="outstandingDebt"

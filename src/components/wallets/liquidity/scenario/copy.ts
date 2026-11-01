@@ -1,0 +1,67 @@
+/**
+ * "¿Y si…?" copy (MIC-I8). Same tone as `PLAN_COPY.simDisclaimer`: facts in
+ * conditional, always base → scenario. Never: te conviene, deberías, puedes
+ * pagarlo, es seguro, evita, prioriza, recomendamos.
+ */
+export const SCENARIO_COPY = {
+  title: '¿Y si…?',
+  invite: 'Prueba una compra o un pago mensual. No se guarda nada.',
+  inviteCta: 'Probar un escenario',
+  formHint: 'Se calcula en tu pantalla. No se guarda ni se avisa a nadie.',
+  kindLabel: 'Tipo de simulación',
+  purchase: 'Una compra',
+  instalment: 'Un pago mensual',
+  wallet: 'Billetera',
+  walletPlaceholder: 'Elige una billetera',
+  walletGroupFunding: 'Efectivo y débito',
+  walletGroupCards: 'Tarjetas',
+  amount: 'Monto',
+  monthlyAmount: 'Monto por mes',
+  date: 'Fecha',
+  firstDate: 'Primer pago',
+  months: 'Meses',
+  fewerMonths: 'Un mes menos',
+  moreMonths: 'Un mes más',
+  simulate: 'Simular',
+  simulating: 'Simulando…',
+  resimulate: 'Volver a simular',
+  change: 'Cambiar',
+  changeInPlan: 'Cambiar en Plan',
+  errorAmount: 'Escribe un monto mayor a $0.',
+  errorWallet: 'Elige una billetera.',
+  errorDatePast: 'Elige un día de hoy en adelante.',
+  errorDateMissing: 'Elige un día.',
+  errorMonths: 'Indica de 1 a 48 meses.',
+  errorDateAfter: (until: string) =>
+    `Tu proyección llega hasta el ${until}. Elige un día entre hoy y esa fecha.`,
+  errorTitle: 'No pudimos simular',
+  errorBody: 'Tu plan sigue igual y no se guardó nada. Revisa tu conexión e inténtalo de nuevo.',
+  bannerTitle: 'Simulación: no se guardó nada',
+  bannerShort: 'Qué pasaría, no una recomendación.',
+  bannerTail: 'Tu plan y tu proyección reales no cambiaron y esto no es una recomendación.',
+  remove: 'Quitar simulación',
+  clearedOnContextSwitch:
+    'Simulación quitada al cambiar de contexto. Cada contexto tiene su propia proyección.',
+  assumptionTitle: 'Supuesto del escenario',
+  simulatedLine: 'Compra simulada',
+  noChangePeriod: (period: 'quincena' | 'mes') =>
+    period === 'quincena' ? 'Sin cambio esta quincena' : 'Sin cambio este mes',
+  noChangeBody: (period: 'quincena' | 'mes', date: string, end: string) =>
+    `La simulación cae el ${date}, fuera de ${period === 'quincena' ? 'esta quincena' : 'este mes'}. Su efecto está en Proyección: liquidez al final ${end}.`,
+  gapGrew: (amount: string) => `+${amount} por la simulación`,
+  gapShrank: (amount: string) => `${amount} por la simulación`,
+  simulatedGap: (before: string, after: string) => `Simulado: ${before} → ${after}`,
+  gapValue: (gapAmount: number, amount: string) =>
+    gapAmount > 0 ? `hueco ${amount}` : gapAmount < 0 ? `extra ${amount}` : 'cuadra',
+  deltaFirstShortfall: 'Primer faltante',
+  deltaMinHeadroom: 'Saldo mínimo',
+  deltaEnd: (date: string) => `Liquidez al final · ${date}`,
+  none: 'Ninguno',
+  noChange: 'Sin cambio',
+  noChangeTotal: 'Esta simulación no mueve tu primer faltante, tu saldo mínimo ni tu liquidez al final.',
+  legendScenario: 'Con esta simulación',
+  daysEarlier: (days: number) => (days === 1 ? '1 día antes' : `${days} días antes`),
+  daysLater: (days: number) => (days === 1 ? '1 día después' : `${days} días después`),
+  newShortfall: 'Faltante nuevo',
+  shortfallGone: 'Ya no habría faltante',
+} as const;

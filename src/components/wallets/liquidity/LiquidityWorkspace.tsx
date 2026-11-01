@@ -15,6 +15,11 @@ import { LiquidityDebtsTab } from '@/components/wallets/liquidity/LiquidityDebts
 import { CashPlanTab } from '@/components/wallets/liquidity/plan/CashPlanTab';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { useLiquidityProjection } from '@/components/wallets/liquidity/use-liquidity-projection';
+import { useLiquidityScenario } from '@/components/wallets/liquidity/use-liquidity-scenario';
+import {
+  LiquidityScenarioBanner,
+  LiquidityScenarioNotice,
+} from '@/components/wallets/liquidity/scenario/LiquidityScenarioBanner';
 import { cn } from '@/lib/utils';
 
 const WORKSPACE_TAB_LABEL_CLASS = 'inline-flex items-center justify-center gap-1.5';
@@ -29,12 +34,16 @@ export const LiquidityWorkspace = () => {
     setSelectedMonthKey,
   } = useLiquidityProjection();
 
+  const scenario = useLiquidityScenario();
+  const [tab, setTab] = useState('liquidez');
   const [refreshToken, setRefreshToken] = useState(0);
 
   const handlePullRefresh = useCallback(async () => {
-    await reload({ silent: true });
+    await Promise.all([reload({ silent: true }), scenario.refresh()]);
     setRefreshToken((token) => token + 1);
-  }, [reload]);
+  }, [reload, scenario]);
+
+  const scenarioActive = scenario.item != null && scenario.data != null;
 
   return (
     <MobilePullToRefresh
@@ -42,8 +51,22 @@ export const LiquidityWorkspace = () => {
       ariaLabel="Análisis"
       errorMessage="No se pudo actualizar tu panorama. Intenta de nuevo."
     >
+      {scenarioActive ? (
+        <div className="mb-4 sm:mb-5">
+          <LiquidityScenarioBanner
+            assumptions={scenario.data?.scenario_assumptions ?? []}
+            onRemove={scenario.clear}
+          />
+        </div>
+      ) : null}
+      {scenario.notice ? (
+        <div className="mb-4 sm:mb-5">
+          <LiquidityScenarioNotice message={scenario.notice} onDismiss={scenario.dismissNotice} />
+        </div>
+      ) : null}
       <SegmentedControl
-        defaultValue="liquidez"
+        value={tab}
+        onValueChange={setTab}
         ariaLabel={PLAN_COPY.tabListLabel}
         className="flex flex-col gap-4 sm:gap-5"
         stretch
@@ -93,6 +116,8 @@ export const LiquidityWorkspace = () => {
             onReload={() => void reload()}
             selectedMonthKey={selectedMonthKey}
             onSelectedMonthKeyChange={setSelectedMonthKey}
+            scenario={scenario}
+            onChangeInPlan={() => setTab('plan')}
           />
         </TabsContent>
         <TabsContent value="plan" className="mt-0 outline-none">
@@ -102,6 +127,7 @@ export const LiquidityWorkspace = () => {
             error={error}
             onReload={() => void reload()}
             selectedMonthKey={selectedMonthKey}
+            scenario={scenario}
           />
         </TabsContent>
         <TabsContent value="deudas" className="mt-0 outline-none">
