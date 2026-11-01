@@ -82,10 +82,19 @@ export const WalletRecentMovements = ({
           transition={{ duration: reducedMotion ? 0.12 : 0.24, ease: [0.16, 1, 0.3, 1] }}
         >
           <ul>
-            {movements.map((movement) => {
+            {movements.map((movement, rowIndex) => {
               const isIn = movement.direction === 'in';
               return (
-                <li key={`${movement.kind}-${movement.id}`}>
+                <motion.li
+                  key={`${movement.kind}-${movement.id}`}
+                  initial={{ opacity: 0, y: reducedMotion ? 0 : 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: reducedMotion ? 0.12 : 0.32,
+                    delay: reducedMotion ? 0 : rowIndex * 0.06,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                >
                   <Link
                     href={detailHref}
                     className="flex min-h-14 items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -131,7 +140,7 @@ export const WalletRecentMovements = ({
                       {formatCurrency(Math.abs(movement.amount))}
                     </span>
                   </Link>
-                </li>
+                </motion.li>
               );
             })}
           </ul>

@@ -83,7 +83,7 @@ const FlowCard = ({
   const drift = useTransform(offset, (d) =>
     reducedMotion ? 0 : Math.max(-1.5, Math.min(1.5, d)) * -14,
   );
-  // Shadow and reflection belong to the card nearest the front.
+  // Shadow belongs to the card nearest the front.
   const grounding = useTransform(offset, (d) => Math.max(0, 1 - Math.abs(d)));
 
   return (
@@ -102,7 +102,7 @@ const FlowCard = ({
         style={{ opacity: grounding }}
       />
       {/* Only the front card carries the shared name: names must be unique, and
-          the reflection copy below must never share it. */}
+          only the opened card is named. */}
       <ViewTransition
         name={
           viewTransitionId === wallet.id
@@ -114,13 +114,6 @@ const FlowCard = ({
       >
         <WalletFlowFace wallet={wallet} drift={drift} showOpenHint />
       </ViewTransition>
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-full mt-1 origin-top [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.22),transparent_50%)]"
-        style={{ opacity: grounding, scaleY: -1 }}
-      >
-        <WalletFlowFace wallet={wallet} drift={drift} />
-      </motion.div>
     </motion.div>
   );
 };
@@ -371,7 +364,7 @@ export const WalletCoverFlow = ({
             count={count}
             position={position}
             reducedMotion={reducedMotion}
-            dimming={isMobile ? 0.75 : 1}
+            dimming={isMobile ? 0.4 : 0.55}
             isFront={index === active}
             viewTransitionId={viewTransitionId}
             onClick={() => handleCardClick(index)}

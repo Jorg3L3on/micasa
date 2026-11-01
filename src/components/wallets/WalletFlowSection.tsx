@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
@@ -53,6 +53,29 @@ export const walletMovementsHref = (
   return `${base}${base.includes('?') ? '&' : '?'}tab=movimientos`;
 };
 
+const selectionKey = (title: string) => `micasa.wallets.flow.${title}`;
+const RETURN_KEY = 'micasa.wallets.flow.return';
+
+const readStored = (key: string): number | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(key);
+    const value = raw == null ? NaN : Number(raw);
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStored = (key: string, value: number | null) => {
+  try {
+    if (value == null) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, String(value));
+  } catch {
+    /* private mode */
+  }
+};
+
 export const WalletFlowSection = ({
   title,
   wallets,
@@ -63,11 +86,30 @@ export const WalletFlowSection = ({
   ...actions
 }: WalletFlowSectionProps) => {
   const router = useRouter();
-  const [vtId, setVtId] = useState<number | null>(null);
+  // Coming back from a detail page: the opened card carries the shared name
+  // from its first paint so the return morph has a target.
+  const [vtId, setVtId] = useState<number | null>(() => {
+    const returning = readStored(RETURN_KEY);
+    return returning != null && wallets.some((w) => w.id === returning)
+      ? returning
+      : null;
+  });
+  useEffect(() => {
+    if (readStored(RETURN_KEY) == null) return;
+    writeStored(RETURN_KEY, null);
+    const timer = window.setTimeout(() => setVtId(null), 800);
+    return () => window.clearTimeout(timer);
+  }, []);
   const { context } = useFinanceContext();
-  const [activeId, setActiveId] = useState<number | null>(
-    wallets[0]?.id ?? null,
-  );
+  const [activeId, setActiveId] = useState<number | null>(() => {
+    const stored = readStored(selectionKey(title));
+    return stored != null && wallets.some((w) => w.id === stored)
+      ? stored
+      : (wallets[0]?.id ?? null);
+  });
+  useEffect(() => {
+    writeStored(selectionKey(title), activeId);
+  }, [title, activeId]);
 
   // Keep the selection by id so filtering or reloading doesn't jump around.
   const foundIndex = wallets.findIndex((w) => w.id === activeId);
@@ -128,6 +170,7 @@ export const WalletFlowSection = ({
     prefetchWalletDetailApis(wallet.id, isCard, context);
     // Name only the opened card, and only for the hand-off: the list stays
     // mounted behind the detail page, so a lingering name would be a duplicate.
+    writeStored(RETURN_KEY, wallet.id);
     flushSync(() => setVtId(wallet.id));
     navigateWithTransitionType(href, 'nav-forward', (to) => router.push(to));
     window.setTimeout(() => setVtId(null), 800);
