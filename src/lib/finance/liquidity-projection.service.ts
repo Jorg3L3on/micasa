@@ -1329,6 +1329,19 @@ export const getLiquidityProjection = async (
   let run = buildMilestones(byDueDate, fundingTotal, cumulativeIncomeByMonth, asOfStr);
   if (scenarioWallets) {
     scenario = buildScenarioObligations(scenarioItems, scenarioWallets, untilStr);
+    // Card lines carry the card's minimum and rates so the plan can pay its minimum.
+    for (const items of scenario.byDueDate.values()) {
+      for (const item of items) {
+        const meta = cardMeta.get(item.wallet_id);
+        if (!meta) continue;
+        item.minimum_payment = exposedMinimumDue({
+          statementMinimum: null,
+          persistedMinimum: meta.minimum_payment,
+        });
+        item.apr_annual = exposedAnnualRate(meta.apr_annual);
+        item.cat_annual = exposedAnnualRate(meta.cat_annual);
+      }
+    }
     const withScenario = new Map(
       [...byDueDate].map(([date, items]) => [date, [...items]]),
     );
