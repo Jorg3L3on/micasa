@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ArrowRight, CreditCard, Plus } from 'lucide-react';
+import { CategoryIcon } from '@/components/categories/CategoryIcon';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFinanceContext } from '@/context/finance-context';
@@ -52,71 +54,94 @@ export const WalletRecentMovements = ({
   }, [cached, context, key, loaded.key, wallet.id]);
 
   return (
-    <section aria-label="Últimos movimientos" className="mt-5 w-full">
-      <div className="mb-1 flex items-baseline justify-between gap-2 px-1">
-        <h3 className="text-section text-foreground">Últimos movimientos</h3>
-        {movements && movements.length > 0 ? (
-          <Link
-            href={detailHref}
-            className="text-caption text-muted-foreground hover:text-foreground"
-          >
-            Ver todos
-          </Link>
-        ) : null}
-      </div>
+    <section
+      aria-label="Últimos movimientos"
+      className="mt-5 w-full rounded-2xl border border-border/60 bg-card/60 p-2 shadow-sm"
+    >
+      <h3 className="px-2 pb-1 pt-1.5 text-section text-foreground">
+        Últimos movimientos
+      </h3>
 
       {movements == null && !failed ? (
-        <div className="space-y-2" aria-busy="true" aria-label="Cargando movimientos">
+        <div className="space-y-1" aria-busy="true" aria-label="Cargando movimientos">
           {Array.from({ length: RECENT_MOVEMENTS_LIMIT }).map((_, index) => (
-            <Skeleton key={index} className="h-12 w-full rounded-xl" />
+            <Skeleton key={index} className="h-14 w-full rounded-xl" />
           ))}
         </div>
       ) : movements == null || movements.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border/60 px-3 py-5 text-center text-body text-muted-foreground">
+        <p className="px-3 py-5 text-center text-body text-muted-foreground">
           {failed
             ? 'No se pudieron cargar los movimientos'
             : 'Sin movimientos recientes'}
         </p>
       ) : (
-        <motion.ul
+        <motion.div
           key={wallet.id}
-          className="divide-y divide-border/60 rounded-xl border border-border/60"
           initial={{ opacity: 0, y: reducedMotion ? 0 : 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reducedMotion ? 0.12 : 0.24, ease: [0.16, 1, 0.3, 1] }}
         >
-          {movements.map((movement) => {
-            const isIn = movement.direction === 'in';
-            return (
-              <li key={`${movement.kind}-${movement.id}`}>
-                <Link
-                  href={detailHref}
-                  className="flex min-h-12 items-center justify-between gap-3 px-3 py-2"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-foreground">
-                      {movement.description}
-                    </span>
-                    <span className="block truncate text-caption text-muted-foreground">
-                      {[movement.category, formatDate(movement.date)]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                  </span>
-                  <span
-                    className={cn(
-                      'shrink-0 text-sm font-semibold tabular-nums',
-                      isIn ? 'text-status-income' : 'text-foreground',
-                    )}
+          <ul>
+            {movements.map((movement) => {
+              const isIn = movement.direction === 'in';
+              return (
+                <li key={`${movement.kind}-${movement.id}`}>
+                  <Link
+                    href={detailHref}
+                    className="flex min-h-14 items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
-                    {isIn ? '+' : '−'}
-                    {formatCurrency(Math.abs(movement.amount))}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </motion.ul>
+                    <span className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-muted/70">
+                      {movement.categoryIcon ? (
+                        <CategoryIcon
+                          icon={movement.categoryIcon}
+                          iconClassName="h-5 w-5"
+                          className="text-foreground"
+                        />
+                      ) : (
+                        <CreditCard className="h-5 w-5 text-foreground" aria-hidden />
+                      )}
+                      <span
+                        aria-hidden
+                        className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-background ring-2 ring-card"
+                      >
+                        {isIn ? (
+                          <Plus className="h-2.5 w-2.5" strokeWidth={3} />
+                        ) : (
+                          <ArrowRight className="h-2.5 w-2.5" strokeWidth={3} />
+                        )}
+                      </span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {movement.description}
+                      </span>
+                      <span className="block truncate text-caption text-muted-foreground">
+                        {[movement.category, formatDate(movement.date)]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        'shrink-0 text-sm font-semibold tabular-nums',
+                        isIn ? 'text-status-income' : 'text-foreground',
+                      )}
+                    >
+                      {isIn ? '+' : '−'}
+                      {formatCurrency(Math.abs(movement.amount))}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <Link
+            href={detailHref}
+            className="mt-1 block rounded-xl py-2.5 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            Ver todos
+          </Link>
+        </motion.div>
       )}
     </section>
   );

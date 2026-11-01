@@ -623,9 +623,6 @@ export default function WalletsPage() {
     creditLineFilter !== 'all' ||
     (isHouseContext && assigneeFilter !== ASSIGNEE_FILTER_ALL);
 
-  const listIsFiltered =
-    hasActiveFilters || displayWallets.length !== wallets.length;
-
   const activeFilterDimensionCount = useMemo(() => {
     let n = 0;
     if (searchQuery.trim()) n += 1;
@@ -1342,19 +1339,6 @@ export default function WalletsPage() {
                     )
                   )}
 
-                  {filtersReady && !loading ? (
-                    <div
-                      className="flex flex-wrap items-baseline justify-center gap-2"
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <p className="text-body text-muted-foreground">
-                        {displayWallets.length} de {wallets.length}{' '}
-                        {wallets.length === 1 ? 'billetera' : 'billeteras'}
-                        {listIsFiltered ? ' · filtrado' : ''}
-                      </p>
-                    </div>
-                  ) : null}
                 </div>
               )}
             </ContentEnter>
