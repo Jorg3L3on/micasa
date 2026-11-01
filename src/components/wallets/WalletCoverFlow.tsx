@@ -26,6 +26,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { WalletListItem } from '@/types/catalog';
+import { ViewTransition } from 'react';
+import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 import { WalletFlowFace } from '@/components/wallets/WalletFlowFace';
 
 const TAP_SLOP_PX = 8;
@@ -96,7 +98,15 @@ const FlowCard = ({
         className="pointer-events-none absolute inset-x-[8%] -bottom-3 h-8 rounded-[50%] bg-black/45 blur-xl dark:bg-black/70"
         style={{ opacity: grounding }}
       />
-      <WalletFlowFace wallet={wallet} drift={drift} showOpenHint />
+      {/* Only the front card carries the shared name: names must be unique, and
+          the reflection copy below must never share it. */}
+      <ViewTransition
+        name={isFront ? walletCardViewTransitionName(wallet.id) : undefined}
+        share="morph"
+        default="none"
+      >
+        <WalletFlowFace wallet={wallet} drift={drift} showOpenHint />
+      </ViewTransition>
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-full mt-1 origin-top [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.22),transparent_50%)]"

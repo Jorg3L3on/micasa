@@ -6,9 +6,17 @@ import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 import { clampFlowIndex } from '@/lib/ui/wallet-cover-flow';
 import {
   navigateWithTransitionType,
+  stashWalletCardVtSnapshot,
 } from '@/lib/ui/wallet-card-view-transition';
 import { prefetchWalletDetailApis } from '@/lib/ui/wallet-detail-prefetch';
 import { useFinanceContext } from '@/context/finance-context';
+import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from '@/domain/payment-method';
+import { effectiveCreditLimit } from '@/lib/ui/wallet-cover-flow';
+import {
+  getProviderBrandColor,
+  getProviderCardStyle,
+  getWalletBrandCssVars,
+} from '@/lib/provider-card-style';
 import type { WalletListItem } from '@/types/catalog';
 import { WalletCoverFlow } from '@/components/wallets/WalletCoverFlow';
 import {
@@ -34,6 +42,15 @@ export const walletDetailHref = (
   isCreditOrStoreCardWalletType(wallet.type)
     ? `/credit-cards/${wallet.id}${ownerQueryString}`
     : `/wallets/${wallet.id}${ownerQueryString}`;
+
+/** Detail page with the "movimientos" tab preselected (both detail pages read `?tab=`). */
+export const walletMovementsHref = (
+  wallet: WalletListItem,
+  ownerQueryString: string,
+): string => {
+  const base = walletDetailHref(wallet, ownerQueryString);
+  return `${base}${base.includes('?') ? '&' : '?'}tab=movimientos`;
+};
 
 export const WalletFlowSection = ({
   title,
@@ -78,11 +95,35 @@ export const WalletFlowSection = ({
 
   const openDetail = (wallet: WalletListItem) => {
     const href = walletDetailHref(wallet, ownerQueryString);
-    prefetchWalletDetailApis(
-      wallet.id,
-      isCreditOrStoreCardWalletType(wallet.type),
-      context,
-    );
+    const isCard = isCreditOrStoreCardWalletType(wallet.type);
+    const amount = Number(wallet.amount);
+    const limit = isCard ? effectiveCreditLimit(wallet) : null;
+    const brand =
+      getProviderBrandColor(wallet.provider_icon_key, wallet.type) ?? '#6366f1';
+    // The detail page paints this face instantly so the morph has a target.
+    stashWalletCardVtSnapshot({
+      id: wallet.id,
+      name: wallet.name,
+      typeLabel: PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType],
+      amount,
+      isCredit: isCard,
+      providerIconKey: wallet.provider_icon_key ?? null,
+      cycleLabel:
+        isCard && wallet.cutoff_day != null && wallet.due_day != null
+          ? `Corte ${wallet.cutoff_day} · Pago ${wallet.due_day}`
+          : null,
+      availableCredit: limit != null && limit > 0 ? limit - amount : null,
+      creditLimit: limit != null && limit > 0 ? limit : null,
+      utilizationPct:
+        limit != null && limit > 0
+          ? Math.min(100, Math.max(0, (amount / limit) * 100))
+          : null,
+      style: {
+        ...getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'wow'),
+        ...getWalletBrandCssVars(brand),
+      },
+    });
+    prefetchWalletDetailApis(wallet.id, isCard, context);
     navigateWithTransitionType(href, 'nav-forward', (to) => router.push(to));
   };
 
@@ -107,7 +148,7 @@ export const WalletFlowSection = ({
       />
       <WalletFlowDetails
         wallet={active}
-        detailHref={walletDetailHref(active, ownerQueryString)}
+        detailHref={walletMovementsHref(active, ownerQueryString)}
         isHouseContext={isHouseContext}
         direction={direction}
         {...actions}
