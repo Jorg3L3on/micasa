@@ -171,3 +171,27 @@ export const buildAttentionItems = (
     (a, b) => (a.daysUntilDue ?? -1) - (b.daysUntilDue ?? -1),
   );
 };
+
+export type WalletTypeSegment = 'all' | 'CASH' | 'DEBIT_CARD' | 'CREDIT_CARD' | 'DEPARTMENT_STORE_CARD';
+
+export const WALLET_TYPE_SEGMENTS: { value: WalletTypeSegment; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'CASH', label: 'Efectivo' },
+  { value: 'DEBIT_CARD', label: 'Débito' },
+  { value: 'CREDIT_CARD', label: 'Crédito' },
+  { value: 'DEPARTMENT_STORE_CARD', label: 'Tiendas' },
+];
+
+/** Wallets in a type segment; `all` keeps everything. */
+export const filterWalletsBySegment = (
+  wallets: WalletListItem[],
+  segment: WalletTypeSegment,
+): WalletListItem[] =>
+  segment === 'all' ? wallets : wallets.filter((w) => w.type === segment);
+
+/** "Todas" plus each type that has at least one wallet, in a stable order. */
+export const availableWalletSegments = (wallets: WalletListItem[]) =>
+  WALLET_TYPE_SEGMENTS.filter(
+    ({ value }) =>
+      value === 'all' || wallets.some((wallet) => wallet.type === value),
+  );

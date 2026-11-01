@@ -76,6 +76,8 @@ import {
 import type { WalletListItem } from '@/types/catalog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
+import { WalletMobileFlow } from '@/components/wallets/WalletMobileFlow';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { WalletFlowSection } from '@/components/wallets/WalletFlowSection';
 import { WalletsAttentionBlock } from '@/components/wallets/WalletsAttentionBlock';
 import { WalletsFirstEmptyState } from '@/components/wallets/WalletsFirstEmptyState';
@@ -1002,6 +1004,7 @@ export default function WalletsPage() {
 
   const handleFiltersSelectOpenChange = useToolbarFiltersSelectOpenChange();
 
+  const isMobile = useIsMobile();
   const sections = useMemo(
     () => groupWalletsBySection(displayWallets),
     [displayWallets],
@@ -1387,6 +1390,15 @@ export default function WalletsPage() {
                       />
                     )
                   ) : (
+                    isMobile ? (
+                      <WalletMobileFlow
+                        wallets={displayWallets}
+                        ownerQueryString={ownerQueryString}
+                        isHouseContext={isHouseContext}
+                        focusWalletId={focusWalletId}
+                        {...flowActions}
+                      />
+                    ) : (
                     <>
                       <WalletFlowSection
                         title="Efectivo y débito"
@@ -1405,6 +1417,7 @@ export default function WalletsPage() {
                         {...flowActions}
                       />
                     </>
+                    )
                   )}
 
                   {filtersReady && !loading ? (

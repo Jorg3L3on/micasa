@@ -16,13 +16,15 @@ import {
   type WalletFlowActions,
 } from '@/components/wallets/WalletFlowDetails';
 
-type WalletFlowSectionProps = WalletFlowActions & {
+export type WalletFlowSectionProps = WalletFlowActions & {
   title: string;
   wallets: WalletListItem[];
   ownerQueryString: string;
   isHouseContext?: boolean;
   /** Wallet to center when it appears in this section (from the attention block). */
   focusWalletId?: number | null;
+  /** Hide the section title row (the mobile flow shows a type switcher instead). */
+  hideHeader?: boolean;
 };
 
 export const walletDetailHref = (
@@ -39,6 +41,7 @@ export const WalletFlowSection = ({
   ownerQueryString,
   isHouseContext,
   focusWalletId,
+  hideHeader = false,
   ...actions
 }: WalletFlowSectionProps) => {
   const router = useRouter();
@@ -85,12 +88,16 @@ export const WalletFlowSection = ({
 
   return (
     <section aria-label={title} className="min-w-0">
-      <div className="mb-1 flex items-baseline justify-between gap-2 px-1">
-        <h2 className="text-section text-foreground">{title}</h2>
-        <span className="text-caption text-muted-foreground">
-          {wallets.length}
-        </span>
-      </div>
+      {hideHeader ? (
+        <h2 className="sr-only">{title}</h2>
+      ) : (
+        <div className="mb-1 flex items-baseline justify-between gap-2 px-1">
+          <h2 className="text-section text-foreground">{title}</h2>
+          <span className="text-caption text-muted-foreground">
+            {wallets.length}
+          </span>
+        </div>
+      )}
       <WalletCoverFlow
         wallets={wallets}
         activeIndex={activeIndex}

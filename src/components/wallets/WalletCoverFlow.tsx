@@ -63,6 +63,9 @@ const FlowCard = ({
     return `translateX(calc(-50% + var(--flow-w) * ${slot.shift})) scale(${scale}) rotateY(${turn}deg)`;
   });
   const opacity = useTransform(offset, (d) => coverFlowSlot(d).opacity);
+  const pointerEvents = useTransform(offset, (d) =>
+    coverFlowSlot(d).opacity < 0.05 ? 'none' : 'auto',
+  );
   const zIndex = useTransform(offset, (d) => coverFlowSlot(d).zIndex);
   const visibility = useTransform(offset, (d) =>
     Math.abs(d) > HIDDEN_DISTANCE ? 'hidden' : 'visible',
@@ -82,7 +85,7 @@ const FlowCard = ({
       aria-hidden={isFront ? undefined : true}
       onClick={onClick}
       className="absolute left-1/2 top-2 w-[var(--flow-w)] will-change-transform"
-      style={{ transform, opacity, zIndex, visibility }}
+      style={{ transform, opacity, zIndex, visibility, pointerEvents }}
     >
       <motion.div
         aria-hidden
@@ -245,15 +248,19 @@ export const WalletCoverFlow = ({
       velocity: 0,
       moved: false,
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setDragging(true);
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
     if (!d) return;
     const dx = event.clientX - d.startX;
-    if (!d.moved && Math.abs(dx) > TAP_SLOP_PX) d.moved = true;
+    if (!d.moved && Math.abs(dx) > TAP_SLOP_PX) {
+      d.moved = true;
+      // Capture only once it is a drag: capturing on press would retarget the
+      // click to the stage and a tap on a background card would never land.
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setDragging(true);
+    }
     if (!d.moved) return;
     const width = cardWidth() * 0.62;
     const next = rubberBandPosition(d.startPosition - dx / width, count);
