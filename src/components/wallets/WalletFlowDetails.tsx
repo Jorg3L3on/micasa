@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowLeftRight,
   Banknote,
-  Plus,
+  Diff,
   ShoppingCart,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -93,12 +93,18 @@ export const WalletFlowDetails = ({
 
   const metrics: { label: string; value: MetricValue }[] = isCard
     ? [
-        { label: 'Usado', value: { amount } },
         {
           label: 'Disponible',
           value:
             limit != null && limit > 0
-              ? { amount: limit - amount }
+              ? { amount: limit - amount - (wallet.loan_outstanding ?? 0) }
+              : { text: 'Sin línea' },
+        },
+        {
+          label: 'Límite',
+          value:
+            limit != null && limit > 0
+              ? { amount: limit }
               : { text: 'Sin línea' },
         },
         {
@@ -131,7 +137,7 @@ export const WalletFlowDetails = ({
         { key: 'adjust', label: 'Ajustar saldo', icon: SlidersHorizontal, onClick: () => onAdjustBalance(wallet), busy: false },
       ]
     : [
-        { key: 'movement', label: 'Movimiento', icon: Plus, onClick: () => onMovement(wallet), busy: false },
+        { key: 'movement', label: 'Movimiento', icon: Diff, onClick: () => onMovement(wallet), busy: false },
         { key: 'transfer', label: 'Transferir', icon: ArrowLeftRight, onClick: () => onTransfer(wallet), busy: false },
         { key: 'adjust', label: 'Ajustar saldo', icon: SlidersHorizontal, onClick: () => onAdjustBalance(wallet), busy: false },
       ];

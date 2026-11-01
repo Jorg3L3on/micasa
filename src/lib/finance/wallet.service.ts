@@ -1,5 +1,6 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { PaymentMethodType } from '@/generated/prisma/client';
+import { loadLoanOutstandingByWallet } from '@/lib/finance/wallet-loan-outstanding';
 import prisma from '@/lib/prisma';
 import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import type {
@@ -83,6 +84,7 @@ const mapWalletRowToListDto = (
     assignee: { id: number; name: string } | null;
   },
   spent: number,
+  loanOutstanding = 0,
 ) => {
   const amountNum = Number(w.amount);
   return {
@@ -112,6 +114,7 @@ const mapWalletRowToListDto = (
     created_at: w.created_at ? w.created_at.toISOString() : null,
     spent_amount: spent,
     remaining_amount: amountNum - spent,
+    loan_outstanding: loanOutstanding,
     assignee_user_id: w.assignee_user_id ?? null,
     assignee: w.assignee ? { id: w.assignee.id, name: w.assignee.name } : null,
   };
@@ -185,9 +188,19 @@ export async function listWalletsByOwner(
     expenseSums.map((e) => [e.wallet_id, Number(e._sum.amount ?? 0)]),
   );
 
+  const hasCreditWallet = wallets.some((w) =>
+    isCreditWalletType(w.type as PaymentMethodType),
+  );
+  const loanMap = hasCreditWallet
+    ? await loadLoanOutstandingByWallet(ownerFilter)
+    : new Map<number, number>();
+
   return wallets.map((w) => {
     const spent = spentMap.get(w.id) ?? 0;
-    return mapWalletRowToListDto(w, spent);
+    const loans = isCreditWalletType(w.type as PaymentMethodType)
+      ? (loanMap.get(w.id) ?? 0)
+      : 0;
+    return mapWalletRowToListDto(w, spent, loans);
   });
 }
 

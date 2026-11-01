@@ -258,6 +258,8 @@ export type WalletListItem = {
   created_at?: string | null;
   spent_amount: number;
   remaining_amount: number;
+  /** Credit and store cards: what active loans linked to or paid from the card still owe. */
+  loan_outstanding?: number;
   /** Solo billeteras de casa: miembro atribuido; null = compartida. */
   assignee_user_id: number | null;
   assignee: { id: number; name: string } | null;
@@ -656,6 +658,8 @@ export type CreditCardStatementResponse = {
   credit_limit: number | null;
   temporary_credit_limit: number | null;
   available_credit: number | null;
+  /** Already subtracted from `available_credit`. */
+  loan_outstanding?: number;
   cutoff_day: number;
   due_day: number;
   statement_start: string;
