@@ -21,23 +21,58 @@ export type CoverFlowSlot = {
   zIndex: number;
 };
 
-/** Transform for a card `offset` positions away from the centered one. */
+const FLICK_VELOCITY = 0.6;
+const SIDE_SHIFT = 0.58;
+const FAR_SHIFT = 0.3;
+const SIDE_TURN_DEG = 38;
+
+/**
+ * Transform for a card `offset` positions from the front. Continuous, so it
+ * can follow a fractional rail position while dragging; integer offsets give
+ * the resting layout (front flat, neighbors turned toward the center).
+ */
 export const coverFlowSlot = (
   offset: number,
   sideReach: number = WALLET_COVER_FLOW_SIDE_REACH,
 ): CoverFlowSlot => {
-  const distance = Math.abs(offset);
-  if (distance === 0) {
-    return { shift: 0, rotateY: 0, scale: 1, opacity: 1, zIndex: 100 };
-  }
   const sign = offset < 0 ? -1 : 1;
+  const distance = Math.abs(offset);
+  const near = Math.min(distance, 1);
+  const far = Math.max(0, distance - 1);
+  const fade = Math.min(1, Math.max(0, sideReach + 1 - distance));
   return {
-    shift: sign * (0.58 + (distance - 1) * 0.3),
-    rotateY: -sign * 38,
-    scale: Math.max(0.7, 0.86 - (distance - 1) * 0.06),
-    opacity: distance > sideReach ? 0 : Math.max(0.45, 0.8 - (distance - 1) * 0.2),
-    zIndex: 100 - distance,
+    shift: sign * (SIDE_SHIFT * near + FAR_SHIFT * far),
+    rotateY: -sign * SIDE_TURN_DEG * near + 0,
+    scale: Math.max(0.7, 1 - 0.14 * near - 0.06 * far),
+    opacity: Math.max(0, (1 - 0.2 * near - 0.2 * far) * fade),
+    zIndex: Math.round(100 - distance * 10),
   };
+};
+
+/**
+ * Where a release lands. `velocity` is the rail's speed in cards per second
+ * (position change, so dragging left is positive). Momentum projects the
+ * landing card; a quick flick always moves at least one card.
+ */
+export const settleFlowIndex = (
+  position: number,
+  velocity: number,
+  count: number,
+): number => {
+  const base = Math.round(position);
+  let target = Math.round(position + velocity * 0.18);
+  if (target === base && Math.abs(velocity) > FLICK_VELOCITY) {
+    target = base + Math.sign(velocity);
+  }
+  return clampFlowIndex(target, count);
+};
+
+/** Pull past either end of the rail is damped so it feels elastic. */
+export const rubberBandPosition = (position: number, count: number): number => {
+  const max = Math.max(0, count - 1);
+  if (position < 0) return position * 0.35;
+  if (position > max) return max + (position - max) * 0.35;
+  return position;
 };
 
 export type WalletSections = {

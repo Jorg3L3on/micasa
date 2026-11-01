@@ -62,6 +62,14 @@ export const WalletFlowSection = ({
     setActiveId(focusWalletId);
   }
 
+  // Adjust during render: remember which way the rail travelled.
+  const [prevIndex, setPrevIndex] = useState(activeIndex);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  if (activeIndex !== prevIndex) {
+    setPrevIndex(activeIndex);
+    setDirection(activeIndex > prevIndex ? 1 : -1);
+  }
+
   const active = wallets[activeIndex];
   if (!active) return null;
 
@@ -94,6 +102,7 @@ export const WalletFlowSection = ({
         wallet={active}
         detailHref={walletDetailHref(active, ownerQueryString)}
         isHouseContext={isHouseContext}
+        direction={direction}
         {...actions}
       />
     </section>

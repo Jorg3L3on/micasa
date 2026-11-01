@@ -6,6 +6,8 @@ import {
   coverFlowSlot,
   daysUntilDueDay,
   groupWalletsBySection,
+  rubberBandPosition,
+  settleFlowIndex,
   summarizeWallets,
 } from './wallet-cover-flow';
 
@@ -48,6 +50,48 @@ describe('coverFlowSlot', () => {
   });
   it('hides cards beyond the side reach', () => {
     expect(coverFlowSlot(3).opacity).toBe(0);
+  });
+});
+
+describe('coverFlowSlot (continuous)', () => {
+  it('interpolates between rest positions', () => {
+    const half = coverFlowSlot(0.5);
+    expect(half.rotateY).toBeLessThan(0);
+    expect(half.rotateY).toBeGreaterThan(coverFlowSlot(1).rotateY);
+    expect(half.scale).toBeGreaterThan(coverFlowSlot(1).scale);
+    expect(half.scale).toBeLessThan(1);
+  });
+  it('fades out smoothly past the side reach', () => {
+    expect(coverFlowSlot(2.5).opacity).toBeGreaterThan(0);
+    expect(coverFlowSlot(2.5).opacity).toBeLessThan(coverFlowSlot(2).opacity);
+    expect(coverFlowSlot(3).opacity).toBe(0);
+  });
+});
+
+describe('settleFlowIndex', () => {
+  it('lands on the nearest card when released slowly', () => {
+    expect(settleFlowIndex(2.2, 0.1, 6)).toBe(2);
+    expect(settleFlowIndex(2.6, 0, 6)).toBe(3);
+  });
+  it('carries momentum to a farther card', () => {
+    expect(settleFlowIndex(2.1, 8, 10)).toBe(4);
+    expect(settleFlowIndex(2.1, -8, 10)).toBe(1);
+  });
+  it('moves at least one card on a quick flick', () => {
+    expect(settleFlowIndex(2.05, 0.9, 6)).toBe(3);
+    expect(settleFlowIndex(2.05, -0.9, 6)).toBe(1);
+  });
+  it('never leaves the list', () => {
+    expect(settleFlowIndex(0.1, -9, 4)).toBe(0);
+    expect(settleFlowIndex(2.9, 9, 4)).toBe(3);
+  });
+});
+
+describe('rubberBandPosition', () => {
+  it('passes through inside the list and damps past the ends', () => {
+    expect(rubberBandPosition(1.5, 4)).toBe(1.5);
+    expect(rubberBandPosition(-1, 4)).toBeCloseTo(-0.35);
+    expect(rubberBandPosition(4, 4)).toBeCloseTo(3.35);
   });
 });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import {
   ArrowLeftRight,
@@ -38,6 +39,8 @@ type WalletFlowDetailsProps = WalletFlowActions & {
   wallet: WalletListItem;
   detailHref: string;
   isHouseContext?: boolean;
+  /** Travel direction of the rail: the caption rises in from that side. */
+  direction?: 1 | -1;
 };
 
 const Metric = ({ label, value }: { label: string; value: ReactNode }) => (
@@ -57,6 +60,7 @@ export const WalletFlowDetails = ({
   wallet,
   detailHref,
   isHouseContext = false,
+  direction = 1,
   onTransfer,
   onIncome,
   onAdjustBalance,
@@ -67,6 +71,7 @@ export const WalletFlowDetails = ({
   const amount = Number(wallet.amount) || 0;
   const limit = isCard ? effectiveCreditLimit(wallet) : null;
   const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
+  const reducedMotion = useReducedMotion() ?? false;
 
   const metrics = isCard ? (
     <>
@@ -101,7 +106,13 @@ export const WalletFlowDetails = ({
   return (
     <div className="mt-4 w-full">
       <div className="flex items-start justify-center gap-1 text-center">
-        <div className="min-w-0">
+        <motion.div
+          key={wallet.id}
+          className="min-w-0"
+          initial={{ opacity: 0, x: reducedMotion ? 0 : direction * 14 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: reducedMotion ? 0.12 : 0.28, ease: [0.16, 1, 0.3, 1] }}
+        >
           <h3 className="truncate text-lg font-semibold text-foreground">
             {wallet.name}
           </h3>
@@ -110,7 +121,7 @@ export const WalletFlowDetails = ({
               ? `${typeLabel} · Corte ${wallet.cutoff_day} · Pago ${wallet.due_day}`
               : typeLabel}
           </p>
-        </div>
+        </motion.div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

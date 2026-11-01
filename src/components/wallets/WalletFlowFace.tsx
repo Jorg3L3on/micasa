@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { motion, type MotionValue } from 'framer-motion';
 import { BookmarkIcon } from 'lucide-react';
 import {
   type PaymentMethodType,
@@ -21,10 +22,12 @@ import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 type WalletFlowFaceProps = {
   wallet: WalletListItem;
   className?: string;
+  /** Horizontal drift (px) of the face art inside the frame. */
+  drift?: MotionValue<number>;
 };
 
 /** Card art used by the Billeteras cover flow: provider surface, icon, name, amount. */
-export const WalletFlowFace = ({ wallet, className }: WalletFlowFaceProps) => {
+export const WalletFlowFace = ({ wallet, className, drift }: WalletFlowFaceProps) => {
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const amount = Number(wallet.amount) || 0;
   const limit = isCard ? effectiveCreditLimit(wallet) : null;
@@ -49,7 +52,12 @@ export const WalletFlowFace = ({ wallet, className }: WalletFlowFaceProps) => {
       )}
       style={style}
     >
-      <div className="flex items-start justify-between gap-2">
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute -inset-x-[18%] inset-y-0 opacity-60 [background-image:radial-gradient(circle_at_30%_15%,rgba(255,255,255,0.32),transparent_55%),linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:auto,22px_22px,22px_22px]"
+        style={{ x: drift }}
+      />
+      <div className="relative flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <WalletProviderIcon
             providerIconKey={wallet.provider_icon_key}
@@ -80,7 +88,7 @@ export const WalletFlowFace = ({ wallet, className }: WalletFlowFaceProps) => {
           </span>
         ) : null}
       </div>
-      <div>
+      <div className="relative">
         <p className="eyebrow opacity-70">
           {isCard ? 'Deuda total' : 'Saldo disponible'}
         </p>
