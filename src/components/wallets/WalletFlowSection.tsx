@@ -16,7 +16,7 @@ import {
   type WalletFlowActions,
 } from '@/components/wallets/WalletFlowDetails';
 
-export type WalletFlowSectionProps = WalletFlowActions & {
+type WalletFlowSectionProps = WalletFlowActions & {
   title: string;
   wallets: WalletListItem[];
   ownerQueryString: string;

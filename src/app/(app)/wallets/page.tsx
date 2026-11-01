@@ -76,7 +76,6 @@ import {
 import type { WalletListItem } from '@/types/catalog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
-import { WalletMobileFlow } from '@/components/wallets/WalletMobileFlow';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { WalletFlowSection } from '@/components/wallets/WalletFlowSection';
 import { WalletsAttentionBlock } from '@/components/wallets/WalletsAttentionBlock';
@@ -1391,7 +1390,9 @@ export default function WalletsPage() {
                     )
                   ) : (
                     isMobile ? (
-                      <WalletMobileFlow
+                      <WalletFlowSection
+                        title="Billeteras"
+                        hideHeader
                         wallets={displayWallets}
                         ownerQueryString={ownerQueryString}
                         isHouseContext={isHouseContext}

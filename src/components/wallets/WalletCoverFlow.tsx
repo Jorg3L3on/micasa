@@ -95,7 +95,7 @@ const FlowCard = ({
       <WalletFlowFace wallet={wallet} drift={drift} />
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-full mt-1 origin-top [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.35),transparent_55%)]"
+        className="pointer-events-none absolute inset-x-0 top-full mt-1 origin-top [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.22),transparent_50%)]"
         style={{ opacity: grounding, scaleY: -1 }}
       >
         <WalletFlowFace wallet={wallet} drift={drift} />
@@ -332,7 +332,7 @@ export const WalletCoverFlow = ({
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
         className={cn(
-          'relative mx-auto h-[calc(var(--flow-w)/1.586+4.5rem)] w-full touch-pan-y select-none overflow-hidden rounded-face outline-none [--flow-w:clamp(168px,38cqw,272px)] [perspective:1100px] focus-visible:ring-2 focus-visible:ring-ring',
+          'relative mx-auto h-[calc(var(--flow-w)/1.586+4.5rem)] w-full touch-pan-y select-none overflow-hidden rounded-face outline-none [--flow-w:clamp(280px,76cqw,544px)] [perspective:1100px] focus-visible:ring-2 focus-visible:ring-ring',
           dragging ? 'cursor-grabbing' : 'cursor-grab',
         )}
       >

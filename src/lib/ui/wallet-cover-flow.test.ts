@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { WalletListItem } from '@/types/catalog';
 import {
   buildAttentionItems,
-  availableWalletSegments,
   clampFlowIndex,
-  filterWalletsBySegment,
   coverFlowSlot,
   daysUntilDueDay,
   groupWalletsBySection,
@@ -40,6 +38,10 @@ describe('clampFlowIndex', () => {
 });
 
 describe('coverFlowSlot', () => {
+  it('keeps side cards mostly opaque', () => {
+    expect(coverFlowSlot(1).opacity).toBeGreaterThan(0.9);
+    expect(coverFlowSlot(2).opacity).toBeGreaterThan(0.75);
+  });
   it('centers the active card flat and full size', () => {
     expect(coverFlowSlot(0)).toMatchObject({ shift: 0, rotateY: 0, scale: 1 });
   });
@@ -154,26 +156,6 @@ describe('buildAttentionItems', () => {
       [3, 'over-limit'],
       [4, 'negative-balance'],
       [1, 'due-soon'],
-    ]);
-  });
-});
-
-describe('wallet type segments', () => {
-  const all = [
-    wallet({ id: 1, type: 'CASH' }),
-    wallet({ id: 2, type: 'CREDIT_CARD' }),
-    wallet({ id: 3, type: 'CREDIT_CARD' }),
-  ];
-  it('filters by type and keeps everything for "all"', () => {
-    expect(filterWalletsBySegment(all, 'all')).toHaveLength(3);
-    expect(filterWalletsBySegment(all, 'CREDIT_CARD').map((w) => w.id)).toEqual([2, 3]);
-    expect(filterWalletsBySegment(all, 'DEBIT_CARD')).toEqual([]);
-  });
-  it('offers only types that have wallets, after "Todas"', () => {
-    expect(availableWalletSegments(all).map((s) => s.value)).toEqual([
-      'all',
-      'CASH',
-      'CREDIT_CARD',
     ]);
   });
 });

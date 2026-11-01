@@ -45,7 +45,7 @@ export const WalletFlowFace = ({ wallet, className, drift }: WalletFlowFaceProps
   return (
     <div
       className={cn(
-        'relative flex aspect-[1.586] w-full flex-col justify-between overflow-hidden rounded-face border border-white/15 p-4 text-white shadow-face',
+        'relative flex aspect-[1.586] w-full flex-col justify-between overflow-hidden rounded-face border border-white/15 p-5 text-white shadow-face',
         hasAlert && 'ring-2 ring-inset ring-status-overdue/70',
         !wallet.active && 'opacity-80',
         className,
@@ -54,7 +54,7 @@ export const WalletFlowFace = ({ wallet, className, drift }: WalletFlowFaceProps
     >
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute -inset-x-[18%] inset-y-0 opacity-60 [background-image:radial-gradient(circle_at_30%_15%,rgba(255,255,255,0.32),transparent_55%),linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:auto,22px_22px,22px_22px]"
+        className="pointer-events-none absolute -inset-x-[18%] inset-y-0 opacity-35 [background-image:radial-gradient(circle_at_30%_15%,rgba(255,255,255,0.32),transparent_55%),linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:auto,22px_22px,22px_22px]"
         style={{ x: drift }}
       />
       <div className="relative flex items-start justify-between gap-2">
@@ -92,7 +92,7 @@ export const WalletFlowFace = ({ wallet, className, drift }: WalletFlowFaceProps
         <p className="eyebrow opacity-70">
           {isCard ? 'Deuda total' : 'Saldo disponible'}
         </p>
-        <p className="font-sans text-2xl font-bold tabular-nums leading-snug tracking-tight sm:text-3xl">
+        <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
           {formatCurrency(amount)}
         </p>
       </div>
