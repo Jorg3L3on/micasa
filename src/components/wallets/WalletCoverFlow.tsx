@@ -96,7 +96,7 @@ const FlowCard = ({
         className="pointer-events-none absolute inset-x-[8%] -bottom-3 h-8 rounded-[50%] bg-black/45 blur-xl dark:bg-black/70"
         style={{ opacity: grounding }}
       />
-      <WalletFlowFace wallet={wallet} drift={drift} />
+      <WalletFlowFace wallet={wallet} drift={drift} showOpenHint />
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-full mt-1 origin-top [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.22),transparent_50%)]"

@@ -1,8 +1,13 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
-import Link from 'next/link';
-import { ArrowLeftRight, CirclePlus, SlidersHorizontal } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  Banknote,
+  Plus,
+  ShoppingCart,
+  SlidersHorizontal,
+} from 'lucide-react';
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
@@ -15,14 +20,19 @@ import type { WalletListItem } from '@/types/catalog';
 import { Button } from '@/components/ui/button';
 
 export type WalletFlowActions = {
+  /** Cash and debit: Agregar movimiento (gasto or ingreso). */
+  onMovement: (wallet: WalletListItem) => void;
   onTransfer: (wallet: WalletListItem) => void;
-  onIncome: (wallet: WalletListItem) => void;
+  /** Credit and store cards. */
+  onPurchase: (wallet: WalletListItem) => void;
+  onPay: (wallet: WalletListItem) => void;
+  /** Wallet id whose Pagar is waiting on the statement. */
+  payPendingId: number | null;
   onAdjustBalance: (wallet: WalletListItem) => void;
 };
 
 type WalletFlowDetailsProps = WalletFlowActions & {
   wallet: WalletListItem;
-  detailHref: string;
   isHouseContext?: boolean;
   /** Travel direction of the rail: the caption rises in from that side. */
   direction?: 1 | -1;
@@ -61,16 +71,18 @@ const Metric = ({
 );
 
 const ACTION_BUTTON_CLASS =
-  'h-11 w-full justify-center gap-2 rounded-full md:w-auto md:min-w-32';
+  'h-auto min-w-0 flex-col gap-1 rounded-2xl px-1 py-2.5 text-xs leading-tight';
 
 /** Name, metrics and quick actions for the wallet centered in the cover flow. */
 export const WalletFlowDetails = ({
   wallet,
-  detailHref,
   isHouseContext = false,
   direction = 1,
+  onMovement,
   onTransfer,
-  onIncome,
+  onPurchase,
+  onPay,
+  payPendingId,
   onAdjustBalance,
 }: WalletFlowDetailsProps) => {
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
@@ -112,6 +124,18 @@ export const WalletFlowDetails = ({
           : []),
       ];
 
+  const actions = isCard
+    ? [
+        { key: 'purchase', label: 'Compra', icon: ShoppingCart, onClick: () => onPurchase(wallet), busy: false },
+        { key: 'pay', label: 'Pagar', icon: Banknote, onClick: () => onPay(wallet), busy: payPendingId === wallet.id },
+        { key: 'adjust', label: 'Ajustar saldo', icon: SlidersHorizontal, onClick: () => onAdjustBalance(wallet), busy: false },
+      ]
+    : [
+        { key: 'movement', label: 'Movimiento', icon: Plus, onClick: () => onMovement(wallet), busy: false },
+        { key: 'transfer', label: 'Transferir', icon: ArrowLeftRight, onClick: () => onTransfer(wallet), busy: false },
+        { key: 'adjust', label: 'Ajustar saldo', icon: SlidersHorizontal, onClick: () => onAdjustBalance(wallet), busy: false },
+      ];
+
   return (
     <div className="mt-4 w-full">
       <div className="text-center">
@@ -151,48 +175,24 @@ export const WalletFlowDetails = ({
           ))}
         </div>
         <div
-          className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap md:justify-center"
+          className="grid w-full max-w-md grid-cols-3 gap-2"
           role="group"
           aria-label={`Acciones de ${wallet.name}`}
         >
-          {!isCard ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                className={ACTION_BUTTON_CLASS}
-                onClick={() => onTransfer(wallet)}
-              >
-                <ArrowLeftRight className="h-4 w-4" aria-hidden />
-                Transferir
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className={ACTION_BUTTON_CLASS}
-                onClick={() => onIncome(wallet)}
-              >
-                <CirclePlus className="h-4 w-4" aria-hidden />
-                Registrar ingreso
-              </Button>
-            </>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            className={ACTION_BUTTON_CLASS}
-            onClick={() => onAdjustBalance(wallet)}
-          >
-            <SlidersHorizontal className="h-4 w-4" aria-hidden />
-            Ajustar saldo
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            className={ACTION_BUTTON_CLASS}
-          >
-            <Link href={detailHref}>Detalles</Link>
-          </Button>
+          {actions.map(({ key, label, icon: Icon, onClick, busy }) => (
+            <Button
+              key={key}
+              type="button"
+              variant="outline"
+              className={ACTION_BUTTON_CLASS}
+              disabled={busy}
+              aria-busy={busy || undefined}
+              onClick={onClick}
+            >
+              <Icon className="h-5 w-5" aria-hidden />
+              {label}
+            </Button>
+          ))}
         </div>
       </div>
     </div>

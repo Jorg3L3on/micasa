@@ -65,7 +65,7 @@ import {
 } from '@/components/ui/tooltip';
 import type { WalletListItem } from '@/types/catalog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
-import WalletQuickIncomeDialog from '@/components/wallets/WalletQuickIncomeDialog';
+import { useWalletQuickActions } from '@/components/wallets/use-wallet-quick-actions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { WalletFlowSection } from '@/components/wallets/WalletFlowSection';
 import { WalletsAttentionBlock } from '@/components/wallets/WalletsAttentionBlock';
@@ -413,7 +413,6 @@ export default function WalletsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [balanceWallet, setBalanceWallet] = useState<WalletListItem | null>(null);
   const [transferWallet, setTransferWallet] = useState<WalletListItem | null>(null);
-  const [incomeWallet, setIncomeWallet] = useState<WalletListItem | null>(null);
   const [focusWalletId, setFocusWalletId] = useState<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -930,9 +929,19 @@ export default function WalletsPage() {
       daysInMonth: new Date(Date.UTC(year, month, 0)).getUTCDate(),
     });
   }, [displayWallets]);
+  const quickActions = useWalletQuickActions({
+    wallets,
+    context,
+    reload: async () => {
+      await fetchWallets();
+    },
+  });
   const flowActions = {
+    onMovement: quickActions.openMovement,
     onTransfer: openTransferDialog,
-    onIncome: setIncomeWallet,
+    onPurchase: quickActions.openPurchase,
+    onPay: quickActions.openPay,
+    payPendingId: quickActions.payPendingId,
     onAdjustBalance: setBalanceWallet,
   };
 
@@ -1398,20 +1407,7 @@ export default function WalletsPage() {
         />
       ) : null}
 
-      {incomeWallet && context ? (
-        <WalletQuickIncomeDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setIncomeWallet(null);
-          }}
-          walletId={incomeWallet.id}
-          walletName={incomeWallet.name}
-          context={context}
-          onSuccess={async () => {
-            await fetchWallets();
-          }}
-        />
-      ) : null}
+      {quickActions.dialogs}
 
       <WalletTransferDialog
         open={transferWallet != null}
