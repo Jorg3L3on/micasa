@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { getWalletAvailableCredit } from '@/lib/finance/wallet-accounting';
 import type { WalletListItem } from '@/types/catalog';
 import {
   buildAttentionItems,
   clampFlowIndex,
   coverFlowSlot,
   daysUntilDueDay,
+  effectiveCreditLimit,
   groupWalletsBySection,
   rubberBandPosition,
   settleFlowIndex,
@@ -169,5 +171,23 @@ describe('buildAttentionItems', () => {
       [4, 'negative-balance'],
       [1, 'due-soon'],
     ]);
+  });
+});
+
+describe('Disponible parity with the server', () => {
+  // The list computes limit − balance − loans on the client; the detail page
+  // reads the server's available_credit, which subtracts the same loan total.
+  it.each([
+    { amount: 400, credit_limit: 1000, temporary_credit_limit: null, loans: 250 },
+    { amount: 400, credit_limit: 1000, temporary_credit_limit: 1500, loans: 0 },
+    { amount: 0, credit_limit: null, temporary_credit_limit: 800, loans: 100 },
+    { amount: 1200, credit_limit: 1000, temporary_credit_limit: null, loans: 300 },
+  ])('matches for %o', ({ loans, ...fields }) => {
+    const server = getWalletAvailableCredit(fields);
+    const w = wallet({ type: 'CREDIT_CARD', ...fields });
+    const limit = effectiveCreditLimit(w);
+    expect(server == null ? null : server - loans).toBe(
+      limit == null ? null : limit - fields.amount - loans,
+    );
   });
 });

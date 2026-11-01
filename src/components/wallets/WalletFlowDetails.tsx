@@ -1,6 +1,5 @@
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
 import {
   ArrowLeftRight,
   Banknote,
@@ -9,10 +8,9 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import {
-  type PaymentMethodType,
-  PAYMENT_METHOD_LABELS,
   isCreditOrStoreCardWalletType,
 } from '@/domain/payment-method';
+import { WalletRecentMovements } from '@/components/wallets/WalletRecentMovements';
 import { RollingNumber, RollingText } from '@/components/ui/rolling-number';
 import { effectiveCreditLimit } from '@/lib/ui/wallet-cover-flow';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -33,6 +31,7 @@ export type WalletFlowActions = {
 
 type WalletFlowDetailsProps = WalletFlowActions & {
   wallet: WalletListItem;
+  detailHref: string;
   isHouseContext?: boolean;
   /** Travel direction of the rail: the caption rises in from that side. */
   direction?: 1 | -1;
@@ -76,6 +75,7 @@ const ACTION_BUTTON_CLASS =
 /** Name, metrics and quick actions for the wallet centered in the cover flow. */
 export const WalletFlowDetails = ({
   wallet,
+  detailHref,
   isHouseContext = false,
   direction = 1,
   onMovement,
@@ -88,8 +88,6 @@ export const WalletFlowDetails = ({
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const amount = Number(wallet.amount) || 0;
   const limit = isCard ? effectiveCreditLimit(wallet) : null;
-  const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
-  const reducedMotion = useReducedMotion() ?? false;
 
   const metrics: { label: string; value: MetricValue }[] = isCard
     ? [
@@ -144,25 +142,6 @@ export const WalletFlowDetails = ({
 
   return (
     <div className="mt-4 w-full">
-      <div className="text-center">
-        <motion.div
-          key={wallet.id}
-          className="min-w-0"
-          initial={{ opacity: 0, x: reducedMotion ? 0 : direction * 14 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: reducedMotion ? 0.12 : 0.28, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <h3 className="truncate text-lg font-semibold text-foreground">
-            {wallet.name}
-          </h3>
-          <p className="truncate text-body text-muted-foreground">
-            {isCard && wallet.cutoff_day != null
-              ? `${typeLabel} · Corte ${wallet.cutoff_day}`
-              : typeLabel}
-          </p>
-        </motion.div>
-      </div>
-
       <div className="mt-5 flex flex-col items-center gap-4 md:border-t md:border-border/60 md:pt-4">
         <div
           className={cn(
@@ -201,6 +180,8 @@ export const WalletFlowDetails = ({
           ))}
         </div>
       </div>
+
+      <WalletRecentMovements wallet={wallet} detailHref={detailHref} />
     </div>
   );
 };

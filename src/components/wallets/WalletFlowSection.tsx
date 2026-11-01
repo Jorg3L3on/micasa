@@ -107,6 +107,7 @@ export const WalletFlowSection = ({
       />
       <WalletFlowDetails
         wallet={active}
+        detailHref={walletDetailHref(active, ownerQueryString)}
         isHouseContext={isHouseContext}
         direction={direction}
         {...actions}
