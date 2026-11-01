@@ -28,7 +28,10 @@ type WalletFlowDetailsProps = WalletFlowActions & {
   direction?: 1 | -1;
 };
 
-type MetricValue = { amount: number } | { text: string };
+type MetricValue =
+  | { amount: number }
+  | { rolling: string }
+  | { text: string };
 
 const Metric = ({
   label,
@@ -48,6 +51,8 @@ const Metric = ({
     <p className="truncate text-lg font-semibold leading-snug text-foreground">
       {'amount' in value ? (
         <RollingNumber text={formatCurrency(value.amount)} />
+      ) : 'rolling' in value ? (
+        <RollingNumber text={value.rolling} />
       ) : (
         <RollingText text={value.text} direction={direction} />
       )}
@@ -74,45 +79,38 @@ export const WalletFlowDetails = ({
   const typeLabel = PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType];
   const reducedMotion = useReducedMotion() ?? false;
 
-  const metrics = isCard ? (
-    <>
-      <Metric label="Usado" value={{ amount }} direction={direction} />
-      <Metric
-        label="Disponible"
-        value={
-          limit != null && limit > 0
-            ? { amount: limit - amount }
-            : { text: 'Sin línea' }
-        }
-        direction={direction}
-      />
-      <Metric
-        label="Próximo pago"
-        value={{
-          text: wallet.due_day != null ? `Día ${wallet.due_day}` : 'Sin fecha',
-        }}
-        direction={direction}
-      />
-    </>
-  ) : (
-    <>
-      <Metric label="Saldo" value={{ amount }} direction={direction} />
-      {wallet.include_in_liquidity ? null : (
-        <Metric
-          label="Liquidez"
-          value={{ text: 'Excluida' }}
-          direction={direction}
-        />
-      )}
-      {isHouseContext ? (
-        <Metric
-          label="Responsable"
-          value={{ text: wallet.assignee?.name ?? 'Compartida' }}
-          direction={direction}
-        />
-      ) : null}
-    </>
-  );
+  const metrics: { label: string; value: MetricValue }[] = isCard
+    ? [
+        { label: 'Usado', value: { amount } },
+        {
+          label: 'Disponible',
+          value:
+            limit != null && limit > 0
+              ? { amount: limit - amount }
+              : { text: 'Sin línea' },
+        },
+        {
+          label: 'Próximo pago',
+          value:
+            wallet.due_day != null
+              ? { rolling: `Día ${wallet.due_day}` }
+              : { text: 'Sin fecha' },
+        },
+      ]
+    : [
+        { label: 'Saldo', value: { amount } },
+        ...(wallet.include_in_liquidity
+          ? []
+          : [{ label: 'Liquidez', value: { text: 'Excluida' } }]),
+        ...(isHouseContext
+          ? [
+              {
+                label: 'Responsable',
+                value: { text: wallet.assignee?.name ?? 'Compartida' },
+              },
+            ]
+          : []),
+      ];
 
   return (
     <div className="mt-4 w-full">
@@ -136,8 +134,21 @@ export const WalletFlowDetails = ({
       </div>
 
       <div className="mt-5 flex flex-col items-center gap-4 md:border-t md:border-border/60 md:pt-4">
-        <div className="flex w-full flex-wrap justify-center gap-x-8 gap-y-3">
-          {metrics}
+        <div
+          className={cn(
+            'flex w-full gap-x-6 gap-y-3 px-2',
+            // Three or more columns spread edge to edge; one or two stay centered.
+            metrics.length > 2 ? 'justify-between' : 'justify-center gap-x-10',
+          )}
+        >
+          {metrics.map((metric) => (
+            <Metric
+              key={metric.label}
+              label={metric.label}
+              value={metric.value}
+              direction={direction}
+            />
+          ))}
         </div>
         <div
           className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap md:justify-center"

@@ -85,17 +85,21 @@ describe('settleFlowIndex', () => {
     expect(settleFlowIndex(2.2, 0.1, 6)).toBe(2);
     expect(settleFlowIndex(2.6, 0, 6)).toBe(3);
   });
-  it('carries momentum to a farther card', () => {
-    expect(settleFlowIndex(2.1, 8, 10)).toBe(4);
-    expect(settleFlowIndex(2.1, -8, 10)).toBe(1);
-  });
   it('moves at least one card on a quick flick', () => {
-    expect(settleFlowIndex(2.05, 0.9, 6)).toBe(3);
-    expect(settleFlowIndex(2.05, -0.9, 6)).toBe(1);
+    expect(settleFlowIndex(2.05, 0.9, 6, 2)).toBe(3);
+    expect(settleFlowIndex(2.05, -0.9, 6, 2)).toBe(1);
+  });
+  it('is heavy: a normal fast swipe moves one card from where it began', () => {
+    expect(settleFlowIndex(2.4, 9, 10, 2)).toBe(3);
+    expect(settleFlowIndex(1.6, -9, 10, 2)).toBe(1);
+  });
+  it('lets only a hard throw reach a second card', () => {
+    expect(settleFlowIndex(2.6, 20, 10, 2)).toBe(4);
+    expect(settleFlowIndex(2.6, 20, 10, 2)).not.toBe(5);
   });
   it('never leaves the list', () => {
-    expect(settleFlowIndex(0.1, -9, 4)).toBe(0);
-    expect(settleFlowIndex(2.9, 9, 4)).toBe(3);
+    expect(settleFlowIndex(0.1, -9, 4, 0)).toBe(0);
+    expect(settleFlowIndex(2.9, 9, 4, 3)).toBe(3);
   });
 });
 

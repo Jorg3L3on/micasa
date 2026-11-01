@@ -51,21 +51,28 @@ export const coverFlowSlot = (
   };
 };
 
+/** A release this fast (cards per second) may carry the rail a second card. */
+const HARD_THROW_VELOCITY = 14;
+
 /**
  * Where a release lands. `velocity` is the rail's speed in cards per second
- * (position change, so dragging left is positive). Momentum projects the
- * landing card; a quick flick always moves at least one card.
+ * (position change, so dragging left is positive). The rail is heavy: a
+ * normal swipe moves one card from where the gesture began, a quick flick
+ * always moves at least one, and only a hard throw reaches a second card.
  */
 export const settleFlowIndex = (
   position: number,
   velocity: number,
   count: number,
+  startIndex: number = Math.round(position),
 ): number => {
   const base = Math.round(position);
-  let target = Math.round(position + velocity * 0.18);
+  let target = Math.round(position + velocity * 0.08);
   if (target === base && Math.abs(velocity) > FLICK_VELOCITY) {
     target = base + Math.sign(velocity);
   }
+  const reach = Math.abs(velocity) > HARD_THROW_VELOCITY ? 2 : 1;
+  target = Math.min(Math.max(target, startIndex - reach), startIndex + reach);
   return clampFlowIndex(target, count);
 };
 

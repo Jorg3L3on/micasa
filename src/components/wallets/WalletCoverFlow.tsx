@@ -34,7 +34,7 @@ const WHEEL_SETTLE_MS = 110;
 /** Cards farther than this from the front are hidden from paint and the a11y tree. */
 const HIDDEN_DISTANCE = 3;
 
-const SETTLE_SPRING = { type: 'spring', stiffness: 260, damping: 30, mass: 0.9 } as const;
+const SETTLE_SPRING = { type: 'spring', stiffness: 170, damping: 30, mass: 1.3 } as const;
 const REDUCED_SETTLE = { type: 'tween', duration: 0.12, ease: 'easeOut' } as const;
 
 type FlowCardProps = {
@@ -140,6 +140,7 @@ export const WalletCoverFlow = ({
   const drag = useRef<{
     startX: number;
     startPosition: number;
+    startIndex: number;
     lastX: number;
     lastT: number;
     velocity: number;
@@ -248,6 +249,7 @@ export const WalletCoverFlow = ({
     drag.current = {
       startX: event.clientX,
       startPosition: position.get(),
+      startIndex: Math.round(position.get()),
       lastX: event.clientX,
       lastT: performance.now(),
       velocity: 0,
@@ -267,7 +269,7 @@ export const WalletCoverFlow = ({
       setDragging(true);
     }
     if (!d.moved) return;
-    const width = cardWidth() * 0.62;
+    const width = cardWidth() * 0.85;
     const next = rubberBandPosition(d.startPosition - dx / width, count);
     const now = performance.now();
     const dt = Math.max(1, now - d.lastT);
@@ -294,7 +296,7 @@ export const WalletCoverFlow = ({
     settleTo(
       reducedMotion
         ? Math.round(d.startPosition) + (Math.abs(dx) > 40 ? -Math.sign(dx) : 0)
-        : settleFlowIndex(position.get(), stale ? 0 : d.velocity, count),
+        : settleFlowIndex(position.get(), stale ? 0 : d.velocity, count, d.startIndex),
     );
   };
 
