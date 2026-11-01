@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 import { clampFlowIndex } from '@/lib/ui/wallet-cover-flow';
@@ -62,6 +63,7 @@ export const WalletFlowSection = ({
   ...actions
 }: WalletFlowSectionProps) => {
   const router = useRouter();
+  const [vtId, setVtId] = useState<number | null>(null);
   const { context } = useFinanceContext();
   const [activeId, setActiveId] = useState<number | null>(
     wallets[0]?.id ?? null,
@@ -124,7 +126,11 @@ export const WalletFlowSection = ({
       },
     });
     prefetchWalletDetailApis(wallet.id, isCard, context);
+    // Name only the opened card, and only for the hand-off: the list stays
+    // mounted behind the detail page, so a lingering name would be a duplicate.
+    flushSync(() => setVtId(wallet.id));
     navigateWithTransitionType(href, 'nav-forward', (to) => router.push(to));
+    window.setTimeout(() => setVtId(null), 800);
   };
 
   return (
@@ -145,6 +151,7 @@ export const WalletFlowSection = ({
         onActiveIndexChange={(index) => setActiveId(wallets[index]?.id ?? null)}
         onOpen={openDetail}
         ariaLabel={title}
+        viewTransitionId={vtId}
       />
       <WalletFlowDetails
         wallet={active}

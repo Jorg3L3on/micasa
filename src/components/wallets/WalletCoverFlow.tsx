@@ -48,6 +48,8 @@ type FlowCardProps = {
   /** Scales side-card dimming (see `coverFlowSlot`). */
   dimming: number;
   isFront: boolean;
+  /** Wallet carrying the shared name (only while it is being opened). */
+  viewTransitionId: number | null;
   onClick: () => void;
 };
 
@@ -59,6 +61,7 @@ const FlowCard = ({
   reducedMotion,
   dimming,
   isFront,
+  viewTransitionId,
   onClick,
 }: FlowCardProps) => {
   const offset = useTransform(position, (p) => index - p);
@@ -101,7 +104,11 @@ const FlowCard = ({
       {/* Only the front card carries the shared name: names must be unique, and
           the reflection copy below must never share it. */}
       <ViewTransition
-        name={isFront ? walletCardViewTransitionName(wallet.id) : undefined}
+        name={
+          viewTransitionId === wallet.id
+            ? walletCardViewTransitionName(wallet.id)
+            : undefined
+        }
         share="morph"
         default="none"
       >
@@ -125,6 +132,8 @@ type WalletCoverFlowProps = {
   /** Tap or Enter on the front card. */
   onOpen: (wallet: WalletListItem) => void;
   ariaLabel: string;
+  /** Wallet being opened: it alone takes the shared view-transition name. */
+  viewTransitionId?: number | null;
 };
 
 /**
@@ -140,6 +149,7 @@ export const WalletCoverFlow = ({
   onActiveIndexChange,
   onOpen,
   ariaLabel,
+  viewTransitionId = null,
 }: WalletCoverFlowProps) => {
   const count = wallets.length;
   const active = clampFlowIndex(activeIndex, count);
@@ -363,6 +373,7 @@ export const WalletCoverFlow = ({
             reducedMotion={reducedMotion}
             dimming={isMobile ? 0.75 : 1}
             isFront={index === active}
+            viewTransitionId={viewTransitionId}
             onClick={() => handleCardClick(index)}
           />
         ))}
