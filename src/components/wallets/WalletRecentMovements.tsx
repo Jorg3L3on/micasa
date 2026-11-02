@@ -58,9 +58,17 @@ export const WalletRecentMovements = ({
       aria-label="Últimos movimientos"
       className="mt-5 w-full rounded-2xl border border-border/60 bg-card/60 p-2 shadow-sm"
     >
-      <h3 className="px-2 pb-1 pt-1.5 text-section text-foreground">
-        Últimos movimientos
-      </h3>
+      <div className="flex items-baseline justify-between gap-2 px-2 pb-1 pt-1.5">
+        <h3 className="text-section text-foreground">Últimos movimientos</h3>
+        {movements != null && movements.length > 0 ? (
+          <Link
+            href={detailHref}
+            className="rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            Ver todos
+          </Link>
+        ) : null}
+      </div>
 
       {movements == null && !failed ? (
         <div className="space-y-1" aria-busy="true" aria-label="Cargando movimientos">
@@ -144,12 +152,6 @@ export const WalletRecentMovements = ({
               );
             })}
           </ul>
-          <Link
-            href={detailHref}
-            className="mt-1 block rounded-xl py-2.5 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-          >
-            Ver todos
-          </Link>
         </motion.div>
       )}
     </section>
