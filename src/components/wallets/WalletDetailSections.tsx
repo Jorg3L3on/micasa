@@ -114,7 +114,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
     >
       <div
         className={cn(
-          'relative w-full overflow-hidden rounded-face border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
+          'relative w-full overflow-hidden rounded-face border aspect-[1.586] [container-type:inline-size] p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
           !cardStyle &&
             (isCash
               ? 'border-status-income-border bg-linear-to-br from-status-income to-background'
@@ -139,7 +139,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
           <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-status-expense/80 to-transparent" />
         ) : null}
 
-        <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
+        <div className="relative flex h-full flex-col justify-between gap-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {wallet.provider_icon_key ? (

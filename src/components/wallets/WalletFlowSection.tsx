@@ -29,7 +29,6 @@ type WalletFlowSectionProps = WalletFlowActions & {
   title: string;
   wallets: WalletListItem[];
   ownerQueryString: string;
-  isHouseContext?: boolean;
   /** Wallet to center when it appears in this section (from the attention block). */
   focusWalletId?: number | null;
   /** Hide the section title row (the mobile flow shows a type switcher instead). */
@@ -80,7 +79,6 @@ export const WalletFlowSection = ({
   title,
   wallets,
   ownerQueryString,
-  isHouseContext,
   focusWalletId,
   hideHeader = false,
   ...actions
@@ -124,14 +122,6 @@ export const WalletFlowSection = ({
   ) {
     setHandledFocus(focusWalletId);
     setActiveId(focusWalletId);
-  }
-
-  // Adjust during render: remember which way the rail travelled.
-  const [prevIndex, setPrevIndex] = useState(activeIndex);
-  const [direction, setDirection] = useState<1 | -1>(1);
-  if (activeIndex !== prevIndex) {
-    setPrevIndex(activeIndex);
-    setDirection(activeIndex > prevIndex ? 1 : -1);
   }
 
   const active = wallets[activeIndex];
@@ -199,8 +189,6 @@ export const WalletFlowSection = ({
       <WalletFlowDetails
         wallet={active}
         detailHref={walletMovementsHref(active, ownerQueryString)}
-        isHouseContext={isHouseContext}
-        direction={direction}
         {...actions}
       />
     </section>

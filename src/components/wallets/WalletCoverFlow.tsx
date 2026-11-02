@@ -377,31 +377,6 @@ export const WalletCoverFlow = ({
           ? `${active + 1} de ${count}: ${wallets[active].name}`
           : null}
       </div>
-
-      {count > 1 ? (
-        <div className="mt-1 flex items-center justify-center gap-2">
-          {wallets.map((wallet, index) => (
-            <button
-              key={wallet.id}
-              type="button"
-              tabIndex={-1}
-              aria-label={`Mostrar ${wallet.name}`}
-              aria-current={index === active ? 'true' : undefined}
-              onClick={() => settleTo(index)}
-              className="group flex h-6 items-center justify-center px-0.5"
-            >
-              <span
-                className={cn(
-                  'block h-1.5 rounded-full transition-all motion-reduce:transition-none',
-                  index === active
-                    ? 'w-6 bg-foreground'
-                    : 'w-1.5 bg-muted-foreground/40 group-hover:bg-muted-foreground/70',
-                )}
-              />
-            </button>
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 };

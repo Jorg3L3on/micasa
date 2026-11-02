@@ -18,7 +18,7 @@ export function walletCardViewTransitionName(walletId: number): string {
  * (`wallet-deck.ts`) and grows back to the full face when expanded.
  */
 export const WALLET_LIST_CARD_SHELL_CLASS =
-  'min-h-[12rem] p-4 pb-5 sm:min-h-[13.5rem] sm:p-5 sm:pb-6';
+  'aspect-[1.586] [container-type:inline-size] p-4 sm:p-5';
 
 export type WalletCardVtSnapshot = {
   id: number;

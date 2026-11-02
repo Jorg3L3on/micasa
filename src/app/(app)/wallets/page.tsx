@@ -1313,7 +1313,6 @@ export default function WalletsPage() {
                         hideHeader
                         wallets={displayWallets}
                         ownerQueryString={ownerQueryString}
-                        isHouseContext={isHouseContext}
                         focusWalletId={focusWalletId}
                         {...flowActions}
                       />
@@ -1323,7 +1322,6 @@ export default function WalletsPage() {
                         title="Efectivo y débito"
                         wallets={sections.funding}
                         ownerQueryString={ownerQueryString}
-                        isHouseContext={isHouseContext}
                         focusWalletId={focusWalletId}
                         {...flowActions}
                       />
@@ -1331,7 +1329,6 @@ export default function WalletsPage() {
                         title="Tarjetas de crédito"
                         wallets={sections.credit}
                         ownerQueryString={ownerQueryString}
-                        isHouseContext={isHouseContext}
                         focusWalletId={focusWalletId}
                         {...flowActions}
                       />

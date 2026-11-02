@@ -11,9 +11,6 @@ import {
   isCreditOrStoreCardWalletType,
 } from '@/domain/payment-method';
 import { WalletRecentMovements } from '@/components/wallets/WalletRecentMovements';
-import { RollingNumber, RollingText } from '@/components/ui/rolling-number';
-import { effectiveCreditLimit } from '@/lib/ui/wallet-cover-flow';
-import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 import { Button } from '@/components/ui/button';
 
@@ -32,52 +29,15 @@ export type WalletFlowActions = {
 type WalletFlowDetailsProps = WalletFlowActions & {
   wallet: WalletListItem;
   detailHref: string;
-  isHouseContext?: boolean;
-  /** Travel direction of the rail: the caption rises in from that side. */
-  direction?: 1 | -1;
 };
-
-type MetricValue =
-  | { amount: number }
-  | { rolling: string }
-  | { text: string };
-
-const Metric = ({
-  label,
-  value,
-  direction,
-  className,
-}: {
-  label: string;
-  value: MetricValue;
-  direction: 1 | -1;
-  className?: string;
-}) => (
-  <div className={cn('min-w-0 text-center', className)}>
-    <p className="truncate text-caption text-muted-foreground">
-      <RollingText text={label} direction={direction} />
-    </p>
-    <p className="truncate text-lg font-semibold leading-snug text-foreground">
-      {'amount' in value ? (
-        <RollingNumber text={formatCurrency(value.amount)} />
-      ) : 'rolling' in value ? (
-        <RollingNumber text={value.rolling} />
-      ) : (
-        <RollingText text={value.text} direction={direction} />
-      )}
-    </p>
-  </div>
-);
 
 const ACTION_BUTTON_CLASS =
   'h-auto min-w-0 flex-col gap-1 rounded-2xl px-1 py-2.5 text-xs leading-tight';
 
-/** Name, metrics and quick actions for the wallet centered in the cover flow. */
+/** Quick actions for the wallet centered in the cover flow. */
 export const WalletFlowDetails = ({
   wallet,
   detailHref,
-  isHouseContext = false,
-  direction = 1,
   onMovement,
   onTransfer,
   onPurchase,
@@ -86,47 +46,6 @@ export const WalletFlowDetails = ({
   onAdjustBalance,
 }: WalletFlowDetailsProps) => {
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
-  const amount = Number(wallet.amount) || 0;
-  const limit = isCard ? effectiveCreditLimit(wallet) : null;
-
-  const metrics: { label: string; value: MetricValue }[] = isCard
-    ? [
-        {
-          label: 'Disponible',
-          value:
-            limit != null && limit > 0
-              ? { amount: limit - amount - (wallet.loan_outstanding ?? 0) }
-              : { text: 'Sin línea' },
-        },
-        {
-          label: 'Límite',
-          value:
-            limit != null && limit > 0
-              ? { amount: limit }
-              : { text: 'Sin línea' },
-        },
-        {
-          label: 'Próximo pago',
-          value:
-            wallet.due_day != null
-              ? { rolling: `Día ${wallet.due_day}` }
-              : { text: 'Sin fecha' },
-        },
-      ]
-    : [
-        { label: 'Saldo', value: { amount } },
-        ...(wallet.include_in_liquidity
-          ? []
-          : [{ label: 'Liquidez', value: { text: 'Excluida' } }]),
-        ...(isHouseContext
-          ? [
-              {
-                label: 'Responsable',
-                value: { text: wallet.assignee?.name ?? 'Compartida' },
-              },
-            ]
-          : []),
-      ];
 
   const actions = isCard
     ? [
@@ -143,22 +62,6 @@ export const WalletFlowDetails = ({
   return (
     <div className="mt-4 w-full">
       <div className="mt-5 flex flex-col items-center gap-4 md:border-t md:border-border/60 md:pt-4">
-        <div
-          className={cn(
-            'flex w-full gap-x-6 gap-y-3 px-2',
-            // Three or more columns spread edge to edge; one or two stay centered.
-            metrics.length > 2 ? 'justify-between' : 'justify-center gap-x-10',
-          )}
-        >
-          {metrics.map((metric) => (
-            <Metric
-              key={metric.label}
-              label={metric.label}
-              value={metric.value}
-              direction={direction}
-            />
-          ))}
-        </div>
         <div
           className="grid w-full max-w-md grid-cols-3 gap-2"
           role="group"

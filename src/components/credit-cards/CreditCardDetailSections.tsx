@@ -186,7 +186,7 @@ export const CreditCardVisualHero = ({
         className={cn(
           // Grow with content (no fixed aspect): utilization + amounts clip on
           // narrow viewports when locked to aspect-[1.586/1] + overflow-hidden.
-          'relative w-full overflow-hidden rounded-face border p-4 pb-5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5 sm:pb-6',
+          'relative w-full overflow-hidden rounded-face border aspect-[1.586] [container-type:inline-size] p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
           !cardStyle &&
             'border-border bg-linear-to-br from-foreground to-background',
         )}
@@ -205,7 +205,7 @@ export const CreditCardVisualHero = ({
           aria-hidden
         />
 
-        <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
+        <div className="relative flex h-full flex-col justify-between gap-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {card.provider_icon_key ? (
@@ -240,7 +240,7 @@ export const CreditCardVisualHero = ({
               <p className="eyebrow opacity-70">
                 Deuda total
               </p>
-              <p className="text-3xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-4xl">
+              <p className="text-[clamp(1.5rem,9cqw,2.25rem)] font-bold font-sans tabular-nums leading-snug tracking-tight">
                 {formatCurrency(outstandingBalance)}
               </p>
             </div>

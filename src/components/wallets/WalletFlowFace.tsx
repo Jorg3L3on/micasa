@@ -33,6 +33,13 @@ export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false 
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const amount = Number(wallet.amount) || 0;
   const limit = isCard ? effectiveCreditLimit(wallet) : null;
+  const hasLimit = limit != null && limit > 0;
+  const available = hasLimit
+    ? limit - amount - (Number(wallet.loan_outstanding) || 0)
+    : null;
+  const utilizationPct = hasLimit
+    ? Math.round(Math.min(100, Math.max(0, (amount / limit) * 100)))
+    : null;
   const hasAlert = isCard ? limit != null && limit > 0 && amount > limit : amount < 0;
 
   const style = useMemo(() => {
@@ -47,7 +54,7 @@ export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false 
   return (
     <div
       className={cn(
-        'relative flex aspect-[1.586] w-full flex-col justify-between overflow-hidden rounded-face border border-white/15 p-5 text-white shadow-face',
+        'relative flex aspect-[1.586] w-full flex-col justify-between gap-2 overflow-hidden rounded-face border border-white/15 p-4 text-white shadow-face [container-type:inline-size] sm:p-5',
         hasAlert && 'ring-2 ring-inset ring-status-overdue/70',
         !wallet.active && 'opacity-80',
         className,
@@ -72,7 +79,9 @@ export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false 
               {wallet.name}
             </p>
             <p className="eyebrow opacity-60">
-              {PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType]}
+              {isCard && wallet.cutoff_day != null && wallet.due_day != null
+                ? `Corte ${wallet.cutoff_day} · Pago ${wallet.due_day}`
+                : PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType]}
             </p>
           </div>
         </div>
@@ -90,14 +99,53 @@ export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false 
           </span>
         ) : null}
       </div>
-      <div className="relative">
-        <p className="eyebrow opacity-70">
-          {isCard ? 'Deuda total' : 'Saldo disponible'}
-        </p>
-        <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
-          {formatCurrency(amount)}
-        </p>
-      </div>
+      {isCard ? (
+        <div className="relative space-y-2">
+          <div>
+            <p className="eyebrow opacity-70">Deuda total</p>
+            <p className="font-sans text-[clamp(1.5rem,9cqw,2.25rem)] font-bold tabular-nums leading-snug tracking-tight">
+              {formatCurrency(amount)}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
+            <div>
+              <p className="eyebrow opacity-70">Disponible</p>
+              <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
+                {available == null ? 'Sin línea' : formatCurrency(available)}
+              </p>
+            </div>
+            {limit != null && limit > 0 ? (
+              <div className="text-right">
+                <p className="eyebrow opacity-70">Límite</p>
+                <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
+                  {formatCurrency(limit)}
+                </p>
+              </div>
+            ) : null}
+          </div>
+          {utilizationPct != null ? (
+            <div className="space-y-1">
+              <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
+                <span>Utilización</span>
+                <span className="font-sans tabular-nums">{utilizationPct}%</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                <div
+                  className="h-full rounded-full bg-white/85"
+                  style={{ width: `${Math.min(utilizationPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="relative">
+          <p className="eyebrow opacity-70">Saldo disponible</p>
+          <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
+            {formatCurrency(amount)}
+          </p>
+        </div>
+      )}
       {showOpenHint ? (
         <span
           aria-hidden
