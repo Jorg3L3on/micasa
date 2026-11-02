@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion, type MotionValue } from 'framer-motion';
-import { ArrowUpRight, BookmarkIcon } from 'lucide-react';
+import { BookmarkIcon } from 'lucide-react';
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
@@ -24,12 +24,10 @@ type WalletFlowFaceProps = {
   className?: string;
   /** Horizontal drift (px) of the face art inside the frame. */
   drift?: MotionValue<number>;
-  /** Small arrow at the top right: the face opens the wallet detail. */
-  showOpenHint?: boolean;
 };
 
 /** Card art used by the Billeteras cover flow: provider surface, icon, name, amount. */
-export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false }: WalletFlowFaceProps) => {
+export const WalletFlowFace = ({ wallet, className, drift }: WalletFlowFaceProps) => {
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const amount = Number(wallet.amount) || 0;
   const limit = isCard ? effectiveCreditLimit(wallet) : null;
@@ -93,14 +91,6 @@ export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false 
             <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
             Inactivo
           </Badge>
-        ) : null}
-        {showOpenHint ? (
-          <span
-            aria-hidden
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/20"
-          >
-            <ArrowUpRight className="h-4 w-4" />
-          </span>
         ) : null}
       </div>
       {isCard ? (

@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import {
   ArrowDownAZ,
   ArrowDownZA,
-  LineChart,
   ListFilter,
   Plus,
   Zap,
@@ -906,11 +905,6 @@ export default function WalletsPage() {
     [],
   );
 
-  const leadingActionIcon = useMemo(
-    () => <LineChart data-icon="inline-start" />,
-    [],
-  );
-
   const handleFiltersSelectOpenChange = useToolbarFiltersSelectOpenChange();
 
   const isMobile = useIsMobile();
@@ -957,11 +951,6 @@ export default function WalletsPage() {
       label: PAGE_CREATE_ACTION.wallet.label,
       onClick: openCreateDialog,
       icon: primaryActionIcon,
-    },
-    leadingAction: {
-      label: 'Proyección de liquidez',
-      href: '/wallets/liquidity',
-      icon: leadingActionIcon,
     },
   });
 

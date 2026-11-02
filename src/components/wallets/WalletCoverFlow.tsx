@@ -112,7 +112,7 @@ const FlowCard = ({
         share="morph"
         default="none"
       >
-        <WalletFlowFace wallet={wallet} drift={drift} showOpenHint />
+        <WalletFlowFace wallet={wallet} drift={drift} />
       </ViewTransition>
     </motion.div>
   );
