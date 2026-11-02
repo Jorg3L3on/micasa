@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withOwnerContext } from '@/lib/server/with-owner-context';
 import prisma from '@/lib/prisma';
-import { formatCalendarDate } from '@/lib/calendar-dates';
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  todayCalendarDate,
+} from '@/lib/calendar-dates';
 import {
   computeMovementTotals,
   listWalletMovements,
@@ -11,6 +15,8 @@ import type {
   WalletMovementsResponse,
 } from '@/types/wallet-movements';
 
+const MAX_LATEST = 10;
+const LATEST_WINDOW_DAYS = 90;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function firstDayOfMonth(now: Date): string {
@@ -51,24 +57,35 @@ export async function GET(
         );
       }
 
-      const { searchParams } = new URL(request.url);
-      const now = new Date();
-      const fromRaw = searchParams.get('from') ?? firstDayOfMonth(now);
-      const toRaw = searchParams.get('to') ?? lastDayOfMonth(now);
-      if (!DATE_RE.test(fromRaw) || !DATE_RE.test(toRaw)) {
-        return NextResponse.json(
-          { error: 'Invalid from/to dates' },
-          { status: 400 },
-        );
-      }
-
-      const movements = await listWalletMovements(
-        walletId,
-        ownerFilter,
-        fromRaw,
-        toRaw,
+    const { searchParams } = new URL(request.url);
+    const now = new Date();
+    // `latest=N`: the N most recent movements of the last LATEST_WINDOW_DAYS.
+    const latestRaw = Number(searchParams.get('latest'));
+    const latest =
+      Number.isInteger(latestRaw) && latestRaw >= 1 && latestRaw <= MAX_LATEST
+        ? latestRaw
+        : null;
+    const latestTo = todayCalendarDate();
+    const fromRaw =
+      searchParams.get('from') ??
+      (latest ? addCalendarDays(latestTo, -LATEST_WINDOW_DAYS) : firstDayOfMonth(now));
+    const toRaw =
+      searchParams.get('to') ?? (latest ? latestTo : lastDayOfMonth(now));
+    if (!DATE_RE.test(fromRaw) || !DATE_RE.test(toRaw)) {
+      return NextResponse.json(
+        { error: 'Invalid from/to dates' },
+        { status: 400 },
       );
-      const totals = computeMovementTotals(movements);
+    }
+
+    const allMovements = await listWalletMovements(
+      walletId,
+      ownerFilter,
+      fromRaw,
+      toRaw,
+    );
+    const movements = latest ? allMovements.slice(0, latest) : allMovements;
+    const totals = computeMovementTotals(movements);
 
       const walletDetail: WalletDetail = {
         id: wallet.id,

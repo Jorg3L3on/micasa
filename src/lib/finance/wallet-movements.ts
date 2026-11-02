@@ -140,6 +140,7 @@ export const mapWalletTransferToMovements = (
     : '';
   const items: WalletMovement[] = [];
 
+
   if (transfer.from_wallet_id === walletId) {
     items.push({
       id: transfer.id,
@@ -255,11 +256,18 @@ export async function listWalletMovements(
   );
 
   const items: WalletMovement[] = [];
+  // Same-day ties order by when the record was created, not by id (ids are per table).
+  const createdAt = new Map<WalletMovement, number>();
+  const track = (from: number, source: { created_at?: Date | null }) => {
+    const at = source.created_at?.getTime() ?? 0;
+    for (let k = from; k < items.length; k++) createdAt.set(items[k], at);
+  };
 
   for (const e of expenses) {
     if (skipLinkedExpenseIds.has(e.id)) {
       continue;
     }
+    const start = items.length;
     items.push({
       id: e.id,
       kind: 'expense',
@@ -273,9 +281,11 @@ export async function listWalletMovements(
       fortnightMonth: e.fortnight?.month ?? null,
       fortnightPeriod: (e.fortnight?.period as 'FIRST' | 'SECOND') ?? null,
     });
+    track(start, e);
   }
 
   for (const i of incomes) {
+    const start = items.length;
     items.push({
       id: i.id,
       kind: 'income',
@@ -289,21 +299,28 @@ export async function listWalletMovements(
       fortnightMonth: i.fortnight?.month ?? null,
       fortnightPeriod: (i.fortnight?.period as 'FIRST' | 'SECOND') ?? null,
     });
+    track(start, i);
   }
 
   for (const payment of cardPayments) {
     const movement = mapCardPaymentToWalletMovement(payment, walletId);
     if (movement != null) {
+      const start = items.length;
       items.push(movement);
+      track(start, payment as { created_at?: Date | null });
     }
   }
 
   for (const transfer of walletTransfers) {
+    const start = items.length;
     items.push(...mapWalletTransferToMovements(transfer, walletId));
+    track(start, transfer as { created_at?: Date | null });
   }
 
   items.sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    const byCreated = (createdAt.get(b) ?? 0) - (createdAt.get(a) ?? 0);
+    if (byCreated !== 0) return byCreated;
     if (a.id !== b.id) return b.id - a.id;
     return a.kind.localeCompare(b.kind);
   });

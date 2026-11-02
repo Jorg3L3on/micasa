@@ -1,3 +1,4 @@
+import { DomainError } from '@/lib/finance/domain-error';
 import { cache } from 'react';
 import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
@@ -51,7 +52,7 @@ import {
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
 import type { DuePaymentItem } from '@/types/catalog';
-import { DomainError } from '@/lib/finance/domain-error';
+import { loadLoanOutstandingByWallet } from '@/lib/finance/wallet-loan-outstanding';
 
 export {
   buildCardStatementObligation,
@@ -409,6 +410,8 @@ export async function getCreditCardStatementByOwner(
     cutoffDay: card.cutoff_day,
     dueDay: card.due_day,
   });
+  const loanOutstanding =
+    (await loadLoanOutstandingByWallet(ownerFilter)).get(card.id) ?? 0;
   const nextDuePayment =
     periodObligation.confidence === 'missing'
       ? 0
@@ -422,11 +425,16 @@ export async function getCreditCardStatementByOwner(
     current_balance: currentBalance,
     credit_limit: creditLimit,
     temporary_credit_limit: temporaryCreditLimit,
-    available_credit: getWalletAvailableCredit({
-      amount: currentBalance,
-      credit_limit: creditLimit,
-      temporary_credit_limit: temporaryCreditLimit,
-    }),
+    // Free credit: limit − card balance − what linked or card-paid loans still owe.
+    available_credit: (() => {
+      const free = getWalletAvailableCredit({
+        amount: currentBalance,
+        credit_limit: creditLimit,
+        temporary_credit_limit: temporaryCreditLimit,
+      });
+      return free == null ? null : free - loanOutstanding;
+    })(),
+    loan_outstanding: loanOutstanding,
     cutoff_day: card.cutoff_day,
     due_day: card.due_day,
     statement_start: toDateOnlyString(window.statementStart),
