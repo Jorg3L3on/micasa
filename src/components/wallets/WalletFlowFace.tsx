@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { motion, type MotionValue } from "framer-motion";
-import { ArrowUpRight, BookmarkIcon } from "lucide-react";
+import { useMemo } from 'react';
+import { motion, type MotionValue } from 'framer-motion';
+import { ArrowUpRight, BookmarkIcon } from 'lucide-react';
 import {
   type PaymentMethodType,
   PAYMENT_METHOD_LABELS,
   isCreditOrStoreCardWalletType,
-} from "@/domain/payment-method";
+} from '@/domain/payment-method';
 import {
   getProviderBrandColor,
   getProviderCardStyle,
   getWalletBrandCssVars,
-} from "@/lib/provider-card-style";
-import { effectiveCreditLimit } from "@/lib/ui/wallet-cover-flow";
-import { cn, formatCurrency } from "@/lib/utils";
-import type { WalletListItem } from "@/types/catalog";
-import { Badge } from "@/components/ui/badge";
-import { WalletProviderIcon } from "@/components/wallets/WalletProviderIcon";
+} from '@/lib/provider-card-style';
+import { effectiveCreditLimit } from '@/lib/ui/wallet-cover-flow';
+import { cn, formatCurrency } from '@/lib/utils';
+import type { WalletListItem } from '@/types/catalog';
+import { Badge } from '@/components/ui/badge';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
 type WalletFlowFaceProps = {
   wallet: WalletListItem;
@@ -29,12 +29,7 @@ type WalletFlowFaceProps = {
 };
 
 /** Card art used by the Billeteras cover flow: provider surface, icon, name, amount. */
-export const WalletFlowFace = ({
-  wallet,
-  className,
-  drift,
-  showOpenHint = false,
-}: WalletFlowFaceProps) => {
+export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false }: WalletFlowFaceProps) => {
   const isCard = isCreditOrStoreCardWalletType(wallet.type);
   const amount = Number(wallet.amount) || 0;
   const limit = isCard ? effectiveCreditLimit(wallet) : null;
@@ -45,15 +40,13 @@ export const WalletFlowFace = ({
   const utilizationPct = hasLimit
     ? Math.round(Math.min(100, Math.max(0, (amount / limit) * 100)))
     : null;
-  const hasAlert = isCard
-    ? limit != null && limit > 0 && amount > limit
-    : amount < 0;
+  const hasAlert = isCard ? limit != null && limit > 0 && amount > limit : amount < 0;
 
   const style = useMemo(() => {
     const brand =
-      getProviderBrandColor(wallet.provider_icon_key, wallet.type) ?? "#6366f1";
+      getProviderBrandColor(wallet.provider_icon_key, wallet.type) ?? '#6366f1';
     return {
-      ...getProviderCardStyle(wallet.provider_icon_key, wallet.type, "wow"),
+      ...getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'wow'),
       ...getWalletBrandCssVars(brand),
     };
   }, [wallet.provider_icon_key, wallet.type]);
@@ -61,9 +54,9 @@ export const WalletFlowFace = ({
   return (
     <div
       className={cn(
-        "relative flex aspect-[2] w-full flex-col justify-between gap-2 overflow-hidden rounded-face border border-white/15 p-3.5 text-white shadow-face [container-type:inline-size] sm:p-5",
-        hasAlert && "ring-2 ring-inset ring-status-overdue/70",
-        !wallet.active && "opacity-80",
+        'relative flex aspect-[1.586] w-full flex-col justify-between gap-2 overflow-hidden rounded-face border border-white/15 p-4 text-white shadow-face [container-type:inline-size] sm:p-5',
+        hasAlert && 'ring-2 ring-inset ring-status-overdue/70',
+        !wallet.active && 'opacity-80',
         className,
       )}
       style={style}
@@ -114,7 +107,7 @@ export const WalletFlowFace = ({
         <div className="relative space-y-2">
           <div>
             <p className="eyebrow opacity-70">Deuda total</p>
-            <p className="font-sans text-[clamp(1.25rem,7cqw,2rem)] leading-none font-bold tabular-nums tracking-tight">
+            <p className="font-sans text-[clamp(1.5rem,9cqw,2.25rem)] font-bold tabular-nums leading-snug tracking-tight">
               {formatCurrency(amount)}
             </p>
           </div>
@@ -122,7 +115,7 @@ export const WalletFlowFace = ({
             <div>
               <p className="eyebrow opacity-70">Disponible</p>
               <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
-                {available == null ? "Sin línea" : formatCurrency(available)}
+                {available == null ? 'Sin línea' : formatCurrency(available)}
               </p>
             </div>
             {limit != null && limit > 0 ? (
@@ -135,17 +128,17 @@ export const WalletFlowFace = ({
             ) : null}
           </div>
           {utilizationPct != null ? (
-            <div className="flex items-center gap-2 text-caption leading-none opacity-70">
-              <span className="shrink-0">Utilización</span>
-              <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/20">
+            <div className="space-y-1">
+              <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
+                <span>Utilización</span>
+                <span className="font-sans tabular-nums">{utilizationPct}%</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                 <div
                   className="h-full rounded-full bg-white/85"
                   style={{ width: `${Math.min(utilizationPct, 100)}%` }}
                 />
               </div>
-              <span className="shrink-0 font-sans tabular-nums">
-                {utilizationPct}%
-              </span>
             </div>
           ) : null}
         </div>

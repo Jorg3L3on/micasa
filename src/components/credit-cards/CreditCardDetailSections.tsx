@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, type ReactNode } from 'react';
 import {
   CalendarClock,
   ChevronLeft,
@@ -9,24 +9,21 @@ import {
   Landmark,
   Receipt,
   RotateCcw,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  SegmentedControl,
-  type SegmentedOption,
-} from "@/components/segmented-control";
-import { creditCardSegmentedTabChromeClass } from "@/components/credit-cards/credit-card-segmented-tabs";
-import { canAdvanceToNextCreditCardCycle } from "@/lib/finance/credit-card-cycle-types";
-import { getProviderCardStyle } from "@/lib/provider-card-style";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import { WalletProviderIcon } from "@/components/wallets/WalletProviderIcon";
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SegmentedControl, type SegmentedOption } from '@/components/segmented-control';
+import { creditCardSegmentedTabChromeClass } from '@/components/credit-cards/credit-card-segmented-tabs';
+import { canAdvanceToNextCreditCardCycle } from '@/lib/finance/credit-card-cycle-types';
+import { getProviderCardStyle } from '@/lib/provider-card-style';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import type {
   CreditCardListItem,
   CreditCardStatementPurchaseItem,
   CreditCardStatementResponse,
-} from "@/types/catalog";
+} from '@/types/catalog';
 
 export const CreditCardDetailTabsList = ({
   options,
@@ -39,7 +36,7 @@ export const CreditCardDetailTabsList = ({
     stretch
     frameClassName={cn(
       creditCardSegmentedTabChromeClass,
-      "flex w-full min-w-0 items-center",
+      'flex w-full min-w-0 items-center',
     )}
     wrapperClassName="min-w-0 flex-1"
     options={options}
@@ -47,12 +44,12 @@ export const CreditCardDetailTabsList = ({
 );
 
 const CATEGORY_BAR_COLORS = [
-  "bg-chart-1",
-  "bg-chart-2",
-  "bg-chart-3",
-  "bg-chart-4",
-  "bg-chart-5",
-  "bg-status-expense",
+  'bg-chart-1',
+  'bg-chart-2',
+  'bg-chart-3',
+  'bg-chart-4',
+  'bg-chart-5',
+  'bg-status-expense',
 ] as const;
 
 export const CreditCardHeroZone = ({ children }: { children: ReactNode }) => (
@@ -70,15 +67,12 @@ type CycleSpendingBarProps = {
 export const CreditCardCycleSpendingBar = ({
   items,
   total,
-  cycleLabel = "Compras del ciclo",
+  cycleLabel = 'Compras del ciclo',
 }: CycleSpendingBarProps) => {
   const segments = useMemo(() => {
     const map = new Map<string, number>();
     for (const item of items) {
-      map.set(
-        item.category,
-        (map.get(item.category) ?? 0) + Number(item.amount),
-      );
+      map.set(item.category, (map.get(item.category) ?? 0) + Number(item.amount));
     }
     return Array.from(map.entries())
       .sort(([, a], [, b]) => b - a)
@@ -103,14 +97,16 @@ export const CreditCardCycleSpendingBar = ({
     >
       <div className="mb-2 flex items-end justify-between gap-2">
         <div>
-          <p className="eyebrow text-muted-foreground">{cycleLabel}</p>
+          <p className="eyebrow text-muted-foreground">
+            {cycleLabel}
+          </p>
           <p className="font-sans text-xl font-bold tabular-nums tracking-tight">
             {formatCurrency(total)}
           </p>
         </div>
         {segments.length > 0 ? (
           <p className="text-caption text-muted-foreground">
-            {segments.length} categoría{segments.length === 1 ? "" : "s"}
+            {segments.length} categoría{segments.length === 1 ? '' : 's'}
           </p>
         ) : null}
       </div>
@@ -121,10 +117,7 @@ export const CreditCardCycleSpendingBar = ({
             {segments.map(({ category, pct, color }) => (
               <div
                 key={category}
-                className={cn(
-                  "h-full first:rounded-l-full last:rounded-r-full",
-                  color,
-                )}
+                className={cn('h-full first:rounded-l-full last:rounded-r-full', color)}
                 style={{ width: `${Math.max(pct, 2)}%` }}
                 title={`${category}: ${pct.toFixed(0)}%`}
               />
@@ -136,9 +129,7 @@ export const CreditCardCycleSpendingBar = ({
                 key={category}
                 className="flex items-center gap-1.5 text-caption text-muted-foreground"
               >
-                <span
-                  className={cn("inline-block h-1.5 w-1.5 rounded-full", color)}
-                />
+                <span className={cn('inline-block h-1.5 w-1.5 rounded-full', color)} />
                 <span className="max-w-[5.5rem] truncate">{category}</span>
                 <span className="font-sans tabular-nums text-foreground/80">
                   {formatCurrency(amount)}
@@ -148,9 +139,7 @@ export const CreditCardCycleSpendingBar = ({
           </ul>
         </>
       ) : (
-        <p className="text-xs text-muted-foreground">
-          Sin compras en este ciclo.
-        </p>
+        <p className="text-xs text-muted-foreground">Sin compras en este ciclo.</p>
       )}
     </div>
   );
@@ -171,7 +160,7 @@ export const CreditCardVisualHero = ({
   isCurrentCycle = true,
 }: VisualHeroProps) => {
   const cardStyle = useMemo(
-    () => getProviderCardStyle(card.provider_icon_key, card.type, "wow"),
+    () => getProviderCardStyle(card.provider_icon_key, card.type, 'wow'),
     [card.provider_icon_key, card.type],
   );
 
@@ -187,8 +176,8 @@ export const CreditCardVisualHero = ({
   return (
     <div
       className={cn(
-        "relative mx-auto w-full max-w-md lg:max-w-lg transition-opacity",
-        !isCurrentCycle && "opacity-80",
+        'relative mx-auto w-full max-w-md lg:max-w-lg transition-opacity',
+        !isCurrentCycle && 'opacity-80',
       )}
       role="region"
       aria-label={`Tarjeta ${card.name}`}
@@ -196,10 +185,10 @@ export const CreditCardVisualHero = ({
       <div
         className={cn(
           // Grow with content (no fixed aspect): utilization + amounts clip on
-          // narrow viewports when locked to aspect-[2/1] + overflow-hidden.
-          "relative w-full overflow-hidden rounded-face border aspect-[2] [container-type:inline-size] p-3.5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5",
+          // narrow viewports when locked to aspect-[1.586/1] + overflow-hidden.
+          'relative w-full overflow-hidden rounded-face border aspect-[1.586] [container-type:inline-size] p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
           !cardStyle &&
-            "border-border bg-linear-to-br from-foreground to-background",
+            'border-border bg-linear-to-br from-foreground to-background',
         )}
         style={cardStyle}
       >
@@ -223,16 +212,10 @@ export const CreditCardVisualHero = ({
                 <WalletProviderIcon
                   providerIconKey={card.provider_icon_key}
                   className="h-8 w-8 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
-                  iconClassName="h-4 w-4"
-                  data-icon="inline-start"
-                />
+                  iconClassName="h-4 w-4" data-icon="inline-start" />
               ) : (
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/15">
-                  <CreditCard
-                    className="h-4 w-4"
-                    aria-hidden
-                    data-icon="inline-start"
-                  />
+                  <CreditCard className="h-4 w-4" aria-hidden data-icon="inline-start" />
                 </span>
               )}
               <div className="min-w-0">
@@ -251,24 +234,30 @@ export const CreditCardVisualHero = ({
 
           <div className="space-y-3">
             <div>
-              <p className="eyebrow opacity-70">Deuda total</p>
-              <p className="text-[clamp(1.25rem,7cqw,2rem)] leading-none font-bold font-sans tabular-nums leading-snug tracking-tight">
+              <p className="eyebrow opacity-70">
+                Deuda total
+              </p>
+              <p className="text-[clamp(1.5rem,9cqw,2.25rem)] font-bold font-sans tabular-nums leading-snug tracking-tight">
                 {formatCurrency(outstandingBalance)}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
               <div>
-                <p className="eyebrow opacity-70">Disponible</p>
+                <p className="eyebrow opacity-70">
+                  Disponible
+                </p>
                 <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                   {availableCredit == null
-                    ? "Sin línea"
+                    ? 'Sin línea'
                     : formatCurrency(availableCredit)}
                 </p>
               </div>
               {limit > 0 ? (
                 <div className="text-right">
-                  <p className="eyebrow opacity-70">Límite</p>
+                  <p className="eyebrow opacity-70">
+                    Límite
+                  </p>
                   <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                     {formatCurrency(limit)}
                   </p>
@@ -277,17 +266,17 @@ export const CreditCardVisualHero = ({
             </div>
 
             {utilizationPct != null && limit > 0 ? (
-              <div className="flex items-center gap-2 text-caption leading-none opacity-70">
-                <span className="shrink-0">Utilización</span>
-                <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/20">
+              <div className="space-y-1">
+                <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
+                  <span className="shrink-0 whitespace-normal">Utilización</span>
+                  <span className="font-sans tabular-nums">{utilizationPct}%</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                   <div
-                    className="h-full rounded-full bg-white/85"
+                    className="h-full rounded-full bg-white/85 transition-all"
                     style={{ width: `${utilizationPct}%` }}
                   />
                 </div>
-                <span className="shrink-0 font-sans tabular-nums">
-                  {utilizationPct}%
-                </span>
               </div>
             ) : null}
           </div>
@@ -310,47 +299,48 @@ export const CreditCardDuePaymentStrip = ({
   onCapture,
   onClearDeclaration,
 }: DuePaymentStripProps) => {
-  const isMissingCorte = statement.period_obligation?.confidence === "missing";
+  const isMissingCorte = statement.period_obligation?.confidence === 'missing';
   const isDeclaredZero = statement.declared_zero === true && !isMissingCorte;
-  const hasPendingDue =
-    !isMissingCorte && !isDeclaredZero && statement.next_due_payment > 0;
+  const hasPendingDue = !isMissingCorte && !isDeclaredZero && statement.next_due_payment > 0;
 
   const dueLabel = isMissingCorte
-    ? "Falta el pago del corte"
+    ? 'Falta el pago del corte'
     : isDeclaredZero
-      ? "Este ciclo es $0"
+      ? 'Este ciclo es $0'
       : !hasPendingDue
-        ? "Sin pago pendiente"
-        : daysUntilDue < 0
-          ? `Vencido hace ${Math.abs(daysUntilDue)} d`
-          : daysUntilDue === 0
-            ? "Vence hoy"
-            : `Vence en ${daysUntilDue} d`;
+    ? 'Sin pago pendiente'
+    : daysUntilDue < 0
+      ? `Vencido hace ${Math.abs(daysUntilDue)} d`
+      : daysUntilDue === 0
+        ? 'Vence hoy'
+        : `Vence en ${daysUntilDue} d`;
 
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 backdrop-blur-sm",
+        'flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 backdrop-blur-sm',
         isMissingCorte
-          ? "border-status-pending/35 bg-card/50"
+          ? 'border-status-pending/35 bg-card/50'
           : !hasPendingDue
-            ? "border-border/50 bg-card/50 dark:bg-card/30"
-            : daysUntilDue < 0
-              ? "border-destructive/35 bg-destructive/5"
-              : daysUntilDue <= 5
-                ? "border-status-pending/35 bg-status-pending/5"
-                : "border-border/50 bg-card/50 dark:bg-card/30",
+          ? 'border-border/50 bg-card/50 dark:bg-card/30'
+          : daysUntilDue < 0
+            ? 'border-destructive/35 bg-destructive/5'
+            : daysUntilDue <= 5
+              ? 'border-status-pending/35 bg-status-pending/5'
+              : 'border-border/50 bg-card/50 dark:bg-card/30',
       )}
       role="status"
       aria-label="Toca pagar este corte"
     >
       <div className="min-w-0">
-        <p className="eyebrow text-muted-foreground">Toca pagar este corte</p>
+        <p className="eyebrow text-muted-foreground">
+          Toca pagar este corte
+        </p>
         <p className="text-caption text-muted-foreground">
           No es la deuda total ni el saldo del plan.
         </p>
         <p className="font-sans text-lg font-bold tabular-nums leading-tight">
-          {isMissingCorte ? "—" : formatCurrency(statement.next_due_payment)}
+          {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -379,23 +369,19 @@ export const CreditCardDuePaymentStrip = ({
         <Badge
           variant="outline"
           className={cn(
-            "gap-1 text-caption font-medium",
+            'gap-1 text-caption font-medium',
             isMissingCorte
-              ? "border-status-pending-border bg-status-pending-soft text-status-pending"
+              ? 'border-status-pending-border bg-status-pending-soft text-status-pending'
               : !hasPendingDue
-                ? "border-status-success-border bg-status-success-soft text-status-success"
-                : daysUntilDue < 0
-                  ? "border-status-overdue-border bg-status-overdue-soft text-status-overdue"
-                  : daysUntilDue <= 5
-                    ? "border-status-pending-border bg-status-pending-soft text-status-pending"
-                    : "border-border/60 text-muted-foreground",
+              ? 'border-status-success-border bg-status-success-soft text-status-success'
+              : daysUntilDue < 0
+                ? 'border-status-overdue-border bg-status-overdue-soft text-status-overdue'
+                : daysUntilDue <= 5
+                  ? 'border-status-pending-border bg-status-pending-soft text-status-pending'
+                  : 'border-border/60 text-muted-foreground',
           )}
         >
-          <CalendarClock
-            className="h-3 w-3"
-            aria-hidden
-            data-icon="inline-start"
-          />
+          <CalendarClock className="h-3 w-3" aria-hidden data-icon="inline-start" />
           {dueLabel}
         </Badge>
         <span className="text-caption text-muted-foreground">
@@ -440,13 +426,10 @@ export const CreditCardCycleSummary = ({
         </Button>
         <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
           <p className="eyebrow text-muted-foreground">
-            {isCurrentCycle ? "Ciclo actual" : "Ciclo seleccionado"}
+            {isCurrentCycle ? 'Ciclo actual' : 'Ciclo seleccionado'}
           </p>
           <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">
-            {formatCycleRange(
-              statement.current_cycle_start,
-              statement.current_cycle_end,
-            )}
+            {formatCycleRange(statement.current_cycle_start, statement.current_cycle_end)}
           </p>
         </div>
         <Button
@@ -454,9 +437,7 @@ export const CreditCardCycleSummary = ({
           size="icon"
           className="h-9 w-9 shrink-0 rounded-full"
           onClick={onNextCycle}
-          disabled={
-            !canAdvanceToNextCreditCardCycle(statement.current_cycle_end)
-          }
+          disabled={!canAdvanceToNextCreditCardCycle(statement.current_cycle_end)}
           aria-label="Ciclo siguiente"
         >
           <ChevronRight className="h-4 w-4" data-icon="inline-end" />
@@ -493,17 +474,14 @@ export const CreditCardStatementSummaryCard = ({
   daysUntilDue,
   collapsible = false,
 }: StatementSummaryCardProps) => {
-  const isMissingCorte = statement.period_obligation?.confidence === "missing";
+  const isMissingCorte = statement.period_obligation?.confidence === 'missing';
   const hasPendingDue = !isMissingCorte && statement.next_due_payment > 0;
 
   const body = (
     <Card className="overflow-hidden border-border/60">
       <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-status-info/10 dark:bg-status-info/15">
-          <Receipt
-            className="h-3.5 w-3.5 text-status-info"
-            data-icon="inline-start"
-          />
+          <Receipt className="h-3.5 w-3.5 text-status-info" data-icon="inline-start" />
         </span>
         <div>
           <CardTitle className="text-sm font-semibold leading-none">
@@ -517,31 +495,23 @@ export const CreditCardStatementSummaryCard = ({
       <CardContent className="divide-y divide-border/40 p-0 pb-0">
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Receipt
-              className="h-3 w-3 text-status-info"
-              data-icon="inline-start"
-            />
+            <Receipt className="h-3 w-3 text-status-info" data-icon="inline-start" />
             Periodo
           </span>
           <span className="text-right font-medium">
-            {formatDate(statement.statement_start)} –{" "}
-            {formatDate(statement.statement_end)}
+            {formatDate(statement.statement_start)} – {formatDate(statement.statement_end)}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Landmark
-              className="h-3 w-3 text-status-info"
-              data-icon="inline-start"
-            />
+            <Landmark className="h-3 w-3 text-status-info" data-icon="inline-start" />
             {statement.imported_statement_total != null
-              ? "Total importado"
-              : "Saldo del corte"}
+              ? 'Total importado'
+              : 'Saldo del corte'}
           </span>
           <span className="font-sans tabular-nums font-medium">
             {formatCurrency(
-              statement.imported_statement_total ??
-                statement.last_statement_balance,
+              statement.imported_statement_total ?? statement.last_statement_balance,
             )}
           </span>
         </div>
@@ -559,21 +529,21 @@ export const CreditCardStatementSummaryCard = ({
         </div>
         <div
           className={cn(
-            "flex items-center justify-between px-4 py-3 text-sm font-semibold",
+            'flex items-center justify-between px-4 py-3 text-sm font-semibold',
             isMissingCorte
-              ? "text-status-pending"
+              ? 'text-status-pending'
               : !hasPendingDue
-                ? "bg-muted/30 text-foreground"
-                : daysUntilDue < 0
-                  ? "bg-destructive/8 text-destructive"
-                  : daysUntilDue <= 5
-                    ? "bg-status-pending/8 text-status-pending"
-                    : "bg-muted/30",
+              ? 'bg-muted/30 text-foreground'
+              : daysUntilDue < 0
+                ? 'bg-destructive/8 text-destructive'
+                : daysUntilDue <= 5
+                  ? 'bg-status-pending/8 text-status-pending'
+                  : 'bg-muted/30',
           )}
         >
           <span>Toca pagar este corte</span>
           <span className="font-sans tabular-nums">
-            {isMissingCorte ? "—" : formatCurrency(statement.next_due_payment)}
+            {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
           </span>
         </div>
       </CardContent>
@@ -589,8 +559,7 @@ export const CreditCardStatementSummaryCard = ({
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
         Detalle del corte
         <span className="ml-2 text-xs font-normal text-muted-foreground">
-          {formatDate(statement.statement_start)} –{" "}
-          {formatDate(statement.statement_end)}
+          {formatDate(statement.statement_start)} – {formatDate(statement.statement_end)}
         </span>
       </summary>
       <div className="border-t border-border/50 px-1 pb-1 pt-0">{body}</div>
@@ -619,9 +588,7 @@ export const CreditCardActivitySectionCard = ({
       <div className="min-w-0 flex-1">
         <CardTitle className="text-sm font-semibold">{title}</CardTitle>
         {subtitle ? (
-          <p className="mt-0.5 text-caption text-muted-foreground">
-            {subtitle}
-          </p>
+          <p className="mt-0.5 text-caption text-muted-foreground">{subtitle}</p>
         ) : null}
       </div>
       {badge}

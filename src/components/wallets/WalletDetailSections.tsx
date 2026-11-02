@@ -114,7 +114,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
     >
       <div
         className={cn(
-          'relative w-full overflow-hidden rounded-face border aspect-[2] [container-type:inline-size] p-3.5 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
+          'relative w-full overflow-hidden rounded-face border aspect-[1.586] [container-type:inline-size] p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
           !cardStyle &&
             (isCash
               ? 'border-status-income-border bg-linear-to-br from-status-income to-background'

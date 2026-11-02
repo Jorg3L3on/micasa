@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { useSyncExternalStore } from "react";
-import { cn, formatCurrency } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
-import { WalletProviderIcon } from "@/components/wallets/WalletProviderIcon";
+import { useSyncExternalStore } from 'react';
+import { cn, formatCurrency } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import {
   getCachedWalletCardVtSnapshot,
   WALLET_LIST_CARD_SHELL_CLASS,
   type WalletCardVtSnapshot,
-} from "@/lib/ui/wallet-card-view-transition";
+} from '@/lib/ui/wallet-card-view-transition';
 
 type WalletCardVtPlaceholderProps = {
   walletId: number;
   /** Kept for call-site compatibility; funding and credit share detail width. */
-  variant?: "funding" | "credit";
+  variant?: 'funding' | 'credit';
   className?: string;
 };
 
@@ -40,7 +40,10 @@ export function WalletCardVtPlaceholder({
 
   return (
     <div
-      className={cn("relative mx-auto w-full max-w-md lg:max-w-lg", className)}
+      className={cn(
+        'relative mx-auto w-full max-w-md lg:max-w-lg',
+        className,
+      )}
       data-wallet-vt={`wallet-card-${walletId}`}
       role="status"
       aria-label="Cargando billetera"
@@ -50,8 +53,8 @@ export function WalletCardVtPlaceholder({
       ) : (
         <Skeleton
           className={cn(
-            "w-full rounded-face border border-border/60",
-            "aspect-[2]",
+            'w-full rounded-face border border-border/60',
+            'aspect-[1.586]',
           )}
         />
       )}
@@ -64,7 +67,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
     return (
       <div
         className={cn(
-          "relative w-full overflow-hidden rounded-face border border-white/15 text-white shadow-xl ring-1 ring-inset ring-white/10",
+          'relative w-full overflow-hidden rounded-face border border-white/15 text-white shadow-xl ring-1 ring-inset ring-white/10',
           WALLET_LIST_CARD_SHELL_CLASS,
         )}
         style={snapshot.style}
@@ -100,24 +103,30 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
 
           <div className="space-y-3">
             <div>
-              <p className="eyebrow opacity-70">Deuda total</p>
-              <p className="font-sans text-[clamp(1.25rem,7cqw,2rem)] leading-none font-bold tabular-nums tracking-tight">
+              <p className="eyebrow opacity-70">
+                Deuda total
+              </p>
+              <p className="font-sans text-[clamp(1.5rem,9cqw,2.25rem)] font-bold tabular-nums leading-snug tracking-tight">
                 {formatCurrency(snapshot.amount)}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs opacity-90">
               <div>
-                <p className="eyebrow opacity-70">Disponible</p>
+                <p className="eyebrow opacity-70">
+                  Disponible
+                </p>
                 <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                   {snapshot.availableCredit == null
-                    ? "Sin línea"
+                    ? 'Sin línea'
                     : formatCurrency(snapshot.availableCredit)}
                 </p>
               </div>
               {snapshot.creditLimit != null && snapshot.creditLimit > 0 ? (
                 <div className="text-right">
-                  <p className="eyebrow opacity-70">Límite</p>
+                  <p className="eyebrow opacity-70">
+                    Límite
+                  </p>
                   <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
                     {formatCurrency(snapshot.creditLimit)}
                   </p>
@@ -128,9 +137,14 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             {snapshot.utilizationPct != null &&
             snapshot.creditLimit != null &&
             snapshot.creditLimit > 0 ? (
-              <div className="flex items-center gap-2 text-caption leading-none opacity-70">
-                <span className="shrink-0">Utilización</span>
-                <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/20">
+              <div className="space-y-1">
+                <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug opacity-70">
+                  <span className="shrink-0 whitespace-normal">Utilización</span>
+                  <span className="font-sans tabular-nums">
+                    {snapshot.utilizationPct}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                   <div
                     className="h-full rounded-full bg-white/85"
                     style={{
@@ -138,9 +152,6 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
                     }}
                   />
                 </div>
-                <span className="shrink-0 font-sans tabular-nums">
-                  {snapshot.utilizationPct}%
-                </span>
               </div>
             ) : null}
           </div>
@@ -152,7 +163,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-face border border-white/15 text-white shadow-xl ring-1 ring-inset ring-white/10",
+        'relative w-full overflow-hidden rounded-face border border-white/15 text-white shadow-xl ring-1 ring-inset ring-white/10',
         WALLET_LIST_CARD_SHELL_CLASS,
       )}
       style={snapshot.style}
@@ -178,19 +189,26 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             >
               {snapshot.name}
             </p>
-            <p className="eyebrow opacity-60">{snapshot.typeLabel}</p>
+            <p className="eyebrow opacity-60">
+              {snapshot.typeLabel}
+            </p>
           </div>
         </div>
 
         <div className="space-y-3">
           <div>
-            <p className="eyebrow opacity-70">Saldo disponible</p>
-            <p className="font-sans text-[clamp(1.25rem,7cqw,2rem)] leading-none font-bold tabular-nums tracking-tight">
+            <p className="eyebrow opacity-70">
+              Saldo disponible
+            </p>
+            <p className="font-sans text-[clamp(1.5rem,9cqw,2.25rem)] font-bold tabular-nums leading-snug tracking-tight">
               {formatCurrency(snapshot.amount)}
             </p>
           </div>
 
-          <div className="invisible grid grid-cols-2 gap-3 text-xs" aria-hidden>
+          <div
+            className="invisible grid grid-cols-2 gap-3 text-xs"
+            aria-hidden
+          >
             <div>
               <p className="eyebrow">Disponible</p>
               <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
