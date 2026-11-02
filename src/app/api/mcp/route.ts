@@ -17,12 +17,12 @@ const mcpHandler = createMcpHandler(
     registerMcpTools(server);
   },
   {
-    serverInfo: { name: 'micasa', version: '2.2.1' },
+    serverInfo: { name: 'micasa', version: '3.0.0' },
     capabilities: {
-      tools: { listChanged: true },
+      tools: {},
     },
     instructions:
-      'Conector de MiCasa (finanzas del hogar). Llama list_houses primero para descubrir ownerType/ownerId; todas las demás herramientas los requieren. Los montos están en MXN.',
+      'Conector de MiCasa (finanzas del hogar). Llama list_houses primero: cada contexto que devuelve trae owner_type ("user" = finanzas personales, "house" = casa compartida) y owner_id, que se pasan tal cual a las demás herramientas. Billeteras y categorías se indican por id o por nombre exacto (sin distinguir mayúsculas). La planeación va por quincenas: FIRST = del último día del mes anterior al 14; SECOND = del 15 al penúltimo día. Montos en MXN; fechas YYYY-MM-DD en hora de Ciudad de México. Las listas paginan con limit/offset y devuelven total_count. Los errores traen code (NOT_FOUND, AMBIGUOUS_REF, VALIDATION, FORBIDDEN, CONFIRM_REQUIRED, RATE_LIMITED, INTERNAL) y a veces hint o candidates; CONFIRM_REQUIRED pide confirmar con el usuario y repetir con confirm: true.',
   },
 );
 

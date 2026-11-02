@@ -6,6 +6,7 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import type { PaymentMethodType } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export const INCOME_WALLET_REQUIRED_MESSAGE =
   'La billetera es requerida. Asigna una billetera de efectivo o débito a este ingreso.';
@@ -39,6 +40,13 @@ export const resolveIncomeWalletId = (
   return next;
 };
 
+/**
+ * Incomes count as fortnight income and as Liquidez, so they must land in a
+ * funding wallet (efectivo/débito). Goal wallets sit outside liquidity and are
+ * filled with Transferir dinero; cards are paid with a card payment. Create
+ * and edit share this rule so an income can always be edited where it was
+ * recorded.
+ */
 export const assertIncomeFundingWallet = (
   wallet: { type: PaymentMethodType } | null,
 ): void => {
@@ -76,7 +84,7 @@ export async function listIncomesForFortnight(
     select: { id: true },
   });
   if (!fortnight) {
-    throw new Error('Quincena no válida para este contexto');
+    throw new DomainError('VALIDATION', 'Quincena no válida para este contexto');
   }
 
   const incomes = await prisma.income.findMany({
@@ -108,15 +116,16 @@ export async function createIncomeForOwner(
     select: { id: true, type: true },
   });
   if (!wallet) {
-    throw new Error('Billetera no encontrada en este contexto');
+    throw new DomainError('NOT_FOUND', 'Billetera no encontrada en este contexto');
   }
+  assertIncomeFundingWallet(wallet);
 
   const fortnight = await prisma.fortnight.findFirst({
     where: { id: input.fortnightId, ...ownerFilter },
     select: { id: true },
   });
   if (!fortnight) {
-    throw new Error('Quincena no válida para este contexto');
+    throw new DomainError('VALIDATION', 'Quincena no válida para este contexto');
   }
 
   return prisma.$transaction(async (tx) => {
@@ -156,11 +165,11 @@ export async function updateIncomeForOwner(input: UpdateIncomeForOwnerInput) {
     where: { id: input.id, ...input.ownerFilter },
   });
   if (!income) {
-    throw new Error('Ingreso no encontrado');
+    throw new DomainError('NOT_FOUND', 'Ingreso no encontrado');
   }
 
   if (income.source === '__OVERRIDE__') {
-    throw new Error('No se puede editar el override de ingreso de la quincena');
+    throw new DomainError('VALIDATION', 'No se puede editar el override de ingreso de la quincena');
   }
 
   const oldAmount = Number(income.amount);
@@ -230,11 +239,11 @@ export async function deleteIncomeForOwner(
     where: { id, ...ownerFilter },
   });
   if (!income) {
-    throw new Error('Ingreso no encontrado');
+    throw new DomainError('NOT_FOUND', 'Ingreso no encontrado');
   }
 
   if (income.source === '__OVERRIDE__') {
-    throw new Error('No se puede eliminar el override de ingreso de la quincena');
+    throw new DomainError('VALIDATION', 'No se puede eliminar el override de ingreso de la quincena');
   }
 
   await prisma.$transaction(async (tx) => {

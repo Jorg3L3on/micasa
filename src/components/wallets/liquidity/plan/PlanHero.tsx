@@ -9,7 +9,13 @@ import { kpiMetricCardShellClass } from '@/components/finance/kpi-metric-card-st
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { groupGapBreakdownLines } from '@/components/wallets/liquidity/plan/group-gap-lines';
+import { isScenarioGapLine } from '@/lib/finance/cash-plan/from-liquidity';
 import type { GapBreakdownLine, PlanHorizon, PlanMode } from '@/lib/finance/cash-plan/types';
+
+/** With a simulation on screen: the hueco before it, and what moved. */
+export type PlanHeroScenario =
+  | { kind: 'changed'; previousGapAmount: number; previousMode: PlanMode; deltaNote: string }
+  | { kind: 'unchanged'; title: string; body: string };
 
 type PlanHeroProps = {
   mode: PlanMode;
@@ -17,6 +23,7 @@ type PlanHeroProps = {
   horizon: PlanHorizon;
   lines: GapBreakdownLine[];
   note?: string;
+  scenario?: PlanHeroScenario | null;
 };
 
 const titleFor = (mode: PlanMode): string => {
@@ -40,7 +47,13 @@ const Amount = ({ amount }: { amount: number }) => (
 );
 
 const BreakdownLine = ({ line }: { line: GapBreakdownLine }) => (
-  <li className="flex items-start justify-between gap-3 text-sm">
+  <li
+    className={cn(
+      'flex items-start justify-between gap-3 text-sm',
+      isScenarioGapLine(line) &&
+        '-mx-2 rounded-lg border border-dashed border-[color-mix(in_srgb,var(--chart-2)_55%,transparent)] px-2 py-1.5 text-[color-mix(in_srgb,var(--chart-2)_70%,white)]',
+    )}
+  >
     <span>
       <span className="font-medium">{line.label}</span>
       {line.detail ? (
@@ -97,7 +110,7 @@ const LenderGroup = ({
   );
 };
 
-export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProps) => {
+export const PlanHero = ({ mode, gapAmount, horizon, lines, note, scenario }: PlanHeroProps) => {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const amount = Math.abs(gapAmount);
@@ -115,15 +128,40 @@ export const PlanHero = ({ mode, gapAmount, horizon, lines, note }: PlanHeroProp
         />
       </div>
       {mode === 'balanced' ? (
-        <p className="text-sm text-muted-foreground">{PLAN_COPY.balancedBody}</p>
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">{PLAN_COPY.balancedBody}</p>
+          {scenario?.kind === 'changed' ? (
+            <p className="text-xs text-muted-foreground">{scenario.deltaNote}</p>
+          ) : null}
+          {scenario?.kind === 'unchanged' ? (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold">{scenario.title}.</span> {scenario.body}
+            </p>
+          ) : null}
+        </div>
       ) : (
         <div className="space-y-2">
           <div className={kpiMetricCardShellClass('neutral')}>
             <p className="eyebrow text-muted-foreground">{label}</p>
             <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
+              {scenario?.kind === 'changed' && scenario.previousMode === mode ? (
+                <>
+                  <span className="text-muted-foreground">{formatCurrency(Math.abs(scenario.previousGapAmount))}</span>
+                  <span className="mx-1.5 text-muted-foreground" aria-label="antes, después">→</span>
+                </>
+              ) : null}
               <CurrencyTicker value={amount} />
             </p>
+            {scenario?.kind === 'changed' ? (
+              <p className="mt-1 text-xs text-muted-foreground">{scenario.deltaNote}</p>
+            ) : null}
+            {scenario?.kind === 'unchanged' ? (
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">{scenario.title}</p>
+            ) : null}
           </div>
+          {scenario?.kind === 'unchanged' ? (
+            <p className="text-sm text-muted-foreground">{scenario.body}</p>
+          ) : null}
           {showBreakdown ? (
             <Collapsible open={open} onOpenChange={setOpen}>
               <CollapsibleTrigger

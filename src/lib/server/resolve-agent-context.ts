@@ -65,32 +65,37 @@ const isApiKeyToken = (token: string): boolean =>
 const isOAuthAccessToken = (token: string): boolean =>
   token.startsWith(OAUTH_ACCESS_TOKEN_PREFIX);
 
-/**
- * Resolves the user behind a bearer credential: legacy `micasa_…` API keys
- * (Ajustes → Conexiones) or OAuth access tokens (`micasa_oauth_…`).
- */
-export async function resolveAgentUser(token: string): Promise<{
+/** Who is calling: the credential and its user, without the allow-list. */
+export type AgentIdentity = {
   userId: number;
   scopes: AgentScope[];
   authSource: AgentAuthSource;
   apiKeyId?: number;
   oauthGrantId?: number;
   rateLimitIdentity: number;
+};
+
+export type AgentUser = AgentIdentity & {
   allowedContexts: AgentContextEntry[];
-}> {
+};
+
+/**
+ * Resolves the credential behind a bearer token: legacy `micasa_…` API keys
+ * (Ajustes → Conexiones) or OAuth access tokens (`micasa_oauth_…`).
+ */
+export async function resolveAgentIdentity(
+  token: string,
+  request?: Request,
+): Promise<AgentIdentity> {
   if (isOAuthAccessToken(token)) {
-    const oauthUser = await resolveOAuthGrantUser(token);
+    const oauthUser = await resolveOAuthGrantUser(token, request);
     if (!oauthUser) throw unauthorized('Token OAuth inválido o expirado');
-    const allowedContexts = await loadAllowedContextsForOAuthGrant(
-      oauthUser.oauthGrantId,
-    );
     return {
       userId: oauthUser.userId,
       scopes: oauthUser.scopes,
       authSource: 'oauth_grant',
       oauthGrantId: oauthUser.oauthGrantId,
       rateLimitIdentity: -oauthUser.oauthGrantId,
-      allowedContexts,
     };
   }
 
@@ -108,21 +113,25 @@ export async function resolveAgentUser(token: string): Promise<{
     include: { user: { select: { id: true, active: true } } },
   });
 
-  if (!apiKey || apiKey.revoked_at != null) {
+  if (!apiKey) {
     throw unauthorized();
+  }
+  const credential = { userId: apiKey.user_id, apiKeyId: apiKey.id };
+  if (apiKey.revoked_at != null) {
+    throw unauthorized('Token de agente revocado').forCredential(credential);
   }
 
   if (apiKey.expires_at != null && apiKey.expires_at.getTime() <= Date.now()) {
-    throw unauthorized('Token de agente expirado');
+    throw unauthorized('Token de agente expirado').forCredential(credential);
   }
 
   const matches = await verifyAgentToken(token, apiKey.key_hash);
   if (!matches) {
-    throw unauthorized();
+    throw unauthorized().forCredential(credential);
   }
 
   if (!apiKey.user.active) {
-    throw forbidden('Usuario inactivo');
+    throw forbidden('Usuario inactivo').forCredential(credential);
   }
 
   prisma.apiKey
@@ -141,16 +150,33 @@ export async function resolveAgentUser(token: string): Promise<{
     (scope): scope is AgentScope => scope === 'read' || scope === 'write',
   );
 
-  const allowedContexts = await loadAllowedContextsForApiKey(apiKey.id);
-
   return {
     userId: apiKey.user.id,
     scopes,
     authSource: 'api_key',
     apiKeyId: apiKey.id,
     rateLimitIdentity: apiKey.id,
-    allowedContexts,
   };
+}
+
+/** Owner contexts the connection may act on (Ajustes → Conexiones). */
+export function loadAllowedContextsForIdentity(
+  identity: AgentIdentity,
+): Promise<AgentContextEntry[]> {
+  if (identity.authSource === 'oauth_grant' && identity.oauthGrantId != null) {
+    return loadAllowedContextsForOAuthGrant(identity.oauthGrantId);
+  }
+  if (identity.apiKeyId != null) {
+    return loadAllowedContextsForApiKey(identity.apiKeyId);
+  }
+  throw unauthorized();
+}
+
+/** Credential plus its allow-list. */
+export async function resolveAgentUser(token: string): Promise<AgentUser> {
+  const identity = await resolveAgentIdentity(token);
+  const allowedContexts = await loadAllowedContextsForIdentity(identity);
+  return { ...identity, allowedContexts };
 }
 
 /**
@@ -207,14 +233,27 @@ export async function resolveAgentContext(
   ownerId: number,
 ): Promise<AgentContext> {
   const token = parseBearerToken(authorizationHeader);
-  const agentUser = await resolveAgentUser(token);
+  const identity = await resolveAgentIdentity(token);
+  return resolveAgentContextForIdentity(identity, ownerType, ownerId);
+}
+
+/**
+ * Owner resolution for an already-verified credential (the MCP transport
+ * resolved it once per request): allow-list + house membership only.
+ */
+export async function resolveAgentContextForIdentity(
+  identity: AgentIdentity,
+  ownerType: 'user' | 'house',
+  ownerId: number,
+): Promise<AgentContext> {
+  const allowedContexts = await loadAllowedContextsForIdentity(identity);
   const owner = await resolveOwnerForAgent(
-    agentUser.userId,
+    identity.userId,
     ownerType,
     ownerId,
-    agentUser.allowedContexts,
+    allowedContexts,
   );
-  return { ...agentUser, ...owner };
+  return { ...identity, allowedContexts, ...owner };
 }
 
 export function assertScope(

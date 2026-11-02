@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { lenderNameKey, normalizeLenderName } from '@/lib/finance/lender-name';
+import { DomainError } from '@/lib/finance/domain-error';
 
 function ownerData(ownerType: 'user' | 'house', ownerId: number) {
   return ownerType === 'user'
@@ -16,7 +17,7 @@ export async function findOrCreateLenderForOwner(
 ): Promise<{ id: number; name: string }> {
   const normalized = normalizeLenderName(name);
   if (!normalized) {
-    throw new Error('El prestamista es obligatorio');
+    throw new DomainError('VALIDATION', 'El prestamista es obligatorio');
   }
   const key = lenderNameKey(normalized);
   const existing = await prisma.lender.findMany({
@@ -47,7 +48,7 @@ export async function resolveLenderForLoanInput(
       select: { id: true, name: true },
     });
     if (!lender) {
-      throw new Error('El prestamista no pertenece a este contexto');
+      throw new DomainError('VALIDATION', 'El prestamista no pertenece a este contexto');
     }
     return lender;
   }

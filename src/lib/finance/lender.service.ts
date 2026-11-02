@@ -40,6 +40,7 @@ import type {
   PayLenderResult,
 } from '@/types/lenders';
 import type { LoanListItem, LoanPaymentListItem } from '@/types/loans';
+import { DomainError } from '@/lib/finance/domain-error';
 
 function decimalToNumber(value: unknown): number {
   if (
@@ -257,7 +258,7 @@ async function loadLenderDetail(
     where: { id: lenderId, ...ownerFilter },
   });
   if (!lender) {
-    throw new Error('Prestamista no encontrado');
+    throw new DomainError('NOT_FOUND', 'Prestamista no encontrado');
   }
 
   const [loans, payments] = await Promise.all([
@@ -301,10 +302,10 @@ async function assertOwnedFundingWallet(
     select: { id: true, type: true, amount: true },
   });
   if (!wallet) {
-    throw new Error('La billetera de pago no pertenece a este contexto');
+    throw new DomainError('VALIDATION', 'La billetera de pago no pertenece a este contexto');
   }
   if (!isFundingWalletType(wallet.type)) {
-    throw new Error('El prestamista debe pagarse desde efectivo o débito');
+    throw new DomainError('VALIDATION', 'El prestamista debe pagarse desde efectivo o débito');
   }
   return wallet;
 }
@@ -357,7 +358,7 @@ export async function payLenderForOwner(
     todayCalendarDate(),
   );
   if (window.included.length === 0) {
-    throw new Error('No hay cuotas de billetera para pagar en este periodo');
+    throw new DomainError('VALIDATION', 'No hay cuotas de billetera para pagar en este periodo');
   }
 
   const excluded = new Set(input.excludePaymentIds ?? []);
@@ -365,11 +366,11 @@ export async function payLenderForOwner(
     (id) => !window.included.some((row) => row.id === id),
   );
   if (unknownExcluded.length > 0) {
-    throw new Error('Hay cuotas que no están en el pago de este periodo');
+    throw new DomainError('VALIDATION', 'Hay cuotas que no están en el pago de este periodo');
   }
   const included = window.included.filter((row) => !excluded.has(row.id));
   if (included.length === 0) {
-    throw new Error('Deja al menos un contrato en el pago');
+    throw new DomainError('VALIDATION', 'Deja al menos un contrato en el pago');
   }
 
   const includedIds = new Set(included.map((row) => row.id));
@@ -406,10 +407,10 @@ export async function payLenderForOwner(
   if (mode === 'WALLET') {
     const wallet = await assertOwnedFundingWallet(sourceWalletId, ownerFilter);
     if (!wallet) {
-      throw new Error('Selecciona la billetera que paga al prestamista');
+      throw new DomainError('VALIDATION', 'Selecciona la billetera que paga al prestamista');
     }
     if (decimalToNumber(wallet.amount) < plan.amount) {
-      throw new Error('Saldo insuficiente en la billetera de origen');
+      throw new DomainError('VALIDATION', 'Saldo insuficiente en la billetera de origen');
     }
   }
 
@@ -578,7 +579,7 @@ export async function undoLenderPaymentForOwner(
     },
   });
   if (!existing) {
-    throw new Error('Pago del prestamista no encontrado');
+    throw new DomainError('NOT_FOUND', 'Pago del prestamista no encontrado');
   }
 
   await prisma.$transaction(async (tx) => {
@@ -674,7 +675,7 @@ export async function mergeLendersForOwner(
   input: MergeLenderInput,
 ): Promise<LenderDetail> {
   if (sourceLenderId === input.targetLenderId) {
-    throw new Error('Elige otro prestamista para fusionar');
+    throw new DomainError('VALIDATION', 'Elige otro prestamista para fusionar');
   }
 
   const [source, target] = await Promise.all([
@@ -688,7 +689,7 @@ export async function mergeLendersForOwner(
     }),
   ]);
   if (!source || !target) {
-    throw new Error('Prestamista no encontrado');
+    throw new DomainError('NOT_FOUND', 'Prestamista no encontrado');
   }
 
   await prisma.$transaction(async (tx) => {
@@ -718,7 +719,7 @@ export async function splitLenderForOwner(
     select: { id: true, name: true },
   });
   if (!source) {
-    throw new Error('Prestamista no encontrado');
+    throw new DomainError('NOT_FOUND', 'Prestamista no encontrado');
   }
 
   const moving = await prisma.loan.findMany({
@@ -730,7 +731,7 @@ export async function splitLenderForOwner(
     select: { id: true },
   });
   if (moving.length !== new Set(input.loanIds).size) {
-    throw new Error('Hay contratos que no pertenecen a este prestamista');
+    throw new DomainError('VALIDATION', 'Hay contratos que no pertenecen a este prestamista');
   }
 
   const staying = await prisma.loan.count({
@@ -741,20 +742,20 @@ export async function splitLenderForOwner(
     },
   });
   if (staying === 0) {
-    throw new Error('Deja al menos un contrato en el prestamista original');
+    throw new DomainError('VALIDATION', 'Deja al menos un contrato en el prestamista original');
   }
 
   let target: { id: number; name: string };
   if (input.targetLenderId) {
     if (input.targetLenderId === source.id) {
-      throw new Error('Elige otro prestamista para separar');
+      throw new DomainError('VALIDATION', 'Elige otro prestamista para separar');
     }
     const existing = await prisma.lender.findFirst({
       where: { id: input.targetLenderId, ...ownerFilter },
       select: { id: true, name: true },
     });
     if (!existing) {
-      throw new Error('Prestamista no encontrado');
+      throw new DomainError('NOT_FOUND', 'Prestamista no encontrado');
     }
     target = existing;
   } else {
@@ -765,7 +766,7 @@ export async function splitLenderForOwner(
       input.name ?? '',
     );
     if (target.id === source.id) {
-      throw new Error('Ese nombre ya es este prestamista');
+      throw new DomainError('VALIDATION', 'Ese nombre ya es este prestamista');
     }
   }
 

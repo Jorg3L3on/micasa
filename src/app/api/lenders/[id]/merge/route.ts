@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { reportApiError } from '@/lib/observability/report-error';
 import { mergeLendersForOwner } from '@/lib/finance/lender.service';
 import { mergeLenderSchema } from '@/schemas/lender.schema';
@@ -14,30 +14,30 @@ export async function POST(
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
-    const { id } = await params;
-    const lenderId = Number(id);
-    if (!Number.isInteger(lenderId) || lenderId <= 0) {
-      return NextResponse.json(
-        { error: 'El id del prestamista es inválido' },
-        { status: 400 },
-      );
-    }
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
+      const { id } = await params;
+      const lenderId = Number(id);
+      if (!Number.isInteger(lenderId) || lenderId <= 0) {
+        return NextResponse.json(
+          { error: 'El id del prestamista es inválido' },
+          { status: 400 },
+        );
+      }
 
-    const body = await request.json();
-    const input = mergeLenderSchema.parse(body);
-    const lender = await mergeLendersForOwner(
-      lenderId,
-      context.ownerFilter,
-      input,
-    );
-    return NextResponse.json(lender, { status: 200 });
+      const body = await request.json();
+      const input = mergeLenderSchema.parse(body);
+      const lender = await mergeLendersForOwner(
+        lenderId,
+        context.ownerFilter,
+        input,
+      );
+      return NextResponse.json(lender, { status: 200 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

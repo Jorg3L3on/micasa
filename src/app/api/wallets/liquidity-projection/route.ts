@@ -1,9 +1,15 @@
 import { parseCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   getLiquidityProjection,
+  LiquidityScenarioWalletError,
 } from '@/lib/finance/liquidity-projection.service';
+import {
+  parseLiquidityScenarioParam,
+  type LiquidityScenarioError,
+  type LiquidityScenarioItem,
+} from '@/schemas/liquidity-scenario.schema';
 import { liquidityProjectionToCsv } from '@/lib/finance/liquidity-projection-csv';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 import {
@@ -27,83 +33,106 @@ const parseStressPercent = (value: string | null): number | undefined => {
 
 /**
  * GET …/api/wallets/liquidity-projection
- * Query: until, omitZero, format=json|csv, stressCyclePercent, includeUnpaid, includeTemplates
+ * Query: until, omitZero, format=json|csv, stressCyclePercent, includeUnpaid, includeTemplates,
+ * scenario (JSON array of hypothetical purchase/instalment items; read-only, never stored)
  */
 export async function GET(request: NextRequest) {
   const started = Date.now();
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-
-    const { searchParams } = new URL(request.url);
-    const untilParam = searchParams.get('until');
-    const omitZeroParam = parseOptionalBool(searchParams.get('omitZero'));
-    const format = searchParams.get('format') ?? 'json';
-    const stressCyclePercent = parseStressPercent(
-      searchParams.get('stressCyclePercent'),
-    );
-    const includeUnpaid = parseOptionalBool(searchParams.get('includeUnpaid'));
-    const includeTemplates = parseOptionalBool(
-      searchParams.get('includeTemplates'),
-    );
-    const asOf = new Date();
-    const asOfYmd = formatCalendarDate(asOf);
-    const fetchWindow = resolveLiquidityFetchWindow(asOfYmd);
-    const until = untilParam
-      ? parseCalendarDate(untilParam)
-      : monthKeyToUntilDate(fetchWindow.toMonthKey);
-
-    if (Number.isNaN(until.getTime())) {
-      return NextResponse.json(
-        { error: 'Parámetro "until" inválido (usa YYYY-MM-DD).' },
-        { status: 400 },
+    return await withOwnerContext(request, async (context) => {
+      const { searchParams } = new URL(request.url);
+      const untilParam = searchParams.get('until');
+      const omitZeroParam = parseOptionalBool(searchParams.get('omitZero'));
+      const format = searchParams.get('format') ?? 'json';
+      const stressCyclePercent = parseStressPercent(
+        searchParams.get('stressCyclePercent'),
       );
-    }
+      const includeUnpaid = parseOptionalBool(searchParams.get('includeUnpaid'));
+      const includeTemplates = parseOptionalBool(
+        searchParams.get('includeTemplates'),
+      );
+      const asOf = new Date();
+      const asOfYmd = formatCalendarDate(asOf);
+      const fetchWindow = resolveLiquidityFetchWindow(asOfYmd);
+      const until = untilParam
+        ? parseCalendarDate(untilParam)
+        : monthKeyToUntilDate(fetchWindow.toMonthKey);
 
-    const projection = await getLiquidityProjection({
-      ownerFilter: context.ownerFilter,
-      asOf,
-      until,
-      fromMonthKey: fetchWindow.fromMonthKey,
-      omitZeroObligations: omitZeroParam ?? true,
-      stressCyclePercent,
-      includeUnpaidExpenses: includeUnpaid ?? true,
-      includeExpenseTemplates: includeTemplates ?? true,
-    });
+      if (Number.isNaN(until.getTime())) {
+        return NextResponse.json(
+          { error: 'Parámetro "until" inválido (usa YYYY-MM-DD).' },
+          { status: 400 },
+        );
+      }
 
-    const ownerType = context.ownerType;
-    const ownerId = context.ownerId;
-    logFinanceEvent(
-      'info',
-      'finance.liquidity_projection.computed',
-      {
-        owner_type: ownerType,
-        owner_id: ownerId,
-        duration_ms: Date.now() - started,
-        milestone_count: projection.milestones.length,
-        obligation_lines: projection.milestones.reduce(
-          (n, m) => n + m.obligations.length,
-          0,
-        ),
-        format,
-      },
-      request,
-    );
+      let scenario: LiquidityScenarioItem[] | undefined;
+      const scenarioParam = searchParams.get('scenario');
+      if (scenarioParam) {
+        const parsed = parseLiquidityScenarioParam(scenarioParam, {
+          today: asOfYmd,
+          until: formatCalendarDate(until),
+        });
+        if (!parsed.ok) {
+          return NextResponse.json(parsed.error, { status: 400 });
+        }
+        scenario = parsed.items;
+      }
 
-    if (format === 'csv') {
-      const csv = liquidityProjectionToCsv(projection);
-      const filename = `liquidez-${projection.as_of}-${projection.until}.csv`;
-      return new NextResponse(csv, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/csv; charset=utf-8',
-          'Content-Disposition': `attachment; filename="${filename}"`,
-        },
+      const projection = await getLiquidityProjection({
+        ownerFilter: context.ownerFilter,
+        asOf,
+        until,
+        fromMonthKey: fetchWindow.fromMonthKey,
+        omitZeroObligations: omitZeroParam ?? true,
+        stressCyclePercent,
+        includeUnpaidExpenses: includeUnpaid ?? true,
+        includeExpenseTemplates: includeTemplates ?? true,
+        scenario,
       });
-    }
 
-    return NextResponse.json(projection, { status: 200 });
+      const ownerType = context.ownerType;
+      const ownerId = context.ownerId;
+      logFinanceEvent(
+        'info',
+        'finance.liquidity_projection.computed',
+        {
+          owner_type: ownerType,
+          owner_id: ownerId,
+          duration_ms: Date.now() - started,
+          milestone_count: projection.milestones.length,
+          obligation_lines: projection.milestones.reduce(
+            (n, m) => n + m.obligations.length,
+            0,
+          ),
+          format,
+          scenario_items: scenario?.length ?? 0,
+        },
+        request,
+      );
+
+      if (format === 'csv') {
+        const csv = liquidityProjectionToCsv(projection);
+        const filename = `liquidez-${projection.as_of}-${projection.until}.csv`;
+        return new NextResponse(csv, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+          },
+        });
+      }
+
+      return NextResponse.json(projection, { status: 200 });
+    });
   } catch (error) {
+    if (error instanceof LiquidityScenarioWalletError) {
+      const body: LiquidityScenarioError = {
+        error: error.message,
+        field: 'wallet_id',
+        index: error.index,
+      };
+      return NextResponse.json(body, { status: 400 });
+    }
     const code = (error as { code?: string }).code;
     if (code === 'INVALID_HORIZON') {
       return NextResponse.json(

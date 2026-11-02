@@ -21,10 +21,12 @@ vi.mock('@/lib/server/mcp-oauth/client-id-metadata', async (importOriginal) => {
 });
 
 import {
+  assertRedirectUriAllowed,
   clampOAuthClientName,
   registerDynamicOAuthClient,
   resolveOAuthClient,
   tokenClientIdMatchesCode,
+  type ResolvedOAuthClient,
 } from '@/lib/server/mcp-oauth/clients';
 import { resetRateLimitStoreForTests } from '@/lib/server/rate-limit';
 
@@ -135,5 +137,97 @@ describe('client_name clamp', () => {
       redirect_uris: ['https://example.com/cb'],
     });
     expect(client.client_name).toHaveLength(60);
+  });
+});
+
+const registeredClient = (
+  redirectUris: string[],
+  clientId = '11111111-2222-3333-4444-555555555555',
+): ResolvedOAuthClient => ({
+  client_id: clientId,
+  client_name: 'Cliente',
+  redirect_uris: redirectUris,
+  grant_types: ['authorization_code'],
+  response_types: ['code'],
+  token_endpoint_auth_method: 'none',
+  client_uri: null,
+  logo_uri: null,
+  client_secret_hash: null,
+});
+
+describe('assertRedirectUriAllowed', () => {
+  it.each([
+    'https://dcr-client.example.test/cb',
+    'http://127.0.0.1:4567/cb',
+    'http://localhost:3000/cb',
+    'http://[::1]:5000/cb',
+    'com.ejemplo.app:/cb',
+  ])('accepts %s exactly as registered', (redirectUri) => {
+    expect(() =>
+      assertRedirectUriAllowed(registeredClient([redirectUri]), redirectUri),
+    ).not.toThrow();
+  });
+
+  it('rejects a different string and logs a reason without the URI', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const redirectUri = 'https://dcr-client.example.test/cb/';
+    expect(() =>
+      assertRedirectUriAllowed(
+        registeredClient(['https://dcr-client.example.test/cb']),
+        redirectUri,
+      ),
+    ).toThrow(/no autorizado/);
+    const logged = warn.mock.calls.map((call) => String(call[0])).join('\n');
+    expect(logged).toContain('"event":"oauth.redirect_uri.rejected"');
+    expect(logged).toContain('"reason":"not_registered"');
+    expect(logged).not.toContain(redirectUri);
+    expect(logged).not.toContain('client_secret');
+    warn.mockRestore();
+  });
+});
+
+describe('resolveOAuthClient — CIMD redirect URIs', () => {
+  it('stores https, loopback and custom-scheme URIs exactly and drops the rest', async () => {
+    const clientId = 'https://cimd.example.test/oauth/client.json';
+    fetchClientIdMetadataDocumentMock.mockResolvedValueOnce({
+      client_id: clientId,
+      client_name: 'Cliente CIMD',
+      redirect_uris: [
+        'com.ejemplo.app:/cb',
+        'javascript:alert(1)',
+        'http://127.0.0.1:4567/cb',
+        'https://cimd.example.test/cb',
+      ],
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const client = await resolveOAuthClient(clientId);
+    expect(client?.redirect_uris).toEqual([
+      'com.ejemplo.app:/cb',
+      'http://127.0.0.1:4567/cb',
+      'https://cimd.example.test/cb',
+    ]);
+    const logged = warn.mock.calls.map((call) => String(call[0])).join('\n');
+    expect(logged).toContain('"reason":"disallowed_scheme"');
+    expect(logged).not.toContain('javascript:');
+    expect(logged).not.toContain('alert(1)');
+    warn.mockRestore();
+  });
+
+  it('does not create a CIMD client whose redirect URIs are all disallowed', async () => {
+    const clientId = 'https://cimd.example.test/oauth/client.json';
+    fetchClientIdMetadataDocumentMock.mockResolvedValueOnce({
+      client_id: clientId,
+      client_name: 'Cliente CIMD',
+      redirect_uris: ['javascript:alert(1)'],
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await expect(resolveOAuthClient(clientId)).resolves.toBeNull();
+    expect(prismaMock.mcpOAuthClient.create).not.toHaveBeenCalled();
+    const logged = warn.mock.calls.map((call) => String(call[0])).join('\n');
+    expect(logged).toContain('"reason":"no_allowed_redirect_uri"');
+    expect(logged).not.toContain('javascript:');
+    warn.mockRestore();
   });
 });

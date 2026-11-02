@@ -15,6 +15,10 @@ export type OwnerContextSuccess = {
   ownerId: number;
   ownerFilter: OwnerFilter;
   role: OwnerContextRole;
+  /** JWT `sid` of the session (audit). */
+  sessionId?: string;
+  /** Session user name, snapshotted on audit rows. */
+  userName?: string;
 };
 
 export type OwnerContextResult =
@@ -117,6 +121,8 @@ export async function getOwnerContext(
       ownerId,
       ownerFilter: { user_id: null, house_id: ownerId },
       role,
+      sessionId: session.sid,
+      userName: session.user.name ?? undefined,
     };
   }
 
@@ -133,5 +139,7 @@ export async function getOwnerContext(
     ownerId,
     ownerFilter: { user_id: ownerId, house_id: null },
     role,
+    sessionId: session.sid,
+    userName: session.user.name ?? undefined,
   };
 }

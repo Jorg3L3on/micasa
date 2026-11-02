@@ -22,6 +22,7 @@ import { formatCardObligationAmountSourceHint } from '@/lib/finance/card-stateme
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import type { CardPaymentPlanFormValues } from '@/schemas/credit-card-payment-plan.schema';
 import type { CreditCardPaymentPlanView } from '@/types/catalog';
+import { cardChargeErrorMessage } from '@/components/credit-cards/over-debt-reason';
 import { cn, formatCurrency } from '@/lib/utils';
 
 type CreditCardPlannedPaymentSectionProps = {
@@ -105,15 +106,16 @@ export const CreditCardPlannedPaymentSection = ({
           scope: data.scope,
           cycleCount: data.cycleCount,
           validUntil: data.validUntil,
+          ...(data.over_debt_reason
+            ? { over_debt_reason: data.over_debt_reason }
+            : {}),
         },
         context,
       );
       toast.success('Pago planeado guardado');
       await onPlanUpdated?.();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'No se pudo guardar el plan';
-      setPlanError(message);
+      setPlanError(cardChargeErrorMessage(error, 'No se pudo guardar el plan'));
       throw error;
     }
   };
@@ -297,6 +299,11 @@ export const CreditCardPlannedPaymentSection = ({
                       </>
                     ) : null}
                   </p>
+                  {item.periodObligation?.overRecordedMessage ? (
+                    <p className="mt-0.5 text-caption text-muted-foreground">
+                      {item.periodObligation.overRecordedMessage}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span
@@ -429,6 +436,7 @@ export const CreditCardPlannedPaymentSection = ({
           initialScope={editingItem.planScope ?? 'this_cycle'}
           initialCycleCount={editingItem.planCycleCount}
           initialValidUntil={editingItem.planValidUntil}
+          initialOverDebtReason={editingItem.overDebtReason ?? null}
           hasCustomPlan={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0

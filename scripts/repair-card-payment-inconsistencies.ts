@@ -9,6 +9,7 @@
  *   npx tsx --tsconfig tsconfig.json scripts/repair-card-payment-inconsistencies.ts --user-id=1
  */
 import prisma from '../src/lib/prisma';
+import { runWithAuditActor } from '../src/lib/server/audit/audit-context';
 import type { OwnerFilter } from '../src/lib/server/get-owner-context';
 import {
   getCreditCardReconciliationReport,
@@ -76,7 +77,7 @@ async function main() {
   }
 }
 
-main()
+runWithAuditActor({ source: 'SYSTEM', label: 'Script: repair-card-payment-inconsistencies' }, main)
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;

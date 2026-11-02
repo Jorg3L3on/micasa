@@ -80,6 +80,8 @@ describe('reverseCreditCardPayment', () => {
         id: true,
         amount: true,
         expense_id: true,
+        bank_charge_expense_id: true,
+        bank_charge_expense: { select: { id: true, amount: true } },
         source_wallet_id: true,
         credit_card_wallet_id: true,
         adjusts_debt: true,
@@ -99,7 +101,12 @@ describe('reverseCreditCardPayment', () => {
     );
     expect(deleteExpense).toHaveBeenCalledWith({ where: { id: 99 } });
     expect(deletePayment).toHaveBeenCalledWith({ where: { id: 5 } });
-    expect(result).toEqual({ id: 5, amount: 250, expense_id: 99 });
+    expect(result).toEqual({
+      id: 5,
+      amount: 250,
+      expense_id: 99,
+      bank_charge_expense_id: null,
+    });
   });
 
   it('skips expense deletion when payment has no linked expense', async () => {
@@ -139,7 +146,9 @@ describe('isCardPaymentGeneratedExpense', () => {
 
     await expect(isCardPaymentGeneratedExpense(42)).resolves.toBe(true);
     expect(findFirstPayment).toHaveBeenCalledWith({
-      where: { expense_id: 42 },
+      where: {
+        OR: [{ expense_id: 42 }, { bank_charge_expense_id: 42 }],
+      },
       select: { id: true },
     });
   });

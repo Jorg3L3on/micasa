@@ -17,6 +17,7 @@ import { computeBudgetTemplateDateRange } from '@/lib/finance/budget-template-da
 import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows';
 import { allocationOverlapMessage } from '@/lib/finance/budget-allocation-overlap';
 import { ANY_WALLET_LABEL } from '@/schemas/budget.schema';
+import { DomainError } from '@/lib/finance/domain-error';
 
 async function resolveCurrentFortnight(ownerFilter: OwnerFilter) {
   return prisma.fortnight.findFirst({
@@ -35,12 +36,7 @@ async function resolveBudgetDateRange(
     frequency === 'BIWEEKLY' ? await resolveCurrentFortnight(ownerFilter) : null;
 
   if (frequency === 'BIWEEKLY' && !currentFortnight) {
-    throw Object.assign(
-      new Error(
-        'No hay una quincena creada para este contexto. Crea el mes en Planeación antes de configurar un presupuesto quincenal.',
-      ),
-      { code: 'CURRENT_FORTNIGHT_NOT_FOUND' },
-    );
+    throw new DomainError('CURRENT_FORTNIGHT_NOT_FOUND', 'No hay una quincena creada para este contexto. Crea el mes en Planeación antes de configurar un presupuesto quincenal.');
   }
 
   // Prefer year/month/period → canonical calendar bounds so off-by-one
@@ -65,10 +61,7 @@ async function resolveBudgetDateRange(
 function assertExactAllocationTotal(totalAmount: number, allocations: AllocationInput[]) {
   const allocTotal = allocations.reduce((sum, allocation) => sum + Number(allocation.amount), 0);
   if (Math.abs(allocTotal - totalAmount) > 0.01) {
-    throw Object.assign(
-      new Error('La suma de asignaciones debe ser igual al presupuesto total'),
-      { code: 'ALLOC_NOT_EQUAL_BUDGET' },
-    );
+    throw new DomainError('ALLOC_NOT_EQUAL_BUDGET', 'La suma de asignaciones debe ser igual al presupuesto total');
   }
 }
 
@@ -88,12 +81,7 @@ function assertNoEmptyAllocations(allocations: AllocationInput[]) {
         Number(allocation.amount) <= 0,
     )
   ) {
-    throw Object.assign(
-      new Error(
-        'Todas las asignaciones deben incluir una billetera o Cualquier billetera, una categoría y un monto mayor a cero',
-      ),
-      { code: 'EMPTY_ALLOCATION' },
-    );
+    throw new DomainError('EMPTY_ALLOCATION', 'Todas las asignaciones deben incluir una billetera o Cualquier billetera, una categoría y un monto mayor a cero');
   }
 }
 
@@ -130,7 +118,7 @@ async function assertNoAllocationOverlap(
     parentIdByCategoryId,
   );
   if (message) {
-    throw Object.assign(new Error(message), { code: 'ALLOCATION_OVERLAP' });
+    throw new DomainError('ALLOCATION_OVERLAP', message);
   }
 }
 
@@ -167,14 +155,10 @@ async function assertOwnerScopedReferences(
   ]);
 
   if (walletCount !== walletIds.length) {
-    throw Object.assign(new Error('Una o más billeteras no pertenecen al contexto actual'), {
-      code: 'OWNER_MISMATCH_WALLET',
-    });
+    throw new DomainError('OWNER_MISMATCH_WALLET', 'Una o más billeteras no pertenecen al contexto actual');
   }
   if (categoryCount !== categoryIds.length) {
-    throw Object.assign(new Error('Una o más categorías no pertenecen al contexto actual'), {
-      code: 'OWNER_MISMATCH_CATEGORY',
-    });
+    throw new DomainError('OWNER_MISMATCH_CATEGORY', 'Una o más categorías no pertenecen al contexto actual');
   }
 }
 
@@ -277,26 +261,40 @@ export async function createBudget(
   return budget;
 }
 
-export async function updateBudgetTemplate(
+/**
+ * Update a budget's template fields and, optionally, its allocations together.
+ * When `allocations` is given they replace the stored ones and must add up to
+ * the new `allocated_amount`; otherwise the stored allocations must.
+ */
+export async function updateBudget(
   budgetId: number,
   ownerFilter: OwnerFilter,
-  data: Step1Values,
+  data: Step1Values & { allocations?: AllocationInput[] },
 ) {
   const budget = await prisma.budget.findFirst({
     where: { id: budgetId, ...ownerFilter },
     include: { allocations: true },
   });
   if (!budget) {
-    throw Object.assign(new Error('Presupuesto no encontrado'), { code: 'P2025' });
+    throw new DomainError('P2025', 'Presupuesto no encontrado');
   }
 
-  const allocations = budget.allocations.map((allocation) => ({
+  const replacementAllocations = data.allocations
+    ? normalizeAllocations(data.allocations)
+    : null;
+  const allocations =
+    replacementAllocations ??
+    budget.allocations.map((allocation) => ({
       wallet_id: allocation.wallet_id,
       category_id: allocation.category_id,
       amount: Number(allocation.amount),
     }));
   assertNoEmptyAllocations(allocations);
   assertExactAllocationTotal(Number(data.allocated_amount), allocations);
+  if (replacementAllocations) {
+    await assertNoAllocationOverlap(ownerFilter, replacementAllocations);
+    await assertOwnerScopedReferences(ownerFilter, replacementAllocations);
+  }
 
   const budgetDateRange = await resolveBudgetDateRange(
     data.frequency,
@@ -307,16 +305,30 @@ export async function updateBudgetTemplate(
 
   const recurrent = data.frequency === 'CUSTOM' ? false : (data.recurrent ?? true);
 
-  const updated = await prisma.budget.update({
-    where: { id: budgetId },
-    data: {
-      name: data.name,
-      total_amount: data.allocated_amount,
-      frequency: data.frequency,
-      recurrent,
-      start_date: budgetDateRange.start_date,
-      end_date: budgetDateRange.end_date,
-    },
+  const updated = await prisma.$transaction(async (tx) => {
+    const row = await tx.budget.update({
+      where: { id: budgetId },
+      data: {
+        name: data.name,
+        total_amount: data.allocated_amount,
+        frequency: data.frequency,
+        recurrent,
+        start_date: budgetDateRange.start_date,
+        end_date: budgetDateRange.end_date,
+      },
+    });
+    if (replacementAllocations) {
+      await tx.budgetAllocation.deleteMany({ where: { budget_id: budgetId } });
+      await tx.budgetAllocation.createMany({
+        data: replacementAllocations.map((a) => ({
+          budget_id: budgetId,
+          wallet_id: a.wallet_id,
+          category_id: a.category_id,
+          amount: a.amount,
+        })),
+      });
+    }
+    return row;
   });
 
   const calendarDateKey = (value: Date | null) =>
@@ -351,6 +363,15 @@ export async function updateBudgetTemplate(
   return updated;
 }
 
+/** Template fields only; the stored allocations must match the new amount. */
+export function updateBudgetTemplate(
+  budgetId: number,
+  ownerFilter: OwnerFilter,
+  data: Step1Values,
+) {
+  return updateBudget(budgetId, ownerFilter, data);
+}
+
 export async function setBudgetActive(
   budgetId: number,
   ownerFilter: OwnerFilter,
@@ -361,7 +382,7 @@ export async function setBudgetActive(
     where: { id: budgetId, ...ownerFilter },
   });
   if (!budget) {
-    throw Object.assign(new Error('Presupuesto no encontrado'), { code: 'P2025' });
+    throw new DomainError('P2025', 'Presupuesto no encontrado');
   }
 
   if (!active) {
@@ -395,10 +416,7 @@ export async function setBudgetActive(
         select: { id: true },
       });
       if (!fortnight) {
-        throw Object.assign(
-          new Error('No existe una quincena para la fecha efectiva seleccionada'),
-          { code: 'CURRENT_FORTNIGHT_NOT_FOUND' },
-        );
+        throw new DomainError('CURRENT_FORTNIGHT_NOT_FOUND', 'No existe una quincena para la fecha efectiva seleccionada');
       }
       budgetDateRange = getCanonicalFortnightBounds(year, month, period);
     }
@@ -435,7 +453,7 @@ export async function updateBudgetAllocations(
     where: { id: budgetId, ...ownerFilter },
   });
   if (!budget) {
-    throw Object.assign(new Error('Presupuesto no encontrado'), { code: 'P2025' });
+    throw new DomainError('P2025', 'Presupuesto no encontrado');
   }
 
   const normalized = normalizeAllocations(allocations);
@@ -465,7 +483,7 @@ export async function deleteBudget(budgetId: number, ownerFilter: OwnerFilter) {
     where: { id: budgetId, ...ownerFilter },
   });
   if (!budget) {
-    throw Object.assign(new Error('Presupuesto no encontrado'), { code: 'P2025' });
+    throw new DomainError('P2025', 'Presupuesto no encontrado');
   }
   await prisma.budget.update({
     where: { id: budgetId },
@@ -473,4 +491,9 @@ export async function deleteBudget(budgetId: number, ownerFilter: OwnerFilter) {
   });
   // Keep the covering-today period; cancel anything that starts after today.
   await deleteFuturePeriods(budgetId);
+}
+
+/** An owned budget by id, or null. */
+export function findBudgetForOwner(ownerFilter: OwnerFilter, id: number) {
+  return prisma.budget.findFirst({ where: { id, ...ownerFilter } });
 }

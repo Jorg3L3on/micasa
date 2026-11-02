@@ -70,6 +70,7 @@ describe('POST /api/admin/users/[id]/password', () => {
       admin: { userId: 1, email: 'admin@test.com' },
       targetUserId: 2,
       temporaryPassword: 'demo-pass',
+      request: expect.any(Request),
     });
   });
 

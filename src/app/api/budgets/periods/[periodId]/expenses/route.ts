@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { listBudgetPeriodExpensesByAllocation } from '@/lib/finance/budget-period.service';
 
 type ErrorWithCode = Error & { code?: string };
@@ -9,18 +9,18 @@ export async function GET(
   { params }: { params: Promise<{ periodId: string }> },
 ) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { periodId: periodIdParam } = await params;
-    const periodId = Number(periodIdParam);
-    if (isNaN(periodId)) {
-      return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
-    }
+      const { periodId: periodIdParam } = await params;
+      const periodId = Number(periodIdParam);
+      if (isNaN(periodId)) {
+        return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
+      }
 
-    const groups = await listBudgetPeriodExpensesByAllocation(periodId, ownerFilter);
-    return NextResponse.json({ groups }, { status: 200 });
+      const groups = await listBudgetPeriodExpensesByAllocation(periodId, ownerFilter);
+      return NextResponse.json({ groups }, { status: 200 });
+    });
   } catch (error) {
     if (
       error &&

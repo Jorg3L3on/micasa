@@ -23,18 +23,39 @@ const parse = (value: string): URL | null => {
   }
 };
 
-export const isAllowedRegistrationRedirectUri = (value: string): boolean => {
-  const url = parse(value);
-  if (!url) return false;
-  if (url.hash || value.includes('#')) return false;
-  if (url.username || url.password) return false;
+/**
+ * Why a redirect URI cannot be registered or accepted. Null means the URI is
+ * https, loopback http, or a reverse-DNS private-use scheme, with no fragment
+ * and no credentials. The reason is safe to log; the URI itself is not.
+ */
+export type RedirectUriRejectionReason =
+  | 'unparseable'
+  | 'fragment'
+  | 'credentials'
+  | 'non_loopback_http'
+  | 'disallowed_scheme';
 
-  if (url.protocol === 'https:') return Boolean(url.hostname);
-  if (url.protocol === 'http:') return LOOPBACK_HOSTS.has(url.hostname);
+export const registrationRedirectRejectionReason = (
+  value: string,
+): RedirectUriRejectionReason | null => {
+  const url = parse(value);
+  if (!url) return 'unparseable';
+  if (url.hash || value.includes('#')) return 'fragment';
+  if (url.username || url.password) return 'credentials';
+
+  if (url.protocol === 'https:') {
+    return url.hostname ? null : 'disallowed_scheme';
+  }
+  if (url.protocol === 'http:') {
+    return LOOPBACK_HOSTS.has(url.hostname) ? null : 'non_loopback_http';
+  }
 
   const scheme = url.protocol.slice(0, -1).toLowerCase();
-  return PRIVATE_USE_SCHEME.test(scheme);
+  return PRIVATE_USE_SCHEME.test(scheme) ? null : 'disallowed_scheme';
 };
+
+export const isAllowedRegistrationRedirectUri = (value: string): boolean =>
+  registrationRedirectRejectionReason(value) === null;
 
 export const isHttpsUri = (value: string): boolean => {
   const url = parse(value);

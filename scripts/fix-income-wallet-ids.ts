@@ -4,6 +4,7 @@
  * to wallet_id = null so the next "Recibir quincena" flow properly credits them.
  */
 import prisma from '../src/lib/prisma';
+import { runWithAuditActor } from '../src/lib/server/audit/audit-context';
 
 async function main() {
   const incomes = await prisma.income.findMany({
@@ -30,6 +31,6 @@ async function main() {
   console.log('Now run "Recibir quincena" again to properly credit the wallets.');
 }
 
-main()
+runWithAuditActor({ source: 'SYSTEM', label: 'Script: fix-income-wallet-ids' }, main)
   .catch(console.error)
   .finally(() => prisma.$disconnect());

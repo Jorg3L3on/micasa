@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findFortnightByCalendarPeriod } from '@/features/monthly/server/monthly.queries';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { listFortnightsForCatalog } from '@/lib/finance/fortnight.service';
 import {
   parseFortnightPeriod,
@@ -16,50 +16,50 @@ import { formatFortnightPeriodTitle } from '@/lib/fortnight-calendar';
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { searchParams } = new URL(request.url);
-    const year = searchParams.get('year');
-    const month = searchParams.get('month');
-    const period = searchParams.get('period');
-    const periodError = strictFortnightPeriodParamError(period);
-    if (periodError) {
-      return NextResponse.json({ error: periodError }, { status: 400 });
-    }
-
-    if (year && month && period) {
-      const parsedPeriod = parseFortnightPeriod(period)!;
-      const fortnight = await findFortnightByCalendarPeriod(
-        ownerFilter,
-        parseInt(year, 10),
-        parseInt(month, 10),
-        parsedPeriod,
-      );
-
-      if (!fortnight) {
-        return NextResponse.json(null, { status: 200 });
+      const { searchParams } = new URL(request.url);
+      const year = searchParams.get('year');
+      const month = searchParams.get('month');
+      const period = searchParams.get('period');
+      const periodError = strictFortnightPeriodParamError(period);
+      if (periodError) {
+        return NextResponse.json({ error: periodError }, { status: 400 });
       }
 
-      return NextResponse.json(
-        {
-          id: fortnight.id,
-          label: formatFortnightPeriodTitle(
-            fortnight.period,
-            parseInt(month, 10),
-            parseInt(year, 10),
-          ),
-          year: parseInt(year, 10),
-          month: parseInt(month, 10),
-          period: fortnight.period,
-        },
-        { status: 200 },
-      );
-    }
+      if (year && month && period) {
+        const parsedPeriod = parseFortnightPeriod(period)!;
+        const fortnight = await findFortnightByCalendarPeriod(
+          ownerFilter,
+          parseInt(year, 10),
+          parseInt(month, 10),
+          parsedPeriod,
+        );
 
-    const formatted = await listFortnightsForCatalog(ownerFilter);
-    return NextResponse.json(formatted, { status: 200 });
+        if (!fortnight) {
+          return NextResponse.json(null, { status: 200 });
+        }
+
+        return NextResponse.json(
+          {
+            id: fortnight.id,
+            label: formatFortnightPeriodTitle(
+              fortnight.period,
+              parseInt(month, 10),
+              parseInt(year, 10),
+            ),
+            year: parseInt(year, 10),
+            month: parseInt(month, 10),
+            period: fortnight.period,
+          },
+          { status: 200 },
+        );
+      }
+
+      const formatted = await listFortnightsForCatalog(ownerFilter);
+      return NextResponse.json(formatted, { status: 200 });
+    });
   } catch (error) {
     console.error('Error al obtener las quincenas:', error);
     return NextResponse.json(

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import prisma from '@/lib/prisma';
 import { formatCalendarDate } from '@/lib/calendar-dates';
 import type { WalletDetail } from '@/types/wallet-movements';
@@ -9,57 +9,57 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { id } = await params;
-    const walletId = Number(id);
-    if (!Number.isFinite(walletId) || walletId <= 0) {
-      return NextResponse.json(
-        { error: 'Invalid wallet id' },
-        { status: 400 },
-      );
-    }
+      const { id } = await params;
+      const walletId = Number(id);
+      if (!Number.isFinite(walletId) || walletId <= 0) {
+        return NextResponse.json(
+          { error: 'Invalid wallet id' },
+          { status: 400 },
+        );
+      }
 
-    const wallet = await prisma.wallet.findFirst({
-      where: { id: walletId, ...ownerFilter },
+      const wallet = await prisma.wallet.findFirst({
+        where: { id: walletId, ...ownerFilter },
+      });
+      if (!wallet) {
+        return NextResponse.json(
+          { error: 'Wallet not found' },
+          { status: 404 },
+        );
+      }
+
+      const response: WalletDetail = {
+        id: wallet.id,
+        name: wallet.name,
+        provider_icon_key: wallet.provider_icon_key ?? null,
+        type: wallet.type,
+        amount: Number(wallet.amount),
+        credit_limit: wallet.credit_limit == null ? null : Number(wallet.credit_limit),
+        temporary_credit_limit:
+          wallet.temporary_credit_limit == null
+            ? null
+            : Number(wallet.temporary_credit_limit),
+        active: wallet.active,
+        include_in_liquidity: wallet.include_in_liquidity,
+        cutoff_day: wallet.cutoff_day,
+        due_day: wallet.due_day,
+        minimum_payment:
+          wallet.minimum_payment == null ? null : Number(wallet.minimum_payment),
+        apr_annual: wallet.apr_annual == null ? null : Number(wallet.apr_annual),
+        cat_annual: wallet.cat_annual == null ? null : Number(wallet.cat_annual),
+        goal_amount: wallet.goal_amount == null ? null : Number(wallet.goal_amount),
+        goal_due_date:
+          wallet.goal_due_date == null
+            ? null
+            : formatCalendarDate(wallet.goal_due_date),
+        created_at: wallet.created_at.toISOString(),
+        assignee_user_id: wallet.assignee_user_id ?? null,
+      };
+      return NextResponse.json(response, { status: 200 });
     });
-    if (!wallet) {
-      return NextResponse.json(
-        { error: 'Wallet not found' },
-        { status: 404 },
-      );
-    }
-
-    const response: WalletDetail = {
-      id: wallet.id,
-      name: wallet.name,
-      provider_icon_key: wallet.provider_icon_key ?? null,
-      type: wallet.type,
-      amount: Number(wallet.amount),
-      credit_limit: wallet.credit_limit == null ? null : Number(wallet.credit_limit),
-      temporary_credit_limit:
-        wallet.temporary_credit_limit == null
-          ? null
-          : Number(wallet.temporary_credit_limit),
-      active: wallet.active,
-      include_in_liquidity: wallet.include_in_liquidity,
-      cutoff_day: wallet.cutoff_day,
-      due_day: wallet.due_day,
-      minimum_payment:
-        wallet.minimum_payment == null ? null : Number(wallet.minimum_payment),
-      apr_annual: wallet.apr_annual == null ? null : Number(wallet.apr_annual),
-      cat_annual: wallet.cat_annual == null ? null : Number(wallet.cat_annual),
-      goal_amount: wallet.goal_amount == null ? null : Number(wallet.goal_amount),
-      goal_due_date:
-        wallet.goal_due_date == null
-          ? null
-          : formatCalendarDate(wallet.goal_due_date),
-      created_at: wallet.created_at.toISOString(),
-      assignee_user_id: wallet.assignee_user_id ?? null,
-    };
-    return NextResponse.json(response, { status: 200 });
   } catch (error) {
     console.error('Error fetching wallet:', error);
     return NextResponse.json(

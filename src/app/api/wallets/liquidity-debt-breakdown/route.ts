@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLiquidityDebtBreakdown } from '@/lib/finance/liquidity-debt-breakdown.service';
 import { reportApiError } from '@/lib/observability/report-error';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 
 /**
  * GET /api/wallets/liquidity-debt-breakdown
@@ -13,16 +13,16 @@ export async function GET(request: NextRequest) {
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
 
-    const breakdown = await getLiquidityDebtBreakdown(context.ownerFilter);
-    return NextResponse.json(breakdown, { status: 200 });
+      const breakdown = await getLiquidityDebtBreakdown(context.ownerFilter);
+      return NextResponse.json(breakdown, { status: 200 });
+    });
   } catch (error) {
     console.error('liquidity-debt-breakdown:', error);
     reportApiError(error, { route, status: 500, owner });

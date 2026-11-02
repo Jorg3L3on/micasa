@@ -130,6 +130,7 @@ import type {
   LoanPaymentActionValue,
   LoanPaymentListItem,
 } from '@/types/loans';
+import { AuditHistoryOverlay } from '@/components/audit/AuditHistoryOverlay';
 
 type LoanFormState = {
   name: string;
@@ -388,6 +389,7 @@ export default function LoansPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState<number | null>(null);
+  const [loanHistory, setLoanHistory] = useState<{ id: number; name: string } | null>(null);
   const [statusFilter, setStatusFilter] = useState<LoanStatusFilter>('ALL');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [paymentActionDraft, setPaymentActionDraft] =
@@ -1355,6 +1357,29 @@ export default function LoansPage() {
           submitting={loanEditSubmitting}
           onFieldChange={setLoanEditField}
           onSubmit={() => void handleLoanEditSubmit()}
+          onShowHistory={
+            selectedLoan
+              ? () => {
+                  setLoanEditOpen(false);
+                  setLoanEditForm(null);
+                  setLoanEditErrors({});
+                  // Close the detail so the history is not stacked under it.
+                  setSelectedLoanId(null);
+                  setLoanHistory({ id: selectedLoan.id, name: selectedLoan.name });
+                }
+              : undefined
+          }
+        />
+      ) : null}
+      {loanHistory ? (
+        <AuditHistoryOverlay
+          open
+          onOpenChange={(open) => {
+            if (!open) setLoanHistory(null);
+          }}
+          entityType="Loan"
+          entityId={loanHistory.id}
+          title={`Historial: ${loanHistory.name}`}
         />
       ) : null}
       <LoanCreateOverlay
@@ -1467,6 +1492,16 @@ export default function LoansPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setLoanEditOpen(false);
+                              setSelectedLoanId(null);
+                              setLoanHistory({ id: selectedLoan.id, name: selectedLoan.name });
+                            }}
+                          >
+                            <History className="h-4 w-4" />
+                            Historial
+                          </DropdownMenuItem>
                           {selectedLoan.status === 'ACTIVE' ? (
                             <DropdownMenuItem
                               onClick={() => {

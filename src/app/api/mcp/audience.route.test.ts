@@ -78,6 +78,19 @@ describe('/api/mcp OAuth audience', () => {
     expect(response.status).toBe(200);
   });
 
+  it('accepts the token when NEXTAUTH_URL is unset and the request is the public URL', async () => {
+    vi.stubEnv('NEXTAUTH_URL', '');
+    const publicOrigin = 'https://micasa-three.vercel.app';
+    prismaMock.mcpOAuthGrant.findUnique.mockResolvedValue(
+      grantFor(`${publicOrigin}/api/mcp`),
+    );
+
+    const response = await initialize(`${publicOrigin}/api/mcp`, {
+      Authorization: `Bearer ${ACCESS}`,
+    });
+    expect(response.status).toBe(200);
+  });
+
   it('401 for a token whose grant.resource is another URL', async () => {
     prismaMock.mcpOAuthGrant.findUnique.mockResolvedValue(
       grantFor('https://other.example/api/mcp'),

@@ -152,4 +152,63 @@ describe('obligation surface parity (fixture ledger)', () => {
     expect(panel.entersAlcanza).toBe(false);
     expect(panel.countsAsGap).toBe(true);
   });
+
+  it('keeps a planned overpayment on panel, liquidity and MCP', () => {
+    const dueItem = {
+      outstandingBalance: 150,
+      nextDuePayment: 150,
+      statementPayoff: 150,
+      obligationAmountSource: 'ledger' as const,
+      plannedPayment: 1_000,
+    };
+    const query = {
+      outstandingBalance: 150,
+      dueInPeriod: true,
+      statementPayoff: 150,
+      plannedOverride: 1_000,
+      hasStatementImport: false,
+    };
+    const panel = panelSnapshotFromDueItem(dueItem);
+    const liquidity = liquiditySnapshotFromQuery(query);
+    const mcp = mcpSnapshotFromDueItem(dueItem);
+
+    expect(panel).toEqual(liquidity);
+    expect(mcp).toEqual(liquidity);
+    expect(panel.amount).toBe(1_000);
+    expect(panel.knownCashAmount).toBe(1_000);
+    expect(panel.breakdown).toEqual([
+      {
+        key: 'bank_charges_estimate',
+        label: 'Cargos del banco (estimado)',
+        amount: 850,
+      },
+    ]);
+    expect(panel.overRecordedMessage).toBe(
+      'El estado de cuenta pide más que lo registrado: +$850.00',
+    );
+  });
+
+  it('leaves plans at or below recorded debt without a bank-charge row', () => {
+    for (const planned of [150, 100]) {
+      const dueItem = {
+        outstandingBalance: 150,
+        nextDuePayment: 150,
+        statementPayoff: 150,
+        obligationAmountSource: 'ledger' as const,
+        plannedPayment: planned,
+      };
+      const panel = panelSnapshotFromDueItem(dueItem);
+      const liquidity = liquiditySnapshotFromQuery({
+        outstandingBalance: 150,
+        dueInPeriod: true,
+        statementPayoff: 150,
+        plannedOverride: planned,
+      });
+      expect(panel).toEqual(liquidity);
+      expect(mcpSnapshotFromDueItem(dueItem)).toEqual(liquidity);
+      expect(panel.amount).toBe(planned);
+      expect(panel.breakdown).toEqual([]);
+      expect(panel.overRecordedMessage).toBeNull();
+    }
+  });
 });

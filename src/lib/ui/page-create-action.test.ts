@@ -67,6 +67,11 @@ const PAGE_REGISTRATIONS: {
     key: 'invite',
   },
   {
+    file: 'src/app/(app)/settings/activity/page.tsx',
+    route: '/settings/activity',
+    key: 'expenseOrIncome',
+  },
+  {
     file: 'src/components/monthly/MonthlyPanelLayout.tsx',
     route: '/monthly/2026/9',
     key: 'expenseOrIncome',

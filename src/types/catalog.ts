@@ -102,6 +102,10 @@ export type PlannerCardStatementDueSummary = {
   cardCount: number;
   /** Tarjetas con deuda y vencimiento sin pago del corte. No cuentan como $0. */
   obligationGapCount?: number;
+  /** Slice of `total` above recorded debt. Not added again to Toca pagar. */
+  bankChargesEstimate?: number;
+  /** That slice when there is no statement import. */
+  overRecordedEstimate?: number;
 };
 
 /** Cuotas de préstamo pendientes pagadas desde billetera. */
@@ -356,6 +360,8 @@ export type DuePaymentItem = {
   /** Plan guardado ya cubierto por pagos al corte; no inflar pendientes. */
   isStaleFullyCoveredPlan?: boolean;
   obligationAmountSource?: CardObligationAmountSource;
+  /** True when this cycle's figure comes from a statement import. */
+  hasStatementImport?: boolean;
   isEstimate?: boolean;
   /** Null = corte desconocido. 0 = el corte dice que no queda nada. */
   statementPayoff?: number | null;
@@ -367,6 +373,8 @@ export type DuePaymentItem = {
   planScope?: 'this_cycle' | 'n_cycles' | 'until_date' | null;
   planCycleCount?: number | null;
   planValidUntil?: string | null;
+  /** Motivo guardado cuando el plan supera la deuda. Null si no aplica. */
+  overDebtReason?: 'INTEREST' | 'LATE_FEE' | 'OTHER' | null;
   /** Obligación del periodo. `amount: null` es dato faltante, no $0. */
   periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   /** @deprecated Use remainingPlannerAmount */
@@ -399,6 +407,8 @@ export type CreditCardPaymentPlanView = {
   planScope?: 'this_cycle' | 'n_cycles' | 'until_date' | null;
   planCycleCount?: number | null;
   planValidUntil?: string | null;
+  /** Motivo guardado cuando el plan supera la deuda. Null si no aplica. */
+  overDebtReason?: 'INTEREST' | 'LATE_FEE' | 'OTHER' | null;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */
@@ -416,7 +426,8 @@ export type LiquidityProjectionObligationSource =
   | 'credit_card_statement'
   | 'unpaid_expense'
   | 'expense_template'
-  | 'loan_payment';
+  | 'loan_payment'
+  | 'scenario';
 
 /** Respuesta de GET /api/wallets/liquidity-projection */
 export type LiquidityProjectionObligationItem = {
@@ -453,6 +464,15 @@ export type LiquidityProjectionObligationItem = {
   payments_applied_to_fortnight?: number;
   remaining_planner_amount?: number;
   planner_status?: PlannerCardPaymentStatusUi;
+  /** Scenario lines only (source `scenario`): which input item, its kind and the charge day. */
+  scenario_index?: number;
+  scenario_kind?: 'purchase' | 'instalment';
+  scenario_charge_date?: string;
+  scenario_instalment_number?: number;
+  scenario_instalment_total?: number;
+  /** Set on a scenario instalment on a card: a cuota, outside fortnight aggregates. */
+  credit_installment_current?: number;
+  credit_installment_total?: number;
 };
 
 export type LiquidityProjectionMilestone = {
@@ -606,6 +626,24 @@ export type LiquidityProjectionResponse = {
   projection_events: LiquidityProjectionEvent[];
   projection_tracks: LiquidityProjectionTrack[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
+  /** Present only when the request carried `scenario`. */
+  scenario_delta?: LiquidityScenarioDelta;
+  scenario_assumptions?: string[];
+};
+
+export type LiquidityScenarioOutcome = {
+  first_projected_shortfall_date: string | null;
+  min_projected_headroom: number | null;
+  end_liquidity: number;
+};
+
+/** Baseline vs scenario, computed from the same loaded data. */
+export type LiquidityScenarioDelta = {
+  baseline: LiquidityScenarioOutcome;
+  scenario: LiquidityScenarioOutcome;
+  first_projected_shortfall_changed: boolean;
+  min_projected_headroom_change: number | null;
+  end_liquidity_change: number;
 };
 
 export type CreditCardPaymentListItem = {

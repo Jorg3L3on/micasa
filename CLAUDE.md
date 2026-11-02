@@ -168,6 +168,9 @@ BudgetFrequency:    DAILY | WEEKLY | BIWEEKLY | CUSTOM
 ### App home
 Post-login home is **Panel financiero** (`/monthly/{year}/{month}` via `getAppHomeHref()` / `getCurrentMonthlyPanelHref()`). Legacy `/dashboard` bookmarks redirect in middleware. Header alerts use `GET /api/alerts`. Liquidity annual chart uses `GET /api/wallets/liquidity/monthly-summary`.
 
+### Audit log
+Every write to an audited model must run under an actor scope, or it throws outside production: routes use `withOwnerContext` / `withSessionActor` / `withAdmin`, server components that write use `withPageActor`, MCP tools get it from `runAgentTool`, scripts use `runWithAuditActor`. Postgres triggers write `AuditLog`; the app writes `AuthEvent` via `recordAuthEvent`. New models go in `src/lib/server/audit/audited-models.ts` (audited or excluded) — `npm run validate:audit-coverage` enforces it. See `docs/audit-log.md`.
+
 ### Credit Card Statement Import
 Supports importing CSV/PDF statements from **Mercado Pago**, **CA Departamental**, **CA Efectivo**, and **DiDi Card**. Parsers live in `src/lib/server/credit-card-statement/`. Imports create `CreditCardStatementImport` records and can be rolled back.
 

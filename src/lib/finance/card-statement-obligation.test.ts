@@ -307,6 +307,16 @@ describe('getRemainingPlannedAmount', () => {
       }),
     ).toBe(0);
   });
+
+  it('does not cap a plan at the statement remainder or recorded debt', () => {
+    expect(
+      getRemainingPlannedAmount({
+        plannedGrossAmount: 1_000,
+        paymentsAppliedToStatement: 0,
+        remainingStatementDue: 150,
+      }),
+    ).toBe(1_000);
+  });
 });
 
 describe('deriveCardStatementObligationStatus', () => {

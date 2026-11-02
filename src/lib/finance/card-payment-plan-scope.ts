@@ -26,6 +26,15 @@ export type StoredPaymentPlanWrite = PlannedOverrideStamp & {
   anchorStatementEnd?: string | null;
   fortnightYear?: number | null;
   fortnightMonth?: number | null;
+  /** Set only while the planned amount sits above the recorded debt. */
+  overDebtReason?: 'INTEREST' | 'LATE_FEE' | 'OTHER' | null;
+};
+
+const normalizeOverDebtReason = (
+  value: string | null | undefined,
+): 'INTEREST' | 'LATE_FEE' | 'OTHER' | null => {
+  if (value === 'INTEREST' || value === 'LATE_FEE' || value === 'OTHER') return value;
+  return null;
 };
 
 const clampDayToMonth = (year: number, month: number, day: number) =>
@@ -141,6 +150,7 @@ export type PaymentPlanRowLike = {
   updated_at?: Date | null;
   created_at?: Date | null;
   fortnight?: { year: number; month: number } | null;
+  over_debt_reason?: string | null;
 };
 
 export const toStoredPaymentPlanWrite = (
@@ -156,6 +166,7 @@ export const toStoredPaymentPlanWrite = (
     : null,
   fortnightYear: plan.fortnight?.year ?? null,
   fortnightMonth: plan.fortnight?.month ?? null,
+  overDebtReason: normalizeOverDebtReason(plan.over_debt_reason),
   updatedAt: plan.updated_at ?? null,
   createdAt: plan.created_at ?? null,
 });
@@ -166,6 +177,7 @@ export type ActivePlannedOverride = {
   scope: CardPaymentPlanScopeKind | null;
   cycleCount: number | null;
   validUntil: string | null;
+  overDebtReason: 'INTEREST' | 'LATE_FEE' | 'OTHER' | null;
 };
 
 const emptyOverride = (): ActivePlannedOverride => ({
@@ -174,6 +186,7 @@ const emptyOverride = (): ActivePlannedOverride => ({
   scope: null,
   cycleCount: null,
   validUntil: null,
+  overDebtReason: null,
 });
 
 /**
@@ -206,5 +219,6 @@ export const selectActivePlannedOverride = (
     scope: normalizePlanScope(winner.scope),
     cycleCount: winner.cycleCount ?? null,
     validUntil: winner.validUntil ?? null,
+    overDebtReason: normalizeOverDebtReason(winner.overDebtReason),
   };
 };

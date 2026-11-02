@@ -8,8 +8,10 @@ import {
 import { formatLoanDueYmd } from '@/lib/finance/loan-schedule';
 import { toStoredPaymentPlanWrite } from '@/lib/finance/card-payment-plan-scope';
 import {
+  describePlannedOverDebt,
   exposedAnnualRate,
   exposedMinimumDue,
+  type CardObligationBreakdownRow,
 } from '@/lib/finance/card-period-obligation';
 import { getCardPeriodObligation } from '@/lib/finance/card-period-surfaces';
 import prisma from '@/lib/prisma';
@@ -53,12 +55,22 @@ import {
   monthScheduledDebtTotal,
   toUtcDateOnlyString,
 } from '@/lib/finance/liquidity-projection';
+import { DomainError } from '@/lib/finance/domain-error';
+import {
+  buildScenarioObligations,
+  compareScenarioOutcomes,
+  type LiquidityScenarioDelta,
+  type LiquidityScenarioOutcome,
+  type LiquidityScenarioWallet,
+} from '@/lib/finance/liquidity-scenario';
+import type { LiquidityScenarioItem } from '@/schemas/liquidity-scenario.schema';
 
 export type LiquidityObligationSource =
   | 'credit_card_statement'
   | 'unpaid_expense'
   | 'expense_template'
-  | 'loan_payment';
+  | 'loan_payment'
+  | 'scenario';
 
 export type LiquidityObligationItem = {
   source: LiquidityObligationSource;
@@ -90,6 +102,24 @@ export type LiquidityObligationItem = {
   payments_applied_to_fortnight?: number;
   remaining_planner_amount?: number;
   planner_status?: PlannerCardPaymentStatusUi;
+  /** Slice of `next_due_payment` above recorded debt. Absent at or below the debt. */
+  breakdown?: CardObligationBreakdownRow[];
+  /** Set with the breakdown when this cycle has no statement import. */
+  over_recorded_message?: string | null;
+  /** Scenario lines only: which input item, its kind and the day the charge happens. */
+  scenario_index?: number;
+  scenario_kind?: LiquidityScenarioItem['kind'];
+  scenario_charge_date?: string;
+  scenario_instalment_number?: number;
+  scenario_instalment_total?: number;
+  /** Set on a scenario instalment on a card: a cuota, outside fortnight aggregates. */
+  credit_installment_current?: number;
+  credit_installment_total?: number;
+};
+
+type CardCycleCashContext = {
+  outstandingBalance: number;
+  hasStatementImport: boolean;
 };
 
 export type LiquidityMilestone = {
@@ -143,6 +173,10 @@ export type LiquidityProjectionResult = {
   projection_events: LiquidityProjectionEvent[];
   projection_tracks: LiquidityProjectionTrack[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
+  /** Present only with a scenario: baseline vs scenario from the same loaded data. */
+  scenario_delta?: LiquidityScenarioDelta;
+  /** Present only with a scenario: one sentence per hypothetical item. */
+  scenario_assumptions?: string[];
 };
 
 export type GetLiquidityProjectionInput = {
@@ -156,6 +190,8 @@ export type GetLiquidityProjectionInput = {
   stressCyclePercent?: number;
   includeUnpaidExpenses?: boolean;
   includeExpenseTemplates?: boolean;
+  /** Hypothetical items (max 3), never persisted. Dates already checked against [asOf, until]. */
+  scenario?: LiquidityScenarioItem[];
 };
 
 export type LiquidityMonthlySeriesItem = {
@@ -587,12 +623,14 @@ const planKey = (fortnightId: number, walletId: number): string =>
 
 /**
  * A card whose fortnight plan is already paid should not re-enter the cash plan
- * as the full statement remainder. Statement `next_due_payment` stays intact.
+ * as the full statement remainder. A higher fortnight plan replaces
+ * `next_due_payment` on the same due date so the extra is one cash line.
  */
 const annotateFortnightCardPlans = async (
   byDueDate: Map<string, LiquidityObligationItem[]>,
   ownerFilter: OwnerFilter,
   asOfStr: string,
+  cardCycleContext: Map<string, CardCycleCashContext>,
 ) => {
   const cards: LiquidityObligationItem[] = [];
   for (const items of byDueDate.values()) {
@@ -680,6 +718,25 @@ const annotateFortnightCardPlans = async (
     item.planned_fortnight_payment = planned;
     item.payments_applied_to_fortnight = paid;
     item.remaining_planner_amount = remaining;
+    if (remaining > item.next_due_payment) {
+      const context = cardCycleContext.get(
+        `${item.wallet_id}:${item.statement_due_date}`,
+      );
+      const detail = describePlannedOverDebt({
+        planned,
+        outstandingBalance: context?.outstandingBalance ?? 0,
+        paymentsApplied: paid,
+        hasStatementImport: context?.hasStatementImport === true,
+      });
+      item.next_due_payment = remaining;
+      if (detail.breakdown.length > 0) {
+        item.breakdown = detail.breakdown;
+        item.over_recorded_message = detail.overRecordedMessage;
+      } else {
+        delete item.breakdown;
+        delete item.over_recorded_message;
+      }
+    }
     item.planner_status = derivePlannerStatus({
       remainingPlannerAmount: remaining,
       paymentsAppliedToFortnight: paid,
@@ -700,6 +757,115 @@ const mergeAllMilestones = (
   }
 };
 
+/** A scenario item names a wallet the owner cannot use for it (400, pinned to `wallet_id`). */
+export class LiquidityScenarioWalletError extends DomainError {
+  readonly index: number;
+
+  constructor(index: number, message: string) {
+    super('INVALID_SCENARIO', message, 400);
+    this.index = index;
+  }
+}
+
+const loadScenarioWallets = async (
+  ownerFilter: OwnerFilter,
+  items: LiquidityScenarioItem[],
+): Promise<Map<number, LiquidityScenarioWallet>> => {
+  const rows = await prisma.wallet.findMany({
+    where: {
+      ...ownerFilter,
+      id: { in: [...new Set(items.map((item) => item.wallet_id))] },
+    },
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      active: true,
+      cutoff_day: true,
+      due_day: true,
+    },
+  });
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const wallets = new Map<number, LiquidityScenarioWallet>();
+  for (const [index, item] of items.entries()) {
+    const row = byId.get(item.wallet_id);
+    if (!row) {
+      throw new LiquidityScenarioWalletError(index, 'Elige una billetera de este espacio.');
+    }
+    if (!row.active) {
+      throw new LiquidityScenarioWalletError(index, 'Esa billetera está archivada.');
+    }
+    if (!isFundingWalletType(row.type) && (row.cutoff_day == null || row.due_day == null)) {
+      throw new LiquidityScenarioWalletError(
+        index,
+        'Esa tarjeta no tiene día de corte y de pago; agrégalos para simular con ella.',
+      );
+    }
+    wallets.set(row.id, {
+      id: row.id,
+      name: row.name,
+      type: row.type,
+      cutoff_day: row.cutoff_day,
+      due_day: row.due_day,
+    });
+  }
+  return wallets;
+};
+
+/**
+ * Milestones and running totals for one set of obligations. Run once for the
+ * projection and, with a scenario, once more for the baseline it is compared to.
+ */
+const buildMilestones = (
+  byDueDate: Map<string, LiquidityObligationItem[]>,
+  fundingTotal: number,
+  cumulativeIncomeByMonth: Map<string, number>,
+  asOfStr: string,
+) => {
+  const sortedDates = [...byDueDate.keys()].sort(compareUtcDateOnly);
+  let cumulative = 0;
+  const milestones: LiquidityMilestone[] = [];
+  let firstShortfall: string | null = null;
+  let firstProjectedShortfall: string | null = null;
+  let minProjectedHeadroom: number | null = null;
+
+  for (const dueDate of sortedDates) {
+    const obligations = byDueDate.get(dueDate) ?? [];
+    const totalDue = obligations.reduce((s, o) => s + o.next_due_payment, 0);
+    cumulative += totalDue;
+    const headroom = fundingTotal - cumulative;
+    const dueMonthKey = toMonthKeyUtc(dueDate);
+    const projectedHeadroom =
+      fundingTotal + (cumulativeIncomeByMonth.get(dueMonthKey) ?? 0) - cumulative;
+    if (firstShortfall === null && headroom < 0) {
+      firstShortfall = dueDate;
+    }
+    if (firstProjectedShortfall === null && projectedHeadroom < 0) {
+      firstProjectedShortfall = dueDate;
+    }
+    if (minProjectedHeadroom === null || projectedHeadroom < minProjectedHeadroom) {
+      minProjectedHeadroom = projectedHeadroom;
+    }
+    milestones.push({
+      due_date: dueDate,
+      is_past_due: compareUtcDateOnly(dueDate, asOfStr) < 0,
+      obligations,
+      total_due: totalDue,
+      cumulative_due_through_date: cumulative,
+      funding_total: fundingTotal,
+      liquidity_headroom: headroom,
+    });
+  }
+
+  return {
+    milestones,
+    cumulative,
+    firstShortfall,
+    firstProjectedShortfall,
+    minProjectedHeadroom,
+  };
+};
+
 /**
  * Proyección de liquidez: efectivo/débito vs pagos a estado y, opcionalmente,
  * gastos impagos y huecos de plantillas por quincena.
@@ -715,25 +881,22 @@ export const getLiquidityProjection = async (
   const toMonthKey = untilStr.slice(0, 7);
 
   if (compareMonthKeys(fromMonthKey, toMonthKey) > 0) {
-    const error = new Error(
-      'El rango del gráfico es inválido: el mes inicial no puede ser posterior al final.',
-    );
-    (error as { code?: string }).code = 'INVALID_HORIZON';
-    throw error;
+    throw new DomainError('INVALID_HORIZON', 'El rango del gráfico es inválido: el mes inicial no puede ser posterior al final.');
   }
 
   if (compareUtcDateOnly(untilStr, asOfStr) < 0) {
-    const error = new Error(
-      'La fecha "until" no puede ser anterior a "asOf" (comparación UTC).',
-    );
-    (error as { code?: string }).code = 'INVALID_HORIZON';
-    throw error;
+    throw new DomainError('INVALID_HORIZON', 'La fecha "until" no puede ser anterior a "asOf" (comparación UTC).');
   }
 
   const omitZero = input.omitZeroObligations ?? true;
   const stressPct = clampStressPercent(input.stressCyclePercent);
   const includeUnpaid = input.includeUnpaidExpenses ?? true;
   const includeTemplates = input.includeExpenseTemplates ?? false;
+  const scenarioItems = input.scenario ?? [];
+  const scenarioWallets =
+    scenarioItems.length > 0
+      ? await loadScenarioWallets(input.ownerFilter, scenarioItems)
+      : null;
 
   const [fundingWallets, creditCardsForProjection, creditCardsForUtilization, expectedIncomeByMonth, scheduledCardPayments, paymentPlans] = await Promise.all([
     prisma.wallet.findMany({
@@ -903,6 +1066,7 @@ export const getLiquidityProjection = async (
   );
 
   const byDueDate = new Map<string, LiquidityObligationItem[]>();
+  const cardCycleContext = new Map<string, CardCycleCashContext>();
   let unresolvedCardObligationCount = 0;
   const unresolvedCardObligations: Array<{
     wallet_id: number;
@@ -1015,6 +1179,7 @@ export const getLiquidityProjection = async (
           cutoffDay: meta.cutoff_day,
           dueDay: meta.due_day,
           paymentsApplied: row.payments_applied_to_statement,
+          hasStatementImport: source === 'import',
         });
 
         if (periodObligation.confidence === 'missing') {
@@ -1040,6 +1205,21 @@ export const getLiquidityProjection = async (
 
         if (omitZero && nextDue === 0) continue;
 
+        const overDebt =
+          periodObligation.breakdown != null &&
+          periodObligation.breakdown.length > 0
+            ? {
+                breakdown: periodObligation.breakdown,
+                over_recorded_message:
+                  periodObligation.overRecordedMessage ?? null,
+              }
+            : {};
+
+        cardCycleContext.set(`${id}:${dueStr}`, {
+          outstandingBalance: cardOutstandingById.get(id) ?? 0,
+          hasStatementImport: source === 'import',
+        });
+
         chunk.push({
           source: 'credit_card_statement',
           wallet_id: id,
@@ -1059,6 +1239,7 @@ export const getLiquidityProjection = async (
           cat_annual: exposedAnnualRate(meta.cat_annual),
           ...(row.is_estimate ? { is_estimate: true } : {}),
           ...(stressAdj > 0 ? { stress_adjustment: stressAdj } : {}),
+          ...overDebt,
         });
       }
 
@@ -1076,7 +1257,12 @@ export const getLiquidityProjection = async (
     }
   }
 
-  await annotateFortnightCardPlans(byDueDate, input.ownerFilter, asOfStr);
+  await annotateFortnightCardPlans(
+    byDueDate,
+    input.ownerFilter,
+    asOfStr,
+    cardCycleContext,
+  );
 
   if (includeUnpaid) {
     const unpaidMap = await collectUnpaidFundingObligations(
@@ -1111,7 +1297,6 @@ export const getLiquidityProjection = async (
     mergeAllMilestones(byDueDate, tplMap);
   }
 
-  const sortedDates = [...byDueDate.keys()].sort(compareUtcDateOnly);
   const monthKeys = buildMonthKeyRange(fromMonthKey, toMonthKey);
   const timeline = await collectLiquidityProjectionTimeline(
     input.ownerFilter,
@@ -1131,35 +1316,41 @@ export const getLiquidityProjection = async (
   }
   const expectedIncomeTotal = cumulativeIncome;
 
-  let cumulative = 0;
-  const milestones: LiquidityMilestone[] = [];
-  let firstShortfall: string | null = null;
-  let firstProjectedShortfall: string | null = null;
+  const toOutcome = (
+    run: ReturnType<typeof buildMilestones>,
+  ): LiquidityScenarioOutcome => ({
+    first_projected_shortfall_date: run.firstProjectedShortfall,
+    min_projected_headroom: run.minProjectedHeadroom,
+    end_liquidity: fundingTotal + expectedIncomeTotal - run.cumulative,
+  });
 
-  for (const dueDate of sortedDates) {
-    const obligations = byDueDate.get(dueDate) ?? [];
-    const totalDue = obligations.reduce((s, o) => s + o.next_due_payment, 0);
-    cumulative += totalDue;
-    const headroom = fundingTotal - cumulative;
-    const dueMonthKey = toMonthKeyUtc(dueDate);
-    const projectedHeadroom =
-      fundingTotal + (cumulativeIncomeByMonth.get(dueMonthKey) ?? 0) - cumulative;
-    if (firstShortfall === null && headroom < 0) {
-      firstShortfall = dueDate;
+  let scenario: ReturnType<typeof buildScenarioObligations> | null = null;
+  let scenarioDelta: LiquidityScenarioDelta | undefined;
+  let run = buildMilestones(byDueDate, fundingTotal, cumulativeIncomeByMonth, asOfStr);
+  if (scenarioWallets) {
+    scenario = buildScenarioObligations(scenarioItems, scenarioWallets, untilStr);
+    // Card lines carry the card's minimum and rates so the plan can pay its minimum.
+    for (const items of scenario.byDueDate.values()) {
+      for (const item of items) {
+        const meta = cardMeta.get(item.wallet_id);
+        if (!meta) continue;
+        item.minimum_payment = exposedMinimumDue({
+          statementMinimum: null,
+          persistedMinimum: meta.minimum_payment,
+        });
+        item.apr_annual = exposedAnnualRate(meta.apr_annual);
+        item.cat_annual = exposedAnnualRate(meta.cat_annual);
+      }
     }
-    if (firstProjectedShortfall === null && projectedHeadroom < 0) {
-      firstProjectedShortfall = dueDate;
-    }
-    milestones.push({
-      due_date: dueDate,
-      is_past_due: compareUtcDateOnly(dueDate, asOfStr) < 0,
-      obligations,
-      total_due: totalDue,
-      cumulative_due_through_date: cumulative,
-      funding_total: fundingTotal,
-      liquidity_headroom: headroom,
-    });
+    const withScenario = new Map(
+      [...byDueDate].map(([date, items]) => [date, [...items]]),
+    );
+    mergeAllMilestones(withScenario, scenario.byDueDate);
+    const baseline = run;
+    run = buildMilestones(withScenario, fundingTotal, cumulativeIncomeByMonth, asOfStr);
+    scenarioDelta = compareScenarioOutcomes(toOutcome(baseline), toOutcome(run));
   }
+  const { milestones, cumulative, firstShortfall, firstProjectedShortfall } = run;
 
   const summary: LiquidityProjectionSummary = {
     total_obligations_due_on_or_before_until: cumulative,
@@ -1186,6 +1377,7 @@ export const getLiquidityProjection = async (
       loan_payment_total: number;
       expense_template_total: number;
       other_debt_components_total: number;
+      scenario_installment_total: number;
     }
   >();
   for (const key of monthKeys) {
@@ -1194,6 +1386,7 @@ export const getLiquidityProjection = async (
       loan_payment_total: 0,
       expense_template_total: 0,
       other_debt_components_total: 0,
+      scenario_installment_total: 0,
     });
   }
 
@@ -1214,6 +1407,15 @@ export const getLiquidityProjection = async (
         monthRow.expense_template_total += o.next_due_payment;
         continue;
       }
+      if (o.source === 'scenario' && !isFundingWalletType(o.wallet_type as PaymentMethodType)) {
+        // A simulated card charge is card debt; a simulated card instalment is a cuota.
+        if (o.credit_installment_total != null) {
+          monthRow.scenario_installment_total += o.next_due_payment;
+        } else {
+          monthRow.msi_debt_total += o.next_due_payment;
+        }
+        continue;
+      }
       monthRow.other_debt_components_total += o.next_due_payment;
     }
   }
@@ -1232,8 +1434,10 @@ export const getLiquidityProjection = async (
       loan_payment_total: 0,
       expense_template_total: 0,
       other_debt_components_total: 0,
+      scenario_installment_total: 0,
     };
-    const installment_payment_total = msiData.paymentsByMonth.get(month_key) ?? 0;
+    const installment_payment_total =
+      (msiData.paymentsByMonth.get(month_key) ?? 0) + monthDebt.scenario_installment_total;
     const expected_income_total = expectedIncomeByMonth.get(month_key) ?? 0;
     const total_payments_due =
       monthDebt.msi_debt_total +
@@ -1289,7 +1493,10 @@ export const getLiquidityProjection = async (
   }
 
   const utilizationCards: LiquidityCardUtilizationItem[] = creditCardsForUtilization.map((card) => {
-    const usedAmount = Math.max(Number(card.amount ?? 0), 0);
+    const usedAmount = Math.max(
+      Number(card.amount ?? 0) + (scenario?.cardUsedIncrease.get(card.id) ?? 0),
+      0,
+    );
     const effectiveCap = getEffectiveCreditLimit({
       credit_limit: card.credit_limit,
       temporary_credit_limit: card.temporary_credit_limit,
@@ -1369,6 +1576,9 @@ export const getLiquidityProjection = async (
     projection_events: projectionEvents,
     projection_tracks: projectionTracks,
     card_utilization_summary,
+    ...(scenario && scenarioDelta
+      ? { scenario_delta: scenarioDelta, scenario_assumptions: scenario.assumptions }
+      : {}),
   };
 };
 

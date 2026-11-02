@@ -1,6 +1,5 @@
 'use client';
 
-import { ErrorBanner } from '@/components/error-banner';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +22,13 @@ import {
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
   OVERLAY_ROW_TRIGGER_CLASS,
+  OverlayErrorBanner,
 } from '@/components/overlay/overlay-form';
+import { OverDebtReasonFields } from '@/components/credit-cards/over-debt-reason-field';
+import {
+  cardDebtExcess,
+  type CardBankChargeReasonValue,
+} from '@/components/credit-cards/over-debt-reason';
 
 export type CreditCardPaymentSubmitPayload = {
   source_wallet_id: number;
@@ -32,6 +37,7 @@ export type CreditCardPaymentSubmitPayload = {
   note: string | null;
   create_fortnight_expense: boolean;
   fortnight_id?: number;
+  bank_charge?: { reason: CardBankChargeReasonValue };
 };
 
 export type CreditCardPaymentDialogProps = {
@@ -40,6 +46,10 @@ export type CreditCardPaymentDialogProps = {
   fundingWalletOptions: PaymentMethodOption[];
   /** Period obligation amount. Null leaves the field empty (missing corte). */
   prefillAmount: number | null;
+  /** Recorded card debt. An amount above it asks for a bank charge reason. */
+  recordedDebt: number;
+  /** Reason saved on the payment plan, when this payment comes from one. */
+  initialBankChargeReason?: CardBankChargeReasonValue | null;
   submitting: boolean;
   error: string | null;
   /** When paying from planner / Compromisos, pin expense to this fortnight. */
@@ -52,6 +62,8 @@ const CreditCardPaymentDialog = ({
   onOpenChange,
   fundingWalletOptions,
   prefillAmount,
+  recordedDebt,
+  initialBankChargeReason = null,
   submitting,
   error,
   fortnightId,
@@ -61,7 +73,11 @@ const CreditCardPaymentDialog = ({
   const [amount, setAmount] = useState<number | null>(null);
   const [paidAt, setPaidAt] = useState(todayCalendarDate());
   const [createFortnightExpense, setCreateFortnightExpense] = useState(true);
+  const [bankChargeReason, setBankChargeReason] =
+    useState<CardBankChargeReasonValue | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const excess = cardDebtExcess(amount, recordedDebt);
+  const reasonMissing = excess > 0 && bankChargeReason == null;
 
   useEffect(() => {
     if (!open) return;
@@ -70,8 +86,9 @@ const CreditCardPaymentDialog = ({
     setAmount(prefillAmount);
     setPaidAt(todayCalendarDate());
     setCreateFortnightExpense(true);
+    setBankChargeReason(initialBankChargeReason);
     setLocalError(null);
-  }, [open, prefillAmount]);
+  }, [open, prefillAmount, initialBankChargeReason]);
 
   const selectedSource = fundingWalletOptions.find(
     (w) => String(w.id) === sourceWalletId,
@@ -86,6 +103,8 @@ const CreditCardPaymentDialog = ({
       return;
     }
 
+    if (cardDebtExcess(amount, recordedDebt) > 0 && bankChargeReason == null) return;
+
     const payload: CreditCardPaymentSubmitPayload = {
       source_wallet_id: Number(sourceWalletId),
       amount,
@@ -93,6 +112,9 @@ const CreditCardPaymentDialog = ({
       note: null,
       create_fortnight_expense: createFortnightExpense,
       ...(fortnightId != null ? { fortnight_id: fortnightId } : {}),
+      ...(excess > 0 && bankChargeReason
+        ? { bank_charge: { reason: bankChargeReason } }
+        : {}),
     };
 
     await onConfirm(payload);
@@ -118,7 +140,7 @@ const CreditCardPaymentDialog = ({
           aria-busy={submitting}
         >
           {displayError ? (
-            <ErrorBanner>{displayError}</ErrorBanner>
+            <OverlayErrorBanner>{displayError}</OverlayErrorBanner>
           ) : null}
 
           <div className={OVERLAY_GROUPED_CARD_CLASS}>
@@ -172,6 +194,13 @@ const CreditCardPaymentDialog = ({
             </GroupedRow>
           </div>
 
+          <OverDebtReasonFields
+            excess={excess}
+            reason={bankChargeReason}
+            onReasonChange={setBankChargeReason}
+            onSelectOpenChange={handleSelectOpenChange}
+          />
+
           <ToggleField
             layout="row"
             className="px-3"
@@ -183,7 +212,7 @@ const CreditCardPaymentDialog = ({
 
           <Button
             type="submit"
-            disabled={submitting || !sourceWalletId}
+            disabled={submitting || !sourceWalletId || reasonMissing}
             aria-busy={submitting}
             className={OVERLAY_PRIMARY_BUTTON_CLASS}
           >

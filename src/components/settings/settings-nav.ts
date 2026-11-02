@@ -4,6 +4,7 @@ import {
   ClipboardList,
   FolderTree,
   Goal,
+  History,
   PiggyBank,
   Plug,
   TrendingUp,
@@ -44,6 +45,12 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     href: '/settings/connections',
     label: 'Conexiones',
     icon: Plug,
+    section: 'cuenta',
+  },
+  {
+    href: '/settings/activity',
+    label: 'Actividad',
+    icon: History,
     section: 'cuenta',
   },
   {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { createWalletTransferSchema } from '@/schemas/wallet-transfer.schema';
 import {
   createWalletTransferForOwner,
@@ -9,15 +9,15 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const body = await request.json();
-    const data = createWalletTransferSchema.parse(body);
+      const body = await request.json();
+      const data = createWalletTransferSchema.parse(body);
 
-    const result = await createWalletTransferForOwner(ownerFilter, data);
-    return NextResponse.json(result, { status: 201 });
+      const result = await createWalletTransferForOwner(ownerFilter, data);
+      return NextResponse.json(result, { status: 201 });
+    });
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(

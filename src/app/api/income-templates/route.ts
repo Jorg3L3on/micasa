@@ -1,136 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import prisma from '@/lib/prisma';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   createIncomeTemplateSchema,
   updateIncomeTemplateSchema,
 } from '@/schemas/income-template.schema';
+import { CategoryServiceError } from '@/lib/finance/category.service';
+import { IncomeServiceError } from '@/lib/finance/income.service';
+import { DomainError } from '@/lib/finance/domain-error';
 import {
-  assertOwnedCategoryOfKind,
-  CategoryServiceError,
-} from '@/lib/finance/category.service';
-import {
-  assertIncomeFundingWallet,
-  IncomeServiceError,
-} from '@/lib/finance/income.service';
+  createIncomeTemplateForOwner,
+  deleteIncomeTemplateForOwner,
+  listIncomeTemplatesForOwner,
+  updateIncomeTemplateForOwner,
+} from '@/lib/finance/income-template.service';
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const templates = await prisma.incomeTemplate.findMany({
-      where: ownerFilter,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        category: {
-          select: {
-            id: true,
-            name: true,
-            icon: true,
-          },
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+      const templates = await listIncomeTemplatesForOwner(ownerFilter);
 
-    const formatted = templates.map((template) => ({
-      id: template.id,
-      name: template.name,
-      suggestedAmount: template.suggested_amount
-        ? Number(template.suggested_amount)
-        : null,
-      source: template.source,
-      categoryId: template.category_id,
-      walletId: template.wallet_id,
-      categoryName: template.category?.name ?? null,
-      categoryIcon: template.category?.icon ?? null,
-      appliesFirstFortnight: template.applies_first_fortnight,
-      appliesSecondFortnight: template.applies_second_fortnight,
-      active: template.active,
-      userId: template.user_id,
-      userName: template.user?.name ?? null,
-    }));
-
-    return NextResponse.json(formatted, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching income templates:', error);
-    return NextResponse.json(
-      { error: 'Error al obtener las plantillas de ingresos' },
-      { status: 500 },
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
-
-    const body = await request.json();
-    const validatedData = createIncomeTemplateSchema.parse(body);
-
-    await assertOwnedCategoryOfKind(
-      prisma,
-      ownerType,
-      ownerId,
-      validatedData.categoryId,
-      'INCOME',
-    );
-
-    if (validatedData.walletId != null) {
-      const wallet = await prisma.wallet.findFirst({
-        where: { id: validatedData.walletId, ...context.ownerFilter },
-        select: { id: true, type: true },
-      });
-      assertIncomeFundingWallet(wallet);
-    }
-
-    const template = await prisma.incomeTemplate.create({
-      data: {
-        name: validatedData.name,
-        suggested_amount: validatedData.suggestedAmount
-          ? validatedData.suggestedAmount.toString()
-          : null,
-        source: validatedData.source ?? null,
-        category_id: validatedData.categoryId,
-        wallet_id: validatedData.walletId ?? null,
-        applies_first_fortnight: validatedData.appliesFirstFortnight,
-        applies_second_fortnight: validatedData.appliesSecondFortnight,
-        active: validatedData.active ?? true,
-        // Enforce single-owner rule: exactly one of user_id / house_id
-        user_id: ownerType === 'user' ? ownerId : null,
-        house_id: ownerType === 'house' ? ownerId : null,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        category: {
-          select: {
-            id: true,
-            name: true,
-            icon: true,
-          },
-        },
-      },
-    });
-
-    return NextResponse.json(
-      {
+      const formatted = templates.map((template) => ({
         id: template.id,
         name: template.name,
         suggestedAmount: template.suggested_amount
@@ -146,11 +38,54 @@ export async function POST(request: NextRequest) {
         active: template.active,
         userId: template.user_id,
         userName: template.user?.name ?? null,
-      },
-      { status: 201 },
-    );
+      }));
+
+      return NextResponse.json(formatted, { status: 200 });
+    });
   } catch (error) {
-    if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
+    console.error('Error fetching income templates:', error);
+    return NextResponse.json(
+      { error: 'Error al obtener las plantillas de ingresos' },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    return await withOwnerContext(request, async (context) => {
+      const body = await request.json();
+      const validatedData = createIncomeTemplateSchema.parse(body);
+
+      const template = await createIncomeTemplateForOwner(context, validatedData);
+
+      return NextResponse.json(
+        {
+          id: template.id,
+          name: template.name,
+          suggestedAmount: template.suggested_amount
+            ? Number(template.suggested_amount)
+            : null,
+          source: template.source,
+          categoryId: template.category_id,
+          walletId: template.wallet_id,
+          categoryName: template.category?.name ?? null,
+          categoryIcon: template.category?.icon ?? null,
+          appliesFirstFortnight: template.applies_first_fortnight,
+          appliesSecondFortnight: template.applies_second_fortnight,
+          active: template.active,
+          userId: template.user_id,
+          userName: template.user?.name ?? null,
+        },
+        { status: 201 },
+      );
+    });
+  } catch (error) {
+    if (
+      error instanceof CategoryServiceError ||
+      error instanceof IncomeServiceError ||
+      (error instanceof DomainError && error.code !== 'P2025')
+    ) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status },
@@ -185,126 +120,49 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter, ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'El parámetro id es requerido' },
+          { status: 400 },
+        );
+      }
 
-    if (!id || isNaN(Number(id))) {
-      return NextResponse.json(
-        { error: 'El parámetro id es requerido' },
-        { status: 400 },
-      );
-    }
+      const body = await request.json();
+      const validatedData = updateIncomeTemplateSchema.parse(body);
 
-    const templateId = Number(id);
-    const existing = await prisma.incomeTemplate.findFirst({
-      where: { id: templateId, ...ownerFilter },
-    });
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Plantilla de ingresos no encontrada' },
-        { status: 404 },
-      );
-    }
+      const template = await updateIncomeTemplateForOwner(Number(id), context, validatedData);
 
-    const body = await request.json();
-    const validatedData = updateIncomeTemplateSchema.parse(body);
-
-    if (validatedData.categoryId !== undefined) {
-      await assertOwnedCategoryOfKind(
-        prisma,
-        ownerType,
-        ownerId,
-        validatedData.categoryId,
-        'INCOME',
-      );
-    } else if (existing.category_id == null) {
       return NextResponse.json(
         {
-          error:
-            'La categoría es requerida. Asigna una categoría de ingreso a esta plantilla.',
+          id: template.id,
+          name: template.name,
+          suggestedAmount: template.suggested_amount
+            ? Number(template.suggested_amount)
+            : null,
+          source: template.source,
+          categoryId: template.category_id,
+          walletId: template.wallet_id,
+          categoryName: template.category?.name ?? null,
+          categoryIcon: template.category?.icon ?? null,
+          appliesFirstFortnight: template.applies_first_fortnight,
+          appliesSecondFortnight: template.applies_second_fortnight,
+          active: template.active,
+          userId: template.user_id,
+          userName: template.user?.name ?? null,
         },
-        { status: 400 },
+        { status: 200 },
       );
-    }
-
-    const updateData: Record<string, unknown> = {};
-    if (validatedData.name !== undefined) updateData.name = validatedData.name;
-    if (validatedData.suggestedAmount !== undefined) {
-      updateData.suggested_amount =
-        validatedData.suggestedAmount === null
-          ? null
-          : validatedData.suggestedAmount.toString();
-    }
-    if (validatedData.source !== undefined)
-      updateData.source = validatedData.source;
-    if (validatedData.categoryId !== undefined)
-      updateData.category_id = validatedData.categoryId;
-    if (validatedData.walletId !== undefined) {
-      if (validatedData.walletId != null) {
-        const wallet = await prisma.wallet.findFirst({
-          where: { id: validatedData.walletId, ...ownerFilter },
-          select: { id: true, type: true },
-        });
-        assertIncomeFundingWallet(wallet);
-      }
-      updateData.wallet_id = validatedData.walletId;
-    }
-    if (validatedData.appliesFirstFortnight !== undefined)
-      updateData.applies_first_fortnight = validatedData.appliesFirstFortnight;
-    if (validatedData.appliesSecondFortnight !== undefined)
-      updateData.applies_second_fortnight =
-        validatedData.appliesSecondFortnight;
-    if (validatedData.active !== undefined)
-      updateData.active = validatedData.active;
-    // House templates keep house_id and a null user_id. Writing a member id
-    // here violates income_template_single_owner_check. Ownership stays as created.
-
-    const template = await prisma.incomeTemplate.update({
-      where: { id: templateId },
-      data: updateData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        category: {
-          select: {
-            id: true,
-            name: true,
-            icon: true,
-          },
-        },
-      },
     });
-
-    return NextResponse.json(
-      {
-        id: template.id,
-        name: template.name,
-        suggestedAmount: template.suggested_amount
-          ? Number(template.suggested_amount)
-          : null,
-        source: template.source,
-        categoryId: template.category_id,
-        walletId: template.wallet_id,
-        categoryName: template.category?.name ?? null,
-        categoryIcon: template.category?.icon ?? null,
-        appliesFirstFortnight: template.applies_first_fortnight,
-        appliesSecondFortnight: template.applies_second_fortnight,
-        active: template.active,
-        userId: template.user_id,
-        userName: template.user?.name ?? null,
-      },
-      { status: 200 },
-    );
   } catch (error) {
-    if (error instanceof CategoryServiceError || error instanceof IncomeServiceError) {
+    if (
+      error instanceof CategoryServiceError ||
+      error instanceof IncomeServiceError ||
+      (error instanceof DomainError && error.code !== 'P2025')
+    ) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status },
@@ -339,53 +197,30 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    if (!id || isNaN(Number(id))) {
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'El parámetro id es requerido' },
+          { status: 400 },
+        );
+      }
+
+      await deleteIncomeTemplateForOwner(Number(id), ownerFilter);
+
       return NextResponse.json(
-        { error: 'El parámetro id es requerido' },
-        { status: 400 },
+        { message: 'Plantilla de ingresos eliminada correctamente' },
+        { status: 200 },
       );
-    }
-
-    const templateId = Number(id);
-    const existing = await prisma.incomeTemplate.findFirst({
-      where: { id: templateId, ...ownerFilter },
     });
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Plantilla de ingresos no encontrada' },
-        { status: 404 },
-      );
-    }
-
-    const relatedIncome = await prisma.income.findFirst({
-      where: { income_template_id: templateId },
-    });
-
-    if (relatedIncome) {
-      return NextResponse.json(
-        {
-          error: 'La plantilla de ingresos está en uso y no puede eliminarse',
-        },
-        { status: 409 },
-      );
-    }
-
-    await prisma.incomeTemplate.delete({
-      where: { id: templateId },
-    });
-
-    return NextResponse.json(
-      { message: 'Plantilla de ingresos eliminada correctamente' },
-      { status: 200 },
-    );
   } catch (error) {
+    if (error instanceof DomainError && error.code !== 'P2025') {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (
       error &&
       typeof error === 'object' &&

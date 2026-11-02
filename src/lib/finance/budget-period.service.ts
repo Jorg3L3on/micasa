@@ -24,6 +24,7 @@ import {
   calendarWeeksOverlappingRange,
   readWallClockYmd,
 } from '@/lib/finance/budget-period-windows';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export { computeBudgetPeriodWindowsForFortnight as computeBudgetWindows } from '@/lib/finance/budget-period-windows';
 
@@ -1074,7 +1075,7 @@ export async function listBudgetPeriodExpensesByAllocation(
   });
 
   if (!period) {
-    throw Object.assign(new Error('Período de presupuesto no encontrado'), { code: 'P2025' });
+    throw new DomainError('P2025', 'Período de presupuesto no encontrado');
   }
 
   const allocations =

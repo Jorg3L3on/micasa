@@ -1,3 +1,4 @@
+import { DomainError } from '@/lib/finance/domain-error';
 const roundMoney = (value: number): number => Math.round(value * 100) / 100;
 
 export type LenderPaySlice = {
@@ -116,7 +117,7 @@ export const allocateLenderPayment = (
   requestedAmount: number | null,
 ): LenderPaymentAllocationPlan => {
   if (included.length === 0) {
-    throw new Error('No hay cuotas de billetera para pagar en este periodo');
+    throw new DomainError('VALIDATION', 'No hay cuotas de billetera para pagar en este periodo');
   }
 
   const windowAmount = roundMoney(
@@ -125,7 +126,7 @@ export const allocateLenderPayment = (
   const amount =
     requestedAmount == null ? windowAmount : roundMoney(requestedAmount);
   if (!(amount > 0)) {
-    throw new Error('El monto del pago debe ser mayor a 0');
+    throw new DomainError('VALIDATION', 'El monto del pago debe ser mayor a 0');
   }
 
   if (amount <= windowAmount + 0.001) {
@@ -183,7 +184,7 @@ export const allocateLenderPayment = (
   }
 
   if (extra > 0.009) {
-    throw new Error('El extra supera el capital pendiente de estos contratos');
+    throw new DomainError('VALIDATION', 'El extra supera el capital pendiente de estos contratos');
   }
 
   return {

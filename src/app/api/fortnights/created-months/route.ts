@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 
 /**
  * Returns list of (year, month) that already have both fortnights (FIRST and SECOND).
@@ -8,36 +8,36 @@ import { getOwnerContext } from '@/lib/server/get-owner-context';
  */
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const fortnights = await prisma.fortnight.findMany({
-      where: ownerFilter,
-      select: { year: true, month: true, period: true },
-    });
+      const fortnights = await prisma.fortnight.findMany({
+        where: ownerFilter,
+        select: { year: true, month: true, period: true },
+      });
 
-    const hasFirst = new Set<string>();
-    const hasSecond = new Set<string>();
-    for (const f of fortnights) {
-      const key = `${f.year}-${f.month}`;
-      if (f.period === 'FIRST') hasFirst.add(key);
-      if (f.period === 'SECOND') hasSecond.add(key);
-    }
-
-    const createdMonths: { year: number; month: number }[] = [];
-    hasFirst.forEach((key) => {
-      if (hasSecond.has(key)) {
-        const [y, m] = key.split('-').map(Number);
-        createdMonths.push({ year: y, month: m });
+      const hasFirst = new Set<string>();
+      const hasSecond = new Set<string>();
+      for (const f of fortnights) {
+        const key = `${f.year}-${f.month}`;
+        if (f.period === 'FIRST') hasFirst.add(key);
+        if (f.period === 'SECOND') hasSecond.add(key);
       }
+
+      const createdMonths: { year: number; month: number }[] = [];
+      hasFirst.forEach((key) => {
+        if (hasSecond.has(key)) {
+          const [y, m] = key.split('-').map(Number);
+          createdMonths.push({ year: y, month: m });
+        }
+      });
+
+      createdMonths.sort((a, b) =>
+        a.year !== b.year ? a.year - b.year : a.month - b.month,
+      );
+
+      return NextResponse.json(createdMonths, { status: 200 });
     });
-
-    createdMonths.sort((a, b) =>
-      a.year !== b.year ? a.year - b.year : a.month - b.month,
-    );
-
-    return NextResponse.json(createdMonths, { status: 200 });
   } catch (error) {
     console.error('Error fetching created months:', error);
     return NextResponse.json(

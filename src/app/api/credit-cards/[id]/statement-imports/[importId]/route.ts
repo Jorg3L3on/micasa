@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { reportApiError } from '@/lib/observability/report-error';
 import prisma from '@/lib/prisma';
 import { rollbackCreditCardStatementImport } from '@/lib/server/credit-card-statement/rollback-statement-import.service';
@@ -19,44 +19,44 @@ export async function DELETE(
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
-    const { id, importId } = await params;
-    const walletId = Number(id);
-    const impId = Number(importId);
-    if (!id || Number.isNaN(walletId) || !importId || Number.isNaN(impId)) {
-      return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
-    }
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
+      const { id, importId } = await params;
+      const walletId = Number(id);
+      const impId = Number(importId);
+      if (!id || Number.isNaN(walletId) || !importId || Number.isNaN(impId)) {
+        return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
+      }
 
-    const card = await prisma.wallet.findFirst({
-      where: {
-        id: walletId,
-        ...context.ownerFilter,
-        type: { in: [...creditCardWalletTypes] },
-      },
-      select: { id: true },
+      const card = await prisma.wallet.findFirst({
+        where: {
+          id: walletId,
+          ...context.ownerFilter,
+          type: { in: [...creditCardWalletTypes] },
+        },
+        select: { id: true },
+      });
+      if (!card) {
+        return NextResponse.json({ error: 'Tarjeta no encontrada' }, { status: 404 });
+      }
+
+      const result = await rollbackCreditCardStatementImport({
+        creditCardWalletId: walletId,
+        importId: impId,
+        ownerFilter: context.ownerFilter,
+      });
+
+      return NextResponse.json(
+        {
+          expenses_removed: result.expensesRemoved,
+        },
+        { status: 200 },
+      );
     });
-    if (!card) {
-      return NextResponse.json({ error: 'Tarjeta no encontrada' }, { status: 404 });
-    }
-
-    const result = await rollbackCreditCardStatementImport({
-      creditCardWalletId: walletId,
-      importId: impId,
-      ownerFilter: context.ownerFilter,
-    });
-
-    return NextResponse.json(
-      {
-        expenses_removed: result.expensesRemoved,
-      },
-      { status: 200 },
-    );
   } catch (error) {
     if (
       error &&

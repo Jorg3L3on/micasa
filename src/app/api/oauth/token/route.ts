@@ -21,8 +21,13 @@ import {
 } from '@/lib/server/mcp-oauth/invalid-grant';
 import {
   clientIdHostOnly,
+  logOAuthRedirectRejection,
   logOAuthTokenFailure,
 } from '@/lib/server/mcp-oauth/oauth-token-log';
+import {
+  isAllowedRegistrationRedirectUri,
+  registrationRedirectRejectionReason,
+} from '@/lib/server/mcp-oauth/registration-uris';
 import {
   getTokenAttemptPath,
   recordTokenAttempt,
@@ -44,7 +49,13 @@ const authorizationCodeGrantSchema = z
   .object({
     grant_type: z.literal('authorization_code'),
     code: z.string().min(1),
-    redirect_uri: z.string().url(),
+    redirect_uri: z
+      .string()
+      .max(2048)
+      .refine(isAllowedRegistrationRedirectUri, {
+        message:
+          'redirect_uri debe ser https, http en loopback o un esquema privado reverse-DNS',
+      }),
     client_id: z.string().min(1),
     client_secret: z.string().optional(),
     code_verifier: z.string().optional(),
@@ -107,6 +118,7 @@ export async function POST(request: NextRequest) {
 
   let grantType = 'unknown';
   let clientId = '';
+  let redirectUri = '';
   let hasCode = false;
   let hasVerifier = false;
   let hasAssertion = false;
@@ -124,6 +136,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    grantType = typeof raw.grant_type === 'string' ? raw.grant_type : grantType;
+    clientId = typeof raw.client_id === 'string' ? raw.client_id : '';
+    redirectUri = typeof raw.redirect_uri === 'string' ? raw.redirect_uri : '';
     const input = tokenRequestSchema.parse(raw);
     grantType = input.grant_type;
     clientId = input.client_id;
@@ -232,6 +247,14 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
+      const redirectIssue = error.issues.some((issue) => issue.path.includes('redirect_uri'));
+      if (redirectIssue && redirectUri) {
+        logOAuthRedirectRejection({
+          reason: registrationRedirectRejectionReason(redirectUri) ?? 'invalid_redirect_uri',
+          clientId,
+          redirectUri,
+        });
+      }
       logOAuthTokenFailure({
         grant_type: grantType,
         has_code: hasCode,

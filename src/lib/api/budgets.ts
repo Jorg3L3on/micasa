@@ -70,7 +70,7 @@ export async function deleteBudget(
 
 export async function updateBudgetTemplate(
   id: number,
-  data: Step1Values,
+  data: Step1Values & { allocations?: AllocationInput[] },
   context?: FinanceContextType,
 ) {
   return clientFetchFromApi(`/api/budgets/${id}`, {

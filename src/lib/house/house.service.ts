@@ -42,6 +42,26 @@ export const listUserHouses = async (userId: number): Promise<HouseSummary[]> =>
   }));
 };
 
+/** Members (user id + name) of each house, keyed by house id. */
+export const listHouseMembersByHouse = async (
+  houseIds: number[],
+): Promise<Map<number, Array<{ user_id: number; name: string }>>> => {
+  if (houseIds.length === 0) return new Map();
+  const memberships = await prisma.houseMember.findMany({
+    where: { house_id: { in: houseIds } },
+    include: { user: { select: { id: true, name: true } } },
+    orderBy: { user: { name: 'asc' } },
+  });
+
+  const byHouse = new Map<number, Array<{ user_id: number; name: string }>>();
+  for (const membership of memberships) {
+    const members = byHouse.get(membership.house_id) ?? [];
+    members.push({ user_id: membership.user.id, name: membership.user.name });
+    byHouse.set(membership.house_id, members);
+  }
+  return byHouse;
+};
+
 export const getHouseIfMember = async (
   userId: number,
   houseId: number

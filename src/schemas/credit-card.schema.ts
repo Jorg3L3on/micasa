@@ -9,6 +9,7 @@ import {
   positiveAmountSchema,
   positiveIntSchema,
 } from '@/schemas/common.schema';
+import { cardBankChargeReasonSchema } from '@/schemas/credit-card-payment-plan.schema';
 
 export const createCreditCardSchema = createWalletSchema.safeExtend({
   type: creditCardType,
@@ -40,12 +41,19 @@ const paymentAmountSchema = positiveAmountSchema.refine((value) => value > 0, {
   message: 'El monto debe ser mayor a 0',
 });
 
+const bankChargeSchema = z
+  .object({
+    reason: cardBankChargeReasonSchema,
+  })
+  .optional();
+
 const walletPaymentFields = z.object({
   source_wallet_id: positiveIntSchema,
   create_fortnight_expense: z.boolean().optional(),
   fortnight_id: positiveIntSchema.optional(),
   category_id: positiveIntSchema.optional(),
   expense_description: z.string().trim().max(200).optional().nullable(),
+  bank_charge: bankChargeSchema,
 });
 
 export const createCreditCardPaymentSchema = z
@@ -65,6 +73,7 @@ export const createCreditCardPaymentSchema = z
       note: z.string().trim().max(200).optional().nullable(),
       /** When false, only records the payment without reducing card debt. */
       adjusts_debt: z.boolean().optional(),
+      bank_charge: bankChargeSchema,
     }),
   ])
   .or(
@@ -78,6 +87,7 @@ export const createCreditCardPaymentSchema = z
         fortnight_id: positiveIntSchema.optional(),
         category_id: positiveIntSchema.optional(),
         expense_description: z.string().trim().max(200).optional().nullable(),
+        bank_charge: bankChargeSchema,
       }),
   );
 
@@ -92,6 +102,7 @@ export const normalizeCreditCardPaymentInput = (
         paid_at: input.paid_at,
         note: input.note ?? null,
         adjusts_debt: input.adjusts_debt ?? true,
+        bank_charge: input.bank_charge ?? null,
       };
     }
     return {
@@ -104,6 +115,7 @@ export const normalizeCreditCardPaymentInput = (
       fortnight_id: input.fortnight_id,
       category_id: input.category_id,
       expense_description: input.expense_description ?? null,
+      bank_charge: input.bank_charge ?? null,
     };
   }
 
@@ -117,6 +129,7 @@ export const normalizeCreditCardPaymentInput = (
     fortnight_id: input.fortnight_id,
     category_id: input.category_id,
     expense_description: input.expense_description ?? null,
+    bank_charge: input.bank_charge ?? null,
   };
 };
 

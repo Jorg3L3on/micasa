@@ -17,6 +17,7 @@ import { getCanonicalFortnightBounds } from '../src/lib/finance/budget-period-wi
 import { generatePeriodsForMonth } from '../src/lib/finance/budget-period.service';
 import { resolveOrCreateFortnight } from '../src/lib/fortnights';
 import prisma from '../src/lib/prisma';
+import { runWithAuditActor } from '../src/lib/server/audit/audit-context';
 import type { OwnerFilter } from '../src/lib/server/get-owner-context';
 
 const ownerFromRow = (
@@ -199,7 +200,7 @@ async function main() {
   console.log(`Regenerated budget periods (total windows touched: ${periodsRegen}).`);
 }
 
-main()
+runWithAuditActor({ source: 'SYSTEM', label: 'Script: realign-payday-fortnights' }, main)
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;

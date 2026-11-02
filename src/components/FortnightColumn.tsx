@@ -71,6 +71,7 @@ import {
   type ClientApiError,
 } from '@/lib/api/client-fetch';
 import { createCreditCardPayment } from '@/lib/api/credit-cards';
+import { cardChargeErrorMessage } from '@/components/credit-cards/over-debt-reason';
 import { createExpenseTemplate } from '@/lib/api/expense-templates';
 import { createWalletIncome, updateIncomeAmount } from '@/lib/api/incomes';
 import {
@@ -485,7 +486,7 @@ export default function FortnightColumn({
         await refreshData();
       } catch (err) {
         setPlannerPaymentError(
-          err instanceof Error ? err.message : 'Error al registrar el pago',
+          cardChargeErrorMessage(err, 'Error al registrar el pago'),
         );
       } finally {
         setPlannerPaymentSubmitting(false);
@@ -1240,6 +1241,8 @@ export default function FortnightColumn({
         prefillAmount={periodObligationPrefillAmount(
           plannerPaymentCard?.periodObligation,
         )}
+        recordedDebt={plannerPaymentCard?.outstandingBalance ?? 0}
+        initialBankChargeReason={plannerPaymentCard?.overDebtReason ?? null}
         submitting={plannerPaymentSubmitting}
         error={plannerPaymentError}
         fortnightId={fortnightId}

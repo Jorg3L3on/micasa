@@ -32,6 +32,17 @@ import {
 } from '@/lib/finance/liquidity-chart-range';
 import { monthDebtPaymentsTotal } from '@/lib/finance/liquidity-month-debt-items';
 import { cn } from '@/lib/utils';
+import {
+  LiquidityScenarioChip,
+  LiquidityScenarioDeltaStrip,
+} from '@/components/wallets/liquidity/scenario/LiquidityScenarioDeltaStrip';
+import { SCENARIO_COPY } from '@/components/wallets/liquidity/scenario/copy';
+import {
+  describeScenarioItem,
+  scenarioCashByMonth,
+  scenarioWalletName,
+} from '@/components/wallets/liquidity/scenario/scenario-format';
+import type { LiquidityScenarioController } from '@/components/wallets/liquidity/use-liquidity-scenario';
 
 const CHROME_SHELL_CLASS = cn(
   '@container',
@@ -47,6 +58,10 @@ export type LiquidityProjectionTabProps = {
   onReload: () => void;
   selectedMonthKey: string;
   onSelectedMonthKeyChange: (monthKey: string) => void;
+  /** "¿Y si…?" result from the Plan tab; this tab only reads it. */
+  scenario?: LiquidityScenarioController;
+  /** "Cambiar en Plan": the form lives in the Plan tab. */
+  onChangeInPlan?: () => void;
 };
 
 export function LiquidityProjectionTab({
@@ -56,6 +71,8 @@ export function LiquidityProjectionTab({
   onReload,
   selectedMonthKey,
   onSelectedMonthKeyChange,
+  scenario,
+  onChangeInPlan,
 }: LiquidityProjectionTabProps) {
   const [chartRange, setChartRange] = useState<LiquidityChartRangeId>(
     DEFAULT_LIQUIDITY_CHART_RANGE,
@@ -140,6 +157,12 @@ export function LiquidityProjectionTab({
     (event) => event.month_key === resolvedMonthKey,
   );
   const currentMonthKey = data?.as_of.slice(0, 7) ?? '';
+  const scenarioItem = scenario?.item ?? null;
+  const scenarioData = scenarioItem ? (scenario?.data ?? null) : null;
+  const scenarioByMonth = useMemo(
+    () => (scenarioData ? scenarioCashByMonth(scenarioData) : null),
+    [scenarioData],
+  );
   const isRefreshing = loading && data !== null;
 
   return (
@@ -189,7 +212,23 @@ export function LiquidityProjectionTab({
             )}
             aria-busy={isRefreshing}
           >
+              {scenarioItem && scenarioData?.scenario_delta ? (
+                <div className="space-y-3">
+                  <LiquidityScenarioDeltaStrip
+                    delta={scenarioData.scenario_delta}
+                    until={scenarioData.until}
+                  />
+                  <LiquidityScenarioChip
+                    summary={describeScenarioItem(scenarioItem, scenarioWalletName(scenarioData, scenarioItem))}
+                    actionLabel={SCENARIO_COPY.changeInPlan}
+                    onAction={() => onChangeInPlan?.()}
+                    assumptions={scenarioData.scenario_assumptions}
+                  />
+                </div>
+              ) : null}
+
               <LiquidityFutureTimeline
+                scenarioByMonth={scenarioByMonth}
                 months={data.monthly_series}
                 events={data.projection_events ?? []}
                 visibleRange={visibleRange}

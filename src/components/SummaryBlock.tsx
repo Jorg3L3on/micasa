@@ -178,6 +178,8 @@ export default function SummaryBlock({
     pagado,
     pendiente,
     statementDue: planningCardStatementDue?.total ?? 0,
+    bankChargesEstimate: planningCardStatementDue?.bankChargesEstimate ?? 0,
+    overRecordedEstimate: planningCardStatementDue?.overRecordedEstimate ?? 0,
     walletLoanDue: planningWalletLoanDue?.total ?? 0,
     payrollDeduction: payrollLoanDeduction,
   });

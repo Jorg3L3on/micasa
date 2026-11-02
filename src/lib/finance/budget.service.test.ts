@@ -3,6 +3,7 @@ import { parseCalendarDate } from '@/lib/calendar-dates';
 import {
   createBudget,
   deleteBudget,
+  updateBudget,
   updateBudgetAllocations,
   updateBudgetTemplate,
 } from './budget.service';
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   },
   budgetAllocation: {
     createMany: vi.fn(),
+    deleteMany: vi.fn(),
   },
   fortnight: {
     findFirst: vi.fn(),
@@ -294,5 +296,26 @@ describe('budget updates', () => {
     ).rejects.toMatchObject({ code: 'EMPTY_ALLOCATION' });
 
     expect(mocks.budget.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects new allocations that do not add up to the new amount', async () => {
+    mocks.budget.findFirst.mockResolvedValue({
+      ...budgetFixture,
+      allocations: [{ wallet_id: null, category_id: 2, amount: 500 }],
+    });
+
+    await expect(
+      updateBudget(10, ownerFilter, {
+        name: 'Despensa',
+        allocated_amount: 800,
+        frequency: 'BIWEEKLY',
+        recurrent: true,
+        start_date: null,
+        end_date: null,
+        allocations: [{ wallet_id: null, category_id: 2, amount: 500 }],
+      }),
+    ).rejects.toMatchObject({ code: 'ALLOC_NOT_EQUAL_BUDGET' });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 });

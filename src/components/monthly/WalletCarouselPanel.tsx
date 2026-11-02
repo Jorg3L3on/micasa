@@ -52,6 +52,7 @@ import {
   type PaymentMethodType,
 } from '@/domain/payment-method';
 import { createCreditCardPayment } from '@/lib/api/credit-cards';
+import { cardChargeErrorMessage } from '@/components/credit-cards/over-debt-reason';
 import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { createWalletIncome } from '@/lib/api/incomes';
 import {
@@ -509,9 +510,7 @@ export const WalletCarouselPanel = ({
       closeDialog();
       await onRefresh();
     } catch (err) {
-      setPaymentError(
-        err instanceof Error ? err.message : 'Error al registrar el pago',
-      );
+      setPaymentError(cardChargeErrorMessage(err, 'Error al registrar el pago'));
     } finally {
       setPaymentSubmitting(false);
     }
@@ -799,6 +798,7 @@ export const WalletCarouselPanel = ({
                 onOpenChange={(open) => !open && closeDialog()}
                 fundingWalletOptions={fundingWalletOptions}
                 prefillAmount={null}
+                recordedDebt={Number(dialogWallet.amount)}
                 submitting={paymentSubmitting}
                 error={paymentError}
                 onConfirm={handleCardPayment}

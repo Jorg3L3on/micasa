@@ -15,11 +15,13 @@ import {
   ArrowLeftRight,
   Diff,
   Download,
+  History,
   Pencil,
   SlidersHorizontal,
   Trash2,
   Upload,
 } from 'lucide-react';
+import { AuditHistoryOverlay } from '@/components/audit/AuditHistoryOverlay';
 import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
@@ -58,6 +60,10 @@ import { getCreditCardPaymentPlan, createCreditCardPayment, updateCreditCard } f
 import { getPaymentMethodOptions, updateWallet } from '@/lib/api/wallets';
 import { createWalletIncome } from '@/lib/api/incomes';
 import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
+import {
+  cardChargeErrorMessage,
+  type CardBankChargeReasonValue,
+} from '@/components/credit-cards/over-debt-reason';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
 import { downloadWalletMovementsCsv } from '@/lib/finance/wallet-movements-csv';
@@ -181,6 +187,8 @@ export default function WalletDetailPage() {
   const [paymentFortnightId, setPaymentFortnightId] = useState<
     number | undefined
   >(undefined);
+  const [paymentBankChargeReason, setPaymentBankChargeReason] =
+    useState<CardBankChargeReasonValue | null>(null);
   const [paymentPrefillAmount, setPaymentPrefillAmount] = useState<
     number | null
   >(null);
@@ -417,11 +425,10 @@ export default function WalletDetailPage() {
         setPaymentDialogOpen(false);
         setPaymentFortnightId(undefined);
         setPaymentPrefillAmount(null);
+        setPaymentBankChargeReason(null);
         await loadData();
       } catch (err) {
-        setPaymentError(
-          err instanceof Error ? err.message : 'Error al registrar el pago',
-        );
+        setPaymentError(cardChargeErrorMessage(err, 'Error al registrar el pago'));
       } finally {
         setPaymentSubmitting(false);
       }
@@ -435,6 +442,7 @@ export default function WalletDetailPage() {
       setPaymentPrefillAmount(
         periodObligationPrefillAmount(item.periodObligation),
       );
+      setPaymentBankChargeReason(item.overDebtReason ?? null);
       setPaymentDialogOpen(true);
     },
     [],
@@ -866,14 +874,26 @@ export default function WalletDetailPage() {
               setPaymentError(null);
               setPaymentFortnightId(undefined);
               setPaymentPrefillAmount(null);
+              setPaymentBankChargeReason(null);
             }
           }}
           fundingWalletOptions={fundingWalletOptions}
           prefillAmount={paymentPrefillAmount}
+          recordedDebt={wallet?.amount ?? 0}
+          initialBankChargeReason={paymentBankChargeReason}
           submitting={paymentSubmitting}
           error={paymentError}
           fortnightId={paymentFortnightId}
           onConfirm={handleCreditPaymentSubmit}
+        />
+      ) : null}
+      {wallet ? (
+        <AuditHistoryOverlay
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          entityType="Wallet"
+          entityId={wallet.id}
+          title={`Historial: ${wallet.name}`}
         />
       ) : null}
     </div>

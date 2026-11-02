@@ -16,8 +16,6 @@ const nextConfig: NextConfig = {
     turbopackFileSystemCacheForDev: false,
   },
   async headers() {
-    const oauthFormActionCsp =
-      "form-action 'self' https://chatgpt.com https://chat.openai.com";
     return [
       {
         source: '/sw.js',
@@ -26,14 +24,6 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
           { key: 'Service-Worker-Allowed', value: '/' },
         ],
-      },
-      {
-        source: '/oauth/consent',
-        headers: [{ key: 'Content-Security-Policy', value: oauthFormActionCsp }],
-      },
-      {
-        source: '/api/oauth/consent',
-        headers: [{ key: 'Content-Security-Policy', value: oauthFormActionCsp }],
       },
     ];
   },

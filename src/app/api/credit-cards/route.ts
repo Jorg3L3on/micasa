@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   createCreditCardSchema,
 } from '@/schemas/credit-card.schema';
@@ -12,11 +12,10 @@ import { AssigneeInvalidError } from '@/lib/server/house-members';
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-
-    const cards = await listCreditCardsByOwner(context.ownerFilter);
-    return NextResponse.json(cards, { status: 200 });
+    return await withOwnerContext(request, async (context) => {
+      const cards = await listCreditCardsByOwner(context.ownerFilter);
+      return NextResponse.json(cards, { status: 200 });
+    });
   } catch (error) {
     console.error('Error fetching credit cards:', error);
     return NextResponse.json(
@@ -28,19 +27,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const body = await request.json();
+      const validatedData = createCreditCardSchema.parse(body);
 
-    const body = await request.json();
-    const validatedData = createCreditCardSchema.parse(body);
+      const card = await createCreditCardForOwner(
+        context.ownerType,
+        context.ownerId,
+        validatedData,
+      );
 
-    const card = await createCreditCardForOwner(
-      context.ownerType,
-      context.ownerId,
-      validatedData,
-    );
-
-    return NextResponse.json(card, { status: 201 });
+      return NextResponse.json(card, { status: 201 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

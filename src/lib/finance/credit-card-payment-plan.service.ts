@@ -1,5 +1,9 @@
 import prisma from '@/lib/prisma';
-import { CardPaymentPlanScope, type FortnightPeriod } from '@/generated/prisma/client';
+import {
+  CardBankChargeReason,
+  CardPaymentPlanScope,
+  type FortnightPeriod,
+} from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import { getCreditCardStatementByOwner } from '@/lib/finance/credit-card-statement.service';
 import { isCreditWalletType } from '@/lib/finance/wallet-accounting';
@@ -37,6 +41,7 @@ import {
   getCurrentCalendarFortnightRef,
   getCalendarFortnightRefForYmd,
 } from '@/lib/fortnight-calendar';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export { getEffectiveCardPaymentAmount } from '@/lib/finance/credit-card-payment-plan.utils';
 
@@ -57,6 +62,7 @@ const planSelect = {
   cycle_count: true,
   valid_until: true,
   anchor_statement_end: true,
+  over_debt_reason: true,
   updated_at: true,
   created_at: true,
   fortnight_id: true,
@@ -74,7 +80,30 @@ export type UpsertCardPaymentPlanOptions = {
   scope?: CardPaymentPlanScopeKind;
   cycleCount?: number | null;
   validUntil?: string | null;
+  overDebtReason?: CardBankChargeReason | null;
 };
+
+export type UpsertCardPaymentPlanResult = {
+  credit_card_wallet_id: number;
+  fortnight_id: number;
+  planned_amount: { toString(): string } | number | string;
+  declared_zero: boolean;
+  scope: CardPaymentPlanScope | null;
+  cycle_count: number | null;
+  valid_until: Date | null;
+  over_debt_reason: CardBankChargeReason | null;
+  warning?: 'OVER_DEBT';
+  excess?: number;
+};
+
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+const isCardBankChargeReason = (
+  value: CardBankChargeReason | null | undefined,
+): value is CardBankChargeReason =>
+  value === CardBankChargeReason.INTEREST ||
+  value === CardBankChargeReason.LATE_FEE ||
+  value === CardBankChargeReason.OTHER;
 
 export async function getCreditCardPaymentPlanViews(
   ownerFilter: OwnerFilter,
@@ -241,6 +270,7 @@ export async function getCreditCardPaymentPlanViews(
         planScope: active.scope,
         planCycleCount: active.cycleCount,
         planValidUntil: active.validUntil,
+        overDebtReason: active.overDebtReason,
       };
     }),
   );
@@ -304,7 +334,7 @@ export async function upsertCreditCardPaymentPlan(
   walletId: number,
   plannedAmount: number,
   options?: UpsertCardPaymentPlanOptions,
-) {
+): Promise<UpsertCardPaymentPlanResult> {
   const [fortnight, wallet] = await Promise.all([
     prisma.fortnight.findFirst({
       where: { id: fortnightId, ...ownerFilter },
@@ -323,43 +353,33 @@ export async function upsertCreditCardPaymentPlan(
   ]);
 
   if (!fortnight) {
-    const error = new Error('Quincena no encontrada');
-    (error as { code?: string }).code = 'FORTNIGHT_NOT_FOUND';
-    throw error;
+    throw new DomainError('FORTNIGHT_NOT_FOUND', 'Quincena no encontrada');
   }
 
   if (!wallet || !isCreditWalletType(wallet.type)) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'WALLET_NOT_FOUND';
-    throw error;
+    throw new DomainError('WALLET_NOT_FOUND', 'Tarjeta no encontrada');
   }
 
   const declareZero = options?.declareZero === true;
   const scope = options?.scope ?? 'this_cycle';
   if (scope === 'n_cycles' && (options?.cycleCount == null || options.cycleCount < 1)) {
-    const error = new Error('Indica cuántos cortes cubre el pago planeado.');
-    (error as { code?: string }).code = 'SCOPE_INVALID';
-    throw error;
+    throw new DomainError('SCOPE_INVALID', 'Indica cuántos cortes cubre el pago planeado.');
   }
   if (scope === 'until_date' && !options?.validUntil) {
-    const error = new Error('Indica la fecha hasta la que aplica el pago planeado.');
-    (error as { code?: string }).code = 'SCOPE_INVALID';
-    throw error;
+    throw new DomainError('SCOPE_INVALID', 'Indica la fecha hasta la que aplica el pago planeado.');
   }
   const outstandingBalance = Number(wallet.amount);
   if (!declareZero && plannedAmount <= 0) {
-    const error = new Error(
-      'El monto planeado debe ser mayor a 0. Quita el monto planeado si no quieres un override.',
-    );
-    (error as { code?: string }).code = 'AMOUNT_INVALID';
-    throw error;
+    throw new DomainError('AMOUNT_INVALID', 'El monto planeado debe ser mayor a 0. Quita el monto planeado si no quieres un override.');
   }
-  if (!declareZero && plannedAmount > outstandingBalance) {
-    const error = new Error(
-      'El monto planeado no puede superar la deuda actual de la tarjeta',
+  const overDebt = !declareZero && plannedAmount > outstandingBalance;
+  const overDebtReason = overDebt ? options?.overDebtReason ?? null : null;
+  if (overDebt && !isCardBankChargeReason(overDebtReason)) {
+    throw new DomainError(
+      'OVER_DEBT_REASON_REQUIRED',
+      'El monto planeado supera la deuda registrada. Indica el motivo del cargo del banco.',
+      400,
     );
-    (error as { code?: string }).code = 'AMOUNT_EXCEEDS_BALANCE';
-    throw error;
   }
 
   const isUserContext = ownerFilter.user_id !== null;
@@ -385,7 +405,7 @@ export async function upsertCreditCardPaymentPlan(
     anchor_statement_end: anchorStatementEnd,
   };
 
-  return prisma.creditCardPaymentPlan.upsert({
+  const saved = await prisma.creditCardPaymentPlan.upsert({
     where: {
       credit_card_wallet_id_fortnight_id: {
         credit_card_wallet_id: walletId,
@@ -398,6 +418,7 @@ export async function upsertCreditCardPaymentPlan(
       planned_amount: storedAmount,
       declared_zero: declareZero,
       ...scopeData,
+      over_debt_reason: overDebtReason,
       user_id: isUserContext ? ownerFilter.user_id : null,
       house_id: !isUserContext ? ownerFilter.house_id : null,
     },
@@ -405,6 +426,7 @@ export async function upsertCreditCardPaymentPlan(
       planned_amount: storedAmount,
       declared_zero: declareZero,
       ...scopeData,
+      over_debt_reason: overDebtReason,
     },
     select: {
       credit_card_wallet_id: true,
@@ -414,8 +436,17 @@ export async function upsertCreditCardPaymentPlan(
       scope: true,
       cycle_count: true,
       valid_until: true,
+      over_debt_reason: true,
     },
   });
+
+  if (!overDebt) return saved;
+
+  return {
+    ...saved,
+    warning: 'OVER_DEBT',
+    excess: roundMoney(plannedAmount - outstandingBalance),
+  };
 }
 
 export async function clearCreditCardPaymentPlan(
@@ -429,9 +460,7 @@ export async function clearCreditCardPaymentPlan(
   });
 
   if (!fortnight) {
-    const error = new Error('Quincena no encontrada');
-    (error as { code?: string }).code = 'FORTNIGHT_NOT_FOUND';
-    throw error;
+    throw new DomainError('FORTNIGHT_NOT_FOUND', 'Quincena no encontrada');
   }
 
   const wallet = await prisma.wallet.findFirst({

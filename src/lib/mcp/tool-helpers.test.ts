@@ -18,6 +18,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import { runAgentTool, runAgentUserTool } from '@/lib/mcp/tool-helpers';
+import { DomainError } from '@/lib/finance/domain-error';
 
 const VALID_TOKEN = 'micasa_secreto-de-prueba-suficientemente-largo';
 const VALID_HASH = hashSync(VALID_TOKEN, 4);
@@ -61,7 +62,7 @@ describe('runAgentTool', () => {
 
     expect(result.isError).toBeUndefined();
     expect(JSON.parse(result.content[0].text)).toEqual({
-      ownerFilter: { user_id: null, house_id: 42 },
+      owner_filter: { user_id: null, house_id: 42 },
     });
   });
 
@@ -126,12 +127,15 @@ describe('runAgentTool', () => {
       houseArgs,
       'read',
       async () => {
-        throw new Error('Tarjeta no encontrada');
+        throw new DomainError('P2025', 'Tarjeta no encontrada');
       },
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Tarjeta no encontrada');
+    expect(JSON.parse(result.content[0].text)).toEqual({
+      error: 'Tarjeta no encontrada',
+      code: 'NOT_FOUND',
+    });
   });
 });
 
@@ -146,7 +150,7 @@ describe('runAgentUserTool', () => {
     );
 
     expect(result.isError).toBeUndefined();
-    expect(JSON.parse(result.content[0].text)).toEqual({ userId: 2 });
+    expect(JSON.parse(result.content[0].text)).toEqual({ user_id: 2 });
   });
 
   it('devuelve isError con token inválido', async () => {

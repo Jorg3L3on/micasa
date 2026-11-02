@@ -3,13 +3,16 @@ import {
   coerceToCalendarDayStart,
   formatCalendarDate,
 } from '@/lib/calendar-dates';
-import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
+import {
+  CardBankChargeReason,
+  PaymentMethodType,
+  type Prisma,
+} from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type {
   CreateCreditCardInput,
   CreateCreditCardPurchaseInput,
-  NormalizedCreditCardPaymentInput,
   UpdateCreditCardInput,
 } from '@/schemas/credit-card.schema';
 import { coverScheduledPaymentForCardPayment } from '@/lib/finance/credit-card-scheduled-payment.service';
@@ -31,6 +34,17 @@ import {
 } from '@/lib/finance/payment-category';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { DomainError } from '@/lib/finance/domain-error';
+import {
+  BANK_CHARGE_REQUIRED,
+  BANK_CHARGE_REQUIRED_MESSAGE,
+  bankChargeExpenseDescription,
+  ensureBankChargeCategoryId,
+} from '@/lib/finance/card-bank-charge';
+
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+type PaymentTx = Prisma.TransactionClient;
 
 const creditCardWalletTypes: PaymentMethodType[] = [
   PaymentMethodType.CREDIT_CARD,
@@ -179,9 +193,7 @@ export async function getCreditCardByOwner(
   ]);
 
   if (!wallet) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   const spent = Number(spentAgg._sum.amount ?? 0);
@@ -207,9 +219,7 @@ export async function updateCreditCardForOwner(
   const wallet = await updateWalletMetadataForOwner(id, data, ownerFilter);
 
   if (!isCreditWalletType(wallet.type)) {
-    const error = new Error('La billetera no es una tarjeta de crédito');
-    (error as { code?: string }).code = 'INVALID_CREDIT_CARD';
-    throw error;
+    throw new DomainError('INVALID_CREDIT_CARD', 'La billetera no es una tarjeta de crédito');
   }
 
   const spentAgg = await prisma.expense.aggregate({
@@ -223,8 +233,6 @@ export async function updateCreditCardForOwner(
 
   return mapWalletToCreditCardDto(wallet, spent);
 }
-
-type CreditCardServiceError = Error & { code?: string };
 
 /**
  * Deletes a credit / department-store card wallet owned by the current context.
@@ -247,9 +255,7 @@ export async function deleteCreditCardForOwner(
   });
 
   if (!existing) {
-    const error = new Error('Tarjeta no encontrada') as CreditCardServiceError;
-    error.code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   const [
@@ -284,11 +290,7 @@ export async function deleteCreditCardForOwner(
     relatedBudgetAllocation ||
     relatedTransfer
   ) {
-    const error = new Error(
-      'La tarjeta tiene movimientos o plantillas asociadas y no puede eliminarse. Desactívala desde Editar si ya no la usas.',
-    ) as CreditCardServiceError;
-    error.code = 'WALLET_IN_USE';
-    throw error;
+    throw new DomainError('WALLET_IN_USE', 'La tarjeta tiene movimientos o plantillas asociadas y no puede eliminarse. Desactívala desde Editar si ya no la usas.');
   }
 
   await prisma.$transaction(async (tx) => {
@@ -332,9 +334,7 @@ export async function createCreditCardPurchase(
   });
 
   if (!wallet) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   const alreadyInCardBalance = input.already_in_card_balance === true;
@@ -355,10 +355,87 @@ export async function createCreditCardPurchase(
   });
 }
 
+type BankChargeInput = { reason: CardBankChargeReason } | null;
+
+/**
+ * Callers may omit the optional keys. `normalizeCreditCardPaymentInput`
+ * always sets them, including explicit `undefined`, so both shapes are accepted.
+ */
+type CreditCardPaymentCommand =
+  | {
+      mode: 'external';
+      amount: number;
+      paid_at: string;
+      note?: string | null;
+      adjusts_debt?: boolean;
+      bank_charge?: BankChargeInput;
+    }
+  | {
+      mode: 'wallet';
+      amount: number;
+      paid_at: string;
+      note?: string | null;
+      source_wallet_id: number;
+      create_fortnight_expense?: boolean;
+      fortnight_id?: number;
+      category_id?: number;
+      expense_description?: string | null;
+      bank_charge?: BankChargeInput;
+    };
+
+const bookBankChargeExpense = async (
+  tx: PaymentTx,
+  ownerFilter: OwnerFilter,
+  creditCardWallet: {
+    id: number;
+    user_id: number | null;
+    house_id: number | null;
+  },
+  paidAtInput: string,
+  reason: CardBankChargeReason,
+  excess: number,
+): Promise<number> => {
+  const categoryId = await ensureBankChargeCategoryId(tx, ownerFilter);
+  const paidYmd = formatCalendarDate(coerceToCalendarDate(paidAtInput));
+  const { year, month, period } = getCalendarFortnightRefForYmd(paidYmd);
+  const ownerUserId = creditCardWallet.user_id;
+  const ownerHouseId = creditCardWallet.house_id;
+  if (ownerUserId == null && ownerHouseId == null) {
+    throw new DomainError('INVALID_CARD_OWNER', 'Titular de tarjeta inválido');
+  }
+
+  const fortnight = await resolveOrCreateFortnight({
+    ownerType: ownerUserId != null ? 'user' : 'house',
+    ownerId: ownerUserId != null ? ownerUserId : ownerHouseId!,
+    year,
+    month,
+    period,
+    tx,
+  });
+
+  const expense = await tx.expense.create({
+    data: {
+      fortnight_id: fortnight.id,
+      wallet_id: creditCardWallet.id,
+      category_id: categoryId,
+      description: bankChargeExpenseDescription(reason),
+      amount: excess,
+      is_paid: true,
+      payment_date: coerceToCalendarDayStart(paidAtInput),
+      expense_template_id: null,
+      user_id: fortnight.user_id,
+      house_id: fortnight.house_id,
+    },
+  });
+
+  await applyWalletAmountDelta(tx, creditCardWallet.id, excess);
+  return expense.id;
+};
+
 export async function createCreditCardPayment(
   creditCardId: number,
   ownerFilter: OwnerFilter,
-  input: NormalizedCreditCardPaymentInput,
+  input: CreditCardPaymentCommand,
 ) {
   const result = await prisma.$transaction(async (tx) => {
     const creditCardWallet = await tx.wallet.findFirst({
@@ -374,9 +451,7 @@ export async function createCreditCardPayment(
     });
 
     if (!creditCardWallet) {
-      const error = new Error('Tarjeta no encontrada');
-      (error as { code?: string }).code = 'P2025';
-      throw error;
+      throw new DomainError('P2025', 'Tarjeta no encontrada');
     }
 
     ensureCreditWalletType(creditCardWallet);
@@ -411,48 +486,46 @@ export async function createCreditCardPayment(
       });
 
       if (!sourceWallet) {
-        const error = new Error('Billetera de origen no encontrada');
-        (error as { code?: string }).code = 'WALLET_NOT_FOUND';
-        throw error;
+        throw new DomainError('WALLET_NOT_FOUND', 'Billetera de origen no encontrada');
       }
 
       ensureFundingWalletType(sourceWallet);
 
       if (creditCardWallet.id === sourceWallet.id) {
-        const error = new Error(
-          'La billetera de origen debe ser distinta de la tarjeta',
-        );
-        (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_WALLET';
-        throw error;
+        throw new DomainError('INVALID_PAYMENT_SOURCE_WALLET', 'La billetera de origen debe ser distinta de la tarjeta');
       }
 
       if (
         creditCardWallet.user_id !== sourceWallet.user_id ||
         creditCardWallet.house_id !== sourceWallet.house_id
       ) {
-        const error = new Error(
-          'La billetera de origen debe pertenecer al mismo titular',
-        );
-        (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_OWNER';
-        throw error;
+        throw new DomainError('INVALID_PAYMENT_SOURCE_OWNER', 'La billetera de origen debe pertenecer al mismo titular');
       }
 
       const sourceBalance = toWalletAmountNumber(sourceWallet);
       if (sourceBalance < input.amount) {
-        const error = new Error('Saldo insuficiente en la billetera de origen');
-        (error as { code?: string }).code = 'INSUFFICIENT_SOURCE_BALANCE';
-        throw error;
+        throw new DomainError('INSUFFICIENT_SOURCE_BALANCE', 'Saldo insuficiente en la billetera de origen');
       }
     }
 
+    let bankChargeExpenseId: number | null = null;
     if (adjustsDebt) {
-      const currentDebt = toWalletAmountNumber(creditCardWallet);
-      if (input.amount > currentDebt) {
-        const error = new Error(
-          'El monto del pago no puede superar la deuda actual de la tarjeta',
+      const currentDebt = roundMoney(toWalletAmountNumber(creditCardWallet));
+      const excess = roundMoney(input.amount - currentDebt);
+      if (excess > 0) {
+        if (input.bank_charge == null) {
+          throw new DomainError(BANK_CHARGE_REQUIRED, BANK_CHARGE_REQUIRED_MESSAGE);
+        }
+        // Book the excess before the payment so the card never goes negative:
+        // debt + excess - payment = 0.
+        bankChargeExpenseId = await bookBankChargeExpense(
+          tx,
+          ownerFilter,
+          creditCardWallet,
+          input.paid_at,
+          input.bank_charge.reason,
+          excess,
         );
-        (error as { code?: string }).code = 'INVALID_PAYMENT_AMOUNT';
-        throw error;
       }
     }
 
@@ -464,6 +537,7 @@ export async function createCreditCardPayment(
         credit_card_wallet_id: creditCardWallet.id,
         source_wallet_id: sourceWallet?.id ?? null,
         adjusts_debt: adjustsDebt,
+        bank_charge_expense_id: bankChargeExpenseId,
         user_id: creditCardWallet.user_id,
         house_id: creditCardWallet.house_id,
       },
@@ -481,6 +555,19 @@ export async function createCreditCardPayment(
 
     if (adjustsDebt) {
       await applyWalletAmountDelta(tx, creditCardWallet.id, -input.amount);
+      const refreshed = await tx.wallet.findFirst({
+        where: { id: creditCardWallet.id },
+        select: { amount: true },
+      });
+      if (
+        refreshed != null &&
+        roundMoney(toWalletAmountNumber(refreshed)) < 0
+      ) {
+        throw new DomainError(
+          'CARD_BALANCE_NEGATIVE',
+          'El saldo de la tarjeta no puede quedar negativo',
+        );
+      }
     }
 
     let expenseId: number | null = null;
@@ -493,9 +580,7 @@ export async function createCreditCardPayment(
       if (categoryId == null) {
         const kind = paymentCategoryKindForWallet(creditCardWallet.type);
         if (kind == null) {
-          const error = new Error('Esta tarjeta no tiene categoría de pago');
-          (error as { code?: string }).code = 'CATEGORY_NOT_FOUND';
-          throw error;
+          throw new DomainError('CATEGORY_NOT_FOUND', 'Esta tarjeta no tiene categoría de pago');
         }
         categoryId = await resolvePaymentCategoryId(tx, ownerFilter, kind);
       } else {
@@ -503,9 +588,7 @@ export async function createCreditCardPayment(
           where: { id: categoryId, kind: 'EXPENSE', ...ownerFilter },
         });
         if (!category) {
-          const error = new Error('Categoría no encontrada');
-          (error as { code?: string }).code = 'CATEGORY_NOT_FOUND';
-          throw error;
+          throw new DomainError('CATEGORY_NOT_FOUND', 'Categoría no encontrada');
         }
       }
 
@@ -517,9 +600,7 @@ export async function createCreditCardPayment(
           where: { id: input.fortnight_id, ...ownerFilter },
         });
         if (!existing) {
-          const error = new Error('Quincena no encontrada');
-          (error as { code?: string }).code = 'FORTNIGHT_NOT_FOUND';
-          throw error;
+          throw new DomainError('FORTNIGHT_NOT_FOUND', 'Quincena no encontrada');
         }
         fortnight = existing;
       } else {
@@ -530,9 +611,7 @@ export async function createCreditCardPayment(
         const ownerUserId = creditCardWallet.user_id;
         const ownerHouseId = creditCardWallet.house_id;
         if (ownerUserId == null && ownerHouseId == null) {
-          const error = new Error('Titular de tarjeta inválido');
-          (error as { code?: string }).code = 'INVALID_CARD_OWNER';
-          throw error;
+          throw new DomainError('INVALID_CARD_OWNER', 'Titular de tarjeta inválido');
         }
 
         fortnight = await resolveOrCreateFortnight({
@@ -572,10 +651,31 @@ export async function createCreditCardPayment(
       });
     }
 
+    // Settle the scheduled row / MSI cuota this payment covers in the same
+    // transaction: a failed match rolls the payment back instead of leaving a
+    // committed payment reported as an error.
+    const paidAtYmd = formatCalendarDate(payment.paid_at);
+    await coverScheduledPaymentForCardPayment(
+      tx,
+      creditCardWallet.id,
+      ownerFilter,
+      paidAtYmd,
+      input.amount,
+      payment.id,
+    );
+    await coverInstallmentPlanPaymentForCardPayment(
+      tx,
+      creditCardWallet.id,
+      ownerFilter,
+      paidAtYmd,
+      input.amount,
+      payment.id,
+    );
+
     return {
       id: payment.id,
       amount: Number(payment.amount),
-      paid_at: formatCalendarDate(payment.paid_at),
+      paid_at: paidAtYmd,
       note: payment.note ?? null,
       source_wallet_id: payment.source_wallet_id,
       source_wallet_name: payment.source_wallet?.name ?? 'Ya pagado',
@@ -584,30 +684,13 @@ export async function createCreditCardPayment(
       credit_card_wallet_id: payment.credit_card_wallet_id,
       credit_card_wallet_name: payment.credit_card_wallet.name,
       expense_id: expenseId,
+      bank_charge_expense_id: payment.bank_charge_expense_id ?? null,
       adjusts_debt: payment.adjusts_debt,
       is_external: payment.source_wallet_id == null,
-      paid_at_raw: input.paid_at,
     };
   }, { timeout: 30000, maxWait: 10000 });
 
-  await coverScheduledPaymentForCardPayment(
-    creditCardId,
-    ownerFilter,
-    result.paid_at_raw,
-    result.amount,
-    result.id,
-  );
-
-  await coverInstallmentPlanPaymentForCardPayment(
-    creditCardId,
-    ownerFilter,
-    result.paid_at_raw,
-    result.amount,
-    result.id,
-  );
-
-  const { paid_at_raw: _paidAtRaw, ...paymentDto } = result;
-  return paymentDto;
+  return result;
 }
 
 export async function isCardPaymentGeneratedExpense(
@@ -615,7 +698,12 @@ export async function isCardPaymentGeneratedExpense(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0] = prisma,
 ): Promise<boolean> {
   const payment = await tx.creditCardPayment.findFirst({
-    where: { expense_id: expenseId },
+    where: {
+      OR: [
+        { expense_id: expenseId },
+        { bank_charge_expense_id: expenseId },
+      ],
+    },
     select: { id: true },
   });
   return payment != null;
@@ -644,6 +732,8 @@ export async function reverseCreditCardPayment(
         id: true,
         amount: true,
         expense_id: true,
+        bank_charge_expense_id: true,
+        bank_charge_expense: { select: { id: true, amount: true } },
         source_wallet_id: true,
         credit_card_wallet_id: true,
         adjusts_debt: true,
@@ -651,9 +741,7 @@ export async function reverseCreditCardPayment(
     });
 
     if (!payment) {
-      const error = new Error('Pago no encontrado');
-      (error as { code?: string }).code = 'PAYMENT_NOT_FOUND';
-      throw error;
+      throw new DomainError('PAYMENT_NOT_FOUND', 'Pago no encontrado');
     }
 
     const amount = Number(payment.amount);
@@ -661,8 +749,22 @@ export async function reverseCreditCardPayment(
     if (payment.source_wallet_id != null) {
       await applyWalletAmountDelta(tx, payment.source_wallet_id, amount);
     }
+    // Put the payment back on the card before removing the charge. The other
+    // order would drive the balance negative (0 - excess).
     if (payment.adjusts_debt) {
       await applyWalletAmountDelta(tx, payment.credit_card_wallet_id, amount);
+    }
+
+    const charge = payment.bank_charge_expense;
+    if (charge != null) {
+      if (payment.adjusts_debt) {
+        await applyWalletAmountDelta(
+          tx,
+          payment.credit_card_wallet_id,
+          -Number(charge.amount),
+        );
+      }
+      await deleteCardPaymentGeneratedExpense(tx, charge.id);
     }
 
     if (payment.expense_id != null) {
@@ -675,6 +777,7 @@ export async function reverseCreditCardPayment(
       id: payment.id,
       amount,
       expense_id: payment.expense_id,
+      bank_charge_expense_id: payment.bank_charge_expense_id ?? null,
     };
   });
 }
@@ -693,9 +796,7 @@ export async function listCreditCardPaymentsByOwner(
   });
 
   if (!wallet) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   const payments = await prisma.creditCardPayment.findMany({

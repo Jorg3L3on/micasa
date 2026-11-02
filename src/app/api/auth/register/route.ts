@@ -8,6 +8,9 @@ import {
 } from '@/schemas/auth.schema';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 import { seedDefaultCategoriesForOwner } from '@/lib/finance/category-seed.service';
+import { runWithAuditActor } from '@/lib/server/audit/audit-context';
+import { routeActor } from '@/lib/server/audit/route-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 /**
  * Signup runs against a remote Postgres (Neon) in dev and prod. Keep the
@@ -23,89 +26,94 @@ const isTransactionTimeout = (error: unknown): boolean =>
   (error.code === 'P2028' || error.code === 'P2024');
 
 export async function POST(request: NextRequest) {
-  const limited = await enforceRateLimit(request, 'auth:register');
-  if (limited) return limited;
+  // No session yet: the new account's rows are attributed to the route.
+  return runWithAuditActor({ ...routeActor(request, { source: 'WEB', userId: null }), label: 'Registro' }, async () => {
+    const limited = await enforceRateLimit(request, 'auth:register');
+    if (limited) return limited;
 
-  try {
-    const body = await request.json();
-    const parsed = registerSchema.safeParse(body);
+    try {
+      const body = await request.json();
+      const parsed = registerSchema.safeParse(body);
 
-    if (!parsed.success) {
-      const first = parsed.error.issues[0];
-      return NextResponse.json(
-        { error: first?.message ?? 'Datos inválidos' },
-        { status: 400 }
-      );
-    }
+      if (!parsed.success) {
+        const first = parsed.error.issues[0];
+        return NextResponse.json(
+          { error: first?.message ?? 'Datos inválidos' },
+          { status: 400 }
+        );
+      }
 
-    const { name, email, password } = parsed.data;
+      const { name, email, password } = parsed.data;
 
-    const existing = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existing) {
-      return NextResponse.json(
-        { error: GENERIC_REGISTER_ERROR_MESSAGE },
-        { status: 400 }
-      );
-    }
-
-    const hashedPassword = await hash(password, 10);
-    const houseName = `Casa de ${name}`;
-
-    const { user, house } = await prisma.$transaction(async (tx) => {
-      const u = await tx.user.create({
-        data: {
-          name,
-          email,
-          password: hashedPassword,
-        },
+      const existing = await prisma.user.findUnique({
+        where: { email },
       });
 
-      const h = await tx.house.create({
-        data: {
-          name: houseName,
-          owner_id: u.id,
-        },
-      });
+      if (existing) {
+        return NextResponse.json(
+          { error: GENERIC_REGISTER_ERROR_MESSAGE },
+          { status: 400 }
+        );
+      }
 
-      await tx.houseMember.create({
-        data: {
-          house_id: h.id,
-          user_id: u.id,
-          role: HouseRole.OWNER,
-        },
-      });
+      const hashedPassword = await hash(password, 10);
+      const houseName = `Casa de ${name}`;
 
-      // House categories are seeded lazily by GET /api/categories the first
-      // time the house context is opened; only the personal catalog is needed
-      // for onboarding.
-      await seedDefaultCategoriesForOwner(tx, { userId: u.id });
+      const { user, house } = await prisma.$transaction(async (tx) => {
+        const u = await tx.user.create({
+          data: {
+            name,
+            email,
+            password: hashedPassword,
+          },
+        });
 
-      return { user: u, house: h };
-    }, REGISTER_TRANSACTION_OPTIONS);
+        const h = await tx.house.create({
+          data: {
+            name: houseName,
+            owner_id: u.id,
+          },
+        });
 
-    return NextResponse.json(
-      {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        house: { id: house.id, name: house.name },
-      },
-      { status: 201 }
-    );
-  } catch (e) {
-    console.error('Register error:', e);
-    if (isTransactionTimeout(e)) {
+        await tx.houseMember.create({
+          data: {
+            house_id: h.id,
+            user_id: u.id,
+            role: HouseRole.OWNER,
+          },
+        });
+
+        // House categories are seeded lazily by GET /api/categories the first
+        // time the house context is opened; only the personal catalog is needed
+        // for onboarding.
+        await seedDefaultCategoriesForOwner(tx, { userId: u.id });
+
+        return { user: u, house: h };
+      }, REGISTER_TRANSACTION_OPTIONS);
+
+      await recordAuthEvent('REGISTER', { userId: user.id, email: user.email, request });
+
       return NextResponse.json(
-        { error: REGISTER_TIMEOUT_MESSAGE },
-        { status: 503 }
+        {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          house: { id: house.id, name: house.name },
+        },
+        { status: 201 }
+      );
+    } catch (e) {
+      console.error('Register error:', e);
+      if (isTransactionTimeout(e)) {
+        return NextResponse.json(
+          { error: REGISTER_TIMEOUT_MESSAGE },
+          { status: 503 }
+        );
+      }
+      return NextResponse.json(
+        { error: 'Error al crear la cuenta. Inténtalo de nuevo.' },
+        { status: 500 }
       );
     }
-    return NextResponse.json(
-      { error: 'Error al crear la cuenta. Inténtalo de nuevo.' },
-      { status: 500 }
-    );
-  }
+  });
 }

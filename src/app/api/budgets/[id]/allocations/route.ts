@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { updateBudgetAllocations } from '@/lib/finance/budget.service';
 import { updateBudgetAllocationsSchema } from '@/schemas/budget.schema';
 
@@ -11,21 +11,21 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { id: idParam } = await params;
-    const id = Number(idParam);
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
-    }
+      const { id: idParam } = await params;
+      const id = Number(idParam);
+      if (isNaN(id)) {
+        return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
+      }
 
-    const body = await request.json();
-    const { allocations } = updateBudgetAllocationsSchema.parse(body);
+      const body = await request.json();
+      const { allocations } = updateBudgetAllocationsSchema.parse(body);
 
-    const budget = await updateBudgetAllocations(id, ownerFilter, allocations);
-    return NextResponse.json(budget, { status: 200 });
+      const budget = await updateBudgetAllocations(id, ownerFilter, allocations);
+      return NextResponse.json(budget, { status: 200 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation error', details: error.issues }, { status: 400 });
