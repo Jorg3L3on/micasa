@@ -352,7 +352,7 @@ export const WalletCoverFlow = ({
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
         className={cn(
-          'relative mx-auto h-[calc(var(--flow-w)/1.586+2.5rem)] md:h-[calc(var(--flow-w)/1.586+4.5rem)] w-full touch-pan-y select-none overflow-hidden rounded-face outline-none [--flow-w:clamp(280px,76cqw,544px)] [perspective:1100px] focus-visible:ring-2 focus-visible:ring-ring',
+          'relative mx-auto h-[calc(var(--flow-w)/1.586+1.25rem)] md:h-[calc(var(--flow-w)/1.586+2.25rem)] w-full touch-pan-y select-none overflow-hidden rounded-face outline-none [--flow-w:clamp(280px,76cqw,544px)] [perspective:1100px] focus-visible:ring-2 focus-visible:ring-ring',
           dragging ? 'cursor-grabbing' : 'cursor-grab',
         )}
       >

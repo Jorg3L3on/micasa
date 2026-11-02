@@ -60,8 +60,8 @@ export const WalletFlowDetails = ({
       ];
 
   return (
-    <div className="mt-4 w-full">
-      <div className="mt-5 flex flex-col items-center gap-4 md:border-t md:border-border/60 md:pt-4">
+    <div className="mt-2 w-full">
+      <div className="mt-2 flex flex-col items-center gap-4 md:border-t md:border-border/60 md:pt-4">
         <div
           className="grid w-full max-w-md grid-cols-3 gap-2"
           role="group"
