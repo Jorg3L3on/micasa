@@ -1,5 +1,6 @@
 'use client';
 
+import { invalidateRecentMovements } from '@/lib/ui/wallet-recent-movements';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import CreditCardPaymentDialog, {
@@ -34,7 +35,12 @@ type Options = {
  * ingreso) for cash and debit, Agregar compra and Pagar for credit and store
  * cards. The page renders `dialogs` once and calls the openers.
  */
-export const useWalletQuickActions = ({ wallets, context, reload }: Options) => {
+export const useWalletQuickActions = ({ wallets, context, reload: reloadWallets }: Options) => {
+  // Any save here can add a movement: drop cached lists before refetching.
+  const reload = async () => {
+    invalidateRecentMovements();
+    await reloadWallets();
+  };
   const [movementWallet, setMovementWallet] = useState<WalletListItem | null>(null);
   const [expenseError, setExpenseError] = useState<string | null>(null);
   const [incomeError, setIncomeError] = useState<string | null>(null);

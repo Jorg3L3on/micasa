@@ -19,7 +19,17 @@ export const recentMovementsKey = (
   context: Pick<FinanceContextType, 'type' | 'id'>,
   walletId: number,
   balance: number,
-): string => `${context.type}:${context.id}:${walletId}:${balance}`;
+): string => `${context.type}:${context.id}:${walletId}:${balance}:${version}`;
+
+let version = 0;
+
+/** Drop every cached list (call after any save that may add a movement). */
+export const invalidateRecentMovements = (): void => {
+  cache.clear();
+  version += 1;
+};
+
+export const recentMovementsVersion = (): number => version;
 
 export const getCachedRecentMovements = (
   key: string,
