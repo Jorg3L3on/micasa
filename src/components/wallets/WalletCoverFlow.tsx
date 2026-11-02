@@ -98,7 +98,7 @@ const FlowCard = ({
     >
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-x-[8%] -bottom-[0.6rem] h-[1.6rem] rounded-[50%] bg-black/45 blur-[19px] dark:bg-black/70"
+        className="pointer-events-none absolute inset-x-[8%] -bottom-3 h-8 rounded-[50%] bg-black/45 blur-xl dark:bg-black/70"
         style={{ opacity: grounding }}
       />
       {/* Only the front card carries the shared name: names must be unique, and
