@@ -99,9 +99,6 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
                 </p>
               </div>
             </div>
-            <span className="font-mono text-caption tracking-[0.2em] opacity-50">
-              •••• ••••
-            </span>
           </div>
 
           <div className="space-y-3">

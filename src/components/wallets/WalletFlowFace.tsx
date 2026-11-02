@@ -24,7 +24,7 @@ type WalletFlowFaceProps = {
   className?: string;
   /** Horizontal drift (px) of the face art inside the frame. */
   drift?: MotionValue<number>;
-  /** Small arrow in the corner: the face opens the wallet detail. */
+  /** Small arrow at the top left: the face opens the wallet detail. */
   showOpenHint?: boolean;
 };
 
@@ -68,6 +68,14 @@ export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false 
       />
       <div className="relative flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
+          {showOpenHint ? (
+            <span
+              aria-hidden
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/20"
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </span>
+          ) : null}
           <WalletProviderIcon
             providerIconKey={wallet.provider_icon_key}
             className="h-8 w-8 shrink-0 rounded-lg border border-white/25 bg-white/15 shadow-sm ring-1 ring-white/10"
@@ -93,10 +101,6 @@ export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false 
             <BookmarkIcon className="h-2.5 w-2.5" aria-hidden />
             Inactivo
           </Badge>
-        ) : isCard ? (
-          <span className="font-mono text-caption tracking-[0.2em] opacity-50">
-            •••• ••••
-          </span>
         ) : null}
       </div>
       {isCard ? (
@@ -146,14 +150,6 @@ export const WalletFlowFace = ({ wallet, className, drift, showOpenHint = false 
           </p>
         </div>
       )}
-      {showOpenHint ? (
-        <span
-          aria-hidden
-          className="absolute bottom-4 right-4 flex size-8 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/20"
-        >
-          <ArrowUpRight className="h-4 w-4" />
-        </span>
-      ) : null}
     </div>
   );
 };
