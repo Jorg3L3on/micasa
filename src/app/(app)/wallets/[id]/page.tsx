@@ -586,6 +586,7 @@ export default function WalletDetailPage() {
 
   const { requestDelete, dialog: deleteDialog } = useWalletDelete(wallet, context);
 
+  const [historyOpen, setHistoryOpen] = useState(false);
   const overflowItems = useMemo((): ToolbarOverflowItem[] => {
     if (!wallet) return [];
     const items: ToolbarOverflowItem[] = [];

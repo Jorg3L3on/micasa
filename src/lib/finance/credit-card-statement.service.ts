@@ -1,3 +1,4 @@
+import { DomainError } from '@/lib/finance/domain-error';
 import { cache } from 'react';
 import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';

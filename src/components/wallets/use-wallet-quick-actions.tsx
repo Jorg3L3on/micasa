@@ -209,6 +209,7 @@ export const useWalletQuickActions = ({ wallets, context, reload: reloadWallets 
           }}
           fundingWalletOptions={fundingWalletOptions}
           prefillAmount={payPrefill}
+          recordedDebt={Number(payWallet.amount) || 0}
           submitting={paySubmitting}
           error={payError}
           onConfirm={handlePay}
