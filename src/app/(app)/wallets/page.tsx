@@ -69,7 +69,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { WalletFlowSection } from '@/components/wallets/WalletFlowSection';
 import { WalletsAttentionBlock } from '@/components/wallets/WalletsAttentionBlock';
 import { WalletsFirstEmptyState } from '@/components/wallets/WalletsFirstEmptyState';
-import { WalletsSummaryStrip } from '@/components/wallets/WalletsSummaryStrip';
+import { WalletsMasterDetail } from '@/components/wallets/WalletsMasterDetail';
 import {
   buildAttentionItems,
   groupWalletsBySection,
@@ -1278,12 +1278,19 @@ export default function WalletsPage() {
               {wallets.length === 0 ? (
                 <WalletsFirstEmptyState onCreate={openCreateDialog} />
               ) : (
-                <div className="mx-auto w-full min-w-0 max-w-3xl space-y-8">
-                  <WalletsSummaryStrip totals={totals} />
-                  <WalletsAttentionBlock
-                    items={attentionItems}
-                    onSelect={setFocusWalletId}
-                  />
+                <div
+                  className={
+                    isMobile
+                      ? 'mx-auto w-full min-w-0 max-w-3xl space-y-8'
+                      : 'w-full min-w-0'
+                  }
+                >
+                  {isMobile ? (
+                    <WalletsAttentionBlock
+                      items={attentionItems}
+                      onSelect={setFocusWalletId}
+                    />
+                  ) : null}
                   {displayWallets.length === 0 ? (
                     error ? null : (
                       <EmptyState
@@ -1295,36 +1302,26 @@ export default function WalletsPage() {
                         }}
                       />
                     )
+                  ) : isMobile ? (
+                    <WalletFlowSection
+                      title="Billeteras"
+                      hideHeader
+                      wallets={displayWallets}
+                      ownerQueryString={ownerQueryString}
+                      focusWalletId={focusWalletId}
+                      {...flowActions}
+                    />
                   ) : (
-                    isMobile ? (
-                      <WalletFlowSection
-                        title="Billeteras"
-                        hideHeader
-                        wallets={displayWallets}
-                        ownerQueryString={ownerQueryString}
-                        focusWalletId={focusWalletId}
-                        {...flowActions}
-                      />
-                    ) : (
-                    <>
-                      <WalletFlowSection
-                        title="Efectivo y débito"
-                        wallets={sections.funding}
-                        ownerQueryString={ownerQueryString}
-                        focusWalletId={focusWalletId}
-                        {...flowActions}
-                      />
-                      <WalletFlowSection
-                        title="Tarjetas de crédito"
-                        wallets={sections.credit}
-                        ownerQueryString={ownerQueryString}
-                        focusWalletId={focusWalletId}
-                        {...flowActions}
-                      />
-                    </>
-                    )
+                    <WalletsMasterDetail
+                      funding={sections.funding}
+                      credit={sections.credit}
+                      totals={totals}
+                      attention={attentionItems}
+                      ownerQueryString={ownerQueryString}
+                      onCreate={openCreateDialog}
+                      {...flowActions}
+                    />
                   )}
-
                 </div>
               )}
             </ContentEnter>
