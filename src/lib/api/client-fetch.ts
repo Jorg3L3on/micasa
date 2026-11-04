@@ -63,6 +63,17 @@ export const isOwnerContextPending = (
   context.id > 0 && getFinanceOwnerKey(context) !== serverOwnerKey;
 
 /**
+ * Panel financiero guard: also pending when the URL named no owner, because
+ * the server then rendered the personal default and FinanceProviderSync is
+ * about to replace the URL with the persisted owner (often a house).
+ */
+export const isPanelOwnerPending = (
+  context: Pick<FinanceContextType, 'type' | 'id'>,
+  serverOwnerKey: string,
+  ownerInUrl: boolean,
+): boolean => !ownerInUrl || isOwnerContextPending(context, serverOwnerKey);
+
+/**
  * Inverse of `buildOwnerQuery` for `?ownerType=&ownerId=` (or without `?`).
  * Returns undefined when the query is empty or invalid.
  */
