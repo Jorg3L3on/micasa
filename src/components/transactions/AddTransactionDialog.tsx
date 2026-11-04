@@ -47,10 +47,10 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSelect';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
+import { FormDatePicker } from '@/components/overlay/form-date-picker';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   FieldClearButton,
-  DateStepper,
   FormAmountHero,
   FormGroupedRow,
   OVERLAY_GROUPED_CARD_CLASS,
@@ -449,12 +449,11 @@ export default function AddTransactionDialog({
                   control={expenseForm.control}
                   name="date"
                   render={({ field }) => (
-                    <FormGroupedRow label="Fecha" icon={<CalendarDays />}>
-                      <DateStepper
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormGroupedRow>
+                    <FormDatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      icon={<CalendarDays />}
+                    />
                   )}
                 />
               </div>
@@ -639,12 +638,11 @@ export default function AddTransactionDialog({
                   control={incomeForm.control}
                   name="date"
                   render={({ field }) => (
-                    <FormGroupedRow label="Fecha" icon={<CalendarDays />}>
-                      <DateStepper
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormGroupedRow>
+                    <FormDatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      icon={<CalendarDays />}
+                    />
                   )}
                 />
               </div>

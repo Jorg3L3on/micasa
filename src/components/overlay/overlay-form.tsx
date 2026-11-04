@@ -169,7 +169,7 @@ export const FormAmountHero = ({
 }) => (
   <FormItem className="space-y-1">
     <FormLabel className="sr-only">{label}</FormLabel>
-    <div className="flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-4">
+    <div className="flex items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-4 shadow-sm">
       <span className="font-sans text-lg font-semibold text-muted-foreground" aria-hidden>
         MXN
       </span>
