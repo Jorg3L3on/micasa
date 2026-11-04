@@ -908,6 +908,14 @@ export default function FortnightColumn({
     [sortedTransactions],
   );
 
+  // Nothing to order on an empty tab: the sort control only shows with rows.
+  const activeTabHasRows =
+    columnTab === 'cards'
+      ? cardDueItems.length > 0
+      : columnTab === 'loans'
+        ? loanDueItems.length > 0
+        : sortedTransactions.length > 0;
+
   const listSortMenu = (
     <div className="flex shrink-0 items-center">
               <DropdownMenu>
@@ -918,7 +926,7 @@ export default function FortnightColumn({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
+                        className="h-11 w-11 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
                         aria-label={`Ordenar: ${plannerListSortDisplayLabel(listSortMode, listSortDir)}`}
                       >
                         <ArrowUpDown className="h-4 w-4" aria-hidden />
@@ -1045,7 +1053,7 @@ export default function FortnightColumn({
           icon={Receipt}
           title="Gastos de la quincena"
           subtitle={listSubtitle}
-          actions={listSortMenu}
+          actions={activeTabHasRows ? listSortMenu : undefined}
         />
         <SegmentedControl
           value={columnTab}
@@ -1058,6 +1066,7 @@ export default function FortnightColumn({
           listClassName="min-w-full"
           indicatorClassName={AURA_TAB_INDICATOR_CLASS}
           activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+          overflowControls="fade"
           options={[
             {
               value: 'expenses',
@@ -1091,10 +1100,7 @@ export default function FortnightColumn({
               label: (
                 <span className={plannerTabLabelClass}>
                   <HandCoins className={plannerTabIconClass} aria-hidden />
-                  <span className={cn(!compactTabs && 'sm:hidden')}>Prest.</span>
-                  {!compactTabs ? (
-                    <span className="hidden sm:inline">Préstamos</span>
-                  ) : null}
+                  Préstamos
                   <Badge variant={pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
                     {pendingLoanPaymentsCount}
                   </Badge>
