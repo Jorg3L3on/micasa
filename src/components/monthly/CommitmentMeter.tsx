@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { getFortnightCommitmentBar } from '@/components/monthly/fortnight-income-commitment';
 import { NumberTicker } from '@/components/motion/number-ticker';
 import { SPRING_LAYOUT } from '@/components/motion/ease';
