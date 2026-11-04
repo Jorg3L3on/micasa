@@ -4,8 +4,6 @@ import { Geist, Geist_Mono, Manrope } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
-import { SessionProvider } from '@/components/session-provider';
-import { FinanceProvider } from '@/context/finance-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from 'sonner';
 import { DOCUMENT_TITLE_TEMPLATE, SITE_NAME } from '@/lib/document-title';
@@ -100,33 +98,30 @@ export default function RootLayout({
             __html: buildLaunchRedirectScript(getCurrentMonthlyPanelHref()),
           }}
         />
-        <SessionProvider>
-          <FinanceProvider>
-            <TooltipProvider delayDuration={0}>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="dark"
-                enableSystem
-                disableTransitionOnChange
-              >
-                <NextTopLoader
-                  color="#3a37fc"
-                  height={3}
-                  showSpinner={false}
-                  zIndex={1600}
-                />
-                {children}
-                <Toaster
-                  richColors
-                  position="top-center"
-                  offset={{ top: 'calc(env(safe-area-inset-top) + 24px)' }}
-                  mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 16px)' }}
-                />
-                <ServiceWorkerRegistrar />
-              </ThemeProvider>
-            </TooltipProvider>
-          </FinanceProvider>
-        </SessionProvider>
+        {/* SessionProvider and FinanceProvider live in the (app) layout, which has the session. */}
+        <TooltipProvider delayDuration={0}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <NextTopLoader
+              color="#3a37fc"
+              height={3}
+              showSpinner={false}
+              zIndex={1600}
+            />
+            {children}
+            <Toaster
+              richColors
+              position="top-center"
+              offset={{ top: 'calc(env(safe-area-inset-top) + 24px)' }}
+              mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 16px)' }}
+            />
+            <ServiceWorkerRegistrar />
+          </ThemeProvider>
+        </TooltipProvider>
       </body>
     </html>
   );

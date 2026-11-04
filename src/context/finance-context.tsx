@@ -15,6 +15,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import type { FinanceContextType } from '@/types/finance-context';
+import { writeOwnerHintCookie } from '@/lib/owner-hint';
 
 const STORAGE_KEY = 'finance_context';
 
@@ -35,6 +36,8 @@ function persist(context: FinanceContextType, userId: number): void {
     STORAGE_KEY,
     JSON.stringify({ context, userId } satisfies StoredFinance),
   );
+  // Lets the proxy put the owner in the home redirect, so the server renders it first.
+  writeOwnerHintCookie(userId, context);
 }
 
 function readPersisted(userId: number): FinanceContextType | null {
@@ -128,7 +131,14 @@ function FinanceProviderSync({
     params.set('ownerType', nextContext.type);
     params.set('ownerId', String(nextContext.id));
     const query = params.toString();
-    router.replace(`${pathname}${query ? `?${query}` : ''}`);
+    const href = `${pathname}${query ? `?${query}` : ''}`;
+    // Without owner params the server rendered the user context: when that is
+    // the owner, only the URL needs the params (no second server render).
+    if (nextContext.type === 'user') {
+      window.history.replaceState(null, '', href);
+    } else {
+      router.replace(href);
+    }
     hasSyncedUrlRef.current = true;
   }, [session?.user?.id, searchParams, pathname, router, setContext, currentUserIdRef, hasSyncedUrlRef]);
 
