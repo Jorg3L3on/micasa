@@ -3,6 +3,7 @@
 import { type ReactNode } from 'react';
 import {
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleX,
@@ -19,8 +20,10 @@ import {
 } from '@/components/ui/form';
 import {
   addCalendarDays,
+  formatDisplayDayMonth,
   formatStepperDate,
   todayCalendarDate,
+  yesterdayCalendarDate,
 } from '@/lib/calendar-dates';
 import { cn } from '@/lib/utils';
 
@@ -149,6 +152,45 @@ export const FormAmountRow = ({
   </FormItem>
 );
 
+export const OVERLAY_AMOUNT_HERO_CLASS =
+  'h-14 border-0 bg-transparent px-0 text-center font-sans text-4xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-16 md:text-5xl';
+
+/**
+ * Hero amount for create overlays: a calm tinted panel with the MXN prefix and
+ * a large centered figure. Inside a `<Form>` (FormItem + FormMessage).
+ */
+export const FormAmountHero = ({
+  value,
+  onChange,
+  label = 'Monto',
+  enterKeyHint = 'next',
+}: {
+  value: unknown;
+  onChange: (val: number) => void;
+  label?: string;
+  enterKeyHint?: 'next' | 'done';
+}) => (
+  <FormItem className="space-y-1">
+    <FormLabel className="sr-only">{label}</FormLabel>
+    <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/40 px-4 py-4">
+      <span className="font-sans text-lg font-semibold text-muted-foreground" aria-hidden>
+        MXN
+      </span>
+      <FormControl>
+        <CurrencyInput
+          hideSymbol
+          value={value}
+          onChange={onChange}
+          placeholder="0"
+          enterKeyHint={enterKeyHint}
+          className={OVERLAY_AMOUNT_HERO_CLASS}
+        />
+      </FormControl>
+    </div>
+    <FormMessage className="px-1" />
+  </FormItem>
+);
+
 const MXN_AMOUNT_FORMAT = new Intl.NumberFormat('es-MX', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -267,14 +309,29 @@ export const OverlaySectionLabel = ({ children }: { children: ReactNode }) => (
 /** Label + control row inside a `<Form>` (FormItem + FormMessage). */
 export const FormGroupedRow = ({
   label,
+  icon,
   children,
 }: {
   label: string;
+  /** Leading line icon (same 16px muted style across the card). */
+  icon?: ReactNode;
   children: ReactNode;
 }) => (
   <FormItem className="space-y-1 px-3 py-1.5">
     <div className="flex min-h-11 items-center gap-3">
-      <FormLabel className={OVERLAY_GROUPED_LABEL_CLASS}>{label}</FormLabel>
+      <FormLabel
+        className={cn(
+          OVERLAY_GROUPED_LABEL_CLASS,
+          icon && 'flex w-[6.75rem] items-center gap-2',
+        )}
+      >
+        {icon ? (
+          <span className="shrink-0 text-muted-foreground [&>svg]:h-4 [&>svg]:w-4" aria-hidden>
+            {icon}
+          </span>
+        ) : null}
+        {label}
+      </FormLabel>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
     <FormMessage />
@@ -411,3 +468,86 @@ export const OptionalDateStepper = ({
     }
   />
 );
+
+const QUICK_CHIP_CLASS =
+  'inline-flex h-9 items-center rounded-full px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50';
+
+/**
+ * Required calendar day as quick chips: Hoy, Ayer and a pill that opens the
+ * system date picker (hidden native input, so no visible native date field).
+ * Inside a `<Form>` (FormItem + FormMessage).
+ */
+export const FormDateQuickPicker = ({
+  value,
+  onChange,
+  label = 'Fecha',
+  disabled,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  label?: string;
+  disabled?: boolean;
+}) => {
+  const today = todayCalendarDate();
+  const yesterday = yesterdayCalendarDate();
+  const chips = [
+    { key: 'today', text: 'Hoy', ymd: today },
+    { key: 'yesterday', text: 'Ayer', ymd: yesterday },
+  ];
+  const pillActive = value !== today && value !== yesterday;
+  const pillText = value ? formatDisplayDayMonth(value) : 'Elegir fecha';
+  return (
+    <FormItem className="space-y-1 px-3 py-1.5">
+      <FormLabel className="sr-only">{label}</FormLabel>
+      <div className="flex min-h-11 items-center gap-2">
+        <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        {chips.map(({ key, text, ymd }) => {
+          const active = value === ymd;
+          return (
+            <button
+              key={key}
+              type="button"
+              disabled={disabled}
+              aria-pressed={active}
+              onClick={() => onChange(ymd)}
+              className={cn(
+                QUICK_CHIP_CLASS,
+                active
+                  ? 'bg-foreground text-background'
+                  : 'bg-muted text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {text}
+            </button>
+          );
+        })}
+        <div className="relative ml-auto rounded-full focus-within:ring-2 focus-within:ring-ring/50">
+          <span
+            className={cn(
+              QUICK_CHIP_CLASS,
+              'gap-1 capitalize',
+              pillActive
+                ? 'bg-foreground text-background'
+                : 'bg-muted text-muted-foreground',
+            )}
+            aria-hidden
+          >
+            {pillText}
+            <ChevronDown className="h-3.5 w-3.5" />
+          </span>
+          <input
+            type="date"
+            value={value ?? ''}
+            disabled={disabled}
+            onChange={(event) => {
+              if (event.target.value) onChange(event.target.value);
+            }}
+            aria-label={`${label}, ${value ? formatStepperDate(value) : 'sin fecha'}`}
+            className={HIDDEN_DATE_INPUT_CLASS}
+          />
+        </div>
+      </div>
+      <FormMessage />
+    </FormItem>
+  );
+};
