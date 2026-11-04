@@ -6,7 +6,10 @@ import {
   isWindowFullyCreated,
   monthBounds,
   neighborWindow,
+  panelAnchoredWindow,
+  panelMonthWeek,
   resolveInitialWindow,
+  resolvePanelWindow,
   weekBoundsContaining,
   windowMonths,
 } from '@/lib/finance/payments-calendar';
@@ -204,5 +207,82 @@ describe('defaultSelectedDayInWindow / boundsForViewMode', () => {
     expect(boundsForViewMode('week', '2026-09-15').startYmd).toBe(
       '2026-09-14',
     );
+  });
+});
+
+describe('panel-anchored calendar range', () => {
+  // Today is in October; the Panel shows November 2026 (Nov 1 is a Sunday).
+  const anchor = {
+    year: 2026,
+    month: 11,
+    period: 'FIRST' as const,
+    todayYmd: '2026-10-28',
+  };
+  const created = [
+    { year: 2026, month: 10 },
+    { year: 2026, month: 11 },
+    { year: 2026, month: 12 },
+  ];
+
+  it('opens Mensual on the Panel month, not today', () => {
+    expect(panelAnchoredWindow('month', anchor)).toEqual({
+      startYmd: '2026-11-01',
+      endYmd: '2026-11-30',
+    });
+  });
+
+  it('opens Quincenal on the Panel quincena', () => {
+    expect(panelAnchoredWindow('fortnight', anchor)).toEqual({
+      startYmd: '2026-10-31',
+      endYmd: '2026-11-14',
+    });
+    expect(
+      panelAnchoredWindow('fortnight', { ...anchor, period: 'SECOND' }),
+    ).toEqual({ startYmd: '2026-11-15', endYmd: '2026-11-29' });
+  });
+
+  it('opens Semanal on the first week mostly inside the Panel month', () => {
+    // Week of Nov 1 (Oct 26–Nov 1) has one November day: skip it.
+    expect(panelAnchoredWindow('week', anchor)).toEqual({
+      startYmd: '2026-11-02',
+      endYmd: '2026-11-08',
+    });
+  });
+
+  it('keeps the week of the 1st when most of it is in the month', () => {
+    // 2026-10-01 is a Thursday: Sep 28–Oct 4 has four October days.
+    expect(panelMonthWeek(2026, 10, '2026-12-10')).toEqual({
+      startYmd: '2026-09-28',
+      endYmd: '2026-10-04',
+    });
+  });
+
+  it("uses today's week when the Panel month is the current month", () => {
+    expect(panelMonthWeek(2026, 11, '2026-11-18')).toEqual({
+      startYmd: '2026-11-16',
+      endYmd: '2026-11-22',
+    });
+  });
+
+  it('resolves to the Panel window when its months exist', () => {
+    expect(resolvePanelWindow('month', anchor, created)).toEqual({
+      startYmd: '2026-11-01',
+      endYmd: '2026-11-30',
+    });
+    expect(resolvePanelWindow('fortnight', anchor, created)).toEqual({
+      startYmd: '2026-10-31',
+      endYmd: '2026-11-14',
+    });
+  });
+
+  it('falls back to the nearest valid window near the Panel month', () => {
+    // FIRST of November needs October; without it, take November SECOND.
+    expect(
+      resolvePanelWindow('fortnight', anchor, [{ year: 2026, month: 11 }]),
+    ).toEqual({ startYmd: '2026-11-15', endYmd: '2026-11-29' });
+  });
+
+  it('returns null without created months', () => {
+    expect(resolvePanelWindow('week', anchor, [])).toBeNull();
   });
 });
