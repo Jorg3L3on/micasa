@@ -94,6 +94,29 @@ const listUnpaidExpensesWithPaymentDate = async (
   return items;
 };
 
+type CalendarFortnight = {
+  id: number;
+  year: number;
+  month: number;
+  period: string;
+};
+
+const listFortnightsOverlappingMonth = (
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<CalendarFortnight[]> => {
+  const { startYmd, endYmd } = monthRangeYmd(year, month);
+  return prisma.fortnight.findMany({
+    where: {
+      ...ownerFilter,
+      end_date: { gte: startOfCalendarDay(startYmd) },
+      start_date: { lte: endOfCalendarDay(endYmd) },
+    },
+    select: { id: true, year: true, month: true, period: true },
+  });
+};
+
 /**
  * Unpaid cash-flow expenses without payment_date but with due_day, placed on
  * the civil day of their fortnight (same rule as card/loan due days).
@@ -102,18 +125,9 @@ const listScheduledExpensesByDueDay = async (
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
+  fortnights: CalendarFortnight[],
 ): Promise<PaymentsCalendarItem[]> => {
-  const { startYmd, endYmd, monthPrefix } = monthRangeYmd(year, month);
-
-  // Overlap, not year/month: the month's last day belongs to next month's FIRST.
-  const fortnights = await prisma.fortnight.findMany({
-    where: {
-      ...ownerFilter,
-      end_date: { gte: startOfCalendarDay(startYmd) },
-      start_date: { lte: endOfCalendarDay(endYmd) },
-    },
-    select: { id: true, year: true, month: true, period: true },
-  });
+  const { monthPrefix } = monthRangeYmd(year, month);
   if (fortnights.length === 0) return [];
 
   const fortnightById = new Map(fortnights.map((fn) => [fn.id, fn]));
@@ -170,39 +184,13 @@ const listScheduledTemplateObligationsForMonth = async (
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
+  fortnights: CalendarFortnight[],
 ): Promise<PaymentsCalendarItem[]> => {
-  const { startYmd, endYmd, monthPrefix } = monthRangeYmd(year, month);
-
-  const fortnights = await prisma.fortnight.findMany({
-    where: {
-      ...ownerFilter,
-      end_date: { gte: startOfCalendarDay(startYmd) },
-      start_date: { lte: endOfCalendarDay(endYmd) },
-    },
-    select: {
-      id: true,
-      year: true,
-      month: true,
-      period: true,
-      end_date: true,
-    },
-  });
+  const { monthPrefix } = monthRangeYmd(year, month);
   if (fortnights.length === 0) return [];
 
-  const fortnightIds = fortnights.map((fn) => fn.id);
-  const existingTemplateExpenses = await prisma.expense.findMany({
-    where: {
-      fortnight_id: { in: fortnightIds },
-      expense_template_id: { not: null },
-    },
-    select: { fortnight_id: true, expense_template_id: true },
-  });
-  const existingKey = new Set(
-    existingTemplateExpenses.map(
-      (e) => `${e.fortnight_id}-${e.expense_template_id}`,
-    ),
-  );
-
+  // Fixed query count: funding wallets, then template expenses + the templates
+  // of both periods (matched to each fortnight in memory).
   const fundingWallets = await prisma.wallet.findMany({
     where: {
       ...ownerFilter,
@@ -216,24 +204,33 @@ const listScheduledTemplateObligationsForMonth = async (
     .map((w) => w.id);
   if (fundingWalletIds.length === 0) return [];
 
-  const items: PaymentsCalendarItem[] = [];
-
-  for (const fn of fortnights) {
-    const period = fn.period as 'FIRST' | 'SECOND';
-    const appliesField =
-      period === FortnightPeriod.FIRST
-        ? ('applies_first_fortnight' as const)
-        : ('applies_second_fortnight' as const);
-
-    const templates = await prisma.expenseTemplate.findMany({
+  const fortnightIds = fortnights.map((fn) => fn.id);
+  const [existingTemplateExpenses, templates] = await Promise.all([
+    prisma.expense.findMany({
+      where: {
+        fortnight_id: { in: fortnightIds },
+        expense_template_id: { not: null },
+      },
+      select: { fortnight_id: true, expense_template_id: true },
+    }),
+    prisma.expenseTemplate.findMany({
       where: {
         ...ownerFilter,
         active: true,
-        [appliesField]: true,
         category_id: { not: null },
-        OR: [
-          { wallet_id: { in: fundingWalletIds } },
-          { wallet_id: null },
+        AND: [
+          {
+            OR: [
+              { applies_first_fortnight: true },
+              { applies_second_fortnight: true },
+            ],
+          },
+          {
+            OR: [
+              { wallet_id: { in: fundingWalletIds } },
+              { wallet_id: null },
+            ],
+          },
         ],
       },
       select: {
@@ -244,12 +241,29 @@ const listScheduledTemplateObligationsForMonth = async (
         due_day: true,
         due_day_first_fortnight: true,
         due_day_second_fortnight: true,
+        applies_first_fortnight: true,
+        applies_second_fortnight: true,
       },
-    });
+    }),
+  ]);
+  const existingKey = new Set(
+    existingTemplateExpenses.map(
+      (e) => `${e.fortnight_id}-${e.expense_template_id}`,
+    ),
+  );
 
+  const items: PaymentsCalendarItem[] = [];
+
+  for (const fn of fortnights) {
+    const period = fn.period as 'FIRST' | 'SECOND';
     const fallbackEnd = getFortnightYmdBounds(fn.year, fn.month, period).endYmd;
 
     for (const template of templates) {
+      const applies =
+        period === FortnightPeriod.FIRST
+          ? template.applies_first_fortnight
+          : template.applies_second_fortnight;
+      if (!applies) continue;
       if (existingKey.has(`${fn.id}-${template.id}`)) continue;
       if (
         template.wallet_id != null &&
@@ -294,12 +308,19 @@ export async function listPaymentsCalendarForMonth(
   year: number,
   month: number,
 ): Promise<PaymentsCalendarResult> {
+  // Fortnights that overlap the civil month (its last day belongs to next
+  // month's FIRST); shared by the due-day and template lists.
+  const fortnightsPromise = listFortnightsOverlappingMonth(ownerFilter, year, month);
   const [commitments, datedExpenses, dueDayExpenses, templates] =
     await Promise.all([
       listUpcomingCommitmentsForMonth(ownerFilter, year, month),
       listUnpaidExpensesWithPaymentDate(ownerFilter, year, month),
-      listScheduledExpensesByDueDay(ownerFilter, year, month),
-      listScheduledTemplateObligationsForMonth(ownerFilter, year, month),
+      fortnightsPromise.then((fortnights) =>
+        listScheduledExpensesByDueDay(ownerFilter, year, month, fortnights),
+      ),
+      fortnightsPromise.then((fortnights) =>
+        listScheduledTemplateObligationsForMonth(ownerFilter, year, month, fortnights),
+      ),
     ]);
 
   const items: PaymentsCalendarItem[] = [

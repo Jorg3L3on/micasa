@@ -287,9 +287,11 @@ export function AlertsChrome({ children }: { children: ReactNode }) {
   }, [dismissedStorageKey]);
 
   useEffect(() => {
+    // id 0 is the provider's placeholder before the owner is known: wait for it.
+    if (context.id <= 0) return;
     setData(null);
     fetchAlerts();
-  }, [fetchAlerts]);
+  }, [fetchAlerts, context.id]);
 
   const markSeen = useCallback(
     (id: string) => {
