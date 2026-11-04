@@ -83,7 +83,7 @@ export const FortnightBudgetBreakdown = ({
         />
       )}
 
-      <Button variant="outline" size="sm" className="w-full gap-2" asChild>
+      <Button variant="outline" size="sm" className="h-11 w-full gap-2 sm:h-8" asChild>
         <Link
           href={`/settings/budgets${ownerQuery}`}
           aria-label="Ver reporte completo de presupuesto de la quincena"

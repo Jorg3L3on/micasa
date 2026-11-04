@@ -830,7 +830,7 @@ export const MonthlyPaymentsCalendar = ({
           return (
             <span
               key={cell.ymd}
-              className="relative mx-auto block h-10 w-full max-w-10 transition-opacity duration-200"
+              className="relative mx-auto block h-11 w-full max-w-11 transition-opacity duration-200 sm:h-10 sm:max-w-10"
               style={{ opacity: dim ? 0.35 : 1 }}
             >
               <motion.button

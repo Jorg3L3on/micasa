@@ -353,7 +353,8 @@ const FortnightCardPaymentsPanel = ({
                     href={href}
                     title={item.walletName}
                     className={cn(
-                      'min-w-0 line-clamp-2 break-words font-semibold leading-snug hover:underline',
+                      // -my/py: 44px tall hit area on phones without moving the row.
+                      'min-w-0 line-clamp-2 break-words font-semibold leading-snug hover:underline -my-3 py-3 sm:my-0 sm:py-0',
                       isCompact ? 'text-xs' : 'text-sm',
                       status === 'pagado' || status === 'sin_cargo'
                         ? 'text-muted-foreground'
@@ -478,7 +479,7 @@ const FortnightCardPaymentsPanel = ({
                         type="button"
                         variant="ghost"
                         className={cn(
-                          'h-10 shrink-0 rounded-full px-3 text-xs font-semibold sm:px-4',
+                          'h-11 shrink-0 rounded-full px-3 text-xs font-semibold sm:h-10 sm:px-4',
                           STATUS_BADGE_CLASS.pending,
                           'hover:bg-status-pending/15 hover:text-status-pending dark:hover:bg-status-pending/20',
                         )}
@@ -498,7 +499,7 @@ const FortnightCardPaymentsPanel = ({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                            className="size-11 shrink-0 text-muted-foreground hover:text-foreground sm:size-8"
                             onClick={() => handleOpenPlanDialog(item)}
                             aria-label={`Editar pago planeado: ${item.walletName}`}
                           >
@@ -520,7 +521,7 @@ const FortnightCardPaymentsPanel = ({
                               variant="outline"
                               size="icon"
                               className={cn(
-                                'h-8 w-8 rounded-full border-dashed border-status-income/40 bg-transparent shadow-none',
+                                'size-11 rounded-full border-dashed border-status-income/40 bg-transparent shadow-none sm:size-8',
                                 'transition-colors hover:border-status-income/70 hover:bg-status-income/10 dark:hover:bg-status-income/15',
                                 'disabled:pointer-events-none disabled:opacity-40',
                                 '[&_svg]:text-status-income dark:[&_svg]:text-status-income',
