@@ -273,7 +273,6 @@ Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these 
    - label + control → `FormGroupedRow` (react-hook-form) or `GroupedRow` (`htmlFor` when the control has an `id`)
    - amount → `FormAmountRow` / `AmountRow` (MXN chip + big mono amount; label sits **above** the amount)
    - date → `DateStepper` (required) or `OptionalDateStepper` (nullable, e.g. Fecha límite)
-   - date in the Agregar movimiento overlay → `FormDatePicker` (uiarc Date picker adapted: field button with a rolling date, calendar opens in the flow under the row with a Hoy shortcut and a status line)
    - hero amount (Agregar movimiento) → `FormAmountHero`: light blue tinted panel (`bg-primary/5`, `border-primary/30`, `shadow-sm`) above the grouped card, MXN prefix and a centered `text-4xl` (`md:text-5xl`) bold mono figure
 4. **Extra sections** — `OverlaySectionLabel` + a second grouped card (e.g. "Datos de crédito", "Comisión").
 5. **Hint** — `OverlayHint` **below** the card it explains. Never inside the card.
