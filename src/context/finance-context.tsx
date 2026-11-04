@@ -73,6 +73,12 @@ const FinanceContext: Context<FinanceContextValue | null> = (() => {
 
 const DEFAULT_CONTEXT: FinanceContextType = { type: 'user', id: 0 };
 
+/** Keep the same object when the owner did not change, so effects keyed on it do not refire. */
+const sameOwnerOr =
+  (next: FinanceContextType) =>
+  (prev: FinanceContextType): FinanceContextType =>
+    prev.type === next.type && prev.id === next.id ? prev : next;
+
 /**
  * Inner component that uses useSearchParams. Must be inside Suspense so static
  * prerender (e.g. 404) does not trigger useSearchParams() without a boundary.
@@ -113,7 +119,7 @@ function FinanceProviderSync({
           type: ownerType,
           id: ownerId,
         };
-        setContext(urlContext);
+        setContext(sameOwnerOr(urlContext));
         persist(urlContext, userId);
         hasSyncedUrlRef.current = true;
         return;
@@ -125,7 +131,7 @@ function FinanceProviderSync({
       type: 'user',
       id: userId,
     };
-    setContext(nextContext);
+    setContext(sameOwnerOr(nextContext));
     persist(nextContext, userId);
     const params = new URLSearchParams(searchParams.toString());
     params.set('ownerType', nextContext.type);
@@ -152,14 +158,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const setUserContext = useCallback((userId: number) => {
     const next: FinanceContextType = { type: 'user', id: userId };
-    setContext(next);
+    setContext(sameOwnerOr(next));
     currentUserIdRef.current = userId;
     persist(next, userId);
   }, []);
 
   const setHouseContext = useCallback((houseId: number) => {
     const next: FinanceContextType = { type: 'house', id: houseId };
-    setContext(next);
+    setContext(sameOwnerOr(next));
     const uid = currentUserIdRef.current;
     if (uid != null) persist(next, uid);
   }, []);
