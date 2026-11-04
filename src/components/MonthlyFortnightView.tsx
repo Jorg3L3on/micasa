@@ -432,6 +432,7 @@ export default function MonthlyFortnightView({
         key={`${year}-${month}-${ownerKey}`}
         year={year}
         month={month}
+        period={period}
         items={paymentsCalendarItems}
         todayYmd={todayYmd}
         refreshNonce={calendarRefreshNonce}
