@@ -38,7 +38,7 @@ const EmptyState = ({
           type="button"
           variant={action.variant ?? 'default'}
           size="sm"
-          className="mt-1"
+          className="mt-1 h-11 sm:h-8"
           asChild
         >
           <Link href={action.href}>{action.label}</Link>
@@ -48,7 +48,7 @@ const EmptyState = ({
           type="button"
           variant={action.variant ?? 'default'}
           size="sm"
-          className="mt-1"
+          className="mt-1 h-11 sm:h-8"
           onClick={action.onClick}
         >
           {action.label}

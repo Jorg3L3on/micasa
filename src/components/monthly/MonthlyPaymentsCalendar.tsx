@@ -44,11 +44,13 @@ import {
   isWindowFullyCreated,
   monthBounds,
   neighborWindow,
+  panelAnchoredWindow,
   pendingDatesFromCalendarItems,
   resolveInitialWindow,
+  resolvePanelWindow,
+  type CalendarFortnightPeriod,
   type CalendarViewMode,
   type CalendarWindowBounds,
-  weekBoundsContaining,
   windowMonths,
   itemsForCalendarDate,
 } from '@/lib/finance/payments-calendar';
@@ -104,21 +106,22 @@ const GLASS_TOP_HIGHLIGHT =
   'inset 0 1px 0 color-mix(in srgb, white 16%, transparent)';
 
 const glassFill = (hot: boolean): string => {
-  const top = hot ? 14 : 9;
-  const bottom = hot ? 6 : 3;
+  const top = hot ? 16 : 12;
+  const bottom = hot ? 8 : 5;
   return `linear-gradient(180deg, color-mix(in srgb, var(--foreground) ${top}%, transparent), color-mix(in srgb, var(--foreground) ${bottom}%, transparent))`;
 };
 
 /**
- * Every pending day is a neutral glass tile; urgency only tints a bottom glow
- * and the dots. Low-alpha amber/red fills turn muddy brown on navy.
+ * Every pending day is a neutral glass tile that reads as a button (fill +
+ * 1px border); urgency only tints a bottom glow and the dots. Low-alpha
+ * amber/red fills turn muddy brown on navy.
  */
 const pendingCellStyle = (
   urgency: DayUrgency,
   hot: boolean,
 ): { background: string; boxShadow: string } => {
   const hex = URGENCY_HEX[urgency];
-  const edge = hot ? 28 : 16;
+  const edge = hot ? 34 : 24;
   const glow = hex
     ? `radial-gradient(120% 90% at 50% 120%, ${hexWithAlpha(hex, hot ? 0.5 : 0.34)}, transparent 70%), `
     : '';
@@ -137,10 +140,12 @@ const VIEW_MODE_OPTIONS = [
 ] as const;
 
 type MonthlyPaymentsCalendarProps = {
-  /** Panel financiero year — seeds initial month window only. */
+  /** Panel financiero year: the calendar opens on this month. */
   year: number;
-  /** Panel financiero month — seeds initial month window only. */
+  /** Panel financiero month: the calendar opens on this month. */
   month: number;
+  /** Panel quincena: the Quincenal view opens on it and follows changes. */
+  period: CalendarFortnightPeriod;
   /** SSR / panel items for the Panel month (hydration). */
   items: PaymentsCalendarItem[];
   todayYmd: string;
@@ -384,6 +389,7 @@ const DaySheetBody = ({
 export const MonthlyPaymentsCalendar = ({
   year,
   month,
+  period,
   items: initialItems,
   todayYmd,
   refreshNonce = 0,
@@ -402,14 +408,13 @@ export const MonthlyPaymentsCalendar = ({
   const tooltipId = useId();
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const [initialWeek] = useState<CalendarWindowBounds>(() => {
-    const viewedMonth = monthBounds(year, month);
-    const todayInViewedMonth =
-      todayYmd >= viewedMonth.startYmd && todayYmd <= viewedMonth.endYmd;
-    return weekBoundsContaining(
-      todayInViewedMonth ? todayYmd : viewedMonth.startYmd,
-    );
-  });
+  const panelAnchor = useMemo(
+    () => ({ year, month, period, todayYmd }),
+    [year, month, period, todayYmd],
+  );
+  const [initialWeek] = useState<CalendarWindowBounds>(() =>
+    panelAnchoredWindow('week', panelAnchor),
+  );
   const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
   const [windowBounds, setWindowBounds] =
     useState<CalendarWindowBounds>(initialWeek);
@@ -648,7 +653,7 @@ export const MonthlyPaymentsCalendar = ({
       const nextMode = nextValue as CalendarViewMode;
       if (nextMode === viewMode || !createdMonths) return;
 
-      const resolved = resolveInitialWindow(nextMode, todayYmd, createdMonths);
+      const resolved = resolvePanelWindow(nextMode, panelAnchor, createdMonths);
       if (!resolved) {
         // No valid week/fortnight under created-months rule — stay Mensual.
         return;
@@ -657,8 +662,18 @@ export const MonthlyPaymentsCalendar = ({
       setViewMode(nextMode);
       void navigateToWindow(resolved);
     },
-    [createdMonths, navigateToWindow, todayYmd, viewMode],
+    [createdMonths, navigateToWindow, panelAnchor, viewMode],
   );
+
+  // Quincenal follows the Panel's quincena toggle; other views keep their range.
+  const lastPeriodRef = useRef(period);
+  useEffect(() => {
+    if (lastPeriodRef.current === period) return;
+    lastPeriodRef.current = period;
+    if (viewMode !== 'fortnight' || !createdMonths) return;
+    const resolved = resolvePanelWindow('fortnight', panelAnchor, createdMonths);
+    if (resolved) void navigateToWindow(resolved);
+  }, [createdMonths, navigateToWindow, panelAnchor, period, viewMode]);
 
   const tipOpen = showHoverTip && hoverYmd != null;
 
@@ -688,7 +703,9 @@ export const MonthlyPaymentsCalendar = ({
     currentWindow.endYmd === windowBounds.endYmd;
 
   const handleGoToCurrentWindow = () => {
-    if (currentWindow) void navigateToWindow(currentWindow);
+    if (currentWindow && !isOnCurrentWindow) {
+      void navigateToWindow(currentWindow);
+    }
   };
 
   const navLabel = (bounds: CalendarWindowBounds | null, which: 'prev' | 'next') => {
@@ -715,13 +732,15 @@ export const MonthlyPaymentsCalendar = ({
         icon={CalendarDays}
         title="Calendario de pagos"
         subtitle={`${periodTitle} · ${pendingInWindow} ${pendingInWindow === 1 ? 'pendiente' : 'pendientes'}`}
+        // Mobile: the nav pill takes its own full-width row (44px targets).
+        className="max-sm:flex-wrap max-sm:[&>:last-child]:w-full"
         actions={
-          <div className="flex items-center gap-0.5 rounded-full bg-card p-0.5 dark:bg-white/[0.04]">
+          <div className="flex items-center gap-0.5 rounded-full bg-card p-0.5 max-sm:w-full max-sm:justify-between dark:bg-white/[0.04]">
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="rounded-full"
+              className="rounded-full max-sm:size-11"
               disabled={!prevWindow || loadingMonth}
               aria-label={navLabel(prevWindow, 'prev')}
               onClick={() => {
@@ -730,24 +749,22 @@ export const MonthlyPaymentsCalendar = ({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            {currentWindow && !isOnCurrentWindow ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 rounded-full px-2.5 text-muted-foreground hover:text-foreground"
-                disabled={loadingMonth}
-                aria-label={CURRENT_WINDOW_LABEL_BY_MODE[viewMode]}
-                onClick={handleGoToCurrentWindow}
-              >
-                Hoy
-              </Button>
-            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 rounded-full px-2.5 text-muted-foreground hover:text-foreground max-sm:h-11 max-sm:px-4"
+              disabled={loadingMonth || !currentWindow || isOnCurrentWindow}
+              aria-label={CURRENT_WINDOW_LABEL_BY_MODE[viewMode]}
+              onClick={handleGoToCurrentWindow}
+            >
+              Hoy
+            </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="rounded-full"
+              className="rounded-full max-sm:size-11"
               disabled={!nextWindow || loadingMonth}
               aria-label={navLabel(nextWindow, 'next')}
               onClick={() => {
@@ -808,7 +825,12 @@ export const MonthlyPaymentsCalendar = ({
 
         {cells.map((cell, index) => {
           if (!cell) {
-            return <span key={`empty-${index}`} className="mx-auto size-10" />;
+            return (
+              <span
+                key={`empty-${index}`}
+                className="mx-auto block h-10 w-full max-w-10"
+              />
+            );
           }
 
           const hot = hoverYmd === cell.ymd;
@@ -829,7 +851,7 @@ export const MonthlyPaymentsCalendar = ({
           return (
             <span
               key={cell.ymd}
-              className="relative mx-auto block size-10 transition-opacity duration-200"
+              className="relative mx-auto block h-11 w-full max-w-11 transition-opacity duration-200 sm:h-10 sm:max-w-10"
               style={{ opacity: dim ? 0.35 : 1 }}
             >
               <motion.button
@@ -984,6 +1006,12 @@ export const MonthlyPaymentsCalendar = ({
           />
         ) : null}
       </div>
+
+      {opensDaySheet ? (
+        <p className="text-center text-caption text-muted-foreground">
+          Toca un día para ver sus pagos
+        </p>
+      ) : null}
 
       <ul
         className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-caption text-muted-foreground"

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
+import { FortnightBudgetDesgloseSection } from '@/components/monthly/FortnightBudgetBreakdown';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { MonthlyPaymentsCalendar } from '@/components/monthly/MonthlyPaymentsCalendar';
 import { WalletCarouselPanel } from '@/components/monthly/WalletCarouselPanel';
@@ -441,24 +442,37 @@ export default function MonthlyFortnightView({
   const budgetSidebar = (
     <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
       {walletCarousel}
+      {/* Below xl the budget lives inside Ver desglose (budgetDesglose). */}
       {panelBudget ? (
         <MonthlyBudgetSidebar
           panel={panelBudget}
           ownerQuery={budgetOwnerQuery}
+          className="hidden xl:block"
         />
       ) : (
-        <PanelCardSkeleton bodyClassName="h-40" />
+        <PanelCardSkeleton bodyClassName="h-40" className="hidden xl:block" />
       )}
       <MonthlyPaymentsCalendar
         key={`${year}-${month}-${ownerKey}`}
         year={year}
         month={month}
+        period={period}
         items={paymentsCalendarItems}
         todayYmd={todayYmd}
         refreshNonce={calendarRefreshNonce}
       />
     </div>
   );
+
+  const budgetDesglose = panelBudget ? (
+    <FortnightBudgetDesgloseSection
+      scope={period === 'FIRST' ? panelBudget.first : panelBudget.second}
+      ownerQuery={budgetOwnerQuery}
+      periodLabel={
+        period === 'FIRST' ? 'primera quincena' : 'segunda quincena'
+      }
+    />
+  ) : null;
 
   const activeSummary = activeBundle.summary;
   const columnReady =
@@ -484,6 +498,7 @@ export default function MonthlyFortnightView({
               summaryFundingRefreshNonce={summaryFundingRefreshNonce}
               preferenceScope={preferenceScope}
               dualColumnLayout={false}
+              budgetDesglose={budgetDesglose}
               onPanelRefresh={refreshPanelData}
             />
           ) : failedPeriod === period && loadingPeriod !== period ? (

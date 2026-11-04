@@ -607,6 +607,7 @@ export type PlannerInstallmentPlanPaymentItem = {
   planName: string;
   walletId: number;
   walletName: string;
+  providerIconKey: string | null;
   dueDate: string;
   amount: number;
   sequence: number;
@@ -640,7 +641,9 @@ async function listInstallmentPlanPaymentsForPlannerMonthImpl(
         select: {
           id: true,
           name: true,
-          credit_card_wallet: { select: { id: true, name: true } },
+          credit_card_wallet: {
+            select: { id: true, name: true, provider_icon_key: true },
+          },
         },
       },
     },
@@ -653,6 +656,7 @@ async function listInstallmentPlanPaymentsForPlannerMonthImpl(
     planName: row.plan.name,
     walletId: row.plan.credit_card_wallet.id,
     walletName: row.plan.credit_card_wallet.name,
+    providerIconKey: row.plan.credit_card_wallet.provider_icon_key ?? null,
     dueDate: formatCalendarDate(row.due_date),
     amount: decimalToNumber(row.amount),
     sequence: row.sequence,
