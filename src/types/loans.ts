@@ -65,6 +65,8 @@ export type LoanDuePaymentItem = LoanPaymentListItem & {
   loanName: string;
   lender: string;
   lenderId: number | null;
+  /** `Lender.provider_icon_key`; null without a lender or a logo. */
+  lenderProviderIconKey: string | null;
   loanType: LoanTypeValue;
   paymentSource: LoanPaymentSourceValue;
   linkedWalletId: number | null;
