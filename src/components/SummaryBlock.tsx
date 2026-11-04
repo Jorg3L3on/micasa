@@ -1,7 +1,7 @@
 'use client';
 
 import EmptyState from '@/components/EmptyState';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -90,6 +90,8 @@ type SummaryBlockProps = {
   planningPayrollLoanDeduction?: PlannerPayrollLoanDeductionSummary | null;
   /** Resto del presupuesto de la quincena (total − spent); suma al compromiso. */
   planningBudgetRemaining?: number;
+  /** Budget section inside Ver desglose; hidden from xl, where the card shows. */
+  budgetDesglose?: ReactNode;
   /** Saldos activos Efectivo + Débito (API resumen) — Balance actual. */
   fundingWalletBalanceTotal?: number;
   /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto — Liquidez actual. */
@@ -119,6 +121,7 @@ export default function SummaryBlock({
   planningWalletLoanDue = null,
   planningPayrollLoanDeduction = null,
   planningBudgetRemaining = 0,
+  budgetDesglose = null,
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
@@ -398,6 +401,10 @@ export default function SummaryBlock({
                 {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
                 (desde la sección de tarjetas, sin gasto duplicado en la lista).
               </p>
+            ) : null}
+
+            {budgetDesglose != null ? (
+              <div className="xl:hidden">{budgetDesglose}</div>
             ) : null}
 
             {incomeItems.length > 0 || hasUserIncome ? (

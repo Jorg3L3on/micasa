@@ -2,7 +2,7 @@
 
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getDefaultDateForFortnight } from '@/lib/fortnight-calendar';
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
@@ -156,6 +156,8 @@ type FortnightColumnProps = {
   preferenceScope?: string;
   /** Narrow column when both fortnights are shown side by side. */
   dualColumnLayout?: boolean;
+  /** Panel budget block for Ver desglose below xl (the card covers xl+). */
+  budgetDesglose?: ReactNode;
   /** Payments calendar for < xl (sidebar hosts it at xl+). */
   /** Refetch panel data in place. Avoids router.refresh(), which remounts the page. */
   onPanelRefresh: () => Promise<void>;
@@ -176,6 +178,7 @@ export default function FortnightColumn({
   summaryFundingRefreshNonce,
   preferenceScope = 'default',
   dualColumnLayout = false,
+  budgetDesglose = null,
   onPanelRefresh,
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
@@ -1013,6 +1016,7 @@ export default function FortnightColumn({
             summary.planningPayrollLoanDeduction ?? null
           }
           planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
+          budgetDesglose={budgetDesglose}
           fundingWalletBalanceTotal={
             summary.fundingWalletBalanceTotal ?? 0
           }
