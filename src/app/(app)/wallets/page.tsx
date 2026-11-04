@@ -73,7 +73,6 @@ import { WalletsGallery } from '@/components/wallets/WalletsGallery';
 import {
   buildAttentionItems,
   groupWalletsBySection,
-  summarizeWallets,
 } from '@/lib/ui/wallet-cover-flow';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
@@ -912,7 +911,6 @@ export default function WalletsPage() {
     () => groupWalletsBySection(displayWallets),
     [displayWallets],
   );
-  const totals = useMemo(() => summarizeWallets(wallets), [wallets]);
   const attentionItems = useMemo(() => {
     const [year, month, day] = todayCalendarDate().split('-').map(Number);
     return buildAttentionItems(displayWallets, {
@@ -1315,7 +1313,6 @@ export default function WalletsPage() {
                     <WalletsGallery
                       funding={sections.funding}
                       credit={sections.credit}
-                      totals={totals}
                       attention={attentionItems}
                       ownerQueryString={ownerQueryString}
                       onCreate={openCreateDialog}

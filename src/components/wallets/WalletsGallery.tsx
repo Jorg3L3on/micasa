@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeftRight, Banknote, Diff, ExternalLink, ShoppingCart, SlidersHorizontal } from 'lucide-react';
@@ -10,26 +10,23 @@ import {
   type PaymentMethodType,
 } from '@/domain/payment-method';
 import { Button } from '@/components/ui/button';
-import { SegmentedControl } from '@/components/segmented-control';
 import { WalletFlowFace } from '@/components/wallets/WalletFlowFace';
 import { WalletMovementsTable } from '@/components/wallets/WalletMovementsTable';
 import { walletDetailHref, walletMovementsHref } from '@/components/wallets/WalletFlowSection';
 import type { WalletFlowActions } from '@/components/wallets/WalletFlowDetails';
-import type { WalletAttentionItem, WalletTotals } from '@/lib/ui/wallet-cover-flow';
+import type { WalletAttentionItem } from '@/lib/ui/wallet-cover-flow';
 import {
   parseWalletSelection,
   resolveSelectedWalletId,
   WALLET_SELECTION_PARAM,
   walletsForTab,
-  type WalletGalleryTab,
 } from '@/lib/ui/wallet-master-detail';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 
 type WalletsGalleryProps = WalletFlowActions & {
   funding: WalletListItem[];
   credit: WalletListItem[];
-  totals: WalletTotals;
   attention: WalletAttentionItem[];
   ownerQueryString: string;
   onCreate: () => void;
@@ -57,7 +54,6 @@ const attentionCaption = (item: WalletAttentionItem): string => {
 export const WalletsGallery = ({
   funding,
   credit,
-  totals,
   attention,
   ownerQueryString,
   onCreate,
@@ -71,13 +67,10 @@ export const WalletsGallery = ({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<WalletGalleryTab>('all');
 
-  const visible = useMemo(() => walletsForTab(tab, { funding, credit }), [tab, funding, credit]);
+  const visible = useMemo(() => walletsForTab('all', { funding, credit }), [funding, credit]);
   const requested = parseWalletSelection(searchParams.get(WALLET_SELECTION_PARAM));
-  // The selection may belong to another tab; resolve against everything first.
-  const all = useMemo(() => walletsForTab('all', { funding, credit }), [funding, credit]);
-  const selectedId = resolveSelectedWalletId(visible, resolveSelectedWalletId(all, requested));
+  const selectedId = resolveSelectedWalletId(visible, requested);
   const selected = visible.find((w) => w.id === selectedId) ?? null;
   const attentionById = useMemo(
     () => new Map(attention.map((item) => [item.wallet.id, item])),
@@ -111,34 +104,6 @@ export const WalletsGallery = ({
   return (
     <div className="min-w-0 space-y-8">
       <section aria-label="Billeteras" className="space-y-5">
-        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-          <SegmentedControl
-            variant="underline"
-            ariaLabel="Tipo de billetera"
-            value={tab}
-            onValueChange={(v) => setTab(v as WalletGalleryTab)}
-            options={[
-              { value: 'all', label: `Todas · ${funding.length + credit.length}` },
-              { value: 'funding', label: `Efectivo y débito · ${funding.length}` },
-              { value: 'credit', label: `Tarjetas · ${credit.length}` },
-            ]}
-          />
-          <dl className="flex gap-6 text-right">
-            <div>
-              <dt className="text-caption text-muted-foreground">Liquidez total</dt>
-              <dd className="text-sm font-semibold tabular-nums text-foreground">
-                {formatCurrency(totals.liquidity)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-caption text-muted-foreground">Deuda en tarjetas</dt>
-              <dd className="text-sm font-semibold tabular-nums text-foreground">
-                {formatCurrency(totals.cardDebt)}
-              </dd>
-            </div>
-          </dl>
-        </div>
-
         <ul className="grid grid-cols-2 gap-5 lg:grid-cols-3 xl:grid-cols-4">
           {visible.map((wallet) => {
             const isSelected = wallet.id === selectedId;
