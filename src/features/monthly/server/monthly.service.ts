@@ -6,7 +6,6 @@ import {
 import { buildFundingWalletBreakdownFromWallets } from '@/lib/finance/funding-wallet-breakdown';
 import { listLoanPaymentsForPlannerMonth } from '@/lib/finance/loan.service';
 import { listPlanningTransactions } from '@/lib/finance/planning-transactions.service';
-import { ensureBudgetPeriodsForMonth } from '@/lib/finance/budget-period.service';
 import { getMonthlyBudgetPanel } from '@/lib/finance/monthly-budget-panel.service';
 import { listPaymentsCalendarForMonth } from '@/lib/finance/payments-calendar.service';
 import { getReportSummary } from '@/lib/finance/report-summary.service';
@@ -145,10 +144,8 @@ export const getMonthlyFortnightContentData = async (
     };
   }
 
-  await measure('monthly.budget-periods', () =>
-    ensureBudgetPeriodsForMonth(ownerFilter, year, month),
-  );
-
+  // getMonthlyBudgetPanel reconciles the month's budget periods first; the
+  // calendar and the active fortnight below do not read them.
   const [budgetPanel, paymentsCalendar] = await Promise.all([
     measure('monthly.budget-panel', () =>
       getMonthlyBudgetPanel(ownerFilter, year, month),

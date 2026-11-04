@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { endOfCalendarDay, parseCalendarDate, startOfCalendarDay } from '@/lib/calendar-dates';
 import { ensureBudgetPeriodsForMonth } from './budget-period.service';
 
@@ -280,5 +280,101 @@ describe('ensureBudgetPeriodsForMonth', () => {
 
     expect(mocks.budgetPeriodUpdate).toHaveBeenCalled();
     expect(mocks.budgetPeriodCreate).not.toHaveBeenCalled();
+  });
+
+  describe('writes only when the stored civil days differ', () => {
+    // Postgres hands canonical UTC-noon dates back as MX-midnight (06:00Z).
+    const mxMidnight = (ymd: string) => new Date(`${ymd}T06:00:00.000Z`);
+    const august = [
+      {
+        id: 1,
+        period: 'FIRST',
+        start_date: mxMidnight('2026-07-31'),
+        end_date: mxMidnight('2026-08-14'),
+      },
+      {
+        id: 2,
+        period: 'SECOND',
+        start_date: mxMidnight('2026-08-15'),
+        end_date: mxMidnight('2026-08-30'),
+      },
+    ];
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-08-05T18:00:00.000Z'));
+      mocks.fortnightCount.mockResolvedValue(2);
+      mocks.budgetCount.mockResolvedValue(1);
+      mocks.budgetPeriodCount.mockResolvedValue(2);
+      mocks.fortnightFindMany.mockResolvedValue(august);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('leaves an aligned BIWEEKLY budget and its periods untouched', async () => {
+      mocks.budgetFindMany
+        .mockResolvedValueOnce([
+          { id: 10, start_date: mxMidnight('2026-07-31'), end_date: mxMidnight('2026-08-14') },
+        ])
+        .mockResolvedValue([]);
+      mocks.budgetPeriodFindMany.mockResolvedValue([
+        { id: 301, start_date: mxMidnight('2026-07-31'), end_date: mxMidnight('2026-08-14') },
+        { id: 302, start_date: mxMidnight('2026-08-15'), end_date: mxMidnight('2026-08-30') },
+      ]);
+
+      await ensureBudgetPeriodsForMonth(ownerFilter, 2026, 8);
+
+      expect(mocks.fortnightUpdate).not.toHaveBeenCalled();
+      expect(mocks.budgetPeriodUpdate).not.toHaveBeenCalled();
+      expect(mocks.budgetUpdate).not.toHaveBeenCalled();
+      expect(mocks.budgetPeriodDeleteMany).not.toHaveBeenCalled();
+      expect(mocks.budgetPeriodCreate).not.toHaveBeenCalled();
+    });
+
+    it('moves the BIWEEKLY template window when it points at another quincena', async () => {
+      mocks.budgetFindMany
+        .mockResolvedValueOnce([
+          { id: 10, start_date: mxMidnight('2026-07-15'), end_date: mxMidnight('2026-07-30') },
+        ])
+        .mockResolvedValue([]);
+      mocks.budgetPeriodFindMany.mockResolvedValue([
+        { id: 301, start_date: mxMidnight('2026-07-31'), end_date: mxMidnight('2026-08-14') },
+        { id: 302, start_date: mxMidnight('2026-08-15'), end_date: mxMidnight('2026-08-30') },
+      ]);
+
+      await ensureBudgetPeriodsForMonth(ownerFilter, 2026, 8);
+
+      expect(mocks.budgetUpdate).toHaveBeenCalledTimes(1);
+      expect(mocks.budgetUpdate).toHaveBeenCalledWith({
+        where: { id: 10 },
+        data: {
+          start_date: parseCalendarDate('2026-07-31'),
+          end_date: parseCalendarDate('2026-08-14'),
+        },
+      });
+    });
+
+    it('leaves an aligned WEEKLY template untouched and moves a stale one', async () => {
+      mocks.budgetFindMany
+        .mockResolvedValueOnce([]) // BIWEEKLY
+        .mockResolvedValueOnce([
+          { id: 20, start_date: mxMidnight('2026-08-02'), end_date: mxMidnight('2026-08-08') },
+          { id: 21, start_date: mxMidnight('2026-07-26'), end_date: mxMidnight('2026-08-01') },
+        ])
+        .mockResolvedValue([]);
+      mocks.budgetPeriodFindMany.mockResolvedValue([
+        { id: 401, start_date: mxMidnight('2026-08-02'), end_date: mxMidnight('2026-08-08') },
+      ]);
+
+      await ensureBudgetPeriodsForMonth(ownerFilter, 2026, 8);
+
+      expect(mocks.budgetPeriodUpdate).not.toHaveBeenCalled();
+      expect(mocks.budgetUpdate).toHaveBeenCalledTimes(1);
+      expect(mocks.budgetUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 21 } }),
+      );
+    });
   });
 });
