@@ -1,7 +1,6 @@
 import type { WalletListItem } from '@/types/catalog';
-import { formatMoney } from '@/lib/money';
 
-/** Query param that keeps the selected wallet in the URL (web master-detail). */
+/** Query param that keeps the selected wallet in the URL (web card gallery). */
 export const WALLET_SELECTION_PARAM = 'w';
 
 /** Parse `?w=` into a wallet id; anything that is not a positive integer is null. */
@@ -42,12 +41,15 @@ export const stepWalletSelection = (
   return ordered[next].id;
 };
 
-/** Splits a formatted amount so the cents can be muted: `$7,115` + `.23`. */
-export const splitMoneyCents = (
-  amount: number | string,
-): { whole: string; cents: string } => {
-  const text = formatMoney(amount);
-  const dot = text.lastIndexOf('.');
-  if (dot < 0) return { whole: text, cents: '' };
-  return { whole: text.slice(0, dot), cents: text.slice(dot) };
-};
+export type WalletGalleryTab = 'all' | 'funding' | 'credit';
+
+/** Wallets shown under a gallery tab; `funding` and `credit` come pre-grouped. */
+export const walletsForTab = <T,>(
+  tab: WalletGalleryTab,
+  sections: { funding: T[]; credit: T[] },
+): T[] =>
+  tab === 'funding'
+    ? sections.funding
+    : tab === 'credit'
+      ? sections.credit
+      : [...sections.funding, ...sections.credit];

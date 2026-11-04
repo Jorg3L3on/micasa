@@ -69,7 +69,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { WalletFlowSection } from '@/components/wallets/WalletFlowSection';
 import { WalletsAttentionBlock } from '@/components/wallets/WalletsAttentionBlock';
 import { WalletsFirstEmptyState } from '@/components/wallets/WalletsFirstEmptyState';
-import { WalletsMasterDetail } from '@/components/wallets/WalletsMasterDetail';
+import { WalletsGallery } from '@/components/wallets/WalletsGallery';
 import {
   buildAttentionItems,
   groupWalletsBySection,
@@ -1312,7 +1312,7 @@ export default function WalletsPage() {
                       {...flowActions}
                     />
                   ) : (
-                    <WalletsMasterDetail
+                    <WalletsGallery
                       funding={sections.funding}
                       credit={sections.credit}
                       totals={totals}

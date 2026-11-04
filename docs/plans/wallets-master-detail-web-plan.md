@@ -81,3 +81,20 @@ Web shows list plus inline detail matching the mockup; selection persists in the
 - Q2 Hero for credit cards: **Usado**, with Disponible beneath.
 - Q3 Include a balance sparkline in the hero? **No (not in the reference, no data endpoint).**
 - Q4 Movements: **last 20 in-pane plus "Ver todo".**
+
+## Revision 2 (supersedes sections 3 to 4 where they differ)
+Rafael pointed at the center of a second reference (an NFT dashboard: tabs, a row of tall visual cards with name, subtitle and value, then a "Payment History" table with recipient, date, status chip and amount) as a better fit than the Solcard master-detail. New web layout:
+```
+ Todas · 5   Efectivo y débito · 3   Tarjetas · 2          Liquidez  $48,210   Deuda  $12,300
+ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+ │ face   │ │ face ◀ │ │ face   │ │ face   │      (selected face has a primary ring)
+ └────────┘ └────────┘ └────────┘ └────────┘
+ BBVA        Efectivo    Mercado Pago  Liverpool
+ Débito      Efectivo    Vence en 3 d  Crédito        [+ Agregar billetera]
+ ┌ Movimientos · Efectivo          [Movimiento] [Transferir] [Ajustar saldo] ┐
+ │ Descripción        Fecha        Tipo        Monto                          │
+ │ ◉ Café             hoy          Gasto       −$85.00                        │
+ │ ◉ Nómina           1 nov        Ingreso     +$12,000.00                    │
+ └────────────────────────────────────────────────────────────────────────────┘
+```
+Mapping: image tabs become type tabs; image cards become wallet faces; "Payment History" becomes the selected wallet's movement table, with the type chip (Gasto, Ingreso, Pago de tarjeta, Transferencia) standing in for status (movements have no status field); the image's right-hand summary column is not used (totals sit on the tab row). Actions move to the history panel header. Selection stays in the URL. No new API (the movements endpoint already takes `latest`). Mobile unchanged.

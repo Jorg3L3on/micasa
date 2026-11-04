@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   parseWalletSelection,
   resolveSelectedWalletId,
-  splitMoneyCents,
   stepWalletSelection,
+  walletsForTab,
 } from './wallet-master-detail';
 
 const list = [{ id: 4 }, { id: 9 }, { id: 2 }];
@@ -42,11 +42,11 @@ describe('stepWalletSelection', () => {
   });
 });
 
-describe('splitMoneyCents', () => {
-  it('separates the cents', () => {
-    expect(splitMoneyCents(7115.23)).toEqual({ whole: '$7,115', cents: '.23' });
-  });
-  it('keeps the sign on the whole part', () => {
-    expect(splitMoneyCents(-4300).whole).toBe('-$4,300');
+describe('walletsForTab', () => {
+  const sections = { funding: [1, 2], credit: [3] };
+  it('returns one group or both in on-screen order', () => {
+    expect(walletsForTab('funding', sections)).toEqual([1, 2]);
+    expect(walletsForTab('credit', sections)).toEqual([3]);
+    expect(walletsForTab('all', sections)).toEqual([1, 2, 3]);
   });
 });
