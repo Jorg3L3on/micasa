@@ -27,6 +27,21 @@ vi.mock('@/lib/finance/budget-period-spend', async (importOriginal) => {
   return {
     ...actual,
     computePeriodSpendByAllocations: mocks.computePeriodSpendByAllocations,
+    // The panel batches every period; each request still goes through the
+    // per-period mock, in the same order as before (first quincena, then second).
+    computePeriodSpendsByAllocations: async (
+      db: unknown,
+      requests: { allocations: unknown[]; window: unknown }[],
+      owner: unknown,
+    ) => {
+      const results = [];
+      for (const request of requests) {
+        results.push(
+          await mocks.computePeriodSpendByAllocations(db, request.allocations, request.window, owner),
+        );
+      }
+      return results;
+    },
   };
 });
 

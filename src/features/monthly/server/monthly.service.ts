@@ -144,53 +144,56 @@ export const getMonthlyFortnightContentData = async (
     };
   }
 
-  // getMonthlyBudgetPanel reconciles the month's budget periods first; the
-  // calendar and the active fortnight below do not read them.
-  const [budgetPanel, paymentsCalendar] = await Promise.all([
-    measure('monthly.budget-panel', () =>
-      getMonthlyBudgetPanel(ownerFilter, year, month),
-    ),
-    measure('monthly.payments-calendar', () =>
-      listPaymentsCalendarForMonth(ownerFilter, year, month),
-    ),
-  ]);
-
   const activeFortnightIds =
     activePeriod === 'FIRST'
       ? [firstFortnightInfo.id]
       : [secondFortnightInfo.id];
-  const planningBudgetRemaining =
-    activePeriod === 'FIRST'
-      ? budgetPanel.first.available
-      : budgetPanel.second.available;
 
-  const activeData = await measure('monthly.active-fortnight', () =>
-    Promise.all([
-      measure('monthly.transactions', () =>
-        listPlanningTransactions({
-          ownerFilter,
-          year: yearParam,
-          month: monthParam,
-          period: activePeriod,
-          type: 'expense',
-          excludeCreditInstallment: true,
-          resolvedFortnightIds: activeFortnightIds,
-        }),
-      ),
-      measure('monthly.reports', () =>
-        getReportSummary({
-          ownerFilter,
-          year: yearParam,
-          month: monthParam,
-          period: activePeriod,
-          excludeCreditInstallment: true,
-          resolvedFortnightIds: activeFortnightIds,
-          planningBudgetRemaining,
-          fundingWalletBreakdown: shell.fundingWalletBreakdown,
-        }),
-      ),
-    ]).then(([transactions, summary]) => ({ transactions, summary })),
+  // One level after the shell: the budget panel (which reconciles the month's
+  // budget periods first), the calendar and the active fortnight's
+  // transactions start together; only the summary waits, for the budget
+  // remainder. None of the others reads budget periods.
+  const budgetPanelPromise = measure('monthly.budget-panel', () =>
+    getMonthlyBudgetPanel(ownerFilter, year, month),
   );
+  const [budgetPanel, paymentsCalendar, activeData] = await Promise.all([
+    budgetPanelPromise,
+    measure('monthly.payments-calendar', () =>
+      listPaymentsCalendarForMonth(ownerFilter, year, month),
+    ),
+    measure('monthly.active-fortnight', () =>
+      Promise.all([
+        measure('monthly.transactions', () =>
+          listPlanningTransactions({
+            ownerFilter,
+            year: yearParam,
+            month: monthParam,
+            period: activePeriod,
+            type: 'expense',
+            excludeCreditInstallment: true,
+            resolvedFortnightIds: activeFortnightIds,
+          }),
+        ),
+        budgetPanelPromise.then((panel) =>
+          measure('monthly.reports', () =>
+            getReportSummary({
+              ownerFilter,
+              year: yearParam,
+              month: monthParam,
+              period: activePeriod,
+              excludeCreditInstallment: true,
+              resolvedFortnightIds: activeFortnightIds,
+              planningBudgetRemaining:
+                activePeriod === 'FIRST'
+                  ? panel.first.available
+                  : panel.second.available,
+              fundingWalletBreakdown: shell.fundingWalletBreakdown,
+            }),
+          ),
+        ),
+      ]).then(([transactions, summary]) => ({ transactions, summary })),
+    ),
+  ]);
 
   return {
     firstTransactions:
