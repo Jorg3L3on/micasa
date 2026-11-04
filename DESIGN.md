@@ -272,8 +272,8 @@ Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these 
 3. **Grouped card** — `OVERLAY_GROUPED_CARD_CLASS`. Each field is a row:
    - label + control → `FormGroupedRow` (react-hook-form) or `GroupedRow` (`htmlFor` when the control has an `id`)
    - amount → `FormAmountRow` / `AmountRow` (MXN chip + big mono amount; label sits **above** the amount)
-   - date → `DateStepper` (required) or `OptionalDateStepper` (nullable, e.g. Fecha límite); create overlays for a movement use `FormDateQuickPicker` (Hoy and Ayer chips plus a date pill that opens the system picker)
-   - hero amount (Agregar movimiento) → `FormAmountHero`: tinted panel above the grouped card, MXN prefix and a centered `text-4xl` (`md:text-5xl`) bold mono figure
+   - date → `DateStepper` (required) or `OptionalDateStepper` (nullable, e.g. Fecha límite)
+   - hero amount (Agregar movimiento) → `FormAmountHero`: light blue tinted panel (`bg-primary/10`, `border-primary/20`) above the grouped card, MXN prefix and a centered `text-4xl` (`md:text-5xl`) bold mono figure
 4. **Extra sections** — `OverlaySectionLabel` + a second grouped card (e.g. "Datos de crédito", "Comisión").
 5. **Hint** — `OverlayHint` **below** the card it explains. Never inside the card.
 6. **Warnings** — amber notice (`InsufficientWalletExpenseNotice` style) when a value needs attention before saving.
@@ -305,7 +305,7 @@ Everything above is exported from `src/components/overlay/overlay-form.tsx` (and
 
 ### Banned inside overlays
 
-- Native visible `<input type="date">` → `DateStepper` / `OptionalDateStepper` / `FormDateQuickPicker` (the native input is hidden under the pill)
+- Native visible `<input type="date">` → `DateStepper` / `OptionalDateStepper`
 - Stacked `FormLabel` over a bordered `Input` / `SelectTrigger` → grouped row
 - `CurrencyInput` with the `$` prefix for the main amount → `AmountRow` / `FormAmountRow`
 - Local copies of `GroupedRow`, the MXN chip, or `w-[5rem]` label spans → import from the kit

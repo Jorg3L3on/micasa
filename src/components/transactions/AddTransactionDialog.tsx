@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowDownCircle, ArrowUpCircle, Tag, Type, Wallet } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, CalendarDays, Tag, Type, Wallet } from 'lucide-react';
 import { animate, motion, useMotionValue, useReducedMotion } from 'framer-motion';
 import {
   Form,
@@ -50,8 +50,8 @@ import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
   FieldClearButton,
+  DateStepper,
   FormAmountHero,
-  FormDateQuickPicker,
   FormGroupedRow,
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
@@ -449,7 +449,12 @@ export default function AddTransactionDialog({
                   control={expenseForm.control}
                   name="date"
                   render={({ field }) => (
-                    <FormDateQuickPicker value={field.value} onChange={field.onChange} />
+                    <FormGroupedRow label="Fecha" icon={<CalendarDays />}>
+                      <DateStepper
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormGroupedRow>
                   )}
                 />
               </div>
@@ -634,7 +639,12 @@ export default function AddTransactionDialog({
                   control={incomeForm.control}
                   name="date"
                   render={({ field }) => (
-                    <FormDateQuickPicker value={field.value} onChange={field.onChange} />
+                    <FormGroupedRow label="Fecha" icon={<CalendarDays />}>
+                      <DateStepper
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormGroupedRow>
                   )}
                 />
               </div>
@@ -815,10 +825,9 @@ function TransactionTypeSwitch({
       tabIndex={0}
       className={cn(
         'relative grid h-12 w-full touch-manipulation select-none grid-cols-2 rounded-full p-0.5',
-        'border border-border/60 bg-background/80 backdrop-blur-xl',
+        'border border-slate-200 bg-white dark:border-white/10',
         'shadow-panel',
-        'outline-none dark:border-white/10 dark:bg-black/45',
-        'dark:shadow-panel',
+        'outline-none',
       )}
       style={{ touchAction: 'none' }}
     >
@@ -827,7 +836,7 @@ function TransactionTypeSwitch({
         style={{ x }}
         className={cn(
           'pointer-events-none absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-full',
-          'bg-muted dark:bg-white/15',
+          'bg-primary/10',
         )}
       />
       {TYPE_TABS.map(({ id, label, icon: Icon }) => {
@@ -844,14 +853,14 @@ function TransactionTypeSwitch({
               className={cn(
                 'h-5 w-5',
                 selected
-                  ? 'fill-primary/15 text-primary-text'
-                  : 'text-muted-foreground',
+                  ? 'fill-primary/15 text-primary'
+                  : 'text-slate-500',
               )}
             />
             <span
               className={cn(
                 'text-xs font-medium leading-none',
-                selected ? 'text-primary-text' : 'text-muted-foreground',
+                selected ? 'text-primary' : 'text-slate-500',
               )}
             >
               {label}
