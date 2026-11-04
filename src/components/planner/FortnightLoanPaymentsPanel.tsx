@@ -17,7 +17,8 @@ import {
   type PlannerListSortDir,
   type PlannerListSortMode,
 } from '@/lib/finance/planner-list-sort';
-import LenderPayDialog from '@/components/loans/LenderPayDialog';
+import dynamic from 'next/dynamic';
+import { useOpenedOnce } from '@/hooks/use-opened-once';
 import { LoanPaymentManageOverlay } from '@/components/loans/LoanPaymentManageOverlay';
 import { useFinanceContext } from '@/context/finance-context';
 import { getLender, payLender } from '@/lib/api/lenders';
@@ -29,6 +30,9 @@ import {
   getDueRowTone,
   type DueRowStatus,
 } from '@/lib/ui/aura-palette';
+
+// The pay dialog's form loads when a payment is opened.
+const LenderPayDialog = dynamic(() => import('@/components/loans/LenderPayDialog'), { ssr: false });
 
 type FortnightLoanPaymentsPanelProps = {
   items: LoanDuePaymentItem[];
@@ -79,6 +83,7 @@ export default function FortnightLoanPaymentsPanel({
   );
   const [manageOpen, setManageOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const payDialogMounted = useOpenedOnce(payOpen);
   const [payingLender, setPayingLender] = useState<LenderListItem | null>(null);
   const [fundingWallets, setFundingWallets] = useState<PaymentMethodOption[]>(
     [],
@@ -407,7 +412,7 @@ export default function FortnightLoanPaymentsPanel({
         items={managingItems}
         onSuccess={onUpdated}
       />
-      <LenderPayDialog
+      {payDialogMounted ? <LenderPayDialog
         open={payOpen}
         onOpenChange={(open) => {
           setPayOpen(open);
@@ -418,7 +423,7 @@ export default function FortnightLoanPaymentsPanel({
         submitting={paySubmitting}
         error={payError}
         onConfirm={handlePayLender}
-      />
+      /> : null}
     </div>
   );
 }

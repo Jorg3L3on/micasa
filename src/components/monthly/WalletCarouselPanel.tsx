@@ -21,12 +21,8 @@ import {
   Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
-import CreditCardPaymentDialog, {
-  type CreditCardPaymentSubmitPayload,
-} from '@/components/credit-cards/CreditCardPaymentDialog';
-import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
-import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
+import dynamic from 'next/dynamic';
+import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { SegmentedControl } from '@/components/segmented-control';
 import {
@@ -90,6 +86,12 @@ import type {
   AddIncomeFormValues,
 } from '@/schemas/transaction.schema';
 import type { PaymentMethodOption, WalletListItem } from '@/types/catalog';
+
+// Wallet action dialogs (zod, react-hook-form, schemas) load when one opens.
+const AddTransactionDialog = dynamic(() => import('@/components/transactions/AddTransactionDialog'), { ssr: false });
+const CreditCardPaymentDialog = dynamic(() => import('@/components/credit-cards/CreditCardPaymentDialog'), { ssr: false });
+const CreditCardQuickPurchaseDialog = dynamic(() => import('@/components/credit-cards/CreditCardQuickPurchaseDialog'), { ssr: false });
+const WalletBalanceDialog = dynamic(() => import('@/components/wallets/WalletBalanceDialog'), { ssr: false });
 
 type WalletCarouselPanelProps = {
   wallets: WalletListItem[];

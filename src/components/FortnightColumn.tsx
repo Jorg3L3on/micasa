@@ -3,21 +3,19 @@
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getDefaultDateForFortnight } from '@/lib/fortnight-calendar';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { useOpenedOnce } from '@/hooks/use-opened-once';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
-import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
-import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
-import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
-import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
-import { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
+import type { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
+import type { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/motion/tabs';
 import { SegmentedControl } from '@/components/segmented-control';
 import { SectionHeader } from '@/components/section-header';
 import EmptyState from '@/components/EmptyState';
-import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
 import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
@@ -96,6 +94,12 @@ import type { WalletListItem } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
+
+// Form dialogs (zod, react-hook-form, schemas) load on first open, not with the Panel.
+const EditFortnightAmountDialog = dynamic(() => import('@/components/EditFortnightAmountDialog'), { ssr: false });
+const ConfirmDeleteDialog = dynamic(() => import('@/components/ConfirmDeleteDialog'), { ssr: false });
+const AddTransactionDialog = dynamic(() => import('@/components/transactions/AddTransactionDialog'), { ssr: false });
+const CreditCardPaymentDialog = dynamic(() => import('@/components/credit-cards/CreditCardPaymentDialog'), { ssr: false });
 
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
   `micasa.planificacion.fortnightTab.${p}`;
@@ -217,6 +221,10 @@ export default function FortnightColumn({
     useState(false);
   const [plannerPaymentCard, setPlannerPaymentCard] =
     useState<DuePaymentItem | null>(null);
+  const regenerateConfirmMounted = useOpenedOnce(regenerateConfirmOpen);
+  const overrideDialogMounted = useOpenedOnce(overrideDialogOpen);
+  const addExpenseDialogMounted = useOpenedOnce(addExpenseDialogOpen);
+  const plannerPaymentDialogMounted = useOpenedOnce(plannerPaymentDialogOpen);
   const [plannerPaymentFunding, setPlannerPaymentFunding] = useState<
     PaymentMethodOption[]
   >([]);
@@ -1184,7 +1192,7 @@ export default function FortnightColumn({
         onSuccess={refreshData}
       />
 
-      <ConfirmDeleteDialog
+      {regenerateConfirmMounted ? <ConfirmDeleteDialog
         open={regenerateConfirmOpen}
         onOpenChange={setRegenerateConfirmOpen}
         onConfirm={handleConfirmRegenerate}
@@ -1194,10 +1202,10 @@ export default function FortnightColumn({
         loadingLabel="Regenerando…"
         tone="default"
         busy={isRegenerating}
-      />
+      /> : null}
 
       {/* Override Amount Dialog */}
-      <EditFortnightAmountDialog
+      {overrideDialogMounted ? <EditFortnightAmountDialog
         open={overrideDialogOpen}
         onOpenChange={(open) => {
           setOverrideDialogOpen(open);
@@ -1211,10 +1219,10 @@ export default function FortnightColumn({
         fortnightLabel={label}
         sourceName={editingIncome?.label}
         error={overrideError && overrideDialogOpen ? overrideError : null}
-      />
+      /> : null}
 
       {/* Add Expense Dialog */}
-      <AddTransactionDialog
+      {addExpenseDialogMounted ? <AddTransactionDialog
         open={addExpenseDialogOpen}
         onOpenChange={(open) => {
           setAddExpenseDialogOpen(open);
@@ -1226,9 +1234,9 @@ export default function FortnightColumn({
         defaultDate={getDefaultDateForFortnight(year, month, period)}
         expenseError={addExpenseError && addExpenseDialogOpen ? addExpenseError : null}
         incomeError={addIncomeError && addExpenseDialogOpen ? addIncomeError : null}
-      />
+      /> : null}
 
-      <CreditCardPaymentDialog
+      {plannerPaymentDialogMounted ? <CreditCardPaymentDialog
         open={plannerPaymentDialogOpen && plannerPaymentCard !== null}
         onOpenChange={(open) => {
           setPlannerPaymentDialogOpen(open);
@@ -1247,7 +1255,7 @@ export default function FortnightColumn({
         error={plannerPaymentError}
         fortnightId={fortnightId}
         onConfirm={handlePlannerCardPaymentSubmit}
-      />
+      /> : null}
     </>
   );
 }
