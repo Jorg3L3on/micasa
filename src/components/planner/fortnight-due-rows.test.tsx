@@ -2,7 +2,8 @@
 
 import type { ComponentProps } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
 import FortnightLoanPaymentsPanel from '@/components/planner/FortnightLoanPaymentsPanel';
 import type { DuePaymentItem } from '@/types/catalog';
@@ -158,5 +159,78 @@ describe('Préstamos rows: provider identity', () => {
     const payroll = rowFor(container, 'Patronal');
     expect(payroll.querySelector('[data-provider-key]')).toBeNull();
     expect(payroll.querySelector('svg.lucide-landmark')).not.toBeNull();
+  });
+});
+
+describe('Tarjetas rows: names and Capturar', () => {
+  it('keeps the whole name on up to two lines instead of truncating it', () => {
+    renderCards([
+      card({ walletId: 1, walletName: 'Tienda departamental Carmen' }),
+      card({ walletId: 2, walletName: 'Tienda departamental Jorge' }),
+    ]);
+
+    for (const name of ['Tienda departamental Carmen', 'Tienda departamental Jorge']) {
+      const link = screen.getByRole('link', { name });
+      expect(link.getAttribute('title')).toBe(name);
+      expect(link.className).toContain('line-clamp-2');
+      expect(link.className).not.toContain('truncate');
+    }
+  });
+
+  it('renders Capturar as a 40px pill that opens the plan dialog', async () => {
+    const user = userEvent.setup();
+    renderCards(
+      [
+        card({
+          walletId: 4,
+          walletName: 'Tarjeta sin corte',
+          plannerStatus: 'falta_dato',
+          statementPayoff: null,
+        }),
+      ],
+      { onPlanUpdated: vi.fn() },
+    );
+
+    const capture = screen.getByRole('button', {
+      name: 'Capturar pago del corte: Tarjeta sin corte',
+    });
+    expect(capture.className).toContain('h-10');
+    expect(capture.className).toContain('rounded-full');
+    // The pill replaces the "—" placeholder amount.
+    expect(screen.queryByText('—')).toBeNull();
+
+    await user.click(capture);
+    expect(await screen.findByText('Pago planeado')).toBeTruthy();
+  });
+});
+
+describe('Préstamos rows: names and Gestionar', () => {
+  it('shows whole contract names and Gestionar as an outline pill', async () => {
+    const user = userEvent.setup();
+    render(
+      <FortnightLoanPaymentsPanel
+        fortnightLabel="2ª quincena"
+        variant="list"
+        items={[
+          loan({ id: 5, loanName: 'Crédito tienda Carmen', lender: 'Tienda Uno', lenderId: 9 }),
+          loan({ id: 6, loanName: 'Crédito tienda Jorge', lender: 'Tienda Uno', lenderId: 9 }),
+        ]}
+      />,
+    );
+
+    for (const name of ['Crédito tienda Carmen', 'Crédito tienda Jorge']) {
+      const nameButton = screen.getByTitle(name);
+      expect(nameButton.className).not.toContain('truncate');
+      expect(nameButton.querySelector('.line-clamp-2')).not.toBeNull();
+    }
+
+    const manage = screen.getByRole('button', {
+      name: 'Gestionar Crédito tienda Jorge',
+    });
+    expect(manage.className).toContain('h-9');
+    expect(manage.className).toContain('rounded-full');
+
+    await user.click(manage);
+    expect(await screen.findByRole('dialog')).toBeTruthy();
   });
 });

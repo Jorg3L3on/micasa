@@ -240,6 +240,9 @@ export default function FortnightLoanPaymentsPanel({
           const firstScheduled = scheduledItems[0] ?? group.items[0]!;
           const isPayLoading =
             group.lenderId != null && payLoadingLenderId === group.lenderId;
+          const groupTitle = isPayroll
+            ? `Nómina · ${group.lenderName}`
+            : `Pagar a ${group.lenderName}`;
 
           return (
             <li
@@ -302,22 +305,38 @@ export default function FortnightLoanPaymentsPanel({
                 </span>
 
                 <div className="min-w-0 flex-1">
+                  {/*
+                    Two lines, never one truncated line: "FONACOT Carmen" vs "FONACOT Jorge".
+                    Below sm the "Pagar a" / "Nómina ·" prefix moves out of the name
+                    (the Pagar button and the Nómina caption carry it) so the lender reads whole.
+                  */}
                   <button
                     type="button"
                     onClick={() => handleOpenManageGroup(group.items)}
+                    title={groupTitle}
+                    aria-label={groupTitle}
                     className={cn(
-                      'block min-w-0 truncate text-left font-semibold hover:underline',
+                      'block min-w-0 max-w-full text-left font-semibold leading-snug hover:underline',
                       isCompact ? 'text-xs' : 'text-sm',
                       visual === 'paid' || visual === 'muted'
                         ? 'text-muted-foreground'
                         : 'text-foreground',
                     )}
                   >
-                    {isPayroll
-                      ? `Nómina · ${group.lenderName}`
-                      : `Pagar a ${group.lenderName}`}
+                    <span className="line-clamp-2 break-words">
+                      <span className="hidden sm:inline">
+                        {isPayroll ? 'Nómina · ' : 'Pagar a '}
+                      </span>
+                      {group.lenderName}
+                    </span>
                   </button>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-muted-foreground">
+                    {isPayroll ? (
+                      <>
+                        <span className="sm:hidden">Nómina</span>
+                        <span className="text-muted-foreground/30 sm:hidden">·</span>
+                      </>
+                    ) : null}
                     <span>
                       {group.items.length} contrato
                       {group.items.length === 1 ? '' : 's'}
@@ -331,8 +350,9 @@ export default function FortnightLoanPaymentsPanel({
                   </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="font-sans text-sm font-bold tabular-nums">
+                {/* Below sm the amount sits over the action so the name keeps its width. */}
+                <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+                  <span className="whitespace-nowrap font-sans text-sm font-bold tabular-nums">
                     {formatCurrency(group.amount)}
                   </span>
                   {canPay ? (
@@ -379,7 +399,7 @@ export default function FortnightLoanPaymentsPanel({
               </div>
 
               {group.items.length > 1 ? (
-                <ul className="mt-2 space-y-1 border-l-2 border-border/60 pl-2.5 dark:border-white/[0.08]">
+                <ul className="mt-2 space-y-1.5 border-l-2 border-border/60 pl-2.5 dark:border-white/[0.08]">
                   {group.items.map((item) => (
                     <li
                       key={item.id}
@@ -388,19 +408,22 @@ export default function FortnightLoanPaymentsPanel({
                       <button
                         type="button"
                         onClick={() => handleOpenManage(item)}
-                        className="min-w-0 truncate text-left hover:underline"
+                        title={item.loanName}
+                        className="min-w-0 flex-1 text-left leading-snug hover:underline"
                       >
-                        {item.loanName}
+                        <span className="line-clamp-2 break-words">
+                          {item.loanName}
+                        </span>
                       </button>
-                      <span className="flex shrink-0 items-center gap-2">
-                        <span className="font-sans tabular-nums">
+                      <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+                        <span className="whitespace-nowrap font-sans tabular-nums">
                           {formatCurrency(item.amount)}
                         </span>
                         {item.status === 'SCHEDULED' ? (
                           <Button
                             type="button"
-                            size="sm"
-                            variant="ghost"
+                            variant="outline"
+                            className="h-9 rounded-full px-3.5 text-xs font-semibold shadow-none"
                             onClick={() => handleOpenManage(item)}
                             aria-label={`Gestionar ${item.loanName}`}
                           >

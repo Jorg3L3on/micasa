@@ -101,13 +101,21 @@ export const TabsList = ({
   children,
   className,
   wrapperClassName,
+  overflowControls = 'arrows',
   'aria-label': ariaLabel,
 }: {
   children: ReactNode;
   className?: string;
   wrapperClassName?: string;
+  /**
+   * `arrows`: chevron buttons over both edges when the list overflows.
+   * `fade`: edge fades only (swipe, keyboard and focus still scroll), for
+   * narrow lists where a chevron would sit on a label.
+   */
+  overflowControls?: 'arrows' | 'fade';
   'aria-label'?: string;
 }) => {
+  const showArrows = overflowControls === 'arrows';
   const { variant, value, setValue } = useTabs();
   const reduce = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -157,8 +165,9 @@ export const TabsList = ({
         0,
         Math.min(max, rtl ? max + viewport.scrollLeft : viewport.scrollLeft),
       );
-      const left = frameBox.left + (fromLeft > 1 ? 36 : 0);
-      const right = frameBox.right - (fromLeft < max - 1 ? 36 : 0);
+      const inset = showArrows ? 36 : 40;
+      const left = frameBox.left + (fromLeft > 1 ? inset : 0);
+      const right = frameBox.right - (fromLeft < max - 1 ? inset : 0);
       const delta =
         item.left < left
           ? item.left - left
@@ -172,7 +181,7 @@ export const TabsList = ({
         });
       }
     },
-    [reduce],
+    [reduce, showArrows],
   );
 
   useLayoutEffect(() => {
@@ -325,7 +334,7 @@ export const TabsList = ({
         wrapperClassName,
       )}
     >
-      {edges.overflow ? (
+      {edges.overflow && showArrows ? (
         <button
           type="button"
           aria-label="Desplazar pestañas a la izquierda"
@@ -383,7 +392,7 @@ export const TabsList = ({
           className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 rounded-r-[inherit] backdrop-blur-[2px] [mask-image:linear-gradient(to_left,black,transparent)]"
         />
       ) : null}
-      {edges.overflow ? (
+      {edges.overflow && showArrows ? (
         <button
           type="button"
           aria-label="Desplazar pestañas a la derecha"
