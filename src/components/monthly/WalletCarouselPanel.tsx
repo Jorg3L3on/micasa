@@ -44,7 +44,6 @@ import { ShineBorder } from '@/components/ui/shine-border';
 import { getAuraBarStyle, getAuraWalletColor } from '@/lib/ui/aura-palette';
 import { SectionHeader } from '@/components/section-header';
 import EmptyState from '@/components/EmptyState';
-import { Badge } from '@/components/ui/badge';
 import { useFinanceContext } from '@/context/finance-context';
 import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import {
@@ -111,6 +110,15 @@ const CARD_ASPECT_RATIO = 1.45;
 const CARD_GAP_PX = 12;
 
 /**
+ * Quick-action pills share the row evenly. Below `sm` they are 44px tall
+ * touch targets with a 13px label and tight padding so all three fit at
+ * 320px (Button's `has-[>svg]` padding is overridden too); from `sm` up they
+ * keep the regular small button.
+ */
+const ACTION_PILL_CLASS =
+  'h-11 min-w-0 flex-1 cursor-pointer gap-1 px-1 text-[13px] whitespace-nowrap has-[>svg]:px-1 sm:h-8 sm:px-2 sm:text-sm sm:has-[>svg]:px-2.5';
+
+/**
  * Static stand-in for InteractiveGridPattern on side cards: same 14px lines,
  * painted once by CSS instead of 280 SVG rects per card.
  */
@@ -156,7 +164,8 @@ const WalletFace = memo(function WalletFace({
   return (
     <div
       className={cn(
-        'relative isolate flex h-full flex-col justify-between overflow-hidden rounded-2xl border p-4',
+        // p-3 below sm: the 320px face keeps room for a whole wallet name.
+        'relative isolate flex h-full flex-col justify-between overflow-hidden rounded-2xl border p-3 sm:p-4',
         'ring-1 ring-inset',
         dark ? 'ring-white/5' : 'ring-black/5',
         !style && 'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
@@ -212,23 +221,22 @@ const WalletFace = memo(function WalletFace({
           style={{ animationDelay: `-${(wallet.id % 7) * 1.6}s` }}
         />
       ) : null}
-      <div className="pointer-events-none flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <WalletProviderIcon
-            providerIconKey={wallet.provider_icon_key}
-            showTooltipLabel={false}
-          />
-          <span className="truncate text-sm font-semibold" title={wallet.name}>
-            {wallet.name}
-          </span>
-        </div>
-        <Badge
-          variant="secondary"
-          className="h-5 shrink-0 rounded-full bg-white/10 px-2 text-caption font-medium text-current opacity-90"
+      {/* The type tabs above already say the type, so the name gets the whole
+          row (two lines before it clamps); screen readers still hear the type. */}
+      <div className="pointer-events-none flex min-w-0 items-center gap-1.5 sm:gap-2">
+        <WalletProviderIcon
+          providerIconKey={wallet.provider_icon_key}
+          showTooltipLabel={false}
+        />
+        <span
+          className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-tight"
+          title={wallet.name}
         >
-          {PAYMENT_METHOD_SHORT_LABELS[wallet.type as PaymentMethodType] ??
-            wallet.type}
-        </Badge>
+          {wallet.name}
+          <span className="sr-only">
+            {`, ${PAYMENT_METHOD_SHORT_LABELS[wallet.type as PaymentMethodType] ?? wallet.type}`}
+          </span>
+        </span>
       </div>
 
       <div className="pointer-events-none">
@@ -716,12 +724,12 @@ export const WalletCarouselPanel = ({
       )}
 
       {activeWallet && plan ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="flex-1 gap-1 px-2 cursor-pointer"
+            className={ACTION_PILL_CLASS}
             onClick={() => openAction(plan.topUp)}
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -731,7 +739,7 @@ export const WalletCarouselPanel = ({
             type="button"
             variant="outline"
             size="sm"
-            className="flex-1 gap-1 px-2 cursor-pointer"
+            className={ACTION_PILL_CLASS}
             onClick={() => openAction(plan.addExpense)}
           >
             <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -741,7 +749,7 @@ export const WalletCarouselPanel = ({
             type="button"
             variant="outline"
             size="sm"
-            className="flex-1 gap-1 px-2 cursor-pointer"
+            className={ACTION_PILL_CLASS}
             onClick={() => openAction(plan.request)}
           >
             <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden />
