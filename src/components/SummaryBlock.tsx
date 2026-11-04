@@ -270,9 +270,9 @@ export default function SummaryBlock({
           <div className="flex flex-col gap-3">
             <Separator className="bg-border/50" />
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <div
-                className={cn(PANEL_INSET_CLASS, 'p-3')}
+                className={cn(PANEL_INSET_CLASS, 'min-w-0 p-3')}
               >
                 <div className="mb-1.5 flex items-center justify-between gap-1.5">
                   <div className="flex min-w-0 items-center gap-1.5">
@@ -297,7 +297,7 @@ export default function SummaryBlock({
                     </Button>
                   ) : null}
                 </div>
-                <p className="leading-tight">
+                <p className="whitespace-nowrap leading-tight">
                   <CurrencyTicker
                     value={tenemos}
                     className="text-lg font-bold tabular-nums text-foreground"
@@ -313,7 +313,7 @@ export default function SummaryBlock({
               </div>
 
               <div
-                className={cn(PANEL_INSET_CLASS, 'p-3')}
+                className={cn(PANEL_INSET_CLASS, 'min-w-0 p-3')}
               >
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-status-success" aria-hidden />
@@ -321,7 +321,7 @@ export default function SummaryBlock({
                     Pagado
                   </span>
                 </div>
-                <p className="leading-tight">
+                <p className="whitespace-nowrap leading-tight">
                   <CurrencyTicker
                     value={pagado}
                     className="text-lg font-bold tabular-nums text-foreground"
@@ -335,7 +335,7 @@ export default function SummaryBlock({
               </div>
 
               <div
-                className={cn(PANEL_INSET_CLASS, 'p-3')}
+                className={cn(PANEL_INSET_CLASS, 'min-w-0 p-3')}
               >
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-status-pending" aria-hidden />
@@ -343,7 +343,7 @@ export default function SummaryBlock({
                     Pendiente
                   </span>
                 </div>
-                <p className="leading-tight">
+                <p className="whitespace-nowrap leading-tight">
                   <CurrencyTicker
                     value={pendiente}
                     className="text-lg font-bold tabular-nums text-foreground"

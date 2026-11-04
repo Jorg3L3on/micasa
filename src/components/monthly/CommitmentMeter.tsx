@@ -14,6 +14,7 @@ import {
 import { STATUS_FILL_CLASS } from '@/lib/status-tone';
 import { AURA_TONE_HEX } from '@/lib/ui/aura-palette';
 import { cn, formatCurrency } from '@/lib/utils';
+import { pickAmountSizeClass } from '@/lib/ui/amount-size';
 
 type SegmentKey = 'paid' | 'pending' | 'budget' | 'free';
 
@@ -57,6 +58,13 @@ const BAR_REVEAL_HIDDEN = 'inset(-10px 100% -10px -10px round 9999px)';
 const BAR_REVEAL_SHOWN = 'inset(-10px -10px -10px -10px round 9999px)';
 
 type BarSegment = { key: SegmentKey; percent: number };
+
+/** Half-width legend tiles on phones: long amounts step down until `sm`. */
+const LEGEND_AMOUNT_SIZES = [
+  'text-lg',
+  'text-base sm:text-lg',
+  'text-sm sm:text-lg',
+] as const;
 
 type LegendEntry = {
   key: SegmentKey;
@@ -355,10 +363,11 @@ export const CommitmentMeter = ({
                 </span>
                 {entry.key === 'pending' ? pendingAdornment : null}
               </span>
-              <span className="mt-1 flex min-w-0 items-baseline gap-1.5">
+              <span className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5">
                 <span
                   className={cn(
-                    'truncate font-sans text-lg font-bold tabular-nums text-foreground',
+                    'whitespace-nowrap font-sans font-bold tabular-nums text-foreground',
+                    pickAmountSizeClass(entry.amount, LEGEND_AMOUNT_SIZES),
                     entry.amountClassName,
                   )}
                 >
