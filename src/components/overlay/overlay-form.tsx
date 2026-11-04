@@ -150,7 +150,7 @@ export const FormAmountRow = ({
 );
 
 export const OVERLAY_AMOUNT_HERO_CLASS =
-  'h-14 border-0 bg-transparent px-0 text-center font-sans text-4xl font-bold tabular-nums shadow-none focus-visible:ring-0 md:h-16 md:text-5xl';
+  'h-14 border-0 bg-transparent px-16 text-center font-sans text-4xl font-bold tabular-nums text-slate-900 caret-slate-900 shadow-none placeholder:text-slate-400 focus:placeholder:text-transparent focus-visible:ring-0 md:h-16 md:text-5xl';
 
 /**
  * Hero amount for create overlays: a light blue tinted panel with the MXN prefix and
@@ -169,8 +169,11 @@ export const FormAmountHero = ({
 }) => (
   <FormItem className="space-y-1">
     <FormLabel className="sr-only">{label}</FormLabel>
-    <div className="flex items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-4 shadow-sm">
-      <span className="font-sans text-lg font-semibold text-muted-foreground" aria-hidden>
+    <div className="relative flex items-center justify-center rounded-2xl border border-primary/30 bg-white px-4 py-4 shadow-sm">
+      <span
+        className="absolute left-4 top-1/2 -translate-y-1/2 font-sans text-lg font-semibold text-slate-500"
+        aria-hidden
+      >
         MXN
       </span>
       <FormControl>

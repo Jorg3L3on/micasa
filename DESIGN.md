@@ -273,7 +273,7 @@ Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these 
    - label + control → `FormGroupedRow` (react-hook-form) or `GroupedRow` (`htmlFor` when the control has an `id`)
    - amount → `FormAmountRow` / `AmountRow` (MXN chip + big mono amount; label sits **above** the amount)
    - date → `DateStepper` (required) or `OptionalDateStepper` (nullable, e.g. Fecha límite)
-   - hero amount (Agregar movimiento) → `FormAmountHero`: light blue tinted panel (`bg-primary/5`, `border-primary/30`, `shadow-sm`) above the grouped card, MXN prefix and a centered `text-4xl` (`md:text-5xl`) bold mono figure
+   - hero amount (Agregar movimiento) → `FormAmountHero`: white panel (`bg-white`, `border-primary/30`, `shadow-sm`) above the grouped card, MXN pinned left and a centered (on the panel, not beside the prefix) `text-4xl` (`md:text-5xl`) bold mono figure; the 0 placeholder disappears on focus
 4. **Extra sections** — `OverlaySectionLabel` + a second grouped card (e.g. "Datos de crédito", "Comisión").
 5. **Hint** — `OverlayHint` **below** the card it explains. Never inside the card.
 6. **Warnings** — amber notice (`InsufficientWalletExpenseNotice` style) when a value needs attention before saving.
