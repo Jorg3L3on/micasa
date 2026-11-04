@@ -33,6 +33,8 @@ type SegmentedControlProps = {
   embedded?: boolean;
   /** Rendered beside the list inside `frameClassName` (sort menu, etc.). */
   accessory?: ReactNode;
+  /** How an overflowing list hints at hidden tabs (see `TabsList`). */
+  overflowControls?: 'arrows' | 'fade';
   children?: ReactNode;
 };
 
@@ -57,6 +59,7 @@ export const SegmentedControl = ({
   variant = 'pill',
   embedded = false,
   accessory,
+  overflowControls,
   children,
 }: SegmentedControlProps) => {
   const list = (
@@ -64,6 +67,7 @@ export const SegmentedControl = ({
       aria-label={ariaLabel}
       className={listClassName}
       wrapperClassName={wrapperClassName}
+      overflowControls={overflowControls}
     >
       {options.map((option) => (
         <TabsTrigger
