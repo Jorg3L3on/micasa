@@ -243,7 +243,9 @@ const WalletFace = memo(function WalletFace({
         <p className="text-xs opacity-70">
           {credit ? 'Saldo utilizado' : 'Saldo'}
         </p>
-        <p className="text-2xl font-semibold tabular-nums">
+        {/* Container units: full size for usual amounts, smaller only when a
+            7-digit balance would otherwise be cut on a 320px phone. */}
+        <p className="whitespace-nowrap text-[clamp(1rem,12cqi,1.5rem)] font-semibold tabular-nums">
           {formatCurrency(wallet.amount)}
         </p>
         {summary?.limit != null && summary.limit > 0 ? (
