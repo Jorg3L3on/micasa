@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/tooltip';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { cn, formatCurrency } from '@/lib/utils';
+import { pickAmountSizeClass } from '@/lib/ui/amount-size';
 import { Banknote, Info, Wallet } from 'lucide-react';
 
 type FortnightSummaryHeroProps = {
@@ -121,6 +122,16 @@ type AccountMetricProps = {
   badge?: { label: string; tone: StatusTone };
 };
 
+/**
+ * Half-width phone tiles: long amounts step down until `sm`. Below 360px the
+ * tiles stack (FortnightAccountMetrics), so full width keeps text-2xl.
+ */
+const BADGE_AMOUNT_SIZES = [
+  'text-2xl',
+  'text-2xl min-[360px]:text-xl sm:text-2xl',
+  'text-2xl min-[360px]:text-lg sm:text-2xl',
+] as const;
+
 const AccountMetricBody = ({
   label,
   amount,
@@ -141,7 +152,7 @@ const AccountMetricBody = ({
         >
           <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
         </span>
-        <span className="eyebrow truncate text-muted-foreground">
+        <span className="eyebrow min-w-0 leading-tight text-muted-foreground">
           {label}
         </span>
       </span>
@@ -157,11 +168,16 @@ const AccountMetricBody = ({
         </Badge>
       ) : null}
     </div>
-    <p className="whitespace-nowrap">
+    <p className="min-w-0 whitespace-nowrap">
       <CurrencyTicker
         value={amount}
         className={cn(
-          badge ? 'text-2xl font-semibold tabular-nums' : 'text-lg font-bold sm:text-xl',
+          badge
+            ? cn(
+                'font-semibold tabular-nums',
+                pickAmountSizeClass(amount, BADGE_AMOUNT_SIZES),
+              )
+            : 'text-lg font-bold sm:text-xl',
           amountClassName,
         )}
       />
@@ -225,7 +241,7 @@ export const FortnightAccountMetrics = ({
   const liquidityNegative = fundingLiquidity < 0;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+    <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4">
       <AccountMetric
         label="Balance actual"
         amount={fundingInAccounts}
