@@ -1,6 +1,7 @@
 import type { NextResponse } from 'next/server';
 import { runWithAuditActor } from '@/lib/server/audit/audit-context';
 import { routeActor } from '@/lib/server/audit/route-actor';
+import { runWithRequestMemo } from '@/lib/server/request-memo';
 import {
   getOwnerContext,
   type OwnerContextSuccess,
@@ -21,7 +22,11 @@ export async function withOwnerContext<T>(
 ): Promise<T | NextResponse> {
   const context = await getOwnerContext(request);
   if ('error' in context) return context.error;
-  return runWithAuditActor(
+  // Reads share one planner computation per request; writes never see a memo.
+  const run = request.method === 'GET' || request.method === 'HEAD'
+    ? runWithRequestMemo
+    : <R,>(fn: () => R) => fn();
+  return run(() => runWithAuditActor(
     routeActor(request, {
       source: 'WEB',
       userId: context.userId,
@@ -29,7 +34,7 @@ export async function withOwnerContext<T>(
       sessionId: context.sessionId,
     }),
     () => handler(context),
-  );
+  ));
 }
 
 /**

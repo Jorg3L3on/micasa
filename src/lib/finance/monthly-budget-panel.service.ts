@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { ownerMonthKey, requestMemo } from '@/lib/server/request-memo';
 import prisma from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -149,7 +150,7 @@ async function getMonthlyBudgetPanelImpl(
 /**
  * Request-scoped memo of the monthly budget panel. Report summaries and the
  * panel sidebar invoke this several times per render; `cache` dedupes within
- * one RSC/route request.
+ * one RSC render and `requestMemo` within one GET route request.
  */
 const getMonthlyBudgetPanelCached = cache(
   (
@@ -158,12 +159,14 @@ const getMonthlyBudgetPanelCached = cache(
     year: number,
     month: number,
   ) =>
-    getMonthlyBudgetPanelImpl(
-      userId != null
-        ? { user_id: userId, house_id: null }
-        : { user_id: null, house_id: houseId as number },
-      year,
-      month,
+    requestMemo(ownerMonthKey('monthly-budget-panel', userId, houseId, year, month), () =>
+      getMonthlyBudgetPanelImpl(
+        userId != null
+          ? { user_id: userId, house_id: null }
+          : { user_id: null, house_id: houseId as number },
+        year,
+        month,
+      ),
     ),
 );
 

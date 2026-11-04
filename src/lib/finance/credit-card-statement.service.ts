@@ -1,4 +1,5 @@
 import { DomainError } from '@/lib/finance/domain-error';
+import { ownerMonthKey, requestMemo } from '@/lib/server/request-memo';
 import { cache } from 'react';
 import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
@@ -1674,9 +1675,9 @@ async function getDuePaymentsForPlannerMonthImpl(
 /**
  * Request-scoped memo of the planner-month computation. The monthly panel invokes
  * this (directly plus via report summaries) several times per render; `cache`
- * dedupes those calls within one RSC/route request and is a passthrough outside
- * React (tests, scripts). Keys are primitives because `cache` compares object
- * arguments by reference.
+ * dedupes those calls within one RSC render and `requestMemo` within one GET
+ * route request; both are passthroughs elsewhere (tests, scripts). Keys are
+ * primitives because `cache` compares object arguments by reference.
  */
 const getDuePaymentsForPlannerMonthCached = cache(
   (
@@ -1685,13 +1686,15 @@ const getDuePaymentsForPlannerMonthCached = cache(
     year: number,
     month: number,
   ) =>
-    getDuePaymentsForPlannerMonthImpl(
-      userId != null
-        ? { user_id: userId, house_id: null }
-        : // OwnerFilter guarantees house_id is set when user_id is null.
-          { user_id: null, house_id: houseId as number },
-      year,
-      month,
+    requestMemo(ownerMonthKey('planner-card-dues', userId, houseId, year, month), () =>
+      getDuePaymentsForPlannerMonthImpl(
+        userId != null
+          ? { user_id: userId, house_id: null }
+          : // OwnerFilter guarantees house_id is set when user_id is null.
+            { user_id: null, house_id: houseId as number },
+        year,
+        month,
+      ),
     ),
 );
 

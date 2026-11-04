@@ -4,6 +4,7 @@ const { getOwnerContext } = vi.hoisted(() => ({ getOwnerContext: vi.fn() }));
 vi.mock('@/lib/server/get-owner-context', () => ({ getOwnerContext }));
 
 import { getAuditActor } from '@/lib/server/audit/audit-context';
+import { requestMemo } from '@/lib/server/request-memo';
 import { withOwnerContext } from '@/lib/server/with-owner-context';
 
 const ownerContext = {
@@ -66,5 +67,28 @@ describe('withOwnerContext', () => {
     const { getOwnerContext: resolve } = await import('@/lib/server/get-owner-context');
     await resolve(new Request('http://localhost/api/expenses'));
     expect(await serviceWrite()).toBeNull();
+  });
+
+  it('shares one planner computation per GET request, never on writes or across requests', async () => {
+    getOwnerContext.mockResolvedValue(ownerContext);
+    const compute = vi.fn(async () => ({}));
+    const twice = async () => {
+      const a = await requestMemo('planner', compute);
+      const b = await requestMemo('planner', compute);
+      return a === b;
+    };
+
+    const get = () => withOwnerContext(new Request('http://localhost/api/reports'), twice);
+    expect(await get()).toBe(true);
+    expect(compute).toHaveBeenCalledTimes(1);
+    expect(await get()).toBe(true);
+    expect(compute).toHaveBeenCalledTimes(2);
+
+    const post = await withOwnerContext(
+      new Request('http://localhost/api/expenses', { method: 'POST' }),
+      twice,
+    );
+    expect(post).toBe(false);
+    expect(compute).toHaveBeenCalledTimes(4);
   });
 });
