@@ -26,6 +26,7 @@ const basePayment = (
   loanName: 'FONACOT',
   lender: 'FONACOT',
   lenderId: 4,
+  lenderProviderIconKey: null,
   loanType: 'PAYROLL',
   paymentSource: 'WALLET',
   linkedWalletId: null,

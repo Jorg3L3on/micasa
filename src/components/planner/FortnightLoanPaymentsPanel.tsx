@@ -23,6 +23,9 @@ import { useFinanceContext } from '@/context/finance-context';
 import { getLender, payLender } from '@/lib/api/lenders';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
+import { DueRowProviderLogo } from '@/components/planner/DueRowProviderLogo';
+import { getWalletProviderLogoOption } from '@/lib/wallet-provider-icons';
+import { inferLenderProviderIconKey } from '@/lib/finance/lender-identity';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import {
   AURA_TONE_HEX,
@@ -118,7 +121,7 @@ export default function FortnightLoanPaymentsPanel({
     setPayingLender({
       id: group.lenderId,
       name: group.lenderName,
-      providerIconKey: null,
+      providerIconKey: group.items[0]?.lenderProviderIconKey ?? null,
       notes: null,
       active: true,
       remainingPrincipal: 0,
@@ -220,6 +223,14 @@ export default function FortnightLoanPaymentsPanel({
           const daysLeft = getDaysLeft(group.dueDate, todayYmd);
           const isPayroll = group.paymentSource === 'PAYROLL_DEDUCTION';
           const Icon = isPayroll ? Landmark : HandCoins;
+          // Same lookup as LenderIdentity on Préstamos. Without a logo the
+          // generic icon stays (payroll keeps Landmark).
+          const providerLogo = getWalletProviderLogoOption(
+            inferLenderProviderIconKey(
+              group.lenderName,
+              group.items[0]?.lenderProviderIconKey,
+            ),
+          );
           const isDueSoon = visual === 'pending' && daysLeft <= 7;
           const rowTone = getDueRowTone(visual, daysLeft);
           const scheduledItems = group.items.filter(
@@ -269,21 +280,25 @@ export default function FortnightLoanPaymentsPanel({
                             : 'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                   )}
                 >
-                  <Icon
-                    className={cn(
-                      'h-4 w-4',
-                      visual === 'paid'
-                        ? 'text-status-income'
-                        : visual === 'overdue'
-                          ? 'text-destructive'
-                          : visual === 'muted'
-                            ? 'text-muted-foreground'
-                            : isDueSoon
-                              ? 'text-status-pending'
-                              : 'text-status-info',
-                    )}
-                    aria-hidden
-                  />
+                  {providerLogo ? (
+                    <DueRowProviderLogo provider={providerLogo} />
+                  ) : (
+                    <Icon
+                      className={cn(
+                        'h-4 w-4',
+                        visual === 'paid'
+                          ? 'text-status-income'
+                          : visual === 'overdue'
+                            ? 'text-destructive'
+                            : visual === 'muted'
+                              ? 'text-muted-foreground'
+                              : isDueSoon
+                                ? 'text-status-pending'
+                                : 'text-status-info',
+                      )}
+                      aria-hidden
+                    />
+                  )}
                 </span>
 
                 <div className="min-w-0 flex-1">

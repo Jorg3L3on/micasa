@@ -332,6 +332,8 @@ export type DuePaymentItem = {
   walletId: number;
   walletName: string;
   walletType: string;
+  /** `Wallet.provider_icon_key`; null when the card has no provider logo. */
+  providerIconKey: string | null;
   dueDay: number;
   cutoff_day: number;
   nextDuePayment: number;

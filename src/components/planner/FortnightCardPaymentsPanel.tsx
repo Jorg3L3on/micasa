@@ -34,6 +34,8 @@ import { useFinanceContext } from '@/context/finance-context';
 import { EditCardPaymentPlanDialog } from '@/components/planner/EditCardPaymentPlanDialog';
 import { cardChargeErrorMessage } from '@/components/credit-cards/over-debt-reason';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
+import { DueRowProviderLogo } from '@/components/planner/DueRowProviderLogo';
+import { getWalletProviderLogoOption } from '@/lib/wallet-provider-icons';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import {
   AURA_TONE_HEX,
@@ -254,6 +256,7 @@ const FortnightCardPaymentsPanel = ({
             const paidDisplayAmount = displayPaidAmount(item, fortnightPaid);
             const isMissingPayment = status === 'falta_dato';
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
+            const providerLogo = getWalletProviderLogoOption(item.providerIconKey);
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
             const displayDueDateStr =
               item.visibleDueDate ?? item.statementDueDate;
@@ -321,21 +324,25 @@ const FortnightCardPaymentsPanel = ({
                             : 'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                   )}
                 >
-                  <Icon
-                    className={cn(
-                      'h-4 w-4',
-                      status === 'pagado'
-                        ? 'text-status-income'
-                        : status === 'vencido'
-                          ? 'text-destructive'
-                          : status === 'sin_cargo'
-                            ? 'text-muted-foreground'
-                            : isMissingPayment || isDueSoon
-                              ? 'text-status-pending'
-                              : 'text-status-info',
-                    )}
-                    aria-hidden
-                  />
+                  {providerLogo ? (
+                    <DueRowProviderLogo provider={providerLogo} />
+                  ) : (
+                    <Icon
+                      className={cn(
+                        'h-4 w-4',
+                        status === 'pagado'
+                          ? 'text-status-income'
+                          : status === 'vencido'
+                            ? 'text-destructive'
+                            : status === 'sin_cargo'
+                              ? 'text-muted-foreground'
+                              : isMissingPayment || isDueSoon
+                                ? 'text-status-pending'
+                                : 'text-status-info',
+                      )}
+                      aria-hidden
+                    />
+                  )}
                 </span>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">

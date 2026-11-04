@@ -277,6 +277,7 @@ export async function coverScheduledPaymentForCardPayment(
 export type PlannerScheduledCardPaymentItem = CreditCardScheduledPaymentItem & {
   walletName: string;
   walletType: string;
+  providerIconKey: string | null;
 };
 
 export async function listScheduledPaymentsForPlannerMonth(
@@ -304,7 +305,13 @@ export async function listScheduledPaymentsForPlannerMonth(
     },
     include: {
       credit_card_wallet: {
-        select: { name: true, type: true, cutoff_day: true, due_day: true },
+        select: {
+          name: true,
+          type: true,
+          provider_icon_key: true,
+          cutoff_day: true,
+          due_day: true,
+        },
       },
     },
     orderBy: [{ due_date: 'asc' }, { id: 'asc' }],
@@ -314,6 +321,7 @@ export async function listScheduledPaymentsForPlannerMonth(
     ...mapRow(row),
     walletName: row.credit_card_wallet.name,
     walletType: row.credit_card_wallet.type,
+    providerIconKey: row.credit_card_wallet.provider_icon_key ?? null,
   }));
 
   return {

@@ -1196,6 +1196,7 @@ const sumScheduledByWallet = (
       dueDate: string;
       walletName: string;
       walletType: string;
+      providerIconKey: string | null;
     }
   >();
 
@@ -1212,6 +1213,7 @@ const sumScheduledByWallet = (
         dueDate: row.dueDate,
         walletName: row.walletName,
         walletType: row.walletType,
+        providerIconKey: row.providerIconKey,
       });
     }
   }
@@ -1240,6 +1242,7 @@ const applyScheduledCalendarToDueItems = (
         dueDate: row.dueDate,
         walletName: row.walletName,
         walletType: 'CREDIT_CARD',
+        providerIconKey: row.providerIconKey,
       });
     }
   }
@@ -1280,6 +1283,7 @@ const applyScheduledCalendarToDueItems = (
       walletId,
       walletName: scheduled.walletName,
       walletType: scheduled.walletType,
+      providerIconKey: scheduled.providerIconKey,
       dueDay: Number(scheduled.dueDate.slice(8, 10)),
       cutoff_day: 0,
       nextDuePayment: scheduled.amount,
@@ -1323,6 +1327,7 @@ async function getDuePaymentsWithAsOf(
       id: true,
       name: true,
       type: true,
+      provider_icon_key: true,
       amount: true,
       cutoff_day: true,
       due_day: true,
@@ -1525,6 +1530,7 @@ async function getDuePaymentsWithAsOf(
       walletId: card.id,
       walletName: card.name,
       walletType: card.type,
+      providerIconKey: card.provider_icon_key ?? null,
       dueDay: card.due_day!,
       cutoff_day: card.cutoff_day!,
       ...fields,

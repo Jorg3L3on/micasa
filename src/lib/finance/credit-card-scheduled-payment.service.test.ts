@@ -117,6 +117,7 @@ describe('credit-card-scheduled-payment.service', () => {
         credit_card_wallet: {
           name: 'Tarjeta prueba',
           type: 'CREDIT_CARD',
+          provider_icon_key: 'LIVERPOOL',
           cutoff_day: 15,
           due_day: 5,
         },
@@ -132,6 +133,7 @@ describe('credit-card-scheduled-payment.service', () => {
         credit_card_wallet: {
           name: 'Tarjeta prueba',
           type: 'CREDIT_CARD',
+          provider_icon_key: null,
           cutoff_day: 15,
           due_day: 5,
         },
@@ -148,5 +150,7 @@ describe('credit-card-scheduled-payment.service', () => {
     expect(result.second).toHaveLength(1);
     expect(result.first[0].amount).toBe(300);
     expect(result.second[0].amount).toBe(400);
+    expect(result.first[0].providerIconKey).toBe('LIVERPOOL');
+    expect(result.second[0].providerIconKey).toBeNull();
   });
 });
