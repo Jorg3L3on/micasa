@@ -18,7 +18,7 @@ export function MonthlyNavNextLink({ href, label }: MonthlyNavNextLinkProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon-lg" asChild>
+        <Button variant="ghost" size="icon-lg" className="size-11 sm:size-10" asChild>
           <Link href={href} aria-label={`Ir al mes siguiente: ${label}`}>
             <ChevronRight
               className="size-5 shrink-0"

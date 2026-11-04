@@ -599,7 +599,7 @@ export const WalletCarouselPanel = ({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="text-muted-foreground hover:text-foreground"
+                  className="size-11 text-muted-foreground hover:text-foreground sm:size-8"
                 >
                   <Link
                     href={`/wallets/${activeWallet.id}`}
@@ -756,7 +756,9 @@ export const WalletCarouselPanel = ({
               <ChevronLeft className="h-4 w-4" />
             </button>
             {/* One dot per wallet of the active type. */}
-            <div className="flex items-center gap-1.5">
+            {/* One dot per wallet of the active type: 6px drawing inside a
+                44px button on phones (28px wide from sm, as before). */}
+            <div className="flex flex-wrap items-center justify-center">
               {track.slice(typeRange.start, typeRange.end).map((wallet, j) => {
                 const i = typeRange.start + j;
                 return (
@@ -766,13 +768,18 @@ export const WalletCarouselPanel = ({
                     aria-label={`Ver ${wallet.name}`}
                     aria-current={i === activeIndex}
                     onClick={() => scrollToIndex(i)}
-                    className={cn(
-                      'relative h-1.5 rounded-full transition-all after:absolute after:-inset-x-1 after:-inset-y-2 after:content-[""]',
-                      i === activeIndex
-                        ? 'w-4 bg-foreground'
-                        : 'w-1.5 bg-muted-foreground/40',
-                    )}
-                  />
+                    className="flex h-11 min-w-11 items-center justify-center sm:h-5 sm:min-w-0 sm:px-0.5"
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'block h-1.5 rounded-full transition-all',
+                        i === activeIndex
+                          ? 'w-4 bg-foreground'
+                          : 'w-1.5 bg-muted-foreground/40',
+                      )}
+                    />
+                  </button>
                 );
               })}
             </div>

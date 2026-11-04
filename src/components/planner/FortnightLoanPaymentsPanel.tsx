@@ -360,7 +360,7 @@ export default function FortnightLoanPaymentsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="gap-1"
+                      className="h-11 gap-1 sm:h-8"
                       onClick={() =>
                         isPayroll
                           ? handleOpenManageGroup(group.items)
@@ -383,7 +383,7 @@ export default function FortnightLoanPaymentsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="gap-1"
+                      className="h-11 gap-1 sm:h-8"
                       onClick={() => handleOpenManage(scheduledItems)}
                       aria-label={
                         scheduledItems.length > 1
@@ -423,7 +423,7 @@ export default function FortnightLoanPaymentsPanel({
                           <Button
                             type="button"
                             variant="outline"
-                            className="h-9 rounded-full px-3.5 text-xs font-semibold shadow-none"
+                            className="h-11 rounded-full px-3.5 text-xs font-semibold shadow-none sm:h-9"
                             onClick={() => handleOpenManage(item)}
                             aria-label={`Gestionar ${item.loanName}`}
                           >
