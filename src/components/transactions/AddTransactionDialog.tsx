@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, CalendarDays, Tag, Type, Wallet } from 'lucide-react';
 import { animate, motion, useMotionValue, useReducedMotion } from 'framer-motion';
 import {
   Form,
@@ -49,9 +49,9 @@ import { CategoryGroupedSelect } from '@/components/categories/CategoryGroupedSe
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import {
-  DateStepper,
   FieldClearButton,
-  FormAmountRow,
+  DateStepper,
+  FormAmountHero,
   FormGroupedRow,
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
@@ -335,12 +335,19 @@ export default function AddTransactionDialog({
               {expenseError ? (
                 <OverlayErrorBanner>{expenseError}</OverlayErrorBanner>
               ) : null}
+              <FormField
+                control={expenseForm.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormAmountHero value={field.value} onChange={field.onChange} />
+                )}
+              />
               <div className={OVERLAY_GROUPED_CARD_CLASS}>
                 <FormField
                   control={expenseForm.control}
                   name="name"
                   render={({ field }) => (
-                    <FormGroupedRow label="Nombre">
+                    <FormGroupedRow label="Nombre" icon={<Type />}>
                       <div className="flex items-center gap-1">
                         <FormControl>
                           <Input
@@ -366,20 +373,21 @@ export default function AddTransactionDialog({
 
                 <FormField
                   control={expenseForm.control}
-                  name="amount"
+                  name="categoryId"
                   render={({ field }) => (
-                    <FormAmountRow value={field.value} onChange={field.onChange} />
-                  )}
-                />
-
-                <FormField
-                  control={expenseForm.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormGroupedRow label="Fecha">
-                      <DateStepper
-                        value={field.value}
-                        onChange={field.onChange}
+                    <FormGroupedRow label="Categoría" icon={<Tag />}>
+                      <CategoryGroupedSelect
+                        categories={categories}
+                        value={field.value ? Number(field.value) : undefined}
+                        onValueChange={field.onChange}
+                        onOpenChange={handleSelectOpenChange}
+                        disabled={loading}
+                        includeCategoryId={
+                          field.value ? Number(field.value) : null
+                        }
+                        placeholder="Selecciona"
+                        ariaLabel="Categoría"
+                        triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
                       />
                     </FormGroupedRow>
                   )}
@@ -393,7 +401,7 @@ export default function AddTransactionDialog({
                       (pm) => pm.id === Number(field.value),
                     );
                     return (
-                      <FormGroupedRow label="Billetera">
+                      <FormGroupedRow label="Billetera" icon={<Wallet />}>
                         <Select
                           value={field.value ? String(field.value) : undefined}
                           onOpenChange={handleSelectOpenChange}
@@ -439,21 +447,12 @@ export default function AddTransactionDialog({
 
                 <FormField
                   control={expenseForm.control}
-                  name="categoryId"
+                  name="date"
                   render={({ field }) => (
-                    <FormGroupedRow label="Categoría">
-                      <CategoryGroupedSelect
-                        categories={categories}
-                        value={field.value ? Number(field.value) : undefined}
-                        onValueChange={field.onChange}
-                        onOpenChange={handleSelectOpenChange}
-                        disabled={loading}
-                        includeCategoryId={
-                          field.value ? Number(field.value) : null
-                        }
-                        placeholder="Selecciona"
-                        ariaLabel="Categoría"
-                        triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
+                    <FormGroupedRow label="Fecha" icon={<CalendarDays />}>
+                      <DateStepper
+                        value={field.value}
+                        onChange={field.onChange}
                       />
                     </FormGroupedRow>
                   )}
@@ -526,7 +525,64 @@ export default function AddTransactionDialog({
               {incomeError ? (
                 <OverlayErrorBanner>{incomeError}</OverlayErrorBanner>
               ) : null}
+              <FormField
+                control={incomeForm.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormAmountHero value={field.value} onChange={field.onChange} />
+                )}
+              />
               <div className={OVERLAY_GROUPED_CARD_CLASS}>
+                <FormField
+                  control={incomeForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormGroupedRow label="Nombre" icon={<Type />}>
+                      <div className="flex items-center gap-1">
+                        <FormControl>
+                          <Input
+                            placeholder="Ej. sueldo, reembolso"
+                            autoCapitalize="sentences"
+                            autoComplete="off"
+                            enterKeyHint="done"
+                            spellCheck
+                            className={OVERLAY_ROW_INPUT_CLASS}
+                            {...field}
+                          />
+                        </FormControl>
+                        {field.value ? (
+                          <FieldClearButton
+                            label="Borrar nombre"
+                            onClear={() => field.onChange('')}
+                          />
+                        ) : null}
+                      </div>
+                    </FormGroupedRow>
+                  )}
+                />
+
+                <FormField
+                  control={incomeForm.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormGroupedRow label="Categoría" icon={<Tag />}>
+                      <CategoryGroupedSelect
+                        categories={incomeCategories}
+                        value={field.value ? Number(field.value) : undefined}
+                        onValueChange={field.onChange}
+                        onOpenChange={handleSelectOpenChange}
+                        disabled={loading}
+                        includeCategoryId={
+                          field.value ? Number(field.value) : null
+                        }
+                        placeholder="Selecciona"
+                        ariaLabel="Categoría"
+                        triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
+                      />
+                    </FormGroupedRow>
+                  )}
+                />
+
                 <FormField
                   control={incomeForm.control}
                   name="walletId"
@@ -535,7 +591,7 @@ export default function AddTransactionDialog({
                       (pm) => pm.id === Number(field.value),
                     );
                     return (
-                      <FormGroupedRow label="Billetera">
+                      <FormGroupedRow label="Billetera" icon={<Wallet />}>
                         <Select
                           value={field.value ? String(field.value) : undefined}
                           onOpenChange={handleSelectOpenChange}
@@ -581,67 +637,9 @@ export default function AddTransactionDialog({
 
                 <FormField
                   control={incomeForm.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormAmountRow value={field.value} onChange={field.onChange} />
-                  )}
-                />
-
-                <FormField
-                  control={incomeForm.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <FormGroupedRow label="Categoría">
-                      <CategoryGroupedSelect
-                        categories={incomeCategories}
-                        value={field.value ? Number(field.value) : undefined}
-                        onValueChange={field.onChange}
-                        onOpenChange={handleSelectOpenChange}
-                        disabled={loading}
-                        includeCategoryId={
-                          field.value ? Number(field.value) : null
-                        }
-                        placeholder="Selecciona"
-                        ariaLabel="Categoría"
-                        triggerClassName={OVERLAY_ROW_TRIGGER_CLASS}
-                      />
-                    </FormGroupedRow>
-                  )}
-                />
-
-                <FormField
-                  control={incomeForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormGroupedRow label="Nombre">
-                      <div className="flex items-center gap-1">
-                        <FormControl>
-                          <Input
-                            placeholder="Ej. sueldo, reembolso"
-                            autoCapitalize="sentences"
-                            autoComplete="off"
-                            enterKeyHint="done"
-                            spellCheck
-                            className={OVERLAY_ROW_INPUT_CLASS}
-                            {...field}
-                          />
-                        </FormControl>
-                        {field.value ? (
-                          <FieldClearButton
-                            label="Borrar nombre"
-                            onClear={() => field.onChange('')}
-                          />
-                        ) : null}
-                      </div>
-                    </FormGroupedRow>
-                  )}
-                />
-
-                <FormField
-                  control={incomeForm.control}
                   name="date"
                   render={({ field }) => (
-                    <FormGroupedRow label="Fecha">
+                    <FormGroupedRow label="Fecha" icon={<CalendarDays />}>
                       <DateStepper
                         value={field.value}
                         onChange={field.onChange}
@@ -827,10 +825,9 @@ function TransactionTypeSwitch({
       tabIndex={0}
       className={cn(
         'relative grid h-12 w-full touch-manipulation select-none grid-cols-2 rounded-full p-0.5',
-        'border border-border/60 bg-background/80 backdrop-blur-xl',
+        'border border-slate-200 bg-white dark:border-white/10',
         'shadow-panel',
-        'outline-none dark:border-white/10 dark:bg-black/45',
-        'dark:shadow-panel',
+        'outline-none',
       )}
       style={{ touchAction: 'none' }}
     >
@@ -839,7 +836,7 @@ function TransactionTypeSwitch({
         style={{ x }}
         className={cn(
           'pointer-events-none absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-full',
-          'bg-muted dark:bg-white/15',
+          'bg-primary/10',
         )}
       />
       {TYPE_TABS.map(({ id, label, icon: Icon }) => {
@@ -856,14 +853,14 @@ function TransactionTypeSwitch({
               className={cn(
                 'h-5 w-5',
                 selected
-                  ? 'fill-primary/15 text-primary-text'
-                  : 'text-muted-foreground',
+                  ? 'fill-primary/15 text-primary'
+                  : 'text-slate-500',
               )}
             />
             <span
               className={cn(
                 'text-xs font-medium leading-none',
-                selected ? 'text-primary-text' : 'text-muted-foreground',
+                selected ? 'text-primary' : 'text-slate-500',
               )}
             >
               {label}

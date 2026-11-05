@@ -149,6 +149,48 @@ export const FormAmountRow = ({
   </FormItem>
 );
 
+export const OVERLAY_AMOUNT_HERO_CLASS =
+  'h-14 border-0 bg-transparent px-16 text-center font-sans text-4xl font-bold tabular-nums text-slate-900 caret-slate-900 shadow-none placeholder:text-slate-400 focus:placeholder:text-transparent focus-visible:ring-0 md:h-16 md:text-5xl';
+
+/**
+ * Hero amount for create overlays: a light blue tinted panel with the MXN prefix and
+ * a large centered figure. Inside a `<Form>` (FormItem + FormMessage).
+ */
+export const FormAmountHero = ({
+  value,
+  onChange,
+  label = 'Monto',
+  enterKeyHint = 'next',
+}: {
+  value: unknown;
+  onChange: (val: number) => void;
+  label?: string;
+  enterKeyHint?: 'next' | 'done';
+}) => (
+  <FormItem className="space-y-1">
+    <FormLabel className="sr-only">{label}</FormLabel>
+    <div className="relative flex items-center justify-center rounded-2xl border border-primary/30 bg-white px-4 py-4 shadow-sm">
+      <span
+        className="absolute left-4 top-1/2 -translate-y-1/2 font-sans text-lg font-semibold text-slate-500"
+        aria-hidden
+      >
+        MXN
+      </span>
+      <FormControl>
+        <CurrencyInput
+          hideSymbol
+          value={value}
+          onChange={onChange}
+          placeholder="0"
+          enterKeyHint={enterKeyHint}
+          className={OVERLAY_AMOUNT_HERO_CLASS}
+        />
+      </FormControl>
+    </div>
+    <FormMessage className="px-1" />
+  </FormItem>
+);
+
 const MXN_AMOUNT_FORMAT = new Intl.NumberFormat('es-MX', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -267,14 +309,29 @@ export const OverlaySectionLabel = ({ children }: { children: ReactNode }) => (
 /** Label + control row inside a `<Form>` (FormItem + FormMessage). */
 export const FormGroupedRow = ({
   label,
+  icon,
   children,
 }: {
   label: string;
+  /** Leading line icon (same 16px muted style across the card). */
+  icon?: ReactNode;
   children: ReactNode;
 }) => (
   <FormItem className="space-y-1 px-3 py-1.5">
     <div className="flex min-h-11 items-center gap-3">
-      <FormLabel className={OVERLAY_GROUPED_LABEL_CLASS}>{label}</FormLabel>
+      <FormLabel
+        className={cn(
+          OVERLAY_GROUPED_LABEL_CLASS,
+          icon && 'flex w-[6.75rem] items-center gap-2',
+        )}
+      >
+        {icon ? (
+          <span className="shrink-0 text-muted-foreground [&>svg]:h-4 [&>svg]:w-4" aria-hidden>
+            {icon}
+          </span>
+        ) : null}
+        {label}
+      </FormLabel>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
     <FormMessage />
