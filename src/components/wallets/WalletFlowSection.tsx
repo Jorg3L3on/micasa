@@ -5,19 +5,14 @@ import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
 import { clampFlowIndex } from '@/lib/ui/wallet-cover-flow';
+import { navigateWithTransitionType } from '@/lib/ui/wallet-card-view-transition';
 import {
-  navigateWithTransitionType,
-  stashWalletCardVtSnapshot,
-} from '@/lib/ui/wallet-card-view-transition';
-import { prefetchWalletDetailApis } from '@/lib/ui/wallet-detail-prefetch';
+  prepareWalletDetailOpen,
+  readStoredId,
+  WALLET_RETURN_KEY,
+  writeStoredId,
+} from '@/lib/ui/wallet-detail-open';
 import { useFinanceContext } from '@/context/finance-context';
-import { PAYMENT_METHOD_LABELS, type PaymentMethodType } from '@/domain/payment-method';
-import { effectiveCreditLimit } from '@/lib/ui/wallet-cover-flow';
-import {
-  getProviderBrandColor,
-  getProviderCardStyle,
-  getWalletBrandCssVars,
-} from '@/lib/provider-card-style';
 import type { WalletListItem } from '@/types/catalog';
 import { WalletCoverFlow } from '@/components/wallets/WalletCoverFlow';
 import {
@@ -53,28 +48,6 @@ export const walletMovementsHref = (
 };
 
 const selectionKey = (title: string) => `micasa.wallets.flow.${title}`;
-const RETURN_KEY = 'micasa.wallets.flow.return';
-
-const readStored = (key: string): number | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = sessionStorage.getItem(key);
-    const value = raw == null ? NaN : Number(raw);
-    return Number.isFinite(value) ? value : null;
-  } catch {
-    return null;
-  }
-};
-
-const writeStored = (key: string, value: number | null) => {
-  try {
-    if (value == null) sessionStorage.removeItem(key);
-    else sessionStorage.setItem(key, String(value));
-  } catch {
-    /* private mode */
-  }
-};
-
 export const WalletFlowSection = ({
   title,
   wallets,
@@ -87,26 +60,26 @@ export const WalletFlowSection = ({
   // Coming back from a detail page: the opened card carries the shared name
   // from its first paint so the return morph has a target.
   const [vtId, setVtId] = useState<number | null>(() => {
-    const returning = readStored(RETURN_KEY);
+    const returning = readStoredId(WALLET_RETURN_KEY);
     return returning != null && wallets.some((w) => w.id === returning)
       ? returning
       : null;
   });
   useEffect(() => {
-    if (readStored(RETURN_KEY) == null) return;
-    writeStored(RETURN_KEY, null);
+    if (readStoredId(WALLET_RETURN_KEY) == null) return;
+    writeStoredId(WALLET_RETURN_KEY, null);
     const timer = window.setTimeout(() => setVtId(null), 800);
     return () => window.clearTimeout(timer);
   }, []);
   const { context } = useFinanceContext();
   const [activeId, setActiveId] = useState<number | null>(() => {
-    const stored = readStored(selectionKey(title));
+    const stored = readStoredId(selectionKey(title));
     return stored != null && wallets.some((w) => w.id === stored)
       ? stored
       : (wallets[0]?.id ?? null);
   });
   useEffect(() => {
-    writeStored(selectionKey(title), activeId);
+    writeStoredId(selectionKey(title), activeId);
   }, [title, activeId]);
 
   // Keep the selection by id so filtering or reloading doesn't jump around.
@@ -129,38 +102,9 @@ export const WalletFlowSection = ({
 
   const openDetail = (wallet: WalletListItem) => {
     const href = walletDetailHref(wallet, ownerQueryString);
-    const isCard = isCreditOrStoreCardWalletType(wallet.type);
-    const amount = Number(wallet.amount);
-    const limit = isCard ? effectiveCreditLimit(wallet) : null;
-    const brand =
-      getProviderBrandColor(wallet.provider_icon_key, wallet.type) ?? '#6366f1';
-    // The detail page paints this face instantly so the morph has a target.
-    stashWalletCardVtSnapshot({
-      id: wallet.id,
-      name: wallet.name,
-      typeLabel: PAYMENT_METHOD_LABELS[wallet.type as PaymentMethodType],
-      amount,
-      isCredit: isCard,
-      providerIconKey: wallet.provider_icon_key ?? null,
-      cycleLabel:
-        isCard && wallet.cutoff_day != null && wallet.due_day != null
-          ? `Corte ${wallet.cutoff_day} · Pago ${wallet.due_day}`
-          : null,
-      availableCredit: limit != null && limit > 0 ? limit - amount : null,
-      creditLimit: limit != null && limit > 0 ? limit : null,
-      utilizationPct:
-        limit != null && limit > 0
-          ? Math.min(100, Math.max(0, (amount / limit) * 100))
-          : null,
-      style: {
-        ...getProviderCardStyle(wallet.provider_icon_key, wallet.type, 'wow'),
-        ...getWalletBrandCssVars(brand),
-      },
-    });
-    prefetchWalletDetailApis(wallet.id, isCard, context);
+    prepareWalletDetailOpen(wallet, context);
     // Name only the opened card, and only for the hand-off: the list stays
     // mounted behind the detail page, so a lingering name would be a duplicate.
-    writeStored(RETURN_KEY, wallet.id);
     flushSync(() => setVtId(wallet.id));
     navigateWithTransitionType(href, 'nav-forward', (to) => router.push(to));
     window.setTimeout(() => setVtId(null), 800);
