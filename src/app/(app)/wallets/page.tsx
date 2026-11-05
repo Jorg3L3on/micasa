@@ -1315,8 +1315,6 @@ export default function WalletsPage() {
                       credit={sections.credit}
                       attention={attentionItems}
                       ownerQueryString={ownerQueryString}
-                      onCreate={openCreateDialog}
-                      {...flowActions}
                     />
                   )}
                 </div>
