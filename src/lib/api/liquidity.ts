@@ -5,6 +5,7 @@ import type {
   LiquidityDebtBreakdown,
   LiquidityProjectionResponse,
 } from '@/types/catalog';
+import type { LiquidityScenarioItem } from '@/schemas/liquidity-scenario.schema';
 import {
   buildOwnerQuery,
   getClientApiBaseUrl,
@@ -21,6 +22,8 @@ export type FetchLiquidityProjectionParams = {
   stressCyclePercent?: number;
   includeUnpaid?: boolean;
   includeTemplates?: boolean;
+  /** Hypothetical items; the API computes with them and stores nothing. */
+  scenario?: LiquidityScenarioItem[];
 };
 
 const appendLiquiditySearchParams = (
@@ -44,6 +47,9 @@ const appendLiquiditySearchParams = (
   }
   if (params.includeTemplates === true) {
     search.set('includeTemplates', 'true');
+  }
+  if (params.scenario && params.scenario.length > 0) {
+    search.set('scenario', JSON.stringify(params.scenario));
   }
 };
 

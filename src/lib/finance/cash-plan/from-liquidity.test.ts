@@ -350,3 +350,172 @@ describe('planInputFromLiquidity', () => {
     expect(outside.dataGaps?.some((gap) => gap.code === 'undated_obligation')).toBe(false);
   });
 });
+
+describe('planInputFromLiquidity with a scenario', () => {
+  type ObligationItem = LiquidityProjectionResponse['milestones'][number]['obligations'][number];
+
+  const scenarioLine = (overrides: Partial<ObligationItem>): ObligationItem => ({
+    source: 'scenario',
+    wallet_id: 1,
+    wallet_name: 'Efectivo sintético',
+    wallet_type: 'CASH',
+    statement_start: '',
+    statement_end: '',
+    statement_due_date: '2026-09-12',
+    last_statement_balance: 0,
+    payments_applied_to_statement: 0,
+    next_due_payment: 1800,
+    expense_description: 'Compra simulada',
+    scenario_index: 0,
+    scenario_kind: 'purchase',
+    scenario_charge_date: '2026-09-12',
+    ...overrides,
+  });
+
+  const withScenario = (line: ObligationItem, monthDelta = line.next_due_payment) => {
+    const source = projection();
+    source.milestones.push({
+      due_date: line.statement_due_date,
+      is_past_due: false,
+      obligations: [line],
+      total_due: line.next_due_payment,
+      cumulative_due_through_date: 0,
+      funding_total: 1000,
+      liquidity_headroom: 0,
+    });
+    const month = source.monthly_series[0]!;
+    month.total_payments_due += monthDelta;
+    return source;
+  };
+
+  const plan = (source: LiquidityProjectionResponse, horizon: 'quincena' | 'mes' = 'quincena') =>
+    planInputFromLiquidity({
+      projection: source,
+      monthKey: '2026-09',
+      horizon,
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T12:00:00.000Z',
+    });
+
+  it('adds a purchase on a funding wallet as a debt the route can defer', () => {
+    const before = plan(projection());
+    const after = plan(withScenario(scenarioLine({})));
+
+    expect(after.gapAmount - before.gapAmount).toBe(1800);
+    expect(after.gapLines).toContainEqual({
+      id: 'scenario-0-1',
+      label: 'Compra simulada',
+      amount: 1800,
+      detail: expect.stringContaining('Efectivo sintético'),
+    });
+    expect(after.obligations).toContainEqual(
+      expect.objectContaining({ id: 'scenario-0-1', kind: 'bill', discretionary: true, consequenceTier: 3 }),
+    );
+    expect(after.untouchableIds).not.toContain('scenario-0-1');
+
+    const result = buildCashPlan(after);
+    const routes = [result.primary, ...result.alternatives];
+    expect(
+      routes.some((route) =>
+        route.actions.some((item) => item.type === 'defer_nonessential' && item.obligationId === 'scenario-0-1'),
+      ),
+    ).toBe(true);
+    // A cash purchase is never paid "at minimum".
+    expect(
+      routes.some((route) =>
+        route.actions.some((item) => item.type === 'pay_minimum' && item.obligationId === 'scenario-0-1'),
+      ),
+    ).toBe(false);
+  });
+
+  it('puts a card purchase on that card statement so the route can pay its minimum', () => {
+    const source = withScenario(
+      scenarioLine({
+        wallet_id: 7,
+        wallet_name: 'Tarjeta A',
+        wallet_type: 'CREDIT_CARD',
+        statement_due_date: '2026-09-10',
+        scenario_charge_date: '2026-09-01',
+        next_due_payment: 900,
+      }),
+    );
+    const card = source.milestones[0]?.obligations[0];
+    if (card) card.minimum_payment = 400;
+    const input = plan(source);
+
+    const revolving = input.obligations.find((obligation) => obligation.id === 'card-7');
+    expect(revolving?.statementDue).toBe(2100);
+    expect(revolving?.minimumDue).toBe(400);
+    expect(input.obligations.filter((obligation) => obligation.id.startsWith('scenario-'))).toEqual([]);
+    expect(input.gapLines.find((line) => line.id === 'scenario-0-1')?.detail).toMatch(/se paga el/);
+
+    const result = buildCashPlan(input);
+    const routes = [result.primary, ...result.alternatives];
+    expect(
+      routes.some((route) =>
+        route.actions.some((item) => item.type === 'pay_minimum' && item.obligationId === 'card-7'),
+      ),
+    ).toBe(true);
+  });
+
+  it('opens a card line with the card minimum when the card owes nothing else this period', () => {
+    const input = plan(
+      withScenario(
+        scenarioLine({
+          wallet_id: 8,
+          wallet_name: 'Tarjeta B',
+          wallet_type: 'DEPARTMENT_STORE_CARD',
+          statement_due_date: '2026-09-12',
+          next_due_payment: 700,
+          minimum_payment: 150,
+        }),
+      ),
+    );
+    expect(input.obligations).toContainEqual(
+      expect.objectContaining({ id: 'card-8', kind: 'card_revolving', statementDue: 700, minimumDue: 150 }),
+    );
+  });
+
+  it('treats an instalment on a card as a cuota', () => {
+    const input = plan(
+      withScenario(
+        scenarioLine({
+          wallet_id: 7,
+          wallet_name: 'Tarjeta A',
+          wallet_type: 'CREDIT_CARD',
+          statement_due_date: '2026-09-12',
+          next_due_payment: 850,
+          scenario_kind: 'instalment',
+          scenario_instalment_number: 1,
+          scenario_instalment_total: 6,
+          credit_installment_current: 1,
+          credit_installment_total: 6,
+        }),
+      ),
+    );
+    expect(input.obligations).toContainEqual(
+      expect.objectContaining({ id: 'scenario-0-1', kind: 'card_msi', msiInstallment: 850 }),
+    );
+    expect(input.gapLines.find((line) => line.id === 'scenario-0-1')).toMatchObject({
+      label: 'Pago mensual simulado',
+      detail: expect.stringContaining('1 de 6'),
+    });
+  });
+
+  it('leaves the fortnight unchanged when the purchase falls after it', () => {
+    const before = plan(projection());
+    const after = plan(
+      withScenario(scenarioLine({ statement_due_date: '2026-09-25', scenario_charge_date: '2026-09-25' })),
+    );
+    expect(after.gapAmount).toBe(before.gapAmount);
+    expect(after.gapLines.some((line) => line.id.startsWith('scenario-'))).toBe(false);
+  });
+
+  it('splits the month payments so the simulated line adds up in the mes horizon', () => {
+    const input = plan(withScenario(scenarioLine({ statement_due_date: '2026-09-25' })), 'mes');
+    const total = input.gapLines.reduce((sum, line) => sum + line.amount, 0);
+    expect(total).toBeCloseTo(input.gapAmount, 6);
+    expect(input.gapLines.find((line) => line.id === 'month-payments')?.amount).toBe(4800);
+    expect(input.gapLines.find((line) => line.id === 'scenario-0-1')?.amount).toBe(1800);
+  });
+});

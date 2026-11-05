@@ -54,7 +54,7 @@ export function WalletCardVtPlaceholder({
         <Skeleton
           className={cn(
             'w-full rounded-face border border-border/60',
-            'min-h-[12rem] sm:min-h-[13.5rem]',
+            'aspect-[1.586]',
           )}
         />
       )}
@@ -72,7 +72,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
         )}
         style={snapshot.style}
       >
-        <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
+        <div className="relative flex h-full flex-col justify-between gap-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {snapshot.providerIconKey ? (
@@ -99,9 +99,6 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
                 </p>
               </div>
             </div>
-            <span className="font-mono text-caption tracking-[0.2em] opacity-50">
-              •••• ••••
-            </span>
           </div>
 
           <div className="space-y-3">
@@ -109,7 +106,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
               <p className="eyebrow opacity-70">
                 Deuda total
               </p>
-              <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
+              <p className="font-sans text-[clamp(1.5rem,9cqw,2.25rem)] font-bold tabular-nums leading-snug tracking-tight">
                 {formatCurrency(snapshot.amount)}
               </p>
             </div>
@@ -171,7 +168,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
       )}
       style={snapshot.style}
     >
-      <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
+      <div className="relative flex h-full flex-col justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           {snapshot.providerIconKey ? (
             <WalletProviderIcon
@@ -203,7 +200,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             <p className="eyebrow opacity-70">
               Saldo disponible
             </p>
-            <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
+            <p className="font-sans text-[clamp(1.5rem,9cqw,2.25rem)] font-bold tabular-nums leading-snug tracking-tight">
               {formatCurrency(snapshot.amount)}
             </p>
           </div>

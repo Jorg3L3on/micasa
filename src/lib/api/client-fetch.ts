@@ -14,6 +14,9 @@ type ApiErrorResponse = {
   error?: string;
   details?: ApiErrorDetail[];
   code?: string;
+  /** Request field the error belongs to, when the route can pin it to one. */
+  field?: string;
+  index?: number | null;
   hint?: string;
   parse_warnings?: string[];
 };
@@ -22,6 +25,8 @@ export type ClientApiError = Error & {
   status?: number;
   details?: ApiErrorDetail[];
   code?: string;
+  field?: string;
+  index?: number | null;
   hint?: string;
   parse_warnings?: string[];
 };
@@ -56,6 +61,17 @@ export const isOwnerContextPending = (
   serverOwnerKey: string,
 ): boolean =>
   context.id > 0 && getFinanceOwnerKey(context) !== serverOwnerKey;
+
+/**
+ * Panel financiero guard: also pending when the URL named no owner, because
+ * the server then rendered the personal default and FinanceProviderSync is
+ * about to replace the URL with the persisted owner (often a house).
+ */
+export const isPanelOwnerPending = (
+  context: Pick<FinanceContextType, 'type' | 'id'>,
+  serverOwnerKey: string,
+  ownerInUrl: boolean,
+): boolean => !ownerInUrl || isOwnerContextPending(context, serverOwnerKey);
 
 /**
  * Inverse of `buildOwnerQuery` for `?ownerType=&ownerId=` (or without `?`).
@@ -121,10 +137,16 @@ export async function clientFetchFromApi<T>(
     let failureReason = `No se pudo completar la solicitud (${endpoint})`;
     let errorDetails: ApiErrorDetail[] | undefined;
     let apiCode: string | undefined;
+    let apiField: string | undefined;
+    let apiIndex: number | null | undefined;
     try {
       const error = (await res.json()) as ApiErrorResponse;
       if (typeof error.code === 'string') {
         apiCode = error.code;
+      }
+      if (typeof error.field === 'string') {
+        apiField = error.field;
+        apiIndex = typeof error.index === 'number' ? error.index : null;
       }
       if (error.error) {
         failureReason = isBrowserNetworkError(new Error(error.error))
@@ -150,6 +172,10 @@ export async function clientFetchFromApi<T>(
     error.status = res.status;
     error.details = errorDetails;
     error.code = apiCode;
+    if (apiField) {
+      error.field = apiField;
+      error.index = apiIndex;
+    }
     throw error;
   }
 

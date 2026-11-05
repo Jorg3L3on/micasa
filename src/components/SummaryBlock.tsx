@@ -1,7 +1,7 @@
 'use client';
 
 import EmptyState from '@/components/EmptyState';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -90,6 +90,8 @@ type SummaryBlockProps = {
   planningPayrollLoanDeduction?: PlannerPayrollLoanDeductionSummary | null;
   /** Resto del presupuesto de la quincena (total − spent); suma al compromiso. */
   planningBudgetRemaining?: number;
+  /** Budget section inside Ver desglose; hidden from xl, where the card shows. */
+  budgetDesglose?: ReactNode;
   /** Saldos activos Efectivo + Débito (API resumen) — Balance actual. */
   fundingWalletBalanceTotal?: number;
   /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto — Liquidez actual. */
@@ -119,6 +121,7 @@ export default function SummaryBlock({
   planningWalletLoanDue = null,
   planningPayrollLoanDeduction = null,
   planningBudgetRemaining = 0,
+  budgetDesglose = null,
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
@@ -270,9 +273,9 @@ export default function SummaryBlock({
           <div className="flex flex-col gap-3">
             <Separator className="bg-border/50" />
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <div
-                className={cn(PANEL_INSET_CLASS, 'p-3')}
+                className={cn(PANEL_INSET_CLASS, 'min-w-0 p-3')}
               >
                 <div className="mb-1.5 flex items-center justify-between gap-1.5">
                   <div className="flex min-w-0 items-center gap-1.5">
@@ -297,7 +300,7 @@ export default function SummaryBlock({
                     </Button>
                   ) : null}
                 </div>
-                <p className="leading-tight">
+                <p className="whitespace-nowrap leading-tight">
                   <CurrencyTicker
                     value={tenemos}
                     className="text-lg font-bold tabular-nums text-foreground"
@@ -313,7 +316,7 @@ export default function SummaryBlock({
               </div>
 
               <div
-                className={cn(PANEL_INSET_CLASS, 'p-3')}
+                className={cn(PANEL_INSET_CLASS, 'min-w-0 p-3')}
               >
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-status-success" aria-hidden />
@@ -321,7 +324,7 @@ export default function SummaryBlock({
                     Pagado
                   </span>
                 </div>
-                <p className="leading-tight">
+                <p className="whitespace-nowrap leading-tight">
                   <CurrencyTicker
                     value={pagado}
                     className="text-lg font-bold tabular-nums text-foreground"
@@ -335,7 +338,7 @@ export default function SummaryBlock({
               </div>
 
               <div
-                className={cn(PANEL_INSET_CLASS, 'p-3')}
+                className={cn(PANEL_INSET_CLASS, 'min-w-0 p-3')}
               >
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-status-pending" aria-hidden />
@@ -343,7 +346,7 @@ export default function SummaryBlock({
                     Pendiente
                   </span>
                 </div>
-                <p className="leading-tight">
+                <p className="whitespace-nowrap leading-tight">
                   <CurrencyTicker
                     value={pendiente}
                     className="text-lg font-bold tabular-nums text-foreground"
@@ -398,6 +401,10 @@ export default function SummaryBlock({
                 {planningOrphanCardPayments.count !== 1 ? 's' : ''} a tarjeta
                 (desde la sección de tarjetas, sin gasto duplicado en la lista).
               </p>
+            ) : null}
+
+            {budgetDesglose != null ? (
+              <div className="xl:hidden">{budgetDesglose}</div>
             ) : null}
 
             {incomeItems.length > 0 || hasUserIncome ? (

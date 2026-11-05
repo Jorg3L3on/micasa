@@ -18,6 +18,7 @@ import {
   History,
   Pencil,
   SlidersHorizontal,
+  Trash2,
   Upload,
 } from 'lucide-react';
 import { AuditHistoryOverlay } from '@/components/audit/AuditHistoryOverlay';
@@ -25,6 +26,7 @@ import WalletImportDialog from '@/components/wallets/WalletImportDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
 import WalletForm from '@/components/WalletForm';
+import { useWalletDelete } from '@/components/wallets/use-wallet-delete';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { CreditCardPlannedPaymentSection } from '@/components/credit-cards/CreditCardPlannedPaymentSection';
 import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
@@ -582,6 +584,8 @@ export default function WalletDetailPage() {
     [],
   );
 
+  const { requestDelete, dialog: deleteDialog } = useWalletDelete(wallet, context);
+
   const [historyOpen, setHistoryOpen] = useState(false);
   const overflowItems = useMemo((): ToolbarOverflowItem[] => {
     if (!wallet) return [];
@@ -616,18 +620,21 @@ export default function WalletDetailPage() {
         icon: <Upload data-icon="inline-start" />,
       });
     }
-    items.push({
-      key: 'export',
-      label: 'Exportar CSV',
-      onClick: handleExportCsv,
-      icon: <Download data-icon="inline-start" />,
-    });
-    items.push({
-      key: 'history',
-      label: 'Historial',
-      onClick: () => setHistoryOpen(true),
-      icon: <History data-icon="inline-start" />,
-    });
+    items.push(
+      {
+        key: 'export',
+        label: 'Exportar CSV',
+        onClick: handleExportCsv,
+        icon: <Download data-icon="inline-start" />,
+      },
+      {
+        key: 'delete',
+        label: 'Eliminar billetera',
+        onClick: requestDelete,
+        icon: <Trash2 data-icon="inline-start" />,
+        destructive: true,
+      },
+    );
     return items;
   }, [
     wallet,
@@ -637,6 +644,7 @@ export default function WalletDetailPage() {
     handleOpenBalance,
     handleOpenEdit,
     handleOpenImport,
+    requestDelete,
   ]);
 
   useRegisterToolbarActions({
@@ -818,6 +826,8 @@ export default function WalletDetailPage() {
           onSuccess={loadData}
         />
       ) : null}
+
+      {deleteDialog}
 
       <WalletForm
         open={editOpen}

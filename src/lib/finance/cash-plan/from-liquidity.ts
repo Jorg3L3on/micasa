@@ -1,5 +1,9 @@
 import { getCalendarFortnightRefForYmd, ymdFallsInFortnight } from '@/lib/fortnight-calendar';
-import type { LiquidityProjectionResponse } from '@/types/catalog';
+import { formatDisplayDate } from '@/lib/calendar-dates';
+import type {
+  LiquidityProjectionObligationItem,
+  LiquidityProjectionResponse,
+} from '@/types/catalog';
 import { planContributionFromObligation } from '@/lib/finance/card-period-surfaces';
 import { isUntouchableObligation } from '@/lib/finance/cash-plan/catalog';
 import { fromCents, toCents } from '@/lib/finance/cash-plan/money';
@@ -86,6 +90,32 @@ export const classifyObligationLabel = (
 
 const monthOf = (ymd: string): string => ymd.slice(0, 7);
 
+const FUNDING_WALLET_TYPES = new Set(['CASH', 'DEBIT_CARD']);
+
+/** Gap line ids for simulated items start with this, so the hero can mark them. */
+export const SCENARIO_LINE_PREFIX = 'scenario-';
+
+export const isScenarioGapLine = (line: GapBreakdownLine): boolean =>
+  line.id.startsWith(SCENARIO_LINE_PREFIX);
+
+const scenarioLineId = (item: LiquidityProjectionObligationItem): string =>
+  `${SCENARIO_LINE_PREFIX}${item.scenario_index ?? 0}-${item.scenario_instalment_number ?? 1}`;
+
+const scenarioLabel = (item: LiquidityProjectionObligationItem): string =>
+  item.scenario_kind === 'instalment' ? 'Pago mensual simulado' : 'Compra simulada';
+
+const scenarioDetail = (item: LiquidityProjectionObligationItem): string => {
+  const charge = formatDisplayDate(item.scenario_charge_date ?? item.statement_due_date);
+  const cuota =
+    item.scenario_instalment_total != null
+      ? ` · ${item.scenario_instalment_number} de ${item.scenario_instalment_total}`
+      : '';
+  if (FUNDING_WALLET_TYPES.has(item.wallet_type)) {
+    return `${charge} · ${item.wallet_name}${cuota}`;
+  }
+  return `${charge} · ${item.wallet_name}${cuota} · se paga el ${formatDisplayDate(item.statement_due_date)}`;
+};
+
 const resolveFortnight = (monthKey: string, asOfYmd: string) => {
   if (monthOf(asOfYmd) === monthKey) return getCalendarFortnightRefForYmd(asOfYmd);
   const [year, month] = monthKey.split('-').map(Number);
@@ -123,9 +153,15 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     added.push(line);
   };
 
+  const scenarioItems: LiquidityProjectionObligationItem[] = [];
+
   for (const milestone of projection.milestones) {
     if (!inHorizon(milestone.due_date)) continue;
     for (const item of milestone.obligations) {
+      if (item.source === 'scenario') {
+        scenarioItems.push(item);
+        continue;
+      }
       if (item.source === 'expense_template') {
         if (horizon === 'quincena') continue;
         const label = item.template_name || item.wallet_name || 'Gasto';
@@ -270,6 +306,71 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     });
   }
 
+  // A simulated purchase or instalment is one more debt item (Jorge, MIC-I8):
+  // on a funding wallet a bill the route may defer; on a card it rides the
+  // card's statement, so the route can pay that card's minimum; a card
+  // instalment is a cuota.
+  const scenarioLines: GapBreakdownLine[] = [];
+  for (const item of scenarioItems) {
+    const id = scenarioLineId(item);
+    const label = scenarioLabel(item);
+    const line: GapBreakdownLine = {
+      id,
+      label,
+      amount: item.next_due_payment,
+      detail: scenarioDetail(item),
+    };
+    scenarioLines.push(line);
+    if (FUNDING_WALLET_TYPES.has(item.wallet_type)) {
+      push({
+        id,
+        kind: 'bill',
+        labelSynthetic: label,
+        statementDue: item.next_due_payment,
+        dueInHorizon: true,
+        consequenceTier: 3,
+        discretionary: true,
+      }, line);
+      continue;
+    }
+    if (item.credit_installment_total != null) {
+      push({
+        id,
+        kind: 'card_msi',
+        labelSynthetic: `${label} · ${item.wallet_name}`,
+        balanceTotal: item.next_due_payment,
+        msiInstallment: item.next_due_payment,
+        dueInHorizon: true,
+        consequenceTier: 3,
+      }, line);
+      continue;
+    }
+    const cardId = `card-${item.wallet_id}`;
+    const card = obligations.find((obligation) => obligation.id === cardId);
+    if (card) {
+      card.statementDue = fromCents(toCents(card.statementDue ?? 0) + toCents(item.next_due_payment));
+      added.push(line);
+      continue;
+    }
+    const utilization = projection.card_utilization_summary.cards.find(
+      (row) => row.card_id === item.wallet_id,
+    );
+    push({
+      id: cardId,
+      kind: 'card_revolving',
+      labelSynthetic: item.wallet_name,
+      balanceTotal: utilization?.used_amount,
+      statementDue: item.next_due_payment,
+      minimumDue: item.minimum_payment != null && item.minimum_payment > 0 ? item.minimum_payment : null,
+      aprAnnual: item.apr_annual != null && item.apr_annual > 0 ? item.apr_annual : null,
+      catAnnual: item.cat_annual != null && item.cat_annual > 0 ? item.cat_annual : null,
+      creditLimit: utilization?.credit_limit ?? undefined,
+      dueInHorizon: true,
+      consequenceTier: 3,
+    }, line);
+  }
+  const scenarioCents = scenarioLines.reduce((sum, line) => sum + toCents(line.amount), 0);
+
   if (horizon === 'quincena') {
     dataGaps.push({
       code: 'income_monthly_only',
@@ -294,7 +395,8 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
   const gapAmount = (paymentCents - incomeCents - cashCents) / 100;
   const gapLines: GapBreakdownLine[] = horizon === 'mes'
     ? [
-      { id: 'month-payments', label: 'Pagos del mes', amount: fromCents(paymentCents) },
+      { id: 'month-payments', label: 'Pagos del mes', amount: fromCents(paymentCents - scenarioCents) },
+      ...scenarioLines,
       { id: 'month-income', label: 'Ingreso del mes', amount: fromCents(-incomeCents) },
       { id: 'cash', label: 'Efectivo disponible', amount: fromCents(-cashCents) },
     ]

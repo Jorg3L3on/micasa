@@ -869,6 +869,7 @@ async function listLoanPaymentsForPlannerMonthImpl(
           source_wallet: { select: { name: true } },
           linked_wallet: { select: { name: true } },
           income_template: { select: { name: true } },
+          lender_entity: { select: { provider_icon_key: true } },
         },
       },
     },
@@ -884,6 +885,8 @@ async function listLoanPaymentsForPlannerMonthImpl(
     loanName: payment.loan.name,
     lender: payment.loan.lender,
     lenderId: payment.loan.lender_id ?? null,
+    lenderProviderIconKey:
+      payment.loan.lender_entity?.provider_icon_key ?? null,
     loanType: payment.loan.type as LoanDuePaymentItem['loanType'],
     paymentSource:
       payment.loan.payment_source as LoanDuePaymentItem['paymentSource'],

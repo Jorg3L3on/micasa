@@ -185,12 +185,7 @@ const FortnightProgressStatus = ({
         ? `Empieza ${formatAxisDate(startYmd)}`
         : position.remainingDays <= 1
           ? 'Último día'
-          : `${position.remainingDays} días`;
-
-  const titleSr =
-    position.kind === 'current' && position.remainingDays > 1
-      ? `Faltan ${position.remainingDays} días`
-      : title;
+          : `Faltan ${position.remainingDays} días`;
 
   return (
     <div className={chromeTileClass} aria-live="polite">
@@ -198,7 +193,6 @@ const FortnightProgressStatus = ({
         <div className="flex items-center justify-between gap-2">
           <p
             className="flex min-w-0 items-center gap-2 text-sm font-semibold leading-tight tracking-tight"
-            aria-label={titleSr}
           >
             <span className={statusGlyphClass(tone)} aria-hidden>
               <StatusIcon className="h-4 w-4" />
@@ -223,6 +217,15 @@ const FortnightProgressStatus = ({
               )}
             >
               {percent}%
+              <span className="sr-only"> de la quincena transcurrido</span>
+              {/* Qualifier only where it fits next to "Faltan N días". */}
+              <span
+                className="hidden text-caption font-medium text-muted-foreground @min-[22rem]:inline"
+                aria-hidden
+              >
+                {' '}
+                de la quincena
+              </span>
             </span>
           )}
         </div>

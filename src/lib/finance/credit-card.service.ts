@@ -27,6 +27,7 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import { createWalletForOwner, updateWalletMetadataForOwner } from '@/lib/finance/wallet.service';
 import { createExpense } from '@/lib/finance/expense.service';
+import { loadLoanOutstandingByWallet } from '@/lib/finance/wallet-loan-outstanding';
 import {
   paymentCategoryKindForWallet,
   resolvePaymentCategoryId,
@@ -60,6 +61,12 @@ const CREDIT_CARD_ASSIGNEE_INCLUDE = {
   assignee: { select: { id: true, name: true } },
 } as const;
 
+const withLoanOutstanding = (
+  availableCredit: number | null,
+  loanOutstanding: number,
+): number | null =>
+  availableCredit == null ? null : availableCredit - loanOutstanding;
+
 const mapWalletToCreditCardDto = (
   wallet: {
     id: number;
@@ -81,6 +88,7 @@ const mapWalletToCreditCardDto = (
     assignee: { id: number; name: string } | null;
   },
   spent: number,
+  loanOutstanding = 0,
 ) => {
   const currentBalance = Number(wallet.amount);
   const creditLimit =
@@ -101,11 +109,16 @@ const mapWalletToCreditCardDto = (
       wallet.temporary_credit_limit_as_of == null
         ? null
         : wallet.temporary_credit_limit_as_of.toISOString(),
-    available_credit: getWalletAvailableCredit({
-      amount: currentBalance,
-      credit_limit: creditLimit,
-      temporary_credit_limit: temporaryCreditLimit,
-    }),
+    // Free credit: limit − card balance − what linked or card-paid loans still owe.
+    available_credit: withLoanOutstanding(
+      getWalletAvailableCredit({
+        amount: currentBalance,
+        credit_limit: creditLimit,
+        temporary_credit_limit: temporaryCreditLimit,
+      }),
+      loanOutstanding,
+    ),
+    loan_outstanding: loanOutstanding,
     type: wallet.type,
     active: wallet.active,
     include_in_liquidity: wallet.include_in_liquidity,
@@ -134,6 +147,7 @@ export async function listCreditCardsByOwner(ownerFilter: OwnerFilter) {
     orderBy: [{ active: 'desc' }, { name: 'asc' }],
   });
 
+  const loanMap = await loadLoanOutstandingByWallet(ownerFilter);
   const walletIds = wallets.map((w) => w.id);
   const expenseSums =
     walletIds.length === 0
@@ -152,7 +166,7 @@ export async function listCreditCardsByOwner(ownerFilter: OwnerFilter) {
   );
 
   return wallets.map((w) =>
-    mapWalletToCreditCardDto(w, spentMap.get(w.id) ?? 0),
+    mapWalletToCreditCardDto(w, spentMap.get(w.id) ?? 0, loanMap.get(w.id) ?? 0),
   );
 }
 
@@ -183,8 +197,9 @@ export async function getCreditCardByOwner(
   }
 
   const spent = Number(spentAgg._sum.amount ?? 0);
+  const loanMap = await loadLoanOutstandingByWallet(ownerFilter);
 
-  return mapWalletToCreditCardDto(wallet, spent);
+  return mapWalletToCreditCardDto(wallet, spent, loanMap.get(wallet.id) ?? 0);
 }
 
 export async function createCreditCardForOwner(

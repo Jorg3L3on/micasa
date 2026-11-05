@@ -262,6 +262,8 @@ export type WalletListItem = {
   created_at?: string | null;
   spent_amount: number;
   remaining_amount: number;
+  /** Credit and store cards: what active loans linked to or paid from the card still owe. */
+  loan_outstanding?: number;
   /** Solo billeteras de casa: miembro atribuido; null = compartida. */
   assignee_user_id: number | null;
   assignee: { id: number; name: string } | null;
@@ -330,6 +332,8 @@ export type DuePaymentItem = {
   walletId: number;
   walletName: string;
   walletType: string;
+  /** `Wallet.provider_icon_key`; null when the card has no provider logo. */
+  providerIconKey: string | null;
   dueDay: number;
   cutoff_day: number;
   nextDuePayment: number;
@@ -424,7 +428,8 @@ export type LiquidityProjectionObligationSource =
   | 'credit_card_statement'
   | 'unpaid_expense'
   | 'expense_template'
-  | 'loan_payment';
+  | 'loan_payment'
+  | 'scenario';
 
 /** Respuesta de GET /api/wallets/liquidity-projection */
 export type LiquidityProjectionObligationItem = {
@@ -461,6 +466,15 @@ export type LiquidityProjectionObligationItem = {
   payments_applied_to_fortnight?: number;
   remaining_planner_amount?: number;
   planner_status?: PlannerCardPaymentStatusUi;
+  /** Scenario lines only (source `scenario`): which input item, its kind and the charge day. */
+  scenario_index?: number;
+  scenario_kind?: 'purchase' | 'instalment';
+  scenario_charge_date?: string;
+  scenario_instalment_number?: number;
+  scenario_instalment_total?: number;
+  /** Set on a scenario instalment on a card: a cuota, outside fortnight aggregates. */
+  credit_installment_current?: number;
+  credit_installment_total?: number;
 };
 
 export type LiquidityProjectionMilestone = {
@@ -614,6 +628,24 @@ export type LiquidityProjectionResponse = {
   projection_events: LiquidityProjectionEvent[];
   projection_tracks: LiquidityProjectionTrack[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
+  /** Present only when the request carried `scenario`. */
+  scenario_delta?: LiquidityScenarioDelta;
+  scenario_assumptions?: string[];
+};
+
+export type LiquidityScenarioOutcome = {
+  first_projected_shortfall_date: string | null;
+  min_projected_headroom: number | null;
+  end_liquidity: number;
+};
+
+/** Baseline vs scenario, computed from the same loaded data. */
+export type LiquidityScenarioDelta = {
+  baseline: LiquidityScenarioOutcome;
+  scenario: LiquidityScenarioOutcome;
+  first_projected_shortfall_changed: boolean;
+  min_projected_headroom_change: number | null;
+  end_liquidity_change: number;
 };
 
 export type CreditCardPaymentListItem = {
@@ -666,6 +698,8 @@ export type CreditCardStatementResponse = {
   credit_limit: number | null;
   temporary_credit_limit: number | null;
   available_credit: number | null;
+  /** Already subtracted from `available_credit`. */
+  loan_outstanding?: number;
   cutoff_day: number;
   due_day: number;
   statement_start: string;
