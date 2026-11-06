@@ -289,6 +289,8 @@ export const CreditCardVisualHero = ({
 type DuePaymentStripProps = {
   statement: CreditCardStatementResponse;
   daysUntilDue: number;
+  /** Omit on past cycles: the payment always applies to the current one. */
+  onPay?: () => void;
   onCapture?: () => void;
   onClearDeclaration?: () => void;
 };
@@ -296,6 +298,7 @@ type DuePaymentStripProps = {
 export const CreditCardDuePaymentStrip = ({
   statement,
   daysUntilDue,
+  onPay,
   onCapture,
   onClearDeclaration,
 }: DuePaymentStripProps) => {
@@ -336,11 +339,11 @@ export const CreditCardDuePaymentStrip = ({
         <p className="eyebrow text-muted-foreground">
           Toca pagar este corte
         </p>
-        <p className="text-caption text-muted-foreground">
-          No es la deuda total ni el saldo del plan.
-        </p>
         <p className="font-sans text-lg font-bold tabular-nums leading-tight">
           {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
+        </p>
+        <p className="text-caption text-muted-foreground">
+          No es la deuda total ni el saldo del plan.
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -387,6 +390,15 @@ export const CreditCardDuePaymentStrip = ({
         <span className="text-caption text-muted-foreground">
           {formatDate(statement.statement_due_date)}
         </span>
+        {hasPendingDue && onPay ? (
+          <Button
+            type="button"
+            className="min-h-11 rounded-xl px-4 sm:min-h-9"
+            onClick={onPay}
+          >
+            Pagar
+          </Button>
+        ) : null}
       </div>
     </div>
   );

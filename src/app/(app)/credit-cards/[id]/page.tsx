@@ -747,6 +747,7 @@ export default function CreditCardDetailPage() {
             <CreditCardDuePaymentStrip
               statement={statement}
               daysUntilDue={daysUntilDue}
+              onPay={isCurrentCycle && card ? handleOpenPayment : undefined}
               onCapture={
                 statement.period_obligation?.confidence === 'missing' &&
                 statementDuePlan
