@@ -19,7 +19,10 @@ import {
   WALLET_RETURN_KEY,
   writeStoredId,
 } from '@/lib/ui/wallet-detail-open';
-import type { WalletAttentionItem } from '@/lib/ui/wallet-cover-flow';
+import {
+  attentionCaption,
+  type WalletAttentionItem,
+} from '@/lib/ui/wallet-cover-flow';
 import type { WalletListItem } from '@/types/catalog';
 
 type WalletsGalleryProps = {
@@ -27,21 +30,6 @@ type WalletsGalleryProps = {
   credit: WalletListItem[];
   attention: WalletAttentionItem[];
   ownerQueryString: string;
-};
-
-const attentionCaption = (item: WalletAttentionItem): string => {
-  switch (item.reason) {
-    case 'due-soon':
-      return item.daysUntilDue === 0
-        ? 'Vence hoy'
-        : `Vence en ${item.daysUntilDue} ${item.daysUntilDue === 1 ? 'día' : 'días'}`;
-    case 'missing-due-day':
-      return 'Falta fecha de pago';
-    case 'over-limit':
-      return 'Sobre el límite';
-    default:
-      return 'Saldo negativo';
-  }
 };
 
 /**

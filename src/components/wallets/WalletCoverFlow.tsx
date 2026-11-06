@@ -22,6 +22,8 @@ import {
   coverFlowSlot,
   rubberBandPosition,
   settleFlowIndex,
+  attentionCaption,
+  type WalletAttentionItem,
 } from '@/lib/ui/wallet-cover-flow';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -50,6 +52,7 @@ type FlowCardProps = {
   isFront: boolean;
   /** Wallet carrying the shared name (only while it is being opened). */
   viewTransitionId: number | null;
+  attention?: WalletAttentionItem;
   onClick: () => void;
 };
 
@@ -62,6 +65,7 @@ const FlowCard = ({
   dimming,
   isFront,
   viewTransitionId,
+  attention,
   onClick,
 }: FlowCardProps) => {
   const offset = useTransform(position, (p) => index - p);
@@ -114,6 +118,19 @@ const FlowCard = ({
       >
         <WalletFlowFace wallet={wallet} drift={drift} />
       </ViewTransition>
+      {attention ? (
+        <span
+          className={cn(
+            'pointer-events-none absolute -top-2 right-4 rounded-full border bg-card px-2.5 py-0.5 text-caption font-medium shadow-sm',
+            attention.reason === 'over-limit' ||
+              attention.reason === 'negative-balance'
+              ? 'border-status-overdue-border text-status-overdue'
+              : 'border-status-pending-border text-status-pending',
+          )}
+        >
+          {attentionCaption(attention)}
+        </span>
+      ) : null}
     </motion.div>
   );
 };
@@ -127,6 +144,8 @@ type WalletCoverFlowProps = {
   ariaLabel: string;
   /** Wallet being opened: it alone takes the shared view-transition name. */
   viewTransitionId?: number | null;
+  /** Wallets that show a reason tag on their face. */
+  attention?: WalletAttentionItem[];
 };
 
 /**
@@ -143,7 +162,9 @@ export const WalletCoverFlow = ({
   onOpen,
   ariaLabel,
   viewTransitionId = null,
+  attention = [],
 }: WalletCoverFlowProps) => {
+  const attentionById = new Map(attention.map((item) => [item.wallet.id, item]));
   const count = wallets.length;
   const active = clampFlowIndex(activeIndex, count);
   const reducedMotion = useReducedMotion() ?? false;
@@ -367,6 +388,7 @@ export const WalletCoverFlow = ({
             dimming={isMobile ? 0.4 : 0.55}
             isFront={index === active}
             viewTransitionId={viewTransitionId}
+            attention={attentionById.get(wallet.id)}
             onClick={() => handleCardClick(index)}
           />
         ))}

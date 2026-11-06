@@ -453,6 +453,8 @@ export const TabsTrigger = ({
         {active ? (
           <motion.span
             layoutId={layoutId}
+            // Only a tab change slides it. If the bar moves on the page, it moves with it.
+            layoutDependency={current}
             layout
             className={cn(
               'absolute bottom-0 left-0 right-0 h-px bg-primary',
@@ -472,6 +474,8 @@ export const TabsTrigger = ({
         <motion.span
           data-tabs-indicator=""
           layoutId={layoutId}
+          // Only a tab change slides it. If the bar moves on the page, it moves with it.
+          layoutDependency={current}
           layout
           style={{ borderRadius: variant === 'pill' ? 9999 : 8 }}
           className={cn(

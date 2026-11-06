@@ -2,42 +2,29 @@
 
 import { useMemo, type ReactNode } from 'react';
 import {
+  ArrowDownLeft,
+  ArrowUpRight,
   Banknote,
-  ChevronLeft,
-  ChevronRight,
   Landmark,
-  RotateCcw,
+  Scale,
+  Wallet,
+  type LucideIcon,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  kpiMetricCardShellClass,
-  kpiMetricLabelClass,
-  kpiMetricValueClass,
-  type KpiMetricTone,
-} from '@/components/finance/kpi-metric-card-styles';
+import { MetricCard } from '@/components/arc/metric-card/metric-card';
 import { SegmentedControl, type SegmentedOption } from '@/components/segmented-control';
-import { creditCardSegmentedTabChromeClass } from '@/components/credit-cards/credit-card-segmented-tabs';
+import { DETAIL_TAB_BAR_PROPS } from '@/components/credit-cards/credit-card-segmented-tabs';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { PAYMENT_METHOD_LABELS } from '@/domain/payment-method';
 import type { PaymentMethodType } from '@/domain/payment-method';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
+import { STATUS_SOFT_CLASS, type StatusTone } from '@/lib/status-tone';
 import { cn, formatCurrency } from '@/lib/utils';
+import { DetailPeriodNav } from '@/components/wallets/DetailPeriodNav';
+import { WalletFaceArt } from '@/components/wallets/WalletFaceArt';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import type { WalletDetail } from '@/types/wallet-movements';
 
-export const WalletHeroZone = ({
-  children,
-}: {
-  /** Kept for call-site compatibility; hero no longer tints the page background. */
-  wallet?: WalletDetail;
-  children: ReactNode;
-}) => (
+export const WalletHeroZone = ({ children }: { children: ReactNode }) => (
   <div className="relative -mx-4 px-4 pb-2 sm:-mx-0 sm:pb-3">
     <div className="relative flex flex-col gap-5 sm:gap-6">{children}</div>
   </div>
@@ -76,14 +63,8 @@ export const WalletDetailTabsList = ({
   options: readonly SegmentedOption[];
 }) => (
   <SegmentedControl
-    embedded
+    {...DETAIL_TAB_BAR_PROPS}
     ariaLabel="Secciones de la billetera"
-    stretch
-    frameClassName={cn(
-      creditCardSegmentedTabChromeClass,
-      'flex w-full min-w-0 items-center',
-    )}
-    wrapperClassName="min-w-0 flex-1"
     options={options}
   />
 );
@@ -104,8 +85,9 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
   const isNegative = wallet.amount < 0;
   const FallbackIcon = isCash ? Banknote : Landmark;
 
-  // Match credit/store detail hero footprint (width + min-height). Content stays
-  // spread (header top / saldo bottom); list→detail morph widens into this shell.
+  // Match credit/store detail hero footprint. Content stays spread (header top,
+  // saldo bottom); list→detail morph widens into this shell. The face is a flex
+  // column because Safari ignores padding for h-full inside an aspect-ratio box.
   return (
     <div
       className="relative mx-auto w-full max-w-md lg:max-w-lg"
@@ -114,7 +96,7 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
     >
       <div
         className={cn(
-          'relative w-full overflow-hidden rounded-face border aspect-[1.586] [container-type:inline-size] p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
+          'relative flex w-full flex-col overflow-hidden rounded-face border aspect-[1.586] [container-type:inline-size] p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
           !cardStyle &&
             (isCash
               ? 'border-status-income-border bg-linear-to-br from-status-income to-background'
@@ -123,23 +105,12 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
         )}
         style={cardStyle}
       >
-        <span
-          className="pointer-events-none absolute -left-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-3xl"
-          aria-hidden
-        />
-        <span
-          className="pointer-events-none absolute -bottom-10 -right-8 h-28 w-28 rounded-full bg-white/8 blur-2xl"
-          aria-hidden
-        />
-        <span
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent"
-          aria-hidden
-        />
+        <WalletFaceArt />
         {isNegative ? (
           <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-status-expense/80 to-transparent" />
         ) : null}
 
-        <div className="relative flex h-full flex-col justify-between gap-2">
+        <div className="relative flex min-h-0 flex-1 flex-col justify-between gap-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {wallet.provider_icon_key ? (
@@ -155,7 +126,10 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
                 </span>
               )}
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold leading-tight opacity-95">
+                <p
+                  className="truncate text-sm font-semibold leading-tight opacity-95"
+                  title={wallet.name}
+                >
                   {wallet.name}
                 </p>
                 <p className="eyebrow opacity-60">
@@ -174,11 +148,11 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
             <p className="eyebrow opacity-70">
               Saldo disponible
             </p>
-            <p className="break-words text-2xl font-bold font-sans tabular-nums leading-snug tracking-tight sm:text-3xl">
+            <p className="break-words text-[clamp(1.5rem,9cqw,2.25rem)] font-bold font-sans tabular-nums leading-snug tracking-tight">
               {formatCurrency(wallet.amount)}
             </p>
             {isNegative ? (
-              <p className="text-xs font-medium text-status-expense/90">
+              <p className="text-xs font-medium text-white/85">
                 Saldo en rojo — revisa movimientos del periodo
               </p>
             ) : null}
@@ -189,31 +163,43 @@ export const WalletVisualHero = ({ wallet }: VisualHeroProps) => {
   );
 };
 
+/** Below this, the balance icon warns. */
+const LOW_RUNWAY_DAYS = 7;
+
 type PeriodMetric = {
   key: string;
   label: string;
-  value: string;
-  tone: KpiMetricTone;
+  amount: number;
+  context: string;
+  icon: LucideIcon;
+  tone: StatusTone;
 };
 
 const WalletPeriodMetrics = ({ metrics }: { metrics: PeriodMetric[] }) => (
   <div
-    className="grid grid-cols-2 gap-1 sm:gap-1.5 lg:grid-cols-4"
+    className="grid grid-cols-2 gap-2 lg:grid-cols-4"
     role="group"
     aria-label="Totales del periodo"
   >
-    {metrics.map(({ key, label, value, tone }) => (
-      <div key={key} className={cn('flex min-w-0 flex-col', kpiMetricCardShellClass(tone))}>
-        <p className={kpiMetricLabelClass(tone)}>{label}</p>
-        <p
-          className={cn(
-            'mt-1 truncate font-sans text-base font-bold tabular-nums leading-none sm:text-lg',
-            kpiMetricValueClass(tone),
-          )}
-        >
-          {value}
-        </p>
-      </div>
+    {metrics.map(({ key, label, amount, context, icon: Icon, tone }) => (
+      <MetricCard
+        key={key}
+        label={label}
+        value={Math.abs(amount)}
+        prefix={amount < 0 ? '-$' : '$'}
+        decimals={2}
+        context={context}
+        icon={
+          <div
+            className={cn(
+              'flex size-7 items-center justify-center rounded-lg',
+              STATUS_SOFT_CLASS[tone],
+            )}
+          >
+            <Icon className="size-4" />
+          </div>
+        }
+      />
     ))}
   </div>
 );
@@ -247,112 +233,76 @@ export const WalletPeriodSummary = ({
   onNext,
   onResetToToday,
 }: PeriodSummaryProps) => {
+  const runwayLabel =
+    runwayDays == null
+      ? null
+      : runwayDays === 1
+        ? 'Cubre 1 día'
+        : `Cubre ${runwayDays} días`;
+
   const metrics: PeriodMetric[] = [
     {
       key: 'balance',
       label: 'Saldo actual',
-      value: formatCurrency(currentBalance),
-      tone: currentBalance < 0 ? 'destructive' : 'blue',
+      amount: currentBalance,
+      context: runwayLabel ?? 'Al día de hoy',
+      icon: Wallet,
+      tone:
+        currentBalance < 0
+          ? 'expense'
+          : runwayDays != null && runwayDays < LOW_RUNWAY_DAYS
+            ? 'pending'
+            : 'info',
     },
     {
       key: 'inflow',
       label: 'Ingresos',
-      value: formatCurrency(inflow),
+      amount: inflow,
+      context: rangeLabel,
+      icon: ArrowDownLeft,
       tone: 'income',
     },
     {
       key: 'outflow',
       label: 'Egresos',
-      value: formatCurrency(outflow),
-      tone: 'destructive',
+      amount: outflow,
+      context:
+        averageDailyOutflow > 0
+          ? `${formatCurrency(averageDailyOutflow)} al día`
+          : rangeLabel,
+      icon: ArrowUpRight,
+      tone: 'expense',
     },
     {
       key: 'net',
       label: 'Neto',
-      value: formatCurrency(net),
-      tone: net < 0 ? 'destructive' : 'blue',
+      amount: net,
+      context:
+        movementCount === 0
+          ? 'Sin movimientos'
+          : movementCount === 1
+            ? '1 movimiento'
+            : `${movementCount} movimientos`,
+      icon: Scale,
+      tone: net < 0 ? 'expense' : 'info',
     },
   ];
 
   return (
     <div className="space-y-4" role="region" aria-label="Periodo y totales">
-      <div className="flex items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 shrink-0 rounded-full"
-              onClick={onPrevious}
-              aria-label="Mes anterior"
-            >
-              <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Mes anterior</TooltipContent>
-        </Tooltip>
-        <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
-          <p className="eyebrow text-muted-foreground">
-            {isCurrentMonth ? 'Mes actual' : 'Periodo'}
-          </p>
-          <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">
-            {rangeLabel}
-          </p>
-        </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 shrink-0 rounded-full"
-              onClick={onNext}
-              disabled={isCurrentMonth}
-              aria-label="Mes siguiente"
-            >
-              <ChevronRight className="h-4 w-4" data-icon="inline-end" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Mes siguiente</TooltipContent>
-        </Tooltip>
-        {!isCurrentMonth ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 shrink-0 rounded-full px-2.5 text-caption"
-            onClick={onResetToToday}
-            aria-label="Volver al mes actual"
-          >
-            <RotateCcw
-              className="mr-1 h-3 w-3"
-              aria-hidden
-              data-icon="inline-start"
-            />
-            Hoy
-          </Button>
-        ) : null}
-      </div>
+      <DetailPeriodNav
+        eyebrow={isCurrentMonth ? 'Mes actual' : 'Periodo'}
+        label={rangeLabel}
+        previousLabel="Mes anterior"
+        nextLabel="Mes siguiente"
+        resetLabel="Volver al mes actual"
+        canGoNext={!isCurrentMonth}
+        showReset={!isCurrentMonth}
+        onPrevious={onPrevious}
+        onNext={onNext}
+        onReset={onResetToToday}
+      />
       <WalletPeriodMetrics metrics={metrics} />
-      <div className="flex flex-wrap gap-2 text-caption text-muted-foreground">
-        <Badge variant="secondary" className="h-6 rounded-full px-2 font-sans tabular-nums">
-          {movementCount} mov.
-        </Badge>
-        <Badge variant="outline" className="h-6 rounded-full px-2">
-          Ritmo diario {formatCurrency(averageDailyOutflow)}
-        </Badge>
-        <Badge
-          variant="outline"
-          className={cn(
-            'h-6 rounded-full px-2',
-            runwayDays === 0 && 'border-destructive/40 text-destructive',
-          )}
-        >
-          {runwayDays == null
-            ? 'Cobertura estable'
-            : runwayDays === 1
-              ? '1 día de cobertura'
-              : `${runwayDays} días de cobertura`}
-        </Badge>
-      </div>
     </div>
   );
 };

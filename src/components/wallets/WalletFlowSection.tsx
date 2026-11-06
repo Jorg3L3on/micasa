@@ -3,8 +3,13 @@
 import { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
+import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
-import { clampFlowIndex } from '@/lib/ui/wallet-cover-flow';
+import {
+  clampFlowIndex,
+  nextAttentionWallet,
+  type WalletAttentionItem,
+} from '@/lib/ui/wallet-cover-flow';
 import { navigateWithTransitionType } from '@/lib/ui/wallet-card-view-transition';
 import {
   prepareWalletDetailOpen,
@@ -24,8 +29,8 @@ type WalletFlowSectionProps = WalletFlowActions & {
   title: string;
   wallets: WalletListItem[];
   ownerQueryString: string;
-  /** Wallet to center when it appears in this section (from the attention block). */
-  focusWalletId?: number | null;
+  /** Wallets that need attention: a tag on the face, and a jump to the unseen ones. */
+  attention?: WalletAttentionItem[];
   /** Hide the section title row (the mobile flow shows a type switcher instead). */
   hideHeader?: boolean;
 };
@@ -52,7 +57,7 @@ export const WalletFlowSection = ({
   title,
   wallets,
   ownerQueryString,
-  focusWalletId,
+  attention = [],
   hideHeader = false,
   ...actions
 }: WalletFlowSectionProps) => {
@@ -86,19 +91,10 @@ export const WalletFlowSection = ({
   const foundIndex = wallets.findIndex((w) => w.id === activeId);
   const activeIndex = clampFlowIndex(foundIndex < 0 ? 0 : foundIndex, wallets.length);
 
-  // Adjust during render: center the wallet requested from the attention block.
-  const [handledFocus, setHandledFocus] = useState<number | null>(null);
-  if (
-    focusWalletId != null &&
-    focusWalletId !== handledFocus &&
-    wallets.some((w) => w.id === focusWalletId)
-  ) {
-    setHandledFocus(focusWalletId);
-    setActiveId(focusWalletId);
-  }
-
   const active = wallets[activeIndex];
   if (!active) return null;
+
+  const jump = nextAttentionWallet(attention, wallets, active.id);
 
   const openDetail = (wallet: WalletListItem) => {
     const href = walletDetailHref(wallet, ownerQueryString);
@@ -129,7 +125,27 @@ export const WalletFlowSection = ({
         onOpen={openDetail}
         ariaLabel={title}
         viewTransitionId={vtId}
+        attention={attention}
       />
+      {/* The row keeps its height while the link is hidden, so swiping onto the
+          only flagged wallet does not move the content below. */}
+      {attention.length > 0 ? (
+        <div className="mb-1 flex min-h-11 items-center justify-center">
+          {jump.nextId != null ? (
+            <button
+              type="button"
+              onClick={() => setActiveId(jump.nextId)}
+              className="flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-caption font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+            >
+              <AlertTriangle className="h-3.5 w-3.5 text-status-pending" aria-hidden />
+              {jump.count === 1
+                ? '1 billetera más requiere atención'
+                : `${jump.count} billeteras más requieren atención`}
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <WalletFlowDetails
         wallet={active}
         detailHref={walletMovementsHref(active, ownerQueryString)}

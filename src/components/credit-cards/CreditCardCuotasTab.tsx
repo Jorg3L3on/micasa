@@ -1,5 +1,6 @@
 'use client';
 
+import { RevealGroup, RevealItem } from '@/components/motion/reveal';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, CreditCard, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -138,7 +139,7 @@ export const CreditCardCuotasTab = ({
   const showSummary = msiExposure > 0 || plansExposure > 0;
 
   return (
-    <div className="space-y-5">
+    <RevealGroup className="space-y-5">
       <SectionHeader
         level={3}
         icon={CreditCard}
@@ -178,19 +179,25 @@ export const CreditCardCuotasTab = ({
           aria-label="Cargando pagos y cuotas futuras"
         />
       ) : (
-        <CreditCardPaymentsChart
-          paymentHistory={paymentHistory}
-          installmentActivePurchases={purchases}
-          statementEnd={statementEnd}
-          scheduledPayments={scheduledPayments}
-          installmentPlans={plans}
-          ownerQueryString={ownerQueryString}
-          onEditScheduled={handleEditScheduled}
-          onDeleteScheduled={handleDeleteScheduled}
-        />
+        // Its own group: the data lands after the tab has already revealed.
+        <RevealGroup>
+          <RevealItem>
+            <CreditCardPaymentsChart
+              paymentHistory={paymentHistory}
+              installmentActivePurchases={purchases}
+              statementEnd={statementEnd}
+              scheduledPayments={scheduledPayments}
+              installmentPlans={plans}
+              ownerQueryString={ownerQueryString}
+              onEditScheduled={handleEditScheduled}
+              onDeleteScheduled={handleDeleteScheduled}
+            />
+          </RevealItem>
+        </RevealGroup>
       )}
 
       {showSummary ? (
+        <RevealItem index={1} className="space-y-5">
         <div
           className="grid grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-card px-3 py-2.5 sm:gap-3 sm:px-4"
           role="group"
@@ -218,23 +225,24 @@ export const CreditCardCuotasTab = ({
             ) : null}
           </div>
         </div>
-      ) : null}
-      {showSummary ? (
         <p className="text-caption text-muted-foreground">
           Saldo restante informativo. Este corte solo incluye la mensualidad.
         </p>
+        </RevealItem>
       ) : null}
 
-      <CreditCardInstallmentPlansSection
-        creditCardId={creditCardId}
-        context={context}
-        defaultDueDay={defaultDueDay}
-        onChanged={handleChanged}
-        createDialogOpen={createPlanDialogOpen}
-        onCreateDialogOpenChange={onCreatePlanDialogOpenChange}
-        embedded
-        hideWhenEmpty
-      />
+      <RevealItem index={2} className="empty:hidden">
+        <CreditCardInstallmentPlansSection
+          creditCardId={creditCardId}
+          context={context}
+          defaultDueDay={defaultDueDay}
+          onChanged={handleChanged}
+          createDialogOpen={createPlanDialogOpen}
+          onCreateDialogOpenChange={onCreatePlanDialogOpenChange}
+          embedded
+          hideWhenEmpty
+        />
+      </RevealItem>
 
       <CreditCardScheduledPaymentDialog
         open={scheduledDialogOpen}
@@ -244,6 +252,6 @@ export const CreditCardCuotasTab = ({
         editingItem={editingScheduled}
         onSuccess={handleChanged}
       />
-    </div>
+    </RevealGroup>
   );
 };

@@ -3,8 +3,10 @@
 import {
   useEffect,
   useMemo,
+  useId,
   useRef,
   useState,
+  type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useForm } from 'react-hook-form';
@@ -59,6 +61,8 @@ import {
   OVERLAY_ROW_TRIGGER_CLASS,
   OverlayErrorBanner,
   OverlayHint,
+  OverlayWarning,
+  OVERLAY_SECONDARY_BUTTON_CLASS,
 } from '@/components/overlay/overlay-form';
 
 export type TransactionTab = 'expense' | 'income';
@@ -76,6 +80,9 @@ type AddTransactionDialogProps = {
   expenseError?: string | null;
   incomeError?: string | null;
 };
+
+const walletPlaceholder = (unknown: boolean, wallets: PaymentMethodOption[]) =>
+  !unknown && wallets.length === 0 ? 'Sin billeteras' : 'Selecciona';
 
 function emptyExpense(date: string): AddExpenseFormValues {
   return {
@@ -123,6 +130,8 @@ export default function AddTransactionDialog({
     [],
   );
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resolvedDate = defaultDate ?? todayCalendarDate();
@@ -159,6 +168,7 @@ export default function AddTransactionDialog({
     const fetchData = async () => {
       try {
         setLoading(true);
+        setLoadFailed(false);
         const [categoriesData, incomeCategoriesData, paymentMethodsData] =
           await Promise.all([
             clientFetchFromApi<CategoryOption[]>(
@@ -179,6 +189,7 @@ export default function AddTransactionDialog({
         setPaymentMethods(paymentMethodsData);
       } catch (err) {
         console.error('Error fetching transaction form catalogs:', err);
+        if (!cancelled) setLoadFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -187,7 +198,7 @@ export default function AddTransactionDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, context]);
+  }, [open, context, loadAttempt]);
 
   useEffect(() => {
     if (!open || loading) return;
@@ -282,8 +293,10 @@ export default function AddTransactionDialog({
         ...values,
         applyWalletDelta: exceedsFundingBalance ? false : values.applyWalletDelta,
       });
-      setConfirmWithoutDelta(false);
+    } catch {
+      // The parent shows it through `expenseError`.
     } finally {
+      setConfirmWithoutDelta(false);
       setIsSubmitting(false);
     }
   });
@@ -292,6 +305,8 @@ export default function AddTransactionDialog({
     try {
       setIsSubmitting(true);
       await onSaveIncome(values);
+    } catch {
+      // The parent shows it through `incomeError`.
     } finally {
       setIsSubmitting(false);
     }
@@ -305,7 +320,14 @@ export default function AddTransactionDialog({
   const saveDisabled =
     isSubmitting ||
     loading ||
+    loadFailed ||
     (tab === 'expense' && exceedsCreditLimit);
+
+  const saveOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    if (!saveDisabled) handleSave();
+  };
 
   return (
     <>
@@ -318,13 +340,19 @@ export default function AddTransactionDialog({
     >
       {({ handleSelectOpenChange }) => (
         <div className="flex flex-col gap-4">
+      {loadFailed ? (
+        <OverlayErrorBanner>
+          No se pudieron cargar las categorías y billeteras.
+        </OverlayErrorBanner>
+      ) : null}
       <TransactionTypeSwitch value={tab} onChange={setTab} />
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as TransactionTab)}
         className="gap-4"
       >
-        <div className="grid">
+        {/* One column, not auto: the amount input would otherwise push past the sheet. */}
+        <div className="grid grid-cols-1">
         <TabsContent
           value="expense"
           forceMount
@@ -357,6 +385,7 @@ export default function AddTransactionDialog({
                             enterKeyHint="done"
                             spellCheck
                             className={OVERLAY_ROW_INPUT_CLASS}
+                            onKeyDown={saveOnEnter}
                             {...field}
                           />
                         </FormControl>
@@ -408,11 +437,13 @@ export default function AddTransactionDialog({
                           onValueChange={(value) =>
                             field.onChange(parseInt(value, 10))
                           }
-                          disabled={loading}
+                          disabled={loading || expenseWallets.length === 0}
                         >
                           <FormControl>
                             <SelectTrigger className={OVERLAY_ROW_TRIGGER_CLASS}>
-                              <SelectValue placeholder="Selecciona">
+                              <SelectValue
+                                placeholder={walletPlaceholder(loading || loadFailed, expenseWallets)}
+                              >
                                 {selected ? (
                                   <WalletIdentity
                                     name={selected.name}
@@ -426,7 +457,7 @@ export default function AddTransactionDialog({
                           <SelectContent>
                             {expenseWallets.map((pm) => (
                               <SelectItem key={pm.id} value={String(pm.id)}>
-                                <span className="flex items-center justify-between gap-3">
+                                <span className="flex w-full items-center justify-between gap-3">
                                   <WalletIdentity
                                     name={pm.name}
                                     providerIconKey={pm.provider_icon_key}
@@ -453,16 +484,28 @@ export default function AddTransactionDialog({
                       <DateStepper
                         value={field.value}
                         onChange={field.onChange}
+                        showIcon={false}
                       />
                     </FormGroupedRow>
                   )}
                 />
               </div>
 
-              <OverlayHint>
-                De aquí sale el gasto. Si hay varias, elige una; no se asigna
-                sola.
-              </OverlayHint>
+              {!selectedExpenseWallet && expenseWallets.length > 1 ? (
+                <OverlayHint>
+                  De aquí sale el gasto. Si hay varias, elige una; no se asigna
+                  sola.
+                </OverlayHint>
+              ) : null}
+
+              {exceedsCreditLimit && selectedExpenseWallet ? (
+                <OverlayWarning>
+                  Este gasto supera el crédito disponible de{' '}
+                  {selectedExpenseWallet.name} por{' '}
+                  {formatCurrency(Math.abs(projectedAvailableCredit ?? 0))}. Elige
+                  otra billetera o ajusta el monto.
+                </OverlayWarning>
+              ) : null}
 
               {exceedsFundingBalance && selectedExpenseWallet ? (
                 <InsufficientWalletExpenseNotice
@@ -547,6 +590,7 @@ export default function AddTransactionDialog({
                             enterKeyHint="done"
                             spellCheck
                             className={OVERLAY_ROW_INPUT_CLASS}
+                            onKeyDown={saveOnEnter}
                             {...field}
                           />
                         </FormControl>
@@ -598,11 +642,13 @@ export default function AddTransactionDialog({
                           onValueChange={(value) =>
                             field.onChange(parseInt(value, 10))
                           }
-                          disabled={loading}
+                          disabled={loading || incomeWallets.length === 0}
                         >
                           <FormControl>
                             <SelectTrigger className={OVERLAY_ROW_TRIGGER_CLASS}>
-                              <SelectValue placeholder="Selecciona">
+                              <SelectValue
+                                placeholder={walletPlaceholder(loading || loadFailed, incomeWallets)}
+                              >
                                 {selected ? (
                                   <WalletIdentity
                                     name={selected.name}
@@ -616,7 +662,7 @@ export default function AddTransactionDialog({
                           <SelectContent>
                             {incomeWallets.map((pm) => (
                               <SelectItem key={pm.id} value={String(pm.id)}>
-                                <span className="flex items-center justify-between gap-3">
+                                <span className="flex w-full items-center justify-between gap-3">
                                   <WalletIdentity
                                     name={pm.name}
                                     providerIconKey={pm.provider_icon_key}
@@ -643,6 +689,7 @@ export default function AddTransactionDialog({
                       <DateStepper
                         value={field.value}
                         onChange={field.onChange}
+                        showIcon={false}
                       />
                     </FormGroupedRow>
                   )}
@@ -659,8 +706,18 @@ export default function AddTransactionDialog({
         disabled={saveDisabled}
         className={OVERLAY_PRIMARY_BUTTON_CLASS}
       >
-        {isSubmitting ? 'Guardando…' : 'Guardar'}
+        {isSubmitting ? 'Guardando…' : loading ? 'Cargando…' : 'Guardar'}
       </Button>
+      {loadFailed ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className={OVERLAY_SECONDARY_BUTTON_CLASS}
+          onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+        >
+          Reintentar
+        </Button>
+      ) : null}
         </div>
       )}
     </ResponsiveOverlay>
@@ -683,6 +740,9 @@ export default function AddTransactionDialog({
 const TYPE_SWITCH_PAD = 2;
 const TYPE_SWITCH_DRAG_PX = 8;
 const TYPE_SWITCH_FLICK = 480;
+/** The switch stays white in both themes; plain primary is under 4.5:1 on its tint. */
+const TYPE_SWITCH_SELECTED_TEXT =
+  'text-[color-mix(in_srgb,var(--primary)_78%,black)]';
 
 const TYPE_TABS: {
   id: TransactionTab;
@@ -712,8 +772,11 @@ function TransactionTypeSwitch({
   const lastTRef = useRef(0);
   const velocityRef = useRef(0);
   const valueRef = useRef(value);
-  valueRef.current = value;
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
   const [visual, setVisual] = useState<TransactionTab>(value);
+  const tabIdPrefix = useId();
 
   const measureTravel = () => {
     const el = trackRef.current;
@@ -747,7 +810,6 @@ function TransactionTypeSwitch({
     observer.observe(el);
     return () => observer.disconnect();
     // Measure only — do not re-run when `value` changes (that fights the slide).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [x]);
 
   const snapTo = (next: TransactionTab) => {
@@ -812,14 +874,18 @@ function TransactionTypeSwitch({
       ref={trackRef}
       role="tablist"
       aria-label="Tipo de movimiento"
+      aria-activedescendant={`${tabIdPrefix}-${visual}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finishPointer}
       onPointerCancel={finishPointer}
       onKeyDown={(e) => {
-        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        if (e.key === 'ArrowRight' || e.key === 'End') {
           e.preventDefault();
-          snapTo(e.key === 'ArrowRight' ? 'income' : 'expense');
+          snapTo('income');
+        } else if (e.key === 'ArrowLeft' || e.key === 'Home') {
+          e.preventDefault();
+          snapTo('expense');
         }
       }}
       tabIndex={0}
@@ -827,7 +893,7 @@ function TransactionTypeSwitch({
         'relative grid h-12 w-full touch-manipulation select-none grid-cols-2 rounded-full p-0.5',
         'border border-slate-200 bg-white dark:border-white/10',
         'shadow-panel',
-        'outline-none',
+        'outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
       )}
       style={{ touchAction: 'none' }}
     >
@@ -844,6 +910,7 @@ function TransactionTypeSwitch({
         return (
           <span
             key={id}
+            id={`${tabIdPrefix}-${id}`}
             role="tab"
             aria-selected={selected}
             className="relative z-10 flex min-h-11 flex-col items-center justify-center gap-0"
@@ -852,15 +919,13 @@ function TransactionTypeSwitch({
               aria-hidden
               className={cn(
                 'h-5 w-5',
-                selected
-                  ? 'fill-primary/15 text-primary'
-                  : 'text-slate-500',
+                selected ? cn('fill-primary/15', TYPE_SWITCH_SELECTED_TEXT) : 'text-slate-500',
               )}
             />
             <span
               className={cn(
                 'text-xs font-medium leading-none',
-                selected ? 'text-primary' : 'text-slate-500',
+                selected ? TYPE_SWITCH_SELECTED_TEXT : 'text-slate-500',
               )}
             >
               {label}

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { getWalletAvailableCredit } from '@/lib/finance/wallet-accounting';
 import type { WalletListItem } from '@/types/catalog';
 import {
+  attentionCaption,
   buildAttentionItems,
+  nextAttentionWallet,
   clampFlowIndex,
   coverFlowSlot,
   daysUntilDueDay,
@@ -189,5 +191,57 @@ describe('Disponible parity with the server', () => {
     expect(server == null ? null : server - loans).toBe(
       limit == null ? null : limit - fields.amount - loans,
     );
+  });
+});
+
+describe('nextAttentionWallet', () => {
+  const wallet = (id: number) => ({ id }) as WalletListItem;
+  const wallets = [1, 2, 3, 4].map(wallet);
+  const flag = (id: number) => ({
+    wallet: wallet(id),
+    reason: 'negative-balance' as const,
+    daysUntilDue: null,
+  });
+
+  it('has nothing to point at when only the front card is flagged', () => {
+    expect(nextAttentionWallet([flag(2)], wallets, 2)).toEqual({
+      count: 0,
+      nextId: null,
+    });
+  });
+
+  it('points at the next flagged card to the right', () => {
+    expect(nextAttentionWallet([flag(1), flag(3)], wallets, 2)).toEqual({
+      count: 2,
+      nextId: 3,
+    });
+  });
+
+  it('wraps around the rail', () => {
+    expect(nextAttentionWallet([flag(1)], wallets, 3)).toEqual({
+      count: 1,
+      nextId: 1,
+    });
+  });
+
+  it('ignores flagged wallets filtered out of the rail', () => {
+    expect(nextAttentionWallet([flag(9)], wallets, 1)).toEqual({
+      count: 0,
+      nextId: null,
+    });
+  });
+});
+
+describe('attentionCaption', () => {
+  const item = (reason: 'due-soon', daysUntilDue: number) => ({
+    wallet: { id: 1 } as WalletListItem,
+    reason,
+    daysUntilDue,
+  });
+
+  it('counts the days until a payment', () => {
+    expect(attentionCaption(item('due-soon', 0))).toBe('Vence hoy');
+    expect(attentionCaption(item('due-soon', 1))).toBe('Vence en 1 día');
+    expect(attentionCaption(item('due-soon', 7))).toBe('Vence en 7 días');
   });
 });

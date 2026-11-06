@@ -67,7 +67,6 @@ import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { useWalletQuickActions } from '@/components/wallets/use-wallet-quick-actions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { WalletFlowSection } from '@/components/wallets/WalletFlowSection';
-import { WalletsAttentionBlock } from '@/components/wallets/WalletsAttentionBlock';
 import { WalletsFirstEmptyState } from '@/components/wallets/WalletsFirstEmptyState';
 import { WalletsGallery } from '@/components/wallets/WalletsGallery';
 import {
@@ -411,7 +410,6 @@ export default function WalletsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [balanceWallet, setBalanceWallet] = useState<WalletListItem | null>(null);
   const [transferWallet, setTransferWallet] = useState<WalletListItem | null>(null);
-  const [focusWalletId, setFocusWalletId] = useState<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -1283,12 +1281,6 @@ export default function WalletsPage() {
                       : 'w-full min-w-0'
                   }
                 >
-                  {isMobile ? (
-                    <WalletsAttentionBlock
-                      items={attentionItems}
-                      onSelect={setFocusWalletId}
-                    />
-                  ) : null}
                   {displayWallets.length === 0 ? (
                     error ? null : (
                       <EmptyState
@@ -1306,7 +1298,7 @@ export default function WalletsPage() {
                       hideHeader
                       wallets={displayWallets}
                       ownerQueryString={ownerQueryString}
-                      focusWalletId={focusWalletId}
+                      attention={attentionItems}
                       {...flowActions}
                     />
                   ) : (
