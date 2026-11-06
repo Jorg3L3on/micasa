@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { isCreditOrStoreCardWalletType } from '@/domain/payment-method';
+import { walletDetailHref } from '@/lib/ui/wallet-detail-href';
 import { clampFlowIndex } from '@/lib/ui/wallet-cover-flow';
 import {
   navigateWithTransitionType,
@@ -35,13 +36,7 @@ type WalletFlowSectionProps = WalletFlowActions & {
   hideHeader?: boolean;
 };
 
-export const walletDetailHref = (
-  wallet: WalletListItem,
-  ownerQueryString: string,
-): string =>
-  isCreditOrStoreCardWalletType(wallet.type)
-    ? `/credit-cards/${wallet.id}${ownerQueryString}`
-    : `/wallets/${wallet.id}${ownerQueryString}`;
+export { walletDetailHref };
 
 /** Detail page with the "movimientos" tab preselected (both detail pages read `?tab=`). */
 export const walletMovementsHref = (

@@ -347,7 +347,7 @@ export const WalletPeriodSummary = ({
           )}
         >
           {runwayDays == null
-            ? 'Cobertura estable'
+            ? 'Cobertura no disponible'
             : runwayDays === 1
               ? '1 día de cobertura'
               : `${runwayDays} días de cobertura`}

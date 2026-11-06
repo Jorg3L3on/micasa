@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildWalletPeriodAnalytics,
   estimateWalletRunwayDays,
+  MIN_ELAPSED_DAYS_FOR_RUNWAY,
   walletMovementNet,
 } from '@/lib/finance/wallet-period-analytics';
 import type { WalletMovement } from '@/types/wallet-movements';
@@ -83,16 +84,107 @@ describe('buildWalletPeriodAnalytics', () => {
       'Transporte',
     ]);
     expect(analytics.categoryBreakdown[0].pct).toBe(75);
-    expect(analytics.averageDailyOutflow).toBe(400);
-    expect(analytics.projectedMonthlyOutflow).toBe(12000);
+  });
+
+  const june = { from: '2026-06-01', to: '2026-06-30' };
+
+  it('spreads outflow over every elapsed day of a past period', () => {
+    const analytics = buildWalletPeriodAnalytics(
+      [movement({ amount: 300 })],
+      june,
+      '2026-11-05',
+    );
+
+    expect(analytics.elapsedDays).toBe(30);
+    expect(analytics.averageDailyOutflow).toBe(10);
+    expect(analytics.projectedMonthlyOutflow).toBe(300);
+  });
+
+  it('counts only the days so far in the current period', () => {
+    const analytics = buildWalletPeriodAnalytics(
+      [movement({ amount: 300 })],
+      june,
+      '2026-06-10',
+    );
+
+    expect(analytics.elapsedDays).toBe(10);
+    expect(analytics.averageDailyOutflow).toBe(30);
+  });
+
+  it('does not count inactive days out of the rate', () => {
+    const analytics = buildWalletPeriodAnalytics(
+      [movement({ amount: 5000 })],
+      june,
+      '2026-06-20',
+    );
+
+    expect(analytics.activeDays).toBe(1);
+    expect(analytics.averageDailyOutflow).toBe(250);
+  });
+
+  it('has no rate for a period that has not started', () => {
+    const analytics = buildWalletPeriodAnalytics([], june, '2026-05-20');
+
+    expect(analytics.elapsedDays).toBe(0);
+    expect(analytics.averageDailyOutflow).toBe(0);
   });
 });
 
 describe('wallet period utility calculations', () => {
   it('estimates runway days from average outflow', () => {
-    expect(estimateWalletRunwayDays(1000, 125)).toBe(8);
-    expect(estimateWalletRunwayDays(1000, 0)).toBeNull();
-    expect(estimateWalletRunwayDays(-10, 125)).toBe(0);
+    const current = { elapsedDays: 10, isCurrentPeriod: true };
+
+    expect(
+      estimateWalletRunwayDays({ ...current, balance: 1000, averageDailyOutflow: 125 }),
+    ).toBe(8);
+    expect(
+      estimateWalletRunwayDays({ ...current, balance: 1000, averageDailyOutflow: 0 }),
+    ).toBeNull();
+    expect(
+      estimateWalletRunwayDays({ ...current, balance: -10, averageDailyOutflow: 125 }),
+    ).toBe(0);
+  });
+
+  it('keeps one large payment from reading as a day of coverage', () => {
+    const { averageDailyOutflow, elapsedDays } = buildWalletPeriodAnalytics(
+      [movement({ amount: 5000 })],
+      { from: '2026-06-01', to: '2026-06-30' },
+      '2026-06-20',
+    );
+
+    expect(
+      estimateWalletRunwayDays({
+        balance: 6000,
+        averageDailyOutflow,
+        elapsedDays,
+        isCurrentPeriod: true,
+      }),
+    ).toBe(24);
+  });
+
+  it('gives no estimate before the minimum days', () => {
+    const base = { balance: 1000, averageDailyOutflow: 125, isCurrentPeriod: true };
+
+    expect(
+      estimateWalletRunwayDays({
+        ...base,
+        elapsedDays: MIN_ELAPSED_DAYS_FOR_RUNWAY - 1,
+      }),
+    ).toBeNull();
+    expect(
+      estimateWalletRunwayDays({ ...base, elapsedDays: MIN_ELAPSED_DAYS_FOR_RUNWAY }),
+    ).toBe(8);
+  });
+
+  it('gives no estimate for a past period', () => {
+    expect(
+      estimateWalletRunwayDays({
+        balance: 1000,
+        averageDailyOutflow: 125,
+        elapsedDays: 30,
+        isCurrentPeriod: false,
+      }),
+    ).toBeNull();
   });
 
   it('returns signed net for movements', () => {

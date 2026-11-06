@@ -28,6 +28,7 @@ import CreditCardPaymentDialog, {
 import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
+import { walletDetailHref } from '@/lib/ui/wallet-detail-href';
 import { SegmentedControl } from '@/components/segmented-control';
 import {
   AURA_TAB_INDICATOR_CLASS,
@@ -602,7 +603,10 @@ export const WalletCarouselPanel = ({
                   className="size-11 text-muted-foreground hover:text-foreground sm:size-8"
                 >
                   <Link
-                    href={`/wallets/${activeWallet.id}`}
+                    href={walletDetailHref(
+                      activeWallet,
+                      ownerQuery ? `?${ownerQuery}` : '',
+                    )}
                     aria-label={`Ver detalle de ${activeWallet.name}`}
                   >
                     <ReceiptText className="h-4 w-4" aria-hidden />

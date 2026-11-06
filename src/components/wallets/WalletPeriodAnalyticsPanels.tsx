@@ -347,12 +347,18 @@ export const WalletPeriodAnalyticsPanels = ({
                 label="Cobertura"
                 value={
                   runwayDays == null
-                    ? 'Sin egresos'
+                    ? 'No disponible'
                     : runwayDays === 1
                       ? '1 día'
                       : `${runwayDays} días`
                 }
-                tone={runwayDays != null && runwayDays < 7 ? 'warn' : 'good'}
+                tone={
+                  runwayDays == null
+                    ? 'neutral'
+                    : runwayDays < 7
+                      ? 'warn'
+                      : 'good'
+                }
               />
               <InsightStat
                 icon={TrendingUp}

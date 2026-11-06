@@ -329,7 +329,10 @@ export default function CreditCardDetailPage() {
           setStatementImports(importsData);
           setPaymentPlanItems(planData.items);
         } catch {
-          /* hero already visible — secondary chrome optional */
+          // Hero stays visible, but Pagar and imports need these lists.
+          toast.error(
+            'No se pudo cargar toda la información. Algunas acciones podrían no funcionar.',
+          );
         }
       } catch (err) {
         setError(

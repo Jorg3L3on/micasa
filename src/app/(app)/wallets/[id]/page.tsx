@@ -102,6 +102,14 @@ const parseYearMonth = (fromDate: string): { year: number; monthIdx: number } =>
   return { year: y, monthIdx: m - 1 };
 };
 
+const currentMonthRange = (): { from: string; to: string } => {
+  const { year, monthIdx } = parseYearMonth(todayCalendarDate());
+  return {
+    from: firstDayOfMonth(year, monthIdx),
+    to: lastDayOfMonth(year, monthIdx),
+  };
+};
+
 type WalletDetailTab = 'resumen' | 'movimientos' | 'compromisos';
 
 const WalletDetailSkeleton = ({ walletId }: { walletId: number }) => (
@@ -157,10 +165,7 @@ export default function WalletDetailPage() {
     const qFrom = searchParams.get('from');
     const qTo = searchParams.get('to');
     if (qFrom && qTo) return { from: qFrom, to: qTo };
-    const now = new Date();
-    const y = now.getUTCFullYear();
-    const m = now.getUTCMonth();
-    return { from: firstDayOfMonth(y, m), to: lastDayOfMonth(y, m) };
+    return currentMonthRange();
   });
   const [importOpen, setImportOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
@@ -326,7 +331,10 @@ export default function WalletDetailPage() {
           );
         }
       } catch {
-        /* secondary chrome — keep hero visible */
+        // Hero stays visible, but payment and transfer lists may be empty.
+        toast.error(
+          'No se pudo cargar toda la información. Algunas acciones podrían no funcionar.',
+        );
       }
     },
     [context, walletId],
@@ -387,10 +395,7 @@ export default function WalletDetailPage() {
   }, [range.from]);
 
   const handleResetToToday = useCallback(() => {
-    const now = new Date();
-    const y = now.getUTCFullYear();
-    const m = now.getUTCMonth();
-    setRange({ from: firstDayOfMonth(y, m), to: lastDayOfMonth(y, m) });
+    setRange(currentMonthRange());
   }, []);
 
   const isCurrentMonth = useMemo(() => {
@@ -574,9 +579,14 @@ export default function WalletDetailPage() {
   const runwayDays = useMemo(
     () =>
       wallet
-        ? estimateWalletRunwayDays(wallet.amount, analytics.averageDailyOutflow)
+        ? estimateWalletRunwayDays({
+            balance: wallet.amount,
+            averageDailyOutflow: analytics.averageDailyOutflow,
+            elapsedDays: analytics.elapsedDays,
+            isCurrentPeriod: isCurrentMonth,
+          })
         : null,
-    [analytics.averageDailyOutflow, wallet],
+    [analytics.averageDailyOutflow, analytics.elapsedDays, isCurrentMonth, wallet],
   );
 
   const registrarIcon = useMemo(
@@ -626,6 +636,12 @@ export default function WalletDetailPage() {
         label: 'Exportar CSV',
         onClick: handleExportCsv,
         icon: <Download data-icon="inline-start" />,
+      },
+      {
+        key: 'history',
+        label: 'Historial',
+        onClick: () => setHistoryOpen(true),
+        icon: <History data-icon="inline-start" />,
       },
       {
         key: 'delete',
