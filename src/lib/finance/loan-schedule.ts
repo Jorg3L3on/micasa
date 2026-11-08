@@ -134,6 +134,30 @@ export function generateLoanPaymentSchedule(input: {
   }));
 }
 
+/**
+ * Due date of the last installment ("termina jun 2027"). Same anchors as
+ * {@link generateLoanPaymentSchedule}; null when there are no installments.
+ */
+export function getLoanEndDate(
+  startDate: Date,
+  paymentCount: number,
+  frequency: LoanPaymentFrequencyValue,
+): Date | null {
+  if (!Number.isInteger(paymentCount) || paymentCount < 1) return null;
+  if (Number.isNaN(startDate.getTime())) return null;
+  return addFrequency(startDate, frequency, paymentCount - 1);
+}
+
+/** "Cuota 19 de 24". Lowercase it mid-sentence with `{ lowercase: true }`. */
+export function formatInstallmentLabel(
+  sequence: number,
+  paymentCount: number,
+  options: { lowercase?: boolean } = {},
+): string {
+  const word = options.lowercase ? 'cuota' : 'Cuota';
+  return `${word} ${sequence} de ${paymentCount}`;
+}
+
 export function calculateLoanProgress(input: {
   principalAmount: number;
   payments: Pick<LoanPaymentListItem, 'amount' | 'status'>[];
