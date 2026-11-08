@@ -26,6 +26,10 @@ import { AuraRowBloom } from '@/components/aura/aura-surface';
 import { DueRowProviderLogo } from '@/components/planner/DueRowProviderLogo';
 import { getWalletProviderLogoOption } from '@/lib/wallet-provider-icons';
 import { inferLenderProviderIconKey } from '@/lib/finance/lender-identity';
+import {
+  formatLoanInstallmentCaption,
+  getLoanSourceLabel,
+} from '@/lib/finance/loan-labels';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import {
   AURA_TONE_HEX,
@@ -45,6 +49,15 @@ type FortnightLoanPaymentsPanelProps = {
 };
 
 type VisualStatus = Exclude<DueRowStatus, 'missing'>;
+
+/** "Salario Carmen · cuota 19 de 24 · termina jun 2027" for one installment. */
+const installmentCaption = (item: LoanDuePaymentItem): string =>
+  formatLoanInstallmentCaption({
+    source: getLoanSourceLabel(item),
+    sequence: item.sequence,
+    paymentCount: item.paymentCount,
+    endDate: item.loanEndDate,
+  });
 
 const getDaysLeft = (dueDateYmd: string, todayYmd: string): number => {
   const [dy, dm, dd] = dueDateYmd.split('-').map((n) => parseInt(n, 10));
@@ -240,6 +253,8 @@ export default function FortnightLoanPaymentsPanel({
           const firstScheduled = scheduledItems[0] ?? group.items[0]!;
           const isPayLoading =
             group.lenderId != null && payLoadingLenderId === group.lenderId;
+          const singleCaption =
+            group.items.length === 1 ? installmentCaption(group.items[0]!) : '';
           const groupTitle = isPayroll
             ? `Nómina · ${group.lenderName}`
             : `Pagar a ${group.lenderName}`;
@@ -331,18 +346,22 @@ export default function FortnightLoanPaymentsPanel({
                     </span>
                   </button>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-muted-foreground">
-                    {isPayroll ? (
+                    {isPayroll && !singleCaption ? (
                       <>
                         <span className="sm:hidden">Nómina</span>
                         <span className="text-muted-foreground/30 sm:hidden">·</span>
                       </>
                     ) : null}
-                    <span>
-                      {group.items.length} contrato
-                      {group.items.length === 1 ? '' : 's'}
-                    </span>
+                    {group.items.length === 1 && singleCaption ? (
+                      <span className="break-words">{singleCaption}</span>
+                    ) : (
+                      <span>
+                        {group.items.length} contrato
+                        {group.items.length === 1 ? '' : 's'}
+                      </span>
+                    )}
                     <span className="text-muted-foreground/30">·</span>
-                    <span>
+                    <span className="whitespace-nowrap">
                       {group.isRange
                         ? `${formatDate(group.dueDate)} – ${formatDate(group.dueDateEnd)}`
                         : formatDate(group.dueDate)}
@@ -414,6 +433,11 @@ export default function FortnightLoanPaymentsPanel({
                         <span className="line-clamp-2 break-words">
                           {item.loanName}
                         </span>
+                        {installmentCaption(item) ? (
+                          <span className="mt-0.5 block break-words text-caption text-muted-foreground/80">
+                            {installmentCaption(item)}
+                          </span>
+                        ) : null}
                       </button>
                       <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
                         <span className="whitespace-nowrap font-sans tabular-nums">
