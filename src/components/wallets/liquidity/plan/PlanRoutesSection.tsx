@@ -55,17 +55,48 @@ export const PlanRoutesSection = ({
           )}
         >
           {routes.map((route) => (
-            <PlanRouteCard
+            <div
               key={route.id}
-              plan={route}
-              mode={plan.mode}
-              isPrimary={route.id === plan.primary.id}
-              selected={route.id === featured.id}
-              onChoose={() => onChoose(route.id)}
-              tie={plan.tie && route.id === plan.primary.id ? { preference: tiePreference, onPrefer: onPreferTie } : null}
-            />
+              className={cn('flex min-w-0', route.id === featured.id ? 'max-md:order-first' : 'max-md:hidden')}
+            >
+              <PlanRouteCard
+                plan={route}
+                mode={plan.mode}
+                isPrimary={route.id === plan.primary.id}
+                selected={route.id === featured.id}
+                onChoose={() => onChoose(route.id)}
+                tie={plan.tie && route.id === plan.primary.id ? { preference: tiePreference, onPrefer: onPreferTie } : null}
+              />
+            </div>
           ))}
         </div>
+        {routes.length > 1 ? (
+          <ul className="space-y-2 md:hidden" aria-label={PLAN_COPY.otherRoutes}>
+            {routes
+              .filter((route) => route.id !== featured.id)
+              .map((route) => (
+                <li key={route.id}>
+                  <button
+                    type="button"
+                    onClick={() => onChoose(route.id)}
+                    aria-label={`${PLAN_COPY.choose}: ${route.title}`}
+                    className={cn(
+                      MONTHLY_PANEL_SHELL_CLASS,
+                      'flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left',
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold break-words">{route.title}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {route.id === plan.primary.id ? PLAN_COPY.badgePrimary : PLAN_COPY.badgeAlternative}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-sm font-semibold text-muted-foreground">{PLAN_COPY.choose}</span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        ) : null}
         {featuredFooter}
       </section>
 

@@ -23,11 +23,20 @@ import { PlanHero, type PlanHeroScenario } from '@/components/wallets/liquidity/
 import { planPeriodLabel, planTodayLabel } from '@/components/wallets/liquidity/plan/plan-period';
 import { PlanRoutesSection } from '@/components/wallets/liquidity/plan/PlanRoutesSection';
 import { resolveFeaturedPlan, type TiePreference } from '@/components/wallets/liquidity/plan/route-selection';
-import { SimulateLoanControl } from '@/components/wallets/liquidity/plan/SimulateLoanControl';
+import { PlanSimulatorPanel } from '@/components/wallets/liquidity/plan/PlanSimulatorPanel';
+import { PlanStepsPanel } from '@/components/wallets/liquidity/plan/PlanStepsPanel';
+import {
+  PlanDataGapsPanel,
+  PlanUntouchablesPanel,
+  PlanWeightsPanel,
+} from '@/components/wallets/liquidity/plan/PlanRailPanels';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
+import { simulateBridge } from '@/lib/finance/cash-plan/simulate-bridge';
+import { toCents } from '@/lib/finance/cash-plan/money';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import {
   isWhatIfWalletType,
-  WhatIfPanel,
   type WhatIfWallet,
 } from '@/components/wallets/liquidity/plan/WhatIfPanel';
 import { SCENARIO_COPY } from '@/components/wallets/liquidity/scenario/copy';
@@ -186,7 +195,7 @@ export const CashPlanTab = ({
   const { input, plan } = computed;
 
   let heroScenario: PlanHeroScenario | null = null;
-  let resultNote: string | null = null;
+  let resultInset: string | null = null;
   if (scenario?.item && scenarioData && baseline) {
     if (scenarioInPeriod) {
       const delta = input.gapAmount - baseline.input.gapAmount;
@@ -199,53 +208,98 @@ export const CashPlanTab = ({
           : SCENARIO_COPY.gapShrank(formatCurrency(delta)),
       };
       const gapValue = (gap: number) => SCENARIO_COPY.gapValue(gap, formatCurrency(Math.abs(gap)));
-      resultNote = SCENARIO_COPY.simulatedGap(
-        gapValue(baseline.input.gapAmount),
-        gapValue(input.gapAmount),
-      );
+      const routeChanged = baseline.plan.primary.id !== plan.primary.id;
+      resultInset = `${SCENARIO_COPY.simulatedGap(gapValue(baseline.input.gapAmount), gapValue(input.gapAmount))} · ${
+        routeChanged ? PLAN_COPY.simRouteChanges : PLAN_COPY.simRouteSame
+      }`;
     } else {
       const delta = scenarioData.scenario_delta;
+      const liquidity = delta
+        ? `${formatWholeCurrency(delta.baseline.end_liquidity)} → ${formatWholeCurrency(delta.scenario.end_liquidity)}`
+        : SCENARIO_COPY.noChange;
       heroScenario = {
         kind: 'unchanged',
         title: SCENARIO_COPY.noChangePeriod(horizon),
-        body: SCENARIO_COPY.noChangeBody(
-          horizon,
-          formatDisplayDate(scenarioDateOf(scenario.item)),
-          delta
-            ? `${formatWholeCurrency(delta.baseline.end_liquidity)} → ${formatWholeCurrency(delta.scenario.end_liquidity)}`
-            : SCENARIO_COPY.noChange,
-        ),
+        body: SCENARIO_COPY.noChangeBody(horizon, formatDisplayDate(scenarioDateOf(scenario.item)), liquidity),
       };
+      resultInset = `${PLAN_COPY.simLiquidityEnd} ${liquidity} · ${PLAN_COPY.simRouteSame}`;
     }
   }
   const simulating = scenario?.loading ?? false;
-  const whatIf = scenario ? (
-    <WhatIfPanel
-      wallets={wallets}
-      asOf={data.as_of}
-      until={data.until}
-      active={scenario.item}
-      loading={scenario.loading}
-      error={scenario.error}
-      fieldErrors={scenario.fieldErrors}
-      resultNote={resultNote}
-      onSimulate={scenario.simulate}
-    />
-  ) : null;
   const featured = resolveFeaturedPlan(plan, selectedPlanId, tiePreference);
+  const routes = [plan.primary, ...plan.alternatives];
+  const placeOf = (id: string) => routes.findIndex((route) => route.id === id) + 1;
+  const bridgeRoute = routes.find((route) => route.strategyKey === 'bridge');
+  const consolidateRoute = routes.find((route) => route.strategyKey === 'consolidate');
+  const bridgeSim = input.bridgeSim && bridgeRoute
+    ? simulateBridge({
+      amountCents: toCents(input.bridgeSim.amount ?? Math.max(0, input.gapAmount)),
+      aprAnnual: input.bridgeSim.aprAnnual,
+      termMonths: input.bridgeSim.termMonths,
+      feePct: input.bridgeSim.feePct,
+    })
+    : null;
+  const bridgeResult = bridgeRoute && bridgeSim && input.bridgeSim
+    ? PLAN_COPY.simBridgeResult(
+      formatCurrency(bridgeSim.paymentCents / 100),
+      input.bridgeSim.termMonths,
+      formatCurrency(bridgeRoute.estimatedCost),
+      placeOf(bridgeRoute.id),
+    )
+    : null;
+  const consolidateResult = consolidateRoute
+    ? PLAN_COPY.simConsolidateResult(formatCurrency(consolidateRoute.estimatedCost), placeOf(consolidateRoute.id))
+    : null;
+  const walletNames = new Map(data.funding_wallets.map((wallet) => [wallet.id, wallet.name]));
+  const lowConfidence = plan.confidence === 'low';
+  const balanced = plan.mode === 'balanced';
+
+  const simulator = (
+    <PlanSimulatorPanel
+      mode={plan.mode}
+      whatIf={scenario ? {
+        wallets,
+        asOf: data.as_of,
+        until: data.until,
+        active: scenario.item,
+        loading: scenario.loading,
+        error: scenario.error,
+        fieldErrors: scenario.fieldErrors,
+        onSimulate: scenario.simulate,
+      } : null}
+      resultInset={resultInset}
+      bridge={{
+        rate: bridgeRate,
+        term: bridgeTerm,
+        fee: bridgeFee,
+        onRateChange: setBridgeRate,
+        onTermChange: setBridgeTerm,
+        onFeeChange: setBridgeFee,
+        active: parseLoanSimFields(bridgeRate, bridgeTerm, bridgeFee) != null,
+        result: bridgeResult,
+      }}
+      consolidate={{
+        rate: consolidateRate,
+        term: consolidateTerm,
+        fee: consolidateFee,
+        onRateChange: setConsolidateRate,
+        onTermChange: setConsolidateTerm,
+        onFeeChange: setConsolidateFee,
+        active: parseLoanSimFields(consolidateRate, consolidateTerm, consolidateFee) != null,
+        result: consolidateResult,
+      }}
+    />
+  );
+  const gapsPanel = <PlanDataGapsPanel gaps={plan.dataGaps} />;
 
   return (
-    <div
-      className={cn(
-        'space-y-6',
-        whatIf && 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0',
-      )}
-    >
-      <div className="space-y-6 lg:col-start-1">
+    <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0">
+      <div className="min-w-0 space-y-6">
         {error ? (
           <div className="space-y-2">
             <ErrorBanner>No se pudo actualizar el panorama.</ErrorBanner>
-            <Button type="button" variant="ghost" className="h-9" onClick={onReload}>
+            <p className="text-sm text-muted-foreground">{PLAN_COPY.errorKeepsPlan}</p>
+            <Button type="button" variant="ghost" className="h-11" onClick={onReload}>
               {PLAN_COPY.retry}
             </Button>
           </div>
@@ -274,75 +328,58 @@ export const CashPlanTab = ({
         )}
 
         <PlanFlowPanel mode={plan.mode} input={input} dataGaps={plan.dataGaps} />
-      </div>
 
-      {whatIf ? (
-        <div className="lg:sticky lg:top-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">{whatIf}</div>
-      ) : null}
-
-      <div className="space-y-6 lg:col-start-1">
-        {simulating ? (
+        {balanced ? (
+          <p className={cn(MONTHLY_PANEL_SHELL_CLASS, 'px-4 py-3 text-sm')} data-testid="plan-balanced-note">
+            {PLAN_COPY.balancedSimulate}
+          </p>
+        ) : simulating ? (
           <Skeleton className="h-48 w-full rounded-xl" />
         ) : (
-          <PlanRoutesSection
-            plan={plan}
-            selectedPlanId={selectedPlanId}
-            tiePreference={tiePreference}
-            onChoose={handleChoose}
-            onPreferTie={(preference) => {
-              setTiePreference(preference);
-              setSelectedPlanId(null);
-              setChecklistOpen(false);
-            }}
-            featuredFooter={
-              featured.actions.length > 0 ? (
-                <div className="space-y-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 rounded-xl"
-                    aria-pressed={checklistOpen}
-                    onClick={() => setChecklistOpen((open) => !open)}
-                  >
-                    {PLAN_COPY.apply}
-                  </Button>
-                  {checklistOpen ? (
-                    <ApplyPlanChecklist
-                      planId={featured.id}
-                      actions={featured.actions}
-                      checked={checked}
-                      onToggle={handleToggleStep}
-                    />
-                  ) : null}
-                </div>
-              ) : null
-            }
-          />
+          <>
+            <PlanRoutesSection
+              plan={plan}
+              selectedPlanId={selectedPlanId}
+              tiePreference={tiePreference}
+              onChoose={handleChoose}
+              onPreferTie={(preference) => {
+                setTiePreference(preference);
+                setSelectedPlanId(null);
+                setChecklistOpen(false);
+              }}
+            />
+            <PlanStepsPanel
+              plan={featured}
+              obligations={input.obligations}
+              dataGaps={plan.dataGaps}
+              walletNames={walletNames}
+              todayYmd={data.as_of}
+              monthlyPanelHref={getCurrentMonthlyPanelHref(parseCalendarDate(data.as_of))}
+              onActivate={() => setChecklistOpen(true)}
+              onMarkOnly={() => setChecklistOpen((open) => !open)}
+            >
+              {checklistOpen ? (
+                <ApplyPlanChecklist
+                  planId={featured.id}
+                  actions={featured.actions}
+                  checked={checked}
+                  onToggle={handleToggleStep}
+                />
+              ) : null}
+            </PlanStepsPanel>
+          </>
         )}
-
-        <SimulateLoanControl
-          idPrefix="bridge"
-          title={PLAN_COPY.bridgeTitle}
-          rate={bridgeRate}
-          term={bridgeTerm}
-          fee={bridgeFee}
-          onRateChange={setBridgeRate}
-          onTermChange={setBridgeTerm}
-          onFeeChange={setBridgeFee}
-          active={parseLoanSimFields(bridgeRate, bridgeTerm, bridgeFee) != null}
-        />
-        <SimulateLoanControl
-          idPrefix="consolidate"
-          title={PLAN_COPY.consolidateTitle}
-          rate={consolidateRate}
-          term={consolidateTerm}
-          fee={consolidateFee}
-          onRateChange={setConsolidateRate}
-          onTermChange={setConsolidateTerm}
-          onFeeChange={setConsolidateFee}
-          active={parseLoanSimFields(consolidateRate, consolidateTerm, consolidateFee) != null}
-        />
       </div>
+
+      <aside className="min-w-0 space-y-4 lg:sticky lg:top-4" aria-label={PLAN_COPY.railLabel}>
+        {lowConfidence ? gapsPanel : null}
+        {simulator}
+        {lowConfidence ? null : gapsPanel}
+        {plan.mode === 'shortfall' ? (
+          <PlanUntouchablesPanel labels={plan.explainability.untouchableLabels} obligations={input.obligations} />
+        ) : null}
+        {balanced ? null : <PlanWeightsPanel />}
+      </aside>
     </div>
   );
 };

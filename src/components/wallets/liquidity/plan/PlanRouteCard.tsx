@@ -100,7 +100,7 @@ export const PlanRouteCard = ({ plan, mode, isPrimary, selected, onChoose, tie, 
       data-selected={selected}
       className={cn(
         MONTHLY_PANEL_SHELL_CLASS,
-        'flex min-w-0 flex-col gap-4 p-4 sm:p-5',
+        'flex w-full min-w-0 flex-col gap-4 p-4 sm:p-5',
         selected && 'border-primary ring-1 ring-primary dark:border-primary',
       )}
     >

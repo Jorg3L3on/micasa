@@ -60,6 +60,12 @@ type WhatIfPanelProps = {
   /** Desktop note after a run: "Simulado: hueco $A → $B". */
   resultNote?: string | null;
   onSimulate: (item: LiquidityScenarioItem) => Promise<boolean>;
+  /**
+   * Inside "Simula antes de decidir": no shell or header of its own, and the
+   * purchase / monthly-payment choice comes from the panel's tabs.
+   */
+  bare?: boolean;
+  kind?: Kind;
 };
 
 const errorId = (base: string, field: ScenarioFormField) => `${base}-${field}-error`;
@@ -106,11 +112,14 @@ export const WhatIfPanel = ({
   fieldErrors,
   resultNote,
   onSimulate,
+  bare = false,
+  kind: controlledKind,
 }: WhatIfPanelProps) => {
   const baseId = useId();
   const [open, setOpen] = useState(false);
   const [folded, setFolded] = useState(false);
-  const [kind, setKind] = useState<Kind>(active?.kind ?? 'purchase');
+  const [kindState, setKind] = useState<Kind>(active?.kind ?? 'purchase');
+  const kind = controlledKind ?? kindState;
   const [walletId, setWalletId] = useState<number | null>(active?.wallet_id ?? null);
   const [amount, setAmount] = useState(active?.amount ?? 0);
   const [date, setDate] = useState(
@@ -149,8 +158,10 @@ export const WhatIfPanel = ({
     else setOpen(false);
   };
 
-  const shellClass = cn(MONTHLY_LIQUID_PANEL_CLASS, 'px-4 py-4');
-  const header = (subtitle: string) => (
+  const shellClass = bare ? '' : cn(MONTHLY_LIQUID_PANEL_CLASS, 'px-4 py-4');
+  const header = (subtitle: string) => bare ? (
+    <p id={`${baseId}-title`} className="text-sm text-muted-foreground">{subtitle}</p>
+  ) : (
     <div className="flex items-start gap-2">
       <FlaskConical className="mt-0.5 size-4 shrink-0 text-[color-mix(in_srgb,var(--chart-2)_70%,white)]" aria-hidden />
       <div className="min-w-0">
@@ -206,7 +217,7 @@ export const WhatIfPanel = ({
       >
         {header(SCENARIO_COPY.formHint)}
         <form className="mt-4 space-y-4" onSubmit={handleSubmit} noValidate>
-          <SegmentedControl
+          {controlledKind ? null : <SegmentedControl
             value={kind}
             onValueChange={(next) => setKind(next as Kind)}
             ariaLabel={SCENARIO_COPY.kindLabel}
@@ -218,7 +229,7 @@ export const WhatIfPanel = ({
               { value: 'purchase', label: SCENARIO_COPY.purchase },
               { value: 'instalment', label: SCENARIO_COPY.instalment },
             ]}
-          />
+          />}
 
           <div className="space-y-1.5">
             <Label htmlFor={`${baseId}-wallet`}>{SCENARIO_COPY.wallet}</Label>

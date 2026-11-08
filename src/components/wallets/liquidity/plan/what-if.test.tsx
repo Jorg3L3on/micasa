@@ -27,6 +27,8 @@ import {
   type LiquidityScenarioController,
 } from '@/components/wallets/liquidity/use-liquidity-scenario';
 import { SCENARIO_COPY } from '@/components/wallets/liquidity/scenario/copy';
+import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
+import { PlanUntouchablesPanel } from '@/components/wallets/liquidity/plan/PlanRailPanels';
 
 beforeAll(() => {
   for (const name of ['hasPointerCapture', 'setPointerCapture', 'releasePointerCapture', 'scrollIntoView'] as const) {
@@ -518,5 +520,167 @@ describe('LiquidityScenarioDeltaStrip', () => {
       />,
     );
     expect(screen.getByText(/no mueve tu primer faltante/)).toBeTruthy();
+  });
+});
+
+describe('Plan tab steps, rail and states (MIC-I14-4)', () => {
+  beforeEach(() => {
+    getPaymentMethodOptions.mockResolvedValue([{ id: 10, name: 'Débito Nómina', type: 'DEBIT_CARD' }]);
+  });
+
+  const renderTab = (
+    data: LiquidityProjectionResponse | null,
+    overrides: Partial<{ loading: boolean; error: string | null; scenario: LiquidityScenarioController }> = {},
+  ) =>
+    render(
+      <CashPlanTab
+        data={data}
+        loading={overrides.loading ?? false}
+        error={overrides.error ?? null}
+        onReload={vi.fn()}
+        selectedMonthKey="2026-11"
+        scenario={overrides.scenario ?? controller(null, null)}
+      />,
+    );
+
+  const withCash = (cash: number, extra: ObligationItem[] = []) => {
+    const data = projectionWith(extra);
+    data.summary.funding_total = cash;
+    data.funding_wallets = [
+      { id: 10, name: 'Débito Nómina', type: 'DEBIT_CARD', balance: cash - 100 },
+      { id: 11, name: 'Efectivo', type: 'CASH', balance: 100 },
+    ];
+    return data;
+  };
+
+  it('steps follow the chosen route\'s actions with their dates and wallets', () => {
+    // Surplus: cash $5,000 against a $1,900 card statement.
+    renderTab(withCash(5000));
+    const steps = within(screen.getByRole('region', { name: 'Tus pasos con esta ruta' })).getAllByRole('listitem');
+    expect(steps.length).toBeGreaterThan(0);
+    const first = steps[0]!;
+    expect(within(first).getByTestId('step-date').textContent).toBe('Antes del 5 nov');
+    expect(within(first).getByTestId('step-route').textContent).toContain('Débito Nómina');
+    expect(within(first).getByTestId('step-route').textContent).toContain('Tarjeta Azul');
+    expect(within(first).getByRole('link', { name: 'Programar pago' }).getAttribute('href')).toBe('/credit-cards/7');
+    expect(screen.getByRole('button', { name: 'Activar este plan' })).toBeTruthy();
+    expect(screen.getByText('Crea recordatorios y pagos programados en tu Panel. Nada se cobra solo.')).toBeTruthy();
+  });
+
+  it('a step whose obligation has a data gap renders amber with its button', () => {
+    // The card has no minimum: missing_minimum is general; an APR-less card gets missing_apr on its line.
+    const data = withCash(5000);
+    data.milestones[0]!.obligations = [card({ apr_annual: null })];
+    renderTab(data);
+    const steps = within(screen.getByRole('region', { name: 'Tus pasos con esta ruta' })).getAllByRole('listitem');
+    const amber = steps.find((step) => step.dataset.gap === 'true');
+    expect(amber).toBeDefined();
+    expect(within(amber!).getByRole('link', { name: 'Agregar pago' }).getAttribute('href')).toBe('/credit-cards/7');
+  });
+
+  it('loan tabs only when the period falls short', () => {
+    const tabs = () => within(screen.getByRole('region', { name: 'Simula antes de decidir' }));
+    renderTab(withCash(5000));
+    expect(tabs().getAllByRole('tab')).toHaveLength(2);
+    expect(tabs().getByRole('tab', { name: 'Una compra' })).toBeTruthy();
+    expect(tabs().getByRole('tab', { name: 'Pago mensual' })).toBeTruthy();
+    expect(tabs().queryByRole('tab', { name: 'Préstamo' })).toBeNull();
+    expect(tabs().queryByRole('tab', { name: 'Consolidar' })).toBeNull();
+    cleanup();
+
+    renderTab(projectionWith());
+    expect(tabs().getAllByRole('tab')).toHaveLength(4);
+    expect(tabs().getByRole('tab', { name: 'Préstamo' })).toBeTruthy();
+    expect(tabs().getByRole('tab', { name: 'Consolidar' })).toBeTruthy();
+  });
+
+  it('"Lo que no tocamos" lists the untouched payments with amounts', () => {
+    render(
+      <PlanUntouchablesPanel
+        labels={['Renta']}
+        obligations={[{ id: 'bill-1', kind: 'bill', labelSynthetic: 'Renta', statementDue: 4000, dueInHorizon: true, consequenceTier: 1 }]}
+      />,
+    );
+    const panel = screen.getByRole('region', { name: 'Lo que no tocamos' });
+    expect(within(panel).getByText('Renta')).toBeTruthy();
+    expect(within(panel).getByText('$4,000.00')).toBeTruthy();
+  });
+
+  it('the simulator result inset reflects scenario_delta', () => {
+    const item: LiquidityScenarioItem = { ...purchase, date: '2027-01-20' };
+    const scenarioData = projectionWith([simulatedPurchase('2027-01-20')]);
+    scenarioData.scenario_delta = {
+      baseline: { first_projected_shortfall_date: '2026-11-05', min_projected_headroom: -1400, end_liquidity: 4700 },
+      scenario: { first_projected_shortfall_date: '2026-11-05', min_projected_headroom: -3200, end_liquidity: 2900 },
+      first_projected_shortfall_changed: false,
+      min_projected_headroom_change: -1800,
+      end_liquidity_change: -1800,
+    };
+    renderTab(projectionWith(), { scenario: controller(item, scenarioData) });
+    expect(screen.getByTestId('sim-result').textContent).toBe(
+      'Liquidez al final de la proyección $4,700 → $2,900 · ruta: no cambia',
+    );
+  });
+
+  it('in-period simulation: the inset reads hueco before → after and whether the route changes', () => {
+    const item: LiquidityScenarioItem = { ...purchase, date: '2026-11-02' };
+    renderTab(projectionWith(), { scenario: controller(item, projectionWith([simulatedPurchase('2026-11-02')])) });
+    expect(screen.getByTestId('sim-result').textContent).toMatch(/\$1,400\.00 → .*\$3,200\.00 · ruta: (cambia|no cambia)$/);
+  });
+
+  it('empty: no cash and nothing due', () => {
+    const data = projectionWith();
+    data.summary.funding_total = 0;
+    data.funding_wallets = [];
+    data.monthly_series[0]!.total_payments_due = 0;
+    renderTab(data);
+    expect(screen.getByText(PLAN_COPY.emptyTitle)).toBeTruthy();
+    expect(screen.getByRole('link', { name: PLAN_COPY.emptyCta }).getAttribute('href')).toBe('/wallets');
+  });
+
+  it('loading: first load shows the planner skeleton', () => {
+    renderTab(null, { loading: true });
+    expect(screen.getByLabelText('Cargando panel').getAttribute('aria-busy')).toBe('true');
+  });
+
+  it('error without data: banner and Reintentar replace the screen', () => {
+    renderTab(null, { error: 'boom' });
+    expect(screen.getByText('No se pudo armar el plan.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: PLAN_COPY.retry })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /Te (sobran|faltan)/ })).toBeNull();
+  });
+
+  it('error with data: banner over the previous plan', () => {
+    renderTab(projectionWith(), { error: 'boom' });
+    expect(screen.getByText('No se pudo actualizar el panorama.')).toBeTruthy();
+    expect(screen.getByText(PLAN_COPY.errorKeepsPlan)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Te faltan \$1,400\.00 esta quincena/ })).toBeTruthy();
+  });
+
+  it('balanced: no routes and no steps, the simulator stays', () => {
+    renderTab(withCash(1900));
+    expect(screen.getByRole('heading', { name: 'Este periodo cuadra' })).toBeTruthy();
+    expect(screen.queryAllByRole('article')).toHaveLength(0);
+    expect(screen.queryByRole('region', { name: 'Tus pasos con esta ruta' })).toBeNull();
+    expect(screen.getByTestId('plan-balanced-note')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Simula antes de decidir' })).toBeTruthy();
+  });
+
+  it('low confidence: amber chip and "Datos por completar" above the simulator', () => {
+    const data = withCash(5000);
+    data.milestones[0]!.obligations = [card({ minimum_payment: null, apr_annual: null })];
+    renderTab(data);
+    expect(screen.getByTestId('plan-confidence').dataset.confidence).toBe('low');
+    const rail = screen.getByRole('complementary', { name: PLAN_COPY.railLabel });
+    const sections = within(rail).getAllByRole('region').map((region) => region.getAttribute('aria-labelledby'));
+    expect(sections.indexOf('plan-gaps-title')).toBeLessThan(sections.indexOf('plan-sim-title'));
+    expect(within(rail).getByText(PLAN_COPY.gapsRailHint)).toBeTruthy();
+  });
+
+  it('the weights card reads the five weights from score.ts', () => {
+    renderTab(projectionWith());
+    const weights = screen.getByTestId('plan-weights-panel');
+    expect(within(weights).getAllByRole('listitem')).toHaveLength(5);
+    expect(within(weights).getByText('45%')).toBeTruthy();
   });
 });
