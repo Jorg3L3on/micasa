@@ -22,6 +22,8 @@ type PlanStepsPanelProps = {
   monthlyPanelHref: string;
   onActivate: () => void;
   onMarkOnly: () => void;
+  /** Why "Activar este plan" is off right now (a simulation on screen). */
+  activateBlockedReason?: string | null;
   /** The step checklist, when open. */
   children?: ReactNode;
 };
@@ -42,6 +44,7 @@ export const PlanStepsPanel = ({
   monthlyPanelHref,
   onActivate,
   onMarkOnly,
+  activateBlockedReason,
   children,
 }: PlanStepsPanelProps) => {
   if (plan.actions.length === 0) return null;
@@ -123,13 +126,22 @@ export const PlanStepsPanel = ({
       {children}
 
       <div className="sticky bottom-24 z-10 -mx-2 flex flex-col gap-2 rounded-2xl bg-background/90 p-2 backdrop-blur md:static md:mx-0 md:flex-row md:items-center md:bg-transparent md:p-0 md:backdrop-blur-none">
-        <Button type="button" className="h-11 rounded-xl shadow-lg md:shadow-none" onClick={onActivate}>
+        <Button
+          type="button"
+          className="h-11 rounded-xl shadow-lg md:shadow-none"
+          onClick={onActivate}
+          disabled={Boolean(activateBlockedReason)}
+          aria-describedby={activateBlockedReason ? 'plan-activate-blocked' : undefined}
+        >
           {PLAN_COPY.activate}
         </Button>
         <Button type="button" variant="ghost" className="h-11 rounded-xl" onClick={onMarkOnly}>
           {PLAN_COPY.markOnly}
         </Button>
       </div>
+      {activateBlockedReason ? (
+        <p id="plan-activate-blocked" className="text-xs text-status-pending">{activateBlockedReason}</p>
+      ) : null}
       <p className="text-xs text-muted-foreground">{PLAN_COPY.activateHint}</p>
     </section>
   );

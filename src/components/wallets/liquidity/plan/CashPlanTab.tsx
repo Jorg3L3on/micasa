@@ -25,6 +25,9 @@ import { PlanRoutesSection } from '@/components/wallets/liquidity/plan/PlanRoute
 import { resolveFeaturedPlan, type TiePreference } from '@/components/wallets/liquidity/plan/route-selection';
 import { PlanSimulatorPanel } from '@/components/wallets/liquidity/plan/PlanSimulatorPanel';
 import { PlanStepsPanel } from '@/components/wallets/liquidity/plan/PlanStepsPanel';
+import { ActivatePlanSheet } from '@/components/wallets/liquidity/plan/ActivatePlanSheet';
+import { applyCashPlanRoute } from '@/lib/api/cash-plan';
+import { toast } from 'sonner';
 import {
   PlanDataGapsPanel,
   PlanUntouchablesPanel,
@@ -99,6 +102,8 @@ export const CashPlanTab = ({
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [tiePreference, setTiePreference] = useState<TiePreference | null>(null);
+  const [activateOpen, setActivateOpen] = useState(false);
+  const { context: financeContext } = useFinanceContext();
 
   const monthKey = selectedMonthKey || data?.as_of.slice(0, 7) || '';
   const wallets = useWhatIfWallets(scenario != null);
@@ -355,7 +360,8 @@ export const CashPlanTab = ({
               walletNames={walletNames}
               todayYmd={data.as_of}
               monthlyPanelHref={getCurrentMonthlyPanelHref(parseCalendarDate(data.as_of))}
-              onActivate={() => setChecklistOpen(true)}
+              activateBlockedReason={scenario?.item ? PLAN_COPY.activateScenarioBlocked : null}
+              onActivate={() => setActivateOpen(true)}
               onMarkOnly={() => setChecklistOpen((open) => !open)}
             >
               {checklistOpen ? (
@@ -367,6 +373,40 @@ export const CashPlanTab = ({
                 />
               ) : null}
             </PlanStepsPanel>
+            <ActivatePlanSheet
+              open={activateOpen}
+              onOpenChange={setActivateOpen}
+              routeTitle={featured.title}
+              actions={featured.actions}
+              obligations={input.obligations}
+              todayYmd={data.as_of}
+              onConfirm={async () => {
+                const result = await applyCashPlanRoute(
+                  {
+                    horizon,
+                    monthKey,
+                    routeId: featured.id,
+                    actions: featured.actions.map((step) => ({
+                      type: step.type,
+                      obligationId: step.obligationId ?? null,
+                      amount: step.amount ?? null,
+                    })),
+                    bridgeSim: input.bridgeSim ?? null,
+                    consolidateSim: input.consolidateSim ?? null,
+                  },
+                  financeContext ?? undefined,
+                );
+                setActivateOpen(false);
+                const changed = result.writes.filter(
+                  (write) => write.kind !== 'card_payment_plan' || write.status !== 'unchanged',
+                ).length;
+                const panelHref = getCurrentMonthlyPanelHref(parseCalendarDate(data.as_of));
+                toast.success(changed > 0 ? PLAN_COPY.activateDone(changed) : PLAN_COPY.activateAlready, {
+                  action: { label: PLAN_COPY.activateSeePanel, onClick: () => window.location.assign(panelHref) },
+                });
+                onReload();
+              }}
+            />
           </>
         )}
       </div>

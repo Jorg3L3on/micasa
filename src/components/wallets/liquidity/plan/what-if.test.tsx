@@ -6,14 +6,18 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import type { LiquidityProjectionResponse } from '@/types/catalog';
 import type { LiquidityScenarioItem } from '@/schemas/liquidity-scenario.schema';
 
-const { fetchLiquidityProjection, getPaymentMethodOptions, financeContext } = vi.hoisted(() => ({
+const { fetchLiquidityProjection, getPaymentMethodOptions, financeContext, applyCashPlanRoute, toastSuccess } = vi.hoisted(() => ({
   fetchLiquidityProjection: vi.fn(),
   getPaymentMethodOptions: vi.fn(),
+  applyCashPlanRoute: vi.fn(),
+  toastSuccess: vi.fn(),
   financeContext: { current: { type: 'user', id: 1 } as { type: 'user' | 'house'; id: number } },
 }));
 
 vi.mock('@/lib/api/liquidity', () => ({ fetchLiquidityProjection }));
 vi.mock('@/lib/api/wallets', () => ({ getPaymentMethodOptions }));
+vi.mock('@/lib/api/cash-plan', () => ({ applyCashPlanRoute }));
+vi.mock('sonner', () => ({ toast: { success: toastSuccess, error: vi.fn() } }));
 vi.mock('@/context/finance-context', () => ({
   useFinanceContext: () => ({ context: financeContext.current }),
 }));
@@ -682,5 +686,78 @@ describe('Plan tab steps, rail and states (MIC-I14-4)', () => {
     const weights = screen.getByTestId('plan-weights-panel');
     expect(within(weights).getAllByRole('listitem')).toHaveLength(5);
     expect(within(weights).getByText('45%')).toBeTruthy();
+  });
+});
+
+describe('Activar este plan (MIC-I14-5)', () => {
+  beforeEach(() => {
+    getPaymentMethodOptions.mockResolvedValue([{ id: 10, name: 'Débito Nómina', type: 'DEBIT_CARD' }]);
+    applyCashPlanRoute.mockReset();
+    toastSuccess.mockReset();
+  });
+
+  const surplus = () => {
+    const data = projectionWith();
+    data.summary.funding_total = 5000;
+    data.funding_wallets = [{ id: 10, name: 'Débito Nómina', type: 'DEBIT_CARD', balance: 5000 }];
+    return data;
+  };
+
+  const renderSurplus = (scenario: LiquidityScenarioController = controller(null, null)) => {
+    const onReload = vi.fn();
+    render(
+      <CashPlanTab data={surplus()} loading={false} error={null} onReload={onReload} selectedMonthKey="2026-11" scenario={scenario} />,
+    );
+    return { onReload };
+  };
+
+  it('lists the writes before saving, sends the route once and confirms with a toast', async () => {
+    applyCashPlanRoute.mockResolvedValue({
+      writes: [{ kind: 'card_payment_plan', walletId: 7, label: 'Tarjeta Azul', fortnightId: 3, amount: 1900, status: 'created' }],
+      skipped: [],
+    });
+    const { onReload } = renderSurplus();
+    await userEvent.click(screen.getByRole('button', { name: 'Activar este plan' }));
+
+    const dialog = await screen.findByRole('dialog');
+    const writes = within(dialog).getByTestId('activate-writes');
+    expect(within(writes).getByText(/Programar pago de \$[\d,.]+ a Tarjeta Azul/)).toBeTruthy();
+    expect(applyCashPlanRoute).not.toHaveBeenCalled();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Activar' }));
+    await waitFor(() => expect(applyCashPlanRoute).toHaveBeenCalledTimes(1));
+    const [body] = applyCashPlanRoute.mock.calls[0]!;
+    expect(body).toMatchObject({ horizon: 'quincena', monthKey: '2026-11' });
+    expect(body.actions.length).toBeGreaterThan(0);
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Plan activado: 1 cambio en tu Panel', expect.anything()));
+    expect(onReload).toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('keeps the sheet open with the error and a retry when the request fails', async () => {
+    applyCashPlanRoute.mockRejectedValue(new Error('Tu plan cambió desde que lo abriste. Recarga para ver la ruta actualizada.'));
+    renderSurplus();
+    await userEvent.click(screen.getByRole('button', { name: 'Activar este plan' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Activar' }));
+    expect(await within(dialog).findByText(/Tu plan cambió/)).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: PLAN_COPY.retry })).toBeTruthy();
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it('cancel stores nothing', async () => {
+    renderSurplus();
+    await userEvent.click(screen.getByRole('button', { name: 'Activar este plan' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(applyCashPlanRoute).not.toHaveBeenCalled();
+  });
+
+  it('is off while a simulation is on screen', () => {
+    const item: LiquidityScenarioItem = { ...purchase, date: '2027-01-20' };
+    renderSurplus(controller(item, projectionWith([simulatedPurchase('2027-01-20')])));
+    expect(screen.getByRole('button', { name: 'Activar este plan' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByText(PLAN_COPY.activateScenarioBlocked)).toBeTruthy();
   });
 });
