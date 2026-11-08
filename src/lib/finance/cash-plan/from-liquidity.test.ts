@@ -519,3 +519,48 @@ describe('planInputFromLiquidity with a scenario', () => {
     expect(input.gapLines.find((line) => line.id === 'scenario-0-1')?.amount).toBe(1800);
   });
 });
+
+describe('step due dates and source wallet (MIC-I14-3)', () => {
+  const mesInput = (wallets?: LiquidityProjectionResponse['funding_wallets']) => {
+    const base = projection();
+    return planInputFromLiquidity({
+      projection: wallets ? { ...base, funding_wallets: wallets } : base,
+      monthKey: '2026-09',
+      horizon: 'mes',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T00:00:00.000Z',
+    });
+  };
+
+  it('an undated MSI records undated_obligation and its step has no dueDate', () => {
+    const input = mesInput();
+    const gap = input.dataGaps?.find((item) => item.code === 'undated_obligation');
+    expect(gap?.obligationId).toBe('msi-1-2026-09');
+    expect(input.obligations.find((item) => item.id === 'msi-1-2026-09')?.dueDate).toBeUndefined();
+
+    const result = buildCashPlan(input);
+    const steps = [result.primary, ...result.alternatives].flatMap((plan) => plan.actions);
+    const msiSteps = steps.filter((step) => step.obligationId === 'msi-1-2026-09');
+    expect(msiSteps.length).toBeGreaterThan(0);
+    for (const step of msiSteps) expect(step.dueDate).toBeUndefined();
+
+    // A dated obligation carries its milestone's civil day.
+    const cardSteps = steps.filter((step) => step.obligationId === 'card-7');
+    expect(cardSteps.length).toBeGreaterThan(0);
+    for (const step of cardSteps) expect(step.dueDate).toBe('2026-09-10');
+  });
+
+  it('fromWalletId is the funding wallet with the highest balance', () => {
+    const input = mesInput([
+      { id: 1, name: 'Efectivo sintético', type: 'CASH', balance: 300 },
+      { id: 2, name: 'Débito sintético', type: 'DEBIT_CARD', balance: 700 },
+    ]);
+    expect(input.fundingWallets).toEqual([{ id: 1, balance: 300 }, { id: 2, balance: 700 }]);
+    const result = buildCashPlan(input);
+    const funded = [result.primary, ...result.alternatives]
+      .flatMap((plan) => plan.actions)
+      .filter((step) => step.type !== 'defer_nonessential' && step.type !== 'bridge_loan' && step.type !== 'consolidate');
+    expect(funded.length).toBeGreaterThan(0);
+    for (const step of funded) expect(step.fromWalletId).toBe(2);
+  });
+});

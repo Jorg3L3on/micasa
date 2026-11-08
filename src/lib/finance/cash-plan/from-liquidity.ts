@@ -153,13 +153,13 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     added.push(line);
   };
 
-  const scenarioItems: LiquidityProjectionObligationItem[] = [];
+  const scenarioItems: Array<{ item: LiquidityProjectionObligationItem; dueDate: string }> = [];
 
   for (const milestone of projection.milestones) {
     if (!inHorizon(milestone.due_date)) continue;
     for (const item of milestone.obligations) {
       if (item.source === 'scenario') {
-        scenarioItems.push(item);
+        scenarioItems.push({ item, dueDate: milestone.due_date });
         continue;
       }
       if (item.source === 'expense_template') {
@@ -172,6 +172,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           labelSynthetic: label,
           statementDue: item.next_due_payment,
           dueInHorizon: true,
+          dueDate: milestone.due_date,
           consequenceTier: classified.tier,
           discretionary: classified.discretionary,
         }, {
@@ -216,6 +217,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           catAnnual,
           creditLimit: card?.credit_limit ?? undefined,
           dueInHorizon: true,
+          dueDate: milestone.due_date,
           consequenceTier: 3,
         }, {
           id: `card-${item.wallet_id}`,
@@ -242,6 +244,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           statementDue: item.next_due_payment,
           aprAnnual: loanApr,
           dueInHorizon: true,
+          dueDate: milestone.due_date,
           consequenceTier: classified.tier,
         }, {
           id: `loan-${item.loan_id ?? item.loan_payment_id}`,
@@ -261,6 +264,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           labelSynthetic: label,
           statementDue: item.next_due_payment,
           dueInHorizon: true,
+          dueDate: milestone.due_date,
           consequenceTier: classified.tier,
           discretionary: classified.discretionary,
         }, {
@@ -277,6 +281,14 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     if (item.kind !== 'msi') continue;
     const installment = item.payment_amount ?? 0;
     if (installment <= 0) continue;
+    if (horizon === 'mes' && !item.due_date) {
+      // Counted in the month, but no civil day to schedule its step on.
+      dataGaps.push({
+        code: 'undated_obligation',
+        obligationId: item.id,
+        message: `La mensualidad de ${item.title} no tiene día de pago, así que su paso no lleva fecha.`,
+      });
+    }
     if (horizon === 'quincena') {
       if (!item.due_date) {
         dataGaps.push({
@@ -297,6 +309,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
       balanceTotal: item.amount,
       msiInstallment: installment,
       dueInHorizon: true,
+      ...(item.due_date ? { dueDate: item.due_date } : {}),
       consequenceTier: 3,
     }, {
       id: item.id,
@@ -311,7 +324,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
   // card's statement, so the route can pay that card's minimum; a card
   // instalment is a cuota.
   const scenarioLines: GapBreakdownLine[] = [];
-  for (const item of scenarioItems) {
+  for (const { item, dueDate } of scenarioItems) {
     const id = scenarioLineId(item);
     const label = scenarioLabel(item);
     const line: GapBreakdownLine = {
@@ -328,6 +341,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
         labelSynthetic: label,
         statementDue: item.next_due_payment,
         dueInHorizon: true,
+        dueDate,
         consequenceTier: 3,
         discretionary: true,
       }, line);
@@ -341,6 +355,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
         balanceTotal: item.next_due_payment,
         msiInstallment: item.next_due_payment,
         dueInHorizon: true,
+        dueDate,
         consequenceTier: 3,
       }, line);
       continue;
@@ -366,6 +381,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
       catAnnual: item.cat_annual != null && item.cat_annual > 0 ? item.cat_annual : null,
       creditLimit: utilization?.credit_limit ?? undefined,
       dueInHorizon: true,
+      dueDate,
       consequenceTier: 3,
     }, line);
   }
@@ -442,5 +458,6 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     consolidateSim: selection.consolidateSim ?? null,
     computedAt: selection.computedAt,
     dataGaps,
+    fundingWallets: projection.funding_wallets.map((wallet) => ({ id: wallet.id, balance: wallet.balance })),
   };
 };

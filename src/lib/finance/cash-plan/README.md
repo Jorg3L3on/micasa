@@ -23,6 +23,22 @@ Surplus bonuses (not in the table above):
 
 Changing weights or bonuses means review the files in `golden/` in the same change.
 
+## Buffer rule
+
+The buffer route keeps cash for the next period, in whole pesos (`bufferAmountCents`):
+
+- Runway under 1 period (cash < one period of payments): `min(extra / 2, need − cash)`.
+- Otherwise: `min(extra, need)`.
+- Under $100 the buffer route is left out instead of proposing cents. A balanced period has no extra, so it has no `buffer-soft` route.
+
+## Step fields
+
+Each `ActionInstance` may carry:
+
+- `dueDate`: the civil day (`YYYY-MM-DD`, America/Mexico_City) of the obligation it pays, from `Obligation.dueDate` when that obligation is due in the horizon. An undated obligation gives an undated step and, from `planInputFromLiquidity`, an `undated_obligation` gap.
+- `fromWalletId`: the funding wallet with the highest balance in `PlanInput.fundingWallets` (ties go to the lower id), on every step that pays money out (not on deferrals, bridge or consolidation).
+- `extra_to_debt_avalanche` / `extra_to_debt_snowball` name the debt that receives the extra first (`obligationId`), using the same order as the payoff simulation.
+
 ## Rules that fixtures lock
 
 - MSI period cash is `msiInstallment`. `balanceTotal` is never the payment.
