@@ -262,7 +262,7 @@ describe('phone tiles', () => {
     };
     const { container } = render(<PlanFlowPanel mode="surplus" input={input} dataGaps={[]} />);
     const tiles = within(screen.getByTestId('flow-compact')).getAllByRole('definition');
-    expect(tiles.map((tile) => tile.textContent)).toEqual([formatCurrency(5000), formatCurrency(2000), formatCurrency(3000)]);
+    expect(tiles.map((tile) => tile.textContent)).toEqual(['$5,000', '$2,000', '$3,000']);
     expect(container.querySelector('[aria-expanded]')).toBeNull();
   });
 });

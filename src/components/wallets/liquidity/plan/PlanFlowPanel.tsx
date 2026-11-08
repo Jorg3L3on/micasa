@@ -20,6 +20,7 @@ import { isScenarioGapLine } from '@/lib/finance/cash-plan/from-liquidity';
 import type { DataGap, GapBreakdownLine, PlanInput, PlanMode } from '@/lib/finance/cash-plan/types';
 import { cn, formatCurrency } from '@/lib/utils';
 import { formatMonthShort } from '@/lib/calendar-dates';
+import { formatWholeCurrency } from '@/components/wallets/liquidity/scenario/scenario-format';
 
 type PlanFlowPanelProps = {
   mode: PlanMode;
@@ -198,12 +199,12 @@ export const PlanFlowPanel = ({ mode, input, dataGaps, cushion = 0 }: PlanFlowPa
             <dt className="eyebrow text-muted-foreground">{tile.label}</dt>
             <dd
               className={cn(
-                'truncate font-sans text-base font-bold tabular-nums',
+                'whitespace-nowrap font-sans text-sm font-bold tabular-nums',
                 tile.tone === 'good' && 'text-status-success',
                 tile.tone === 'bad' && 'text-status-overdue',
               )}
             >
-              {formatCurrency(tile.value)}
+              {formatWholeCurrency(tile.value)}
             </dd>
           </div>
         ))}

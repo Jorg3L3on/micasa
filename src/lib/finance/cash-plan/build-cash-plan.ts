@@ -714,7 +714,7 @@ const buildSurplusDrafts = (
       const name = labelOf(part.id);
       return action(type, {
         obligationId: part.id,
-        label: name ? `${ACTION_CATALOG[type].uiLabel} · ${name}` : undefined,
+        label: name ? `Extra a ${name}` : undefined,
         amount: fromCents(part.cents),
         detail,
       });
