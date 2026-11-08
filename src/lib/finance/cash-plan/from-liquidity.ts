@@ -379,7 +379,19 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
   }
 
   const unresolvedCards = projection.summary.unresolved_card_obligation_count ?? 0;
-  if (unresolvedCards > 0) {
+  const unresolvedInHorizon = (projection.summary.unresolved_card_obligations ?? []).filter(
+    (card) => inHorizon(card.statement_due_date),
+  );
+  if (unresolvedInHorizon.length > 0) {
+    // One gap per card, so the plan can show it on that card's line.
+    for (const card of unresolvedInHorizon) {
+      dataGaps.push({
+        code: 'missing_statement',
+        obligationId: `card-${card.wallet_id}`,
+        message: `Falta el pago del corte de ${card.wallet_name} (vence el ${formatDisplayDate(card.statement_due_date)}). No está sumado aquí.`,
+      });
+    }
+  } else if (unresolvedCards > 0 && (projection.summary.unresolved_card_obligations ?? []).length === 0) {
     dataGaps.push({
       code: 'missing_statement',
       message:

@@ -18,10 +18,11 @@ import { isScenarioGapLine } from '@/lib/finance/cash-plan/from-liquidity';
 import type { PlanHorizon, RankedPlan } from '@/lib/finance/cash-plan/types';
 import type { LiquidityProjectionResponse } from '@/types/catalog';
 import { ApplyPlanChecklist } from '@/components/wallets/liquidity/plan/ApplyPlanChecklist';
-import { DataGapCallout } from '@/components/wallets/liquidity/plan/DataGapCallout';
 import { HorizonToggle } from '@/components/wallets/liquidity/plan/HorizonToggle';
 import { parseLoanSimFields } from '@/components/wallets/liquidity/plan/loan-sim-fields';
+import { PlanFlowPanel } from '@/components/wallets/liquidity/plan/PlanFlowPanel';
 import { PlanHero, type PlanHeroScenario } from '@/components/wallets/liquidity/plan/PlanHero';
+import { planPeriodLabel, planTodayLabel } from '@/components/wallets/liquidity/plan/plan-period';
 import { PlanRouteCard } from '@/components/wallets/liquidity/plan/PlanRouteCard';
 import { SimulateLoanControl } from '@/components/wallets/liquidity/plan/SimulateLoanControl';
 import { WhyPanel } from '@/components/wallets/liquidity/plan/WhyPanel';
@@ -311,11 +312,15 @@ export const CashPlanTab = ({
             mode={plan.mode}
             gapAmount={input.gapAmount}
             horizon={horizon}
-            lines={input.gapLines}
-            note={input.gapNote}
+            periodLabel={planPeriodLabel(horizon, monthKey, data.as_of)}
+            todayLabel={planTodayLabel(data.as_of)}
+            confidence={plan.confidence}
+            gapCount={plan.dataGaps.length}
             scenario={heroScenario}
           />
         )}
+
+        <PlanFlowPanel mode={plan.mode} input={input} dataGaps={plan.dataGaps} />
       </div>
 
       {whatIf ? (
@@ -323,8 +328,6 @@ export const CashPlanTab = ({
       ) : null}
 
       <div className="space-y-6 lg:col-start-1">
-        <DataGapCallout gaps={plan.dataGaps} lowConfidence={plan.confidence === 'low'} />
-
         {plan.primary.id === 'empty' ? (
           <p className="text-sm text-muted-foreground">{PLAN_COPY.noSafePrimary}</p>
         ) : null}
