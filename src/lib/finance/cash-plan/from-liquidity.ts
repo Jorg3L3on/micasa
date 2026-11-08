@@ -174,7 +174,8 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           dueInHorizon: true,
           dueDate: milestone.due_date,
           consequenceTier: classified.tier,
-          discretionary: classified.discretionary,
+          // A template occurrence has no expense to move yet, so it is never offered as a deferral.
+          discretionary: false,
         }, {
           id: `bill-${item.expense_template_id ?? label}`,
           label,

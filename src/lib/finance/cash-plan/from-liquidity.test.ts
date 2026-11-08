@@ -564,3 +564,40 @@ describe('step due dates and source wallet (MIC-I14-3)', () => {
     for (const step of funded) expect(step.fromWalletId).toBe(2);
   });
 });
+
+describe('deferrals only for expenses that exist (MIC-I14)', () => {
+  it('a template bill is never offered as a deferral; an unpaid expense is', () => {
+    const base = projection();
+    base.milestones[1]!.obligations.push({
+      source: 'unpaid_expense',
+      wallet_id: 1,
+      wallet_name: 'Efectivo sintético',
+      wallet_type: 'CASH',
+      statement_start: '',
+      statement_end: '',
+      statement_due_date: '2026-09-20',
+      last_statement_balance: 0,
+      payments_applied_to_statement: 0,
+      next_due_payment: 150,
+      expense_id: 77,
+      expense_description: 'Cine',
+    });
+    const input = planInputFromLiquidity({
+      projection: base,
+      monthKey: '2026-09',
+      horizon: 'mes',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T00:00:00.000Z',
+    });
+    const netflix = input.obligations.find((item) => item.labelSynthetic === 'Netflix');
+    expect(netflix?.discretionary).toBe(false);
+    const cine = input.obligations.find((item) => item.labelSynthetic === 'Cine');
+    expect(cine?.discretionary).toBe(true);
+    const result = buildCashPlan(input);
+    const deferred = [result.primary, ...result.alternatives]
+      .flatMap((plan) => plan.actions)
+      .filter((step) => step.type === 'defer_nonessential')
+      .map((step) => step.obligationId);
+    expect(deferred).not.toContain(netflix?.id);
+  });
+});
