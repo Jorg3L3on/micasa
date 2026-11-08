@@ -112,3 +112,22 @@ export const simulatePayoff = (
 
   return { months: MAX_MONTHS, interestCents, debtsClearedFirstMonth };
 };
+
+/**
+ * The debt that receives the month-1 extra first under `strategy`, using the
+ * same accrual, minimums and target order as `simulatePayoff`. Null when no
+ * debt has a balance.
+ */
+export const firstExtraTargetId = (
+  debts: readonly PayoffDebt[],
+  strategy: 'avalanche' | 'snowball',
+): string | null => {
+  const working: WorkingDebt[] = debts
+    .filter((debt) => debt.balanceCents > 0)
+    .map((debt) => ({ ...debt, minimumCents: Math.max(0, debt.minimumCents), balance: debt.balanceCents }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  for (const debt of working) accrue(debt);
+  for (const debt of working) payToward(debt, Math.min(debt.balance, debt.minimumCents || debt.balance));
+  const target = strategy === 'avalanche' ? avalancheTarget(working) : snowballTarget(working);
+  return target?.id ?? null;
+};

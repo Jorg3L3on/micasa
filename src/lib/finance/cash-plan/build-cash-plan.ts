@@ -4,7 +4,7 @@ import { BALANCED_EPS_CENTS, fromCents, toCents } from '@/lib/finance/cash-plan/
 import { compositeScore, riskScore, TIE_COMPOSITE_EPS } from '@/lib/finance/cash-plan/score';
 import { simulateBridge } from '@/lib/finance/cash-plan/simulate-bridge';
 import { simulateConsolidate } from '@/lib/finance/cash-plan/simulate-consolidate';
-import { simulatePayoff, type PayoffDebt } from '@/lib/finance/cash-plan/simulate-payoff';
+import { firstExtraTargetId, simulatePayoff, type PayoffDebt } from '@/lib/finance/cash-plan/simulate-payoff';
 import {
   ASSUMED_HIGH_APR,
   ASSUMED_MEDIAN_APR,
@@ -23,6 +23,61 @@ import {
 } from '@/lib/finance/cash-plan/types';
 
 const INTEREST_MONTHS = 6;
+/** A cushion under $100 is noise: the buffer route is left out instead. */
+export const BUFFER_MIN_CENTS = 10_000;
+
+const roundToPesoCents = (cents: number): number => Math.round(cents / 100) * 100;
+
+/**
+ * Cash the buffer route keeps, in whole pesos. Runway under one period: half
+ * the extra, capped at what is missing to cover a period. Otherwise the extra
+ * up to one period of payments. Under $100 → 0 (no buffer route).
+ */
+export const bufferAmountCents = (extraCents: number, availableCents: number, monthlyNeedCents: number): number => {
+  const cushionGap = Math.max(0, monthlyNeedCents - availableCents);
+  const raw = cushionGap > 0
+    ? Math.min(extraCents / 2, cushionGap)
+    : Math.min(extraCents, monthlyNeedCents);
+  const rounded = Math.min(roundToPesoCents(raw), extraCents);
+  return rounded >= BUFFER_MIN_CENTS ? rounded : 0;
+};
+
+/** Steps that move money out of a funding wallet. */
+const FUNDED_ACTIONS = new Set<ActionInstance['type']>([
+  'pay_minimum',
+  'pay_statement',
+  'pay_msi_installment',
+  'pay_off',
+  'split_hybrid',
+  'extra_to_debt_avalanche',
+  'extra_to_debt_snowball',
+  'buffer_reserve',
+]);
+
+/** The funding wallet with the highest balance; ties go to the lower id. */
+const sourceWalletId = (input: PlanInput): number | undefined =>
+  [...(input.fundingWallets ?? [])]
+    .sort((a, b) => b.balance - a.balance || a.id - b.id)[0]?.id;
+
+/** Fills each step's civil due date (from its obligation) and its source wallet. */
+const withStepDetails = (plan: RankedPlan, input: PlanInput): RankedPlan => {
+  const walletId = sourceWalletId(input);
+  return {
+    ...plan,
+    actions: plan.actions.map((step) => {
+      const obligation = step.obligationId
+        ? input.obligations.find((item) => item.id === step.obligationId)
+        : undefined;
+      const dueDate = obligation?.dueInHorizon ? obligation.dueDate : undefined;
+      const fromWalletId = walletId != null && FUNDED_ACTIONS.has(step.type) ? walletId : undefined;
+      return {
+        ...step,
+        ...(dueDate ? { dueDate } : {}),
+        ...(fromWalletId != null ? { fromWalletId } : {}),
+      };
+    }),
+  };
+};
 const FUTURE_CUOTA_MONTHS = 6;
 /** Caller-injected runs stay deterministic. Noon matches calendar-date storage. */
 const DEFAULT_COMPUTED_AT = '1970-01-01T12:00:00.000Z';
@@ -632,10 +687,9 @@ const buildSurplusDrafts = (
   });
 
   const runwayBase = available / Math.max(monthlyNeedCents, 1);
-  const cushionGap = Math.max(0, monthlyNeedCents - available);
-  const bufferCents = cushionGap > 0
-    ? Math.min(extraCents, cushionGap)
-    : Math.min(extraCents, monthlyNeedCents);
+  const bufferCents = bufferAmountCents(extraCents, available, monthlyNeedCents);
+  const avalancheTargetId = firstExtraTargetId(debts, 'avalanche') ?? undefined;
+  const snowballTargetId = firstExtraTargetId(debts, 'snowball') ?? undefined;
   const bufferPayoff = simulatePayoff(debts, Math.max(0, extraCents - bufferCents), 'avalanche');
   const drafts: Draft[] = [];
 
@@ -647,6 +701,7 @@ const buildSurplusDrafts = (
       summary: 'Después de los mínimos, el extra de este periodo va a la deuda más cara.',
       actions: [
         action('extra_to_debt_avalanche', {
+          obligationId: avalancheTargetId,
           amount: fromCents(extraCents),
           detail: 'Un solo extra de este periodo; los meses siguientes siguen en mínimo.',
         }),
@@ -671,6 +726,7 @@ const buildSurplusDrafts = (
       summary: 'Después de los mínimos, el extra va al saldo más bajo para cerrarlo antes.',
       actions: [
         action('extra_to_debt_snowball', {
+          obligationId: snowballTargetId,
           amount: fromCents(extraCents),
           detail: 'Misma caja que la avalancha; cambia a cuál deuda le pega primero.',
         }),
@@ -701,6 +757,7 @@ const buildSurplusDrafts = (
     if (debtSlice > 0 && debts.length > 0) {
       actions.push(
         action('extra_to_debt_avalanche', {
+          obligationId: avalancheTargetId,
           amount: fromCents(debtSlice),
           detail: 'El resto del extra va a la tasa más alta.',
         }),
@@ -711,7 +768,7 @@ const buildSurplusDrafts = (
       strategyKey: 'buffer',
       title: 'Guardar colchón',
       summary: runwayBase < 1
-        ? 'El efectivo de hoy no cubre un periodo de pagos. Conviene dejar el extra en caja antes de adelantar deuda.'
+        ? 'El efectivo de hoy no cubre un periodo de pagos. Esta ruta deja la mitad del extra en caja antes de adelantar deuda.'
         : 'Puedes apartar una parte del extra y no dejar la caja en cero.',
       actions,
       netFreedCents: extraCents,
@@ -825,21 +882,8 @@ const balancedResult = (
     warnings: [],
     touchesUntouchable: false,
   };
-  const alternatives: RankedPlan[] = [
-    {
-      ...primary,
-      id: 'buffer-soft',
-      strategyKey: 'buffer',
-      title: 'Dejar el colchón quieto',
-      summary: 'No hace falta mover el efectivo disponible en este periodo.',
-      actions: [
-        action('buffer_reserve', {
-          detail: 'El efectivo se queda donde está.',
-        }),
-      ],
-      scores: { ...primary.scores, composite: 0.4 },
-    },
-  ];
+  // No extra means no cushion of $100 or more to propose (buffer rule): no buffer-soft route.
+  const alternatives: RankedPlan[] = [];
   const hasDebt = input.obligations.some(
     (obligation) =>
       (obligation.kind === 'card_revolving' || obligation.kind === 'loan') &&
@@ -854,6 +898,7 @@ const balancedResult = (
       summary: 'Este periodo no sobra ni falta. Cuando sobre, el extra rinde más en la deuda más cara.',
       actions: [
         action('extra_to_debt_avalanche', {
+          obligationId: firstExtraTargetId(payoffDebts(input.obligations, input.prefs?.missingAprPolicy ?? 'exclude_from_apr_rank'), 'avalanche') ?? undefined,
           detail: 'Sin extra asignado en este periodo.',
         }),
       ],
@@ -864,7 +909,7 @@ const balancedResult = (
   return {
     mode: 'balanced',
     primary,
-    alternatives: alternatives.slice(0, 4),
+    alternatives: alternatives.slice(0, 4).map((plan) => withStepDetails(plan, input)),
     confidence: confidenceFor(gaps),
     dataGaps: gaps,
     tie: false,
@@ -949,8 +994,8 @@ export const buildCashPlan = (input: PlanInput): PlanResult => {
 
   return {
     mode,
-    primary,
-    alternatives,
+    primary: withStepDetails(primary, input),
+    alternatives: alternatives.map((plan) => withStepDetails(plan, input)),
     confidence: confidenceFor(gaps),
     dataGaps: gaps,
     tie,
