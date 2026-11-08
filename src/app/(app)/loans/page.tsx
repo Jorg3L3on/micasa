@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import {
   CheckCircle2,
   CircleSlash,
+  HandCoins,
   History,
   MoreVertical,
   Pause,
@@ -27,7 +28,8 @@ import { ErrorBanner } from '@/components/error-banner';
 import { FilterChip } from '@/components/filter-chip';
 import { Money } from '@/components/money';
 import { SectionHeader } from '@/components/section-header';
-import { CollectionCardsSkeleton } from '@/components/loading/page-skeletons';
+import { LoansListSkeleton } from '@/components/loading/page-skeletons';
+import { SegmentedControl } from '@/components/segmented-control';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,7 +82,8 @@ import {
 } from '@/lib/api/lenders';
 import type { PayLenderInput } from '@/schemas/lender.schema';
 import LenderPayDialog from '@/components/loans/LenderPayDialog';
-import { LenderGroupedLoansTable } from '@/components/loans/LenderGroupedLoansTable';
+import { LenderCard } from '@/components/loans/LenderCard';
+import { LoansSummaryStrip } from '@/components/loans/LoansSummaryStrip';
 import { LenderOrganizeDialog } from '@/components/loans/LenderOrganizeDialog';
 import { LoanCalendarPaymentOverlay } from '@/components/loans/LoanCalendarPaymentOverlay';
 import { LoanBalanceSummary } from '@/components/loans/LoanBalanceSummary';
@@ -105,7 +108,17 @@ import {
 } from '@/components/overlay/overlay-form';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { inferLenderProviderIconKey } from '@/lib/finance/lender-identity';
-import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import {
+  AURA_TAB_INDICATOR_CLASS,
+  GLASS_TAB_ACTIVE_LABEL_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
+  MONTHLY_PANEL_SHELL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
+import {
+  countLoansByStatus,
+  summarizeLoanGroup,
+  type LoanStatusTab,
+} from '@/lib/finance/loan-list-summary';
 import {
   formatMonthPhrase,
   isValidCalendarDateString,
@@ -149,7 +162,9 @@ type LoanFormState = {
   notes: string;
 };
 
-type LoanStatusFilter = LoanListItem['status'] | 'ALL';
+type LoanSourceFilter = 'ALL' | LoanListItem['paymentSource'];
+/** 'ALL', a lender id, or 'NONE' for contracts without a lender. */
+type LoanLenderFilter = 'ALL' | 'NONE' | number;
 type LoanLifecycleTarget = Extract<
   LoanListItem['status'],
   'ACTIVE' | 'PAUSED' | 'CANCELLED'
@@ -353,12 +368,17 @@ const getPaymentVisualStatus = (
   return 'scheduled';
 };
 
-const loanStatusFilters: Array<{ value: LoanStatusFilter; label: string }> = [
-  { value: 'ALL', label: 'Todos' },
+const loanStatusTabs: Array<{ value: LoanStatusTab; label: string }> = [
   { value: 'ACTIVE', label: 'Activos' },
-  { value: 'PAID_OFF', label: 'Pagados' },
   { value: 'PAUSED', label: 'Pausados' },
+  { value: 'PAID_OFF', label: 'Liquidados' },
   { value: 'CANCELLED', label: 'Cancelados' },
+];
+
+const loanSourceFilters: Array<{ value: LoanSourceFilter; label: string }> = [
+  { value: 'ALL', label: 'Todas' },
+  { value: 'PAYROLL_DEDUCTION', label: 'Nómina' },
+  { value: 'WALLET', label: 'Billetera' },
 ];
 
 type BatchPaymentDraft = {
@@ -390,7 +410,12 @@ export default function LoansPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedLoanId, setSelectedLoanId] = useState<number | null>(null);
   const [loanHistory, setLoanHistory] = useState<{ id: number; name: string } | null>(null);
-  const [statusFilter, setStatusFilter] = useState<LoanStatusFilter>('ALL');
+  const [statusTab, setStatusTab] = useState<LoanStatusTab>('ACTIVE');
+  const [lenderFilter, setLenderFilter] = useState<LoanLenderFilter>('ALL');
+  const [sourceFilter, setSourceFilter] = useState<LoanSourceFilter>('ALL');
+  const [lenderHistory, setLenderHistory] = useState<{ id: number; name: string } | null>(
+    null,
+  );
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [paymentActionDraft, setPaymentActionDraft] =
     useState<PaymentActionDraft | null>(null);
@@ -497,12 +522,8 @@ export default function LoansPage() {
       if (!isCurrentLoanContext(contextKeyRef.current, nextKey)) return;
       const message =
         error instanceof Error ? error.message : 'No se pudieron cargar préstamos';
-      const hasLoans = loansRef.current.length > 0;
-      if (hasLoans) {
-        setLoadError(null);
-      } else {
-        setLoadError(message);
-      }
+      // With loans on screen the banner sits above the previous data.
+      setLoadError(message);
     } finally {
       if (isCurrentLoanContext(contextKeyRef.current, nextKey)) {
         setLoading(false);
@@ -551,10 +572,21 @@ export default function LoansPage() {
   }, [loans, resetLoanDetailDrafts, searchParams, selectedLoanId]);
 
   const activeLoans = loans.filter((loan) => loan.status === 'ACTIVE');
-  const visibleLoans =
-    statusFilter === 'ALL'
-      ? loans
-      : loans.filter((loan) => loan.status === statusFilter);
+  // Toolbar filters (lender, payment source) apply to the strip, tabs and cards.
+  const toolbarLoans = useMemo(
+    () =>
+      loans.filter((loan) => {
+        if (sourceFilter !== 'ALL' && loan.paymentSource !== sourceFilter) return false;
+        if (lenderFilter === 'NONE') return loan.lenderId == null;
+        if (lenderFilter !== 'ALL') return loan.lenderId === lenderFilter;
+        return true;
+      }),
+    [lenderFilter, loans, sourceFilter],
+  );
+  const visibleLoans = useMemo(
+    () => toolbarLoans.filter((loan) => loan.status === statusTab),
+    [statusTab, toolbarLoans],
+  );
   const selectedLoan = useMemo(
     () =>
       selectedLoanId === null
@@ -798,18 +830,53 @@ export default function LoansPage() {
     }
   };
 
-  const visibleLenders = useMemo(() => {
-    const visibleIds = new Set(visibleLoans.map((loan) => loan.lenderId));
-    return lenders.filter((lender) => {
-      const loansForLender = visibleLoans.filter(
-        (loan) => loan.lenderId === lender.id,
-      );
-      if (statusFilter === 'ALL') {
-        return loansForLender.length > 0 || lender.loans.length === 0;
-      }
-      return visibleIds.has(lender.id);
-    });
-  }, [lenders, statusFilter, visibleLoans]);
+  /** One card per lender with contracts in the tab; paid-off ones fold under Activos. */
+  const lenderCards = useMemo(() => {
+    const foldPaidOff = statusTab === 'ACTIVE';
+    const groups = lenders
+      .filter((lender) => lenderFilter === 'ALL' || lenderFilter === lender.id)
+      .map((lender) => ({
+        key: `lender-${lender.id}`,
+        lender,
+        loans: visibleLoans.filter((loan) => loan.lenderId === lender.id),
+        folded: foldPaidOff
+          ? toolbarLoans.filter(
+              (loan) => loan.lenderId === lender.id && loan.status === 'PAID_OFF',
+            )
+          : [],
+      }))
+      .filter((group) => group.loans.length > 0);
+    const unassigned = visibleLoans.filter((loan) => loan.lenderId == null);
+    return unassigned.length > 0
+      ? [
+          {
+            key: 'lender-none',
+            lender: null,
+            loans: unassigned,
+            folded: foldPaidOff
+              ? toolbarLoans.filter(
+                  (loan) => loan.lenderId == null && loan.status === 'PAID_OFF',
+                )
+              : [],
+          },
+          ...groups,
+        ]
+      : groups;
+  }, [lenderFilter, lenders, statusTab, toolbarLoans, visibleLoans]);
+
+  const listSummary = useMemo(
+    () => summarizeLoanGroup(toolbarLoans, todayYmd),
+    [todayYmd, toolbarLoans],
+  );
+  const activeLenderCount = useMemo(
+    () =>
+      new Set(
+        toolbarLoans
+          .filter((loan) => loan.status === 'ACTIVE')
+          .map((loan) => loan.lenderId ?? 'none'),
+      ).size,
+    [toolbarLoans],
+  );
 
   const setPaymentActionField = <K extends keyof PaymentActionDraft>(
     key: K,
@@ -921,12 +988,6 @@ export default function LoansPage() {
     } finally {
       setLifecycleSubmitting(false);
     }
-  };
-
-  const handleRequestDeleteLoanFromList = (loanId: number) => {
-    setDeleteError(null);
-    setListDeleteLoanId(loanId);
-    setDeleteDialogOpen(true);
   };
 
   const handleDeleteLoan = async () => {
@@ -1108,23 +1169,18 @@ export default function LoansPage() {
     setNewLenderOpen(true);
   }, []);
 
-  const handleClearStatusFilter = useCallback(() => {
-    setStatusFilter('ALL');
+  const handleClearToolbarFilters = useCallback(() => {
+    setLenderFilter('ALL');
+    setSourceFilter('ALL');
   }, []);
 
-  const statusChipCounts = useMemo(() => {
-    const counts: Record<LoanStatusFilter, number> = {
-      ALL: loans.length,
-      ACTIVE: 0,
-      PAID_OFF: 0,
-      PAUSED: 0,
-      CANCELLED: 0,
-    };
-    for (const loan of loans) {
-      counts[loan.status] += 1;
-    }
-    return counts;
-  }, [loans]);
+  const statusTabCounts = useMemo(() => countLoansByStatus(toolbarLoans), [toolbarLoans]);
+  const toolbarFilterCount =
+    (lenderFilter === 'ALL' ? 0 : 1) + (sourceFilter === 'ALL' ? 0 : 1);
+  const hasUnassignedLoans = useMemo(
+    () => loans.some((loan) => loan.lenderId == null),
+    [loans],
+  );
 
   const primaryActionIcon = useMemo(
     () => <Plus data-icon="inline-start" />,
@@ -1166,7 +1222,7 @@ export default function LoansPage() {
     filters: {
       open: filtersOpen,
       onOpenChange: setFiltersOpen,
-      activeCount: statusFilter === 'ALL' ? 0 : 1,
+      activeCount: toolbarFilterCount,
     },
     primaryAction: {
       label: PAGE_CREATE_ACTION.loan.label,
@@ -1232,32 +1288,63 @@ export default function LoansPage() {
       <ToolbarFiltersPortal>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-1.5 eyebrow text-muted-foreground">Estado</p>
+            <p className="mb-1.5 eyebrow text-muted-foreground">Prestamista</p>
             <div
               className="flex flex-wrap gap-2"
               role="group"
-              aria-label="Filtrar préstamos por estado"
+              aria-label="Filtrar préstamos por prestamista"
             >
-              {loanStatusFilters.map((filter) => (
+              <FilterChip
+                selected={lenderFilter === 'ALL'}
+                onClick={() => setLenderFilter('ALL')}
+              >
+                Todos
+              </FilterChip>
+              {lenders.map((lender) => (
+                <FilterChip
+                  key={lender.id}
+                  selected={lenderFilter === lender.id}
+                  onClick={() => setLenderFilter(lender.id)}
+                >
+                  {lender.name}
+                </FilterChip>
+              ))}
+              {hasUnassignedLoans ? (
+                <FilterChip
+                  selected={lenderFilter === 'NONE'}
+                  onClick={() => setLenderFilter('NONE')}
+                >
+                  Sin prestamista
+                </FilterChip>
+              ) : null}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1.5 eyebrow text-muted-foreground">Origen de pago</p>
+            <div
+              className="flex flex-wrap gap-2"
+              role="group"
+              aria-label="Filtrar préstamos por origen de pago"
+            >
+              {loanSourceFilters.map((filter) => (
                 <FilterChip
                   key={filter.value}
-                  selected={statusFilter === filter.value}
-                  count={statusChipCounts[filter.value]}
-                  onClick={() => setStatusFilter(filter.value)}
+                  selected={sourceFilter === filter.value}
+                  onClick={() => setSourceFilter(filter.value)}
                 >
                   {filter.label}
                 </FilterChip>
               ))}
             </div>
           </div>
-          {statusFilter !== 'ALL' ? (
+          {toolbarFilterCount > 0 ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="h-9 w-fit shrink-0 text-muted-foreground"
-              onClick={handleClearStatusFilter}
-              aria-label="Limpiar filtro de estado"
+              onClick={handleClearToolbarFilters}
+              aria-label="Limpiar filtros de préstamos"
             >
               Limpiar filtros
             </Button>
@@ -1265,9 +1352,15 @@ export default function LoansPage() {
         </div>
       </ToolbarFiltersPortal>
 
-      {loading ? (
-        <CollectionCardsSkeleton />
-      ) : loadError ? (
+      {loadError && loans.length > 0 ? (
+        <ErrorBanner>
+          No se pudieron actualizar los préstamos. {loadError}
+        </ErrorBanner>
+      ) : null}
+
+      {loading && loans.length === 0 ? (
+        <LoansListSkeleton />
+      ) : loadError && loans.length === 0 ? (
         <div className="flex flex-col gap-3">
           <ErrorBanner>
             No se pudieron cargar los préstamos. {loadError}
@@ -1283,62 +1376,168 @@ export default function LoansPage() {
           </Button>
         </div>
       ) : loans.length === 0 ? (
-        <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}>
+        <div className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'overflow-hidden')}>
           <EmptyState
-            message="No tienes préstamos registrados."
-            description="Crea un préstamo para ver sus pagos en el inicio."
+            icon={HandCoins}
+            message="Aún no registras préstamos"
+            description="Agrega un préstamo para ver cuánto debes, qué cuota sigue y en qué mes terminas de pagar."
             action={{
               label: PAGE_CREATE_ACTION.loan.label,
               onClick: openCreateLoan,
             }}
           />
         </div>
-      ) : visibleLoans.length === 0 ? (
-        <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'overflow-hidden')}>
-          <EmptyState
-            message="No hay préstamos en este filtro."
-            description="Cambia el estado seleccionado para revisar el resto del historial."
-          />
-        </div>
       ) : (
-        <LenderGroupedLoansTable
-          lenders={visibleLenders}
-          loans={visibleLoans}
-          onOpenLoan={(loanId) => {
-            resetLoanDetailDrafts();
-            setSelectedLoanId(loanId);
-          }}
-          onPayLender={(lenderId) => {
-            setPayError(null);
-            setPayLenderId(lenderId);
-          }}
-          onMergeLender={(lenderId) => {
-            setOrganizeError(null);
-            setOrganizeMode('merge');
-            setOrganizeLenderId(lenderId);
-          }}
-          onSplitLender={(lenderId) => {
-            setOrganizeError(null);
-            setOrganizeMode('split');
-            setOrganizeLenderId(lenderId);
-          }}
-          onDeleteLoan={handleRequestDeleteLoanFromList}
-          onUndoLastPayment={(lenderId, paymentId) => {
-            void undoLenderPayment(lenderId, paymentId, context)
-              .then(async () => {
-                toast.success('Se deshizo el pago consolidado');
-                await loadData();
-              })
-              .catch((error: unknown) => {
-                toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : 'No se pudo deshacer el pago',
+        <div className={cn('space-y-4', loading && 'opacity-60 transition-opacity')}>
+          <LoansSummaryStrip summary={listSummary} lenderCount={activeLenderCount} />
+          <SegmentedControl
+            value={statusTab}
+            onValueChange={(value) => setStatusTab(value as LoanStatusTab)}
+            ariaLabel="Préstamos por estado"
+            className="w-full min-w-0 md:max-w-xl"
+            stretch
+            frameClassName="flex min-w-0 items-center"
+            wrapperClassName="min-w-0 w-full flex-1"
+            listClassName="min-w-full"
+            triggerClassName="px-2 sm:px-3.5"
+            indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+            activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+            overflowControls="fade"
+            options={loanStatusTabs
+              .filter(
+                (tab) =>
+                  tab.value !== 'CANCELLED' ||
+                  statusTabCounts.CANCELLED > 0 ||
+                  statusTab === 'CANCELLED',
+              )
+              .map((tab) => ({
+                value: tab.value,
+                ariaLabel: `${tab.label}, ${statusTabCounts[tab.value]}`,
+                label: (
+                  <span className="inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap">
+                    {tab.label}
+                    <Badge
+                      variant={
+                        statusTab === tab.value && statusTabCounts[tab.value] > 0
+                          ? 'default'
+                          : 'secondary'
+                      }
+                      className="pointer-events-none h-4 min-w-4 justify-center rounded-full border-0 px-1 font-sans text-xs font-semibold tabular-nums shadow-none"
+                      aria-hidden
+                    >
+                      {statusTabCounts[tab.value]}
+                    </Badge>
+                  </span>
+                ),
+              }))}
+          />
+          {lenderCards.length === 0 ? (
+            <div className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'overflow-hidden')}>
+              <EmptyState
+                icon={HandCoins}
+                message={`Sin préstamos ${
+                  loanStatusTabs.find((tab) => tab.value === statusTab)?.label.toLowerCase() ?? ''
+                }${toolbarFilterCount > 0 ? ' con estos filtros' : ''}`}
+                description={
+                  toolbarFilterCount > 0
+                    ? 'Quita los filtros de prestamista u origen para ver el resto.'
+                    : 'Los contratos aparecen aquí cuando cambian a este estado.'
+                }
+                action={
+                  toolbarFilterCount > 0
+                    ? { label: 'Limpiar filtros', onClick: handleClearToolbarFilters, variant: 'outline' }
+                    : statusTab !== 'ACTIVE'
+                      ? { label: 'Ver activos', onClick: () => setStatusTab('ACTIVE'), variant: 'outline' }
+                      : undefined
+                }
+              />
+            </div>
+          ) : (
+            <div className="space-y-3 md:space-y-4">
+              {lenderCards.map(({ key, lender, loans: cardLoans, folded }) => {
+                const lastPayment = lender?.recentPayments?.[0];
+                return (
+                  <LenderCard
+                    key={key}
+                    name={lender?.name ?? 'Sin prestamista'}
+                    providerIconKey={lender?.providerIconKey}
+                    loans={cardLoans}
+                    foldedLoans={folded}
+                    todayYmd={todayYmd}
+                    canPay={Boolean(lender && lender.payWindow.canPay && !lender.payrollOnly)}
+                    onPay={
+                      lender
+                        ? () => {
+                            setPayError(null);
+                            setPayLenderId(lender.id);
+                          }
+                        : undefined
+                    }
+                    onOpenLoan={(loanId) => {
+                      resetLoanDetailDrafts();
+                      setSelectedLoanId(loanId);
+                    }}
+                    onMerge={
+                      lender
+                        ? () => {
+                            setOrganizeError(null);
+                            setOrganizeMode('merge');
+                            setOrganizeLenderId(lender.id);
+                          }
+                        : undefined
+                    }
+                    onSplit={
+                      lender
+                        ? () => {
+                            setOrganizeError(null);
+                            setOrganizeMode('split');
+                            setOrganizeLenderId(lender.id);
+                          }
+                        : undefined
+                    }
+                    onHistory={
+                      lender
+                        ? () => setLenderHistory({ id: lender.id, name: lender.name })
+                        : undefined
+                    }
+                    lastPayment={lastPayment}
+                    onUndoLastPayment={
+                      lender && lastPayment
+                        ? () => {
+                            void undoLenderPayment(lender.id, lastPayment.id, context)
+                              .then(async () => {
+                                toast.success('Se deshizo el pago consolidado');
+                                await loadData();
+                              })
+                              .catch((error: unknown) => {
+                                toast.error(
+                                  error instanceof Error
+                                    ? error.message
+                                    : 'No se pudo deshacer el pago',
+                                );
+                              });
+                          }
+                        : undefined
+                    }
+                  />
                 );
-              });
-          }}
-        />
+              })}
+            </div>
+          )}
+        </div>
       )}
+
+      {lenderHistory ? (
+        <AuditHistoryOverlay
+          open
+          onOpenChange={(open) => {
+            if (!open) setLenderHistory(null);
+          }}
+          entityType="Lender"
+          entityId={lenderHistory.id}
+          title={`Historial: ${lenderHistory.name}`}
+        />
+      ) : null}
 
       {loanEditForm ? (
         <LoanEditOverlay
