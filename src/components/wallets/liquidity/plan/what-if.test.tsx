@@ -621,6 +621,86 @@ describe('Plan tab steps, rail and states (MIC-I14-4)', () => {
     expect(within(panel).getByText('$4,000.00')).toBeTruthy();
   });
 
+  it('shortfall: the bridge loan is a card with its fields; filling them makes it a comparable route', async () => {
+    renderTab(projectionWith());
+    const draft = screen.getByTestId('bridge-draft-card');
+    expect(within(draft).getByText(PLAN_COPY.bridgeDraftTitle)).toBeTruthy();
+    await userEvent.type(within(draft).getByLabelText(PLAN_COPY.rate), '30');
+    await userEvent.type(within(draft).getByLabelText(PLAN_COPY.term), '6');
+    await userEvent.type(within(draft).getByLabelText(PLAN_COPY.fee), '2');
+    const bridgeCard = await waitFor(() => {
+      const card = screen.getAllByRole('article').find((item) => item.dataset.routeId === 'bridge');
+      expect(card).toBeDefined();
+      return card!;
+    });
+    expect(screen.queryByTestId('bridge-draft-card')).toBeNull();
+    expect(within(bridgeCard).getByTestId('route-badge').textContent).toMatch(/Simulación|Menor costo y riesgo/);
+    expect((within(bridgeCard).getByLabelText(PLAN_COPY.rate) as HTMLInputElement).value).toBe('30');
+  });
+
+  it('surplus: no bridge card', () => {
+    renderTab(withCash(5000));
+    expect(screen.queryByTestId('bridge-draft-card')).toBeNull();
+  });
+
+  it('steps list the payments already in the Panel and a missing statement, by date', () => {
+    const data = withCash(5000);
+    data.summary.unresolved_card_obligations = [{ wallet_id: 9, wallet_name: 'Tarjeta C', statement_due_date: '2026-11-03' }];
+    data.summary.unresolved_card_obligation_count = 1;
+    renderTab(data);
+    const panel = screen.getByRole('region', { name: 'Tus pasos con esta ruta' });
+    const steps = within(panel).getAllByRole('listitem');
+    // 3 nov (missing statement) comes before the card due on 5 nov.
+    expect(steps[0]!.dataset.stepType).toBe('missing_statement');
+    expect(within(steps[0]!).getByRole('link', { name: 'Agregar pago' }).getAttribute('href')).toBe('/credit-cards/9');
+    const inPanel = steps.find((step) => step.dataset.stepType === 'in_panel');
+    expect(inPanel).toBeDefined();
+    expect(within(inPanel!).getByText('Paga Tarjeta Azul')).toBeTruthy();
+    expect(within(inPanel!).getByText('Ya está en tu Panel; esta ruta no lo cambia.')).toBeTruthy();
+    expect(within(panel).getByText(/0 de \d+ marcados/)).toBeTruthy();
+  });
+
+  it('the counter follows the marked steps', async () => {
+    renderTab(withCash(5000));
+    const panel = screen.getByRole('region', { name: 'Tus pasos con esta ruta' });
+    await userEvent.click(within(panel).getByRole('button', { name: 'Solo marcar pasos' }));
+    const boxes = within(panel).getAllByRole('checkbox');
+    await userEvent.click(boxes[0]!);
+    expect(within(panel).getByText(new RegExp(`1 de ${boxes.length} marcados`))).toBeTruthy();
+  });
+
+  it('more than four steps fold behind "Ver todos"', async () => {
+    const extra = [
+      card({ wallet_id: 21, wallet_name: 'Tarjeta D', statement_due_date: '2026-11-06', next_due_payment: 100, last_statement_balance: 100 }),
+      card({ wallet_id: 22, wallet_name: 'Tarjeta E', statement_due_date: '2026-11-07', next_due_payment: 100, last_statement_balance: 100 }),
+      card({ wallet_id: 23, wallet_name: 'Tarjeta F', statement_due_date: '2026-11-08', next_due_payment: 100, last_statement_balance: 100 }),
+      card({ wallet_id: 24, wallet_name: 'Tarjeta G', statement_due_date: '2026-11-09', next_due_payment: 100, last_statement_balance: 100 }),
+    ];
+    const data = projectionWith(extra);
+    data.summary.funding_total = 9000;
+    renderTab(data);
+    const panel = screen.getByRole('region', { name: 'Tus pasos con esta ruta' });
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(4);
+    const more = within(panel).getByRole('button', { name: /pasos? más · Ver todos/ });
+    await userEvent.click(more);
+    expect(within(panel).getAllByRole('listitem').length).toBeGreaterThan(4);
+  });
+
+  it('Cuadra: "Simular" opens the simulator', async () => {
+    renderTab(withCash(1900));
+    const sim = screen.getByRole('region', { name: 'Simula antes de decidir' });
+    expect(within(sim).getByRole('button', { name: 'Abrir' }).getAttribute('aria-expanded')).toBe('false');
+    await userEvent.click(within(screen.getByTestId('plan-balanced-note')).getByRole('button', { name: 'Simular' }));
+    expect(within(sim).getByRole('button', { name: 'Cerrar' }).getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('the horizon toggle sits in the hero, next to the confidence chip', () => {
+    renderTab(withCash(5000));
+    const hero = screen.getByRole('region', { name: /Te sobran/ });
+    expect(within(hero).getByRole('tab', { name: 'Quincena' })).toBeTruthy();
+    expect(within(hero).getByTestId('plan-confidence')).toBeTruthy();
+  });
+
   it('the simulator result inset reflects scenario_delta', () => {
     const item: LiquidityScenarioItem = { ...purchase, date: '2027-01-20' };
     const scenarioData = projectionWith([simulatedPurchase('2027-01-20')]);

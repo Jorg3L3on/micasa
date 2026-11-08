@@ -81,7 +81,7 @@ export const gapHref = (gap: DataGap): string | null => {
 /** Where an "Entra" line leads. */
 export const inflowHref = (line: GapBreakdownLine): string | null => {
   if (line.id === 'cash') return '/wallets';
-  if (line.id === 'month-income') return '/income-templates';
+  if (line.id === 'month-income' || line.id.startsWith('income-')) return '/income-templates';
   return null;
 };
 
@@ -147,4 +147,43 @@ export const buildPlanFlow = (
     orphanGaps,
     generalGaps,
   };
+};
+
+export type ShortfallTiming = {
+  /** First civil day the cash runs below zero inside the period, or null. */
+  firstShortDay: string | null;
+  /** Dated payments on or after that day: the ones that would be paid late. */
+  atRisk: number;
+};
+
+const INCOME_LINE = /^income-(\d{4}-\d{2}-\d{2})-/;
+
+/**
+ * Walks the period day by day: cash today, plus each dated income, minus each
+ * dated payment. Incomes land before payments on the same day.
+ */
+export const shortfallTiming = (input: Pick<PlanInput, 'gapLines' | 'obligations'>): ShortfallTiming => {
+  const cashLine = input.gapLines.find((line) => line.id === 'cash');
+  let running = cashLine ? -toCents(cashLine.amount) : 0;
+  const events: Array<{ date: string; cents: number; payment: boolean }> = [];
+  for (const line of input.gapLines) {
+    const income = INCOME_LINE.exec(line.id);
+    if (income) {
+      events.push({ date: income[1]!, cents: -toCents(line.amount), payment: false });
+      continue;
+    }
+    if (toCents(line.amount) <= 0) continue;
+    const dueDate = input.obligations.find((item) => item.id === line.id)?.dueDate;
+    if (dueDate) events.push({ date: dueDate, cents: toCents(line.amount), payment: true });
+  }
+  events.sort((a, b) => a.date.localeCompare(b.date) || Number(a.payment) - Number(b.payment));
+  let firstShortDay: string | null = null;
+  for (const event of events) {
+    running += event.payment ? -event.cents : event.cents;
+    if (running < 0 && firstShortDay == null) firstShortDay = event.date;
+  }
+  const atRisk = firstShortDay == null
+    ? 0
+    : events.filter((event) => event.payment && event.date >= firstShortDay!).length;
+  return { firstShortDay, atRisk };
 };

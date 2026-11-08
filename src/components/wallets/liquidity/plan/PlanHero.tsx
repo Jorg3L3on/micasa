@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
@@ -23,6 +24,8 @@ type PlanHeroProps = {
   /** Number of data gaps the plan reported. */
   gapCount: number;
   scenario?: PlanHeroScenario | null;
+  /** Shown top-right, above the confidence chip (the Quincena / Mes toggle). */
+  controls?: ReactNode;
 };
 
 const CHIP_CLASS =
@@ -76,13 +79,15 @@ export const PlanHero = ({
   confidence,
   gapCount,
   scenario,
+  controls,
 }: PlanHeroProps) => {
   const amount = Math.abs(gapAmount);
   const eyebrow = [PLAN_COPY.tabPlan, periodLabel, todayLabel].filter(Boolean).join(' · ');
   const showBefore = scenario?.kind === 'changed' && scenario.previousMode === mode;
 
   return (
-    <section className="space-y-3" aria-labelledby="plan-hero-title">
+    <section className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4" aria-labelledby="plan-hero-title">
+      <div className="min-w-0 flex-1 basis-[26rem] space-y-3">
       <p className="eyebrow text-muted-foreground">{eyebrow}</p>
       <h2 id="plan-hero-title" aria-label={planHeroSentence(mode, gapAmount, horizon)} className="text-display font-extrabold sm:text-4xl">
         {mode === 'balanced' ? (
@@ -121,7 +126,11 @@ export const PlanHero = ({
           <span className="font-semibold">{scenario.title}</span>. {scenario.body}
         </p>
       ) : null}
-      <ConfidenceChip confidence={confidence} gapCount={gapCount} />
+      </div>
+      <div className="flex flex-col items-start gap-3 sm:items-end">
+        {controls}
+        <ConfidenceChip confidence={confidence} gapCount={gapCount} />
+      </div>
     </section>
   );
 };

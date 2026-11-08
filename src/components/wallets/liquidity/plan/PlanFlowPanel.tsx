@@ -10,6 +10,7 @@ import { groupGapBreakdownLines } from '@/components/wallets/liquidity/plan/grou
 import {
   buildPlanFlow,
   gapHref,
+  shortfallTiming,
   inflowHref,
   segmentForLine,
   FLOW_SEGMENTS,
@@ -18,11 +19,26 @@ import {
 import { isScenarioGapLine } from '@/lib/finance/cash-plan/from-liquidity';
 import type { DataGap, GapBreakdownLine, PlanInput, PlanMode } from '@/lib/finance/cash-plan/types';
 import { cn, formatCurrency } from '@/lib/utils';
+import { formatMonthShort } from '@/lib/calendar-dates';
 
 type PlanFlowPanelProps = {
   mode: PlanMode;
-  input: Pick<PlanInput, 'gapLines' | 'obligations' | 'gapNote'>;
+  input: Pick<PlanInput, 'gapLines' | 'obligations' | 'gapNote' | 'horizon'>;
   dataGaps: readonly DataGap[];
+  /** Cash the chosen route keeps as a cushion. */
+  cushion?: number;
+};
+
+const DetailRow = ({ label, value, testId }: { label: string; value: string; testId?: string }) => (
+  <div className="flex items-start justify-between gap-3 text-sm">
+    <span className="min-w-0">{label}</span>
+    <span className="shrink-0 whitespace-nowrap font-sans font-semibold tabular-nums" data-testid={testId}>{value}</span>
+  </div>
+);
+
+const shortDayLabel = (ymd: string): string => {
+  const [, month, day] = ymd.split('-').map(Number);
+  return `${day} ${formatMonthShort(month)}`;
 };
 
 const SEGMENT_COLOR = new Map(FLOW_SEGMENTS.map((segment) => [segment.key, segment.color]));
@@ -154,12 +170,15 @@ const Inset = ({
  * "De dónde sale": Entra, Sale and Queda or Falta, always open.
  * The three totals come from the same signed lines as the hero amount.
  */
-export const PlanFlowPanel = ({ mode, input, dataGaps }: PlanFlowPanelProps) => {
+export const PlanFlowPanel = ({ mode, input, dataGaps, cushion = 0 }: PlanFlowPanelProps) => {
   const flow = buildPlanFlow(input, dataGaps);
   const short = flow.net < 0;
   const restTitle = short ? PLAN_COPY.flowShort : PLAN_COPY.flowLeft;
   const restTone = mode === 'balanced' ? 'neutral' : short ? 'bad' : 'good';
   const rows = groupGapBreakdownLines(flow.outflow.lines);
+  const timing = shortfallTiming(input);
+  // How many periods of these payments the rest would cover if left untouched.
+  const coverage = flow.outflow.total > 0 && flow.net > 0 ? Math.round((flow.net / flow.outflow.total) * 10) / 10 : null;
 
   return (
     <section className={cn(MONTHLY_PANEL_SHELL_CLASS, 'space-y-4 p-4 sm:p-6')} aria-labelledby="plan-flow-title">
@@ -168,6 +187,27 @@ export const PlanFlowPanel = ({ mode, input, dataGaps }: PlanFlowPanelProps) => 
         title={PLAN_COPY.flowTitle}
         subtitle={short ? PLAN_COPY.flowHintShort : PLAN_COPY.flowHint}
       />
+
+      <dl className="grid grid-cols-3 gap-2 md:hidden" data-testid="flow-compact">
+        {[
+          { label: PLAN_COPY.flowIn, value: flow.inflow.total, tone: 'neutral' },
+          { label: PLAN_COPY.flowOut, value: flow.outflow.total, tone: 'neutral' },
+          { label: restTitle, value: Math.abs(flow.net), tone: restTone },
+        ].map((tile) => (
+          <div key={tile.label} className={cn(PANEL_INSET_CLASS, 'min-w-0 px-2.5 py-2')}>
+            <dt className="eyebrow text-muted-foreground">{tile.label}</dt>
+            <dd
+              className={cn(
+                'truncate font-sans text-base font-bold tabular-nums',
+                tile.tone === 'good' && 'text-status-success',
+                tile.tone === 'bad' && 'text-status-overdue',
+              )}
+            >
+              {formatCurrency(tile.value)}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Inset title={PLAN_COPY.flowIn} total={flow.inflow.total} tone="neutral">
@@ -189,6 +229,9 @@ export const PlanFlowPanel = ({ mode, input, dataGaps }: PlanFlowPanelProps) => 
                 );
               })}
             </ul>
+          ) : null}
+          {flow.inflow.lines.some((line) => line.id.startsWith('income-')) ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">{PLAN_COPY.flowIncomeNote}</p>
           ) : null}
         </Inset>
 
@@ -256,7 +299,30 @@ export const PlanFlowPanel = ({ mode, input, dataGaps }: PlanFlowPanelProps) => 
         </Inset>
 
         <Inset title={restTitle} total={flow.net} tone={restTone}>
-          <p className="border-t border-border/50 pt-3 text-xs leading-relaxed text-muted-foreground">
+          <div className="space-y-2 border-t border-border/50 pt-3">
+            {short ? (
+              <>
+                <DetailRow
+                  label={PLAN_COPY.flowFirstShortDay}
+                  value={timing.firstShortDay ? shortDayLabel(timing.firstShortDay) : PLAN_COPY.stepNoDate}
+                  testId="flow-first-short-day"
+                />
+                <DetailRow label={PLAN_COPY.flowAtRisk} value={String(timing.atRisk)} testId="flow-at-risk" />
+              </>
+            ) : (
+              <>
+                <DetailRow label={PLAN_COPY.flowCushion} value={formatCurrency(cushion)} testId="flow-cushion" />
+                {coverage != null ? (
+                  <DetailRow
+                    label={PLAN_COPY.flowCovers}
+                    value={PLAN_COPY.flowCoversValue(coverage, input.horizon)}
+                    testId="flow-covers"
+                  />
+                ) : null}
+              </>
+            )}
+          </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">
             {short ? PLAN_COPY.flowShortNote : mode === 'balanced' ? PLAN_COPY.balancedBody : PLAN_COPY.flowLeftNote}
           </p>
         </Inset>

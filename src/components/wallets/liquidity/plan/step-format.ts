@@ -44,6 +44,21 @@ export const stepDateLabel = (
   return null;
 };
 
+/** Day a step sorts by: its bill date, the payday it waits for, or last. */
+export const stepSortDate = (
+  dueDate: string | undefined,
+  todayYmd: string,
+  incomes: readonly StepIncome[] = [],
+  type?: ActionInstance['type'],
+): string => {
+  if (dueDate) return dueDate;
+  if (type && PAYDAY_STEPS.has(type)) {
+    const next = incomes.find((income) => income.date >= todayYmd.slice(0, 10));
+    if (next) return next.date;
+  }
+  return '9999-12-31';
+};
+
 export type StepButton = { label: string; href: string };
 
 const BUTTON_LABEL: Partial<Record<ActionTypeId, string>> = {

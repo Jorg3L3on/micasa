@@ -6,7 +6,8 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PlanHero } from '@/components/wallets/liquidity/plan/PlanHero';
 import { PlanFlowPanel } from '@/components/wallets/liquidity/plan/PlanFlowPanel';
-import { buildPlanFlow } from '@/components/wallets/liquidity/plan/plan-flow';
+import { buildPlanFlow, shortfallTiming } from '@/components/wallets/liquidity/plan/plan-flow';
+import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { planPeriodLabel, planTodayLabel } from '@/components/wallets/liquidity/plan/plan-period';
 import { buildCashPlan } from '@/lib/finance/cash-plan/build-cash-plan';
 import { fromCents, toCents } from '@/lib/finance/cash-plan/money';
@@ -215,5 +216,53 @@ describe('copy policy', () => {
         expect(text, `${file} contains "${word}"`).not.toContain(word);
       }
     }
+  });
+});
+
+describe('Queda and Falta details', () => {
+  const lines = (cash: number) => [
+    { id: 'card-1', label: 'Tarjeta A', amount: 2000 },
+    { id: 'bill-2', label: 'Renta', amount: 4000 },
+    { id: 'cash', label: 'Efectivo disponible', amount: -cash },
+    { id: 'income-2026-11-14-0', label: 'Nómina · 14 nov', amount: -1500 },
+  ];
+  const obligations = [
+    { id: 'card-1', kind: 'card_revolving' as const, labelSynthetic: 'Tarjeta A', dueInHorizon: true, dueDate: '2026-11-09', consequenceTier: 3 as const },
+    { id: 'bill-2', kind: 'bill' as const, labelSynthetic: 'Renta', dueInHorizon: true, dueDate: '2026-11-12', consequenceTier: 1 as const },
+  ];
+
+  it('Falta: first day in red and the payments that would be late', () => {
+    // Cash 3000: card on the 9th leaves 1000, rent on the 12th goes to −3000; the payday on the 14th is too late.
+    const timing = shortfallTiming({ gapLines: lines(3000), obligations });
+    expect(timing).toEqual({ firstShortDay: '2026-11-12', atRisk: 1 });
+    render(<PlanFlowPanel mode="shortfall" input={{ horizon: 'quincena', gapLines: lines(3000), obligations }} dataGaps={[]} />);
+    expect(screen.getByTestId('flow-first-short-day').textContent).toBe('12 nov');
+    expect(screen.getByTestId('flow-at-risk').textContent).toBe('1');
+    expect(screen.getByText('Nómina · 14 nov')).toBeTruthy();
+    expect(screen.getByText(PLAN_COPY.flowIncomeNote)).toBeTruthy();
+  });
+
+  it('Queda: the route cushion and how long the rest would last', () => {
+    // Out 6000, in 9000 + 1500 → queda 4500 → 0.8 quincenas.
+    render(<PlanFlowPanel mode="surplus" input={{ horizon: 'quincena', gapLines: lines(9000), obligations }} dataGaps={[]} cushion={1300} />);
+    expect(screen.getByTestId('flow-cushion').textContent).toBe(formatCurrency(1300));
+    expect(screen.getByTestId('flow-covers').textContent).toBe('0.8 quincenas');
+  });
+});
+
+describe('phone tiles', () => {
+  it('shows Entra, Sale and Queda as three compact totals, and no disclosure', () => {
+    const input = {
+      horizon: 'quincena' as const,
+      gapLines: [
+        { id: 'card-1', label: 'Tarjeta A', amount: 2000 },
+        { id: 'cash', label: 'Efectivo disponible', amount: -5000 },
+      ],
+      obligations: [],
+    };
+    const { container } = render(<PlanFlowPanel mode="surplus" input={input} dataGaps={[]} />);
+    const tiles = within(screen.getByTestId('flow-compact')).getAllByRole('definition');
+    expect(tiles.map((tile) => tile.textContent)).toEqual([formatCurrency(5000), formatCurrency(2000), formatCurrency(3000)]);
+    expect(container.querySelector('[aria-expanded]')).toBeNull();
   });
 });

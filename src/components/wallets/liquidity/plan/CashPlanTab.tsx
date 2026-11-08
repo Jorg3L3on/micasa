@@ -22,8 +22,9 @@ import { PlanFlowPanel } from '@/components/wallets/liquidity/plan/PlanFlowPanel
 import { PlanHero, type PlanHeroScenario } from '@/components/wallets/liquidity/plan/PlanHero';
 import { planPeriodBounds, planPeriodLabel, planTodayLabel } from '@/components/wallets/liquidity/plan/plan-period';
 import { PlanRoutesSection } from '@/components/wallets/liquidity/plan/PlanRoutesSection';
-import { resolveFeaturedPlan, type TiePreference } from '@/components/wallets/liquidity/plan/route-selection';
+import { cushionAfter, resolveFeaturedPlan, type TiePreference } from '@/components/wallets/liquidity/plan/route-selection';
 import { PlanSimulatorPanel } from '@/components/wallets/liquidity/plan/PlanSimulatorPanel';
+import { SimulateLoanControl } from '@/components/wallets/liquidity/plan/SimulateLoanControl';
 import { PlanStepsPanel } from '@/components/wallets/liquidity/plan/PlanStepsPanel';
 import { ActivatePlanSheet } from '@/components/wallets/liquidity/plan/ActivatePlanSheet';
 import { applyCashPlanRoute } from '@/lib/api/cash-plan';
@@ -103,6 +104,7 @@ export const CashPlanTab = ({
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [tiePreference, setTiePreference] = useState<TiePreference | null>(null);
   const [activateOpen, setActivateOpen] = useState(false);
+  const [simOpenSignal, setSimOpenSignal] = useState(0);
   const { context: financeContext } = useFinanceContext();
 
   const monthKey = selectedMonthKey || data?.as_of.slice(0, 7) || '';
@@ -260,6 +262,26 @@ export const CashPlanTab = ({
   const periodIncomes = [...(data.income_dates ?? [])]
     .filter((income) => income.date >= period.startYmd && income.date <= period.endYmd)
     .sort((a, b) => a.date.localeCompare(b.date));
+  // Payments the period already has and the chosen route leaves as they are.
+  const routeTouches = new Set(
+    featured.actions
+      .filter((step) => step.type !== 'extra_to_debt_avalanche' && step.type !== 'extra_to_debt_snowball' && step.type !== 'buffer_reserve')
+      .map((step) => step.obligationId)
+      .filter(Boolean),
+  );
+  const panelBills = input.obligations
+    .filter((item) => item.dueInHorizon && item.dueDate && !item.id.startsWith('scenario-') && !routeTouches.has(item.id))
+    .map((item) => ({
+      obligationId: item.id,
+      label: item.labelSynthetic,
+      amount: item.kind === 'card_msi' ? item.msiInstallment ?? 0 : item.statementDue ?? 0,
+      dueDate: item.dueDate!,
+    }))
+    .filter((bill) => bill.amount > 0);
+  const missingStatements = (data.summary.unresolved_card_obligations ?? [])
+    .filter((card) => card.statement_due_date >= period.startYmd && card.statement_due_date <= period.endYmd)
+    .map((card) => ({ walletId: card.wallet_id, name: card.wallet_name, dueDate: card.statement_due_date }));
+  const doneCount = featured.actions.filter((_, index) => checked[`${featured.id}:${index}`] === true).length;
   const lowConfidence = plan.confidence === 'low';
   const balanced = plan.mode === 'balanced';
 
@@ -277,6 +299,7 @@ export const CashPlanTab = ({
         onSimulate: scenario.simulate,
       } : null}
       resultInset={resultInset}
+      startOpen={simOpenSignal}
       bridge={{
         rate: bridgeRate,
         term: bridgeTerm,
@@ -299,7 +322,7 @@ export const CashPlanTab = ({
       }}
     />
   );
-  const gapsPanel = <PlanDataGapsPanel gaps={plan.dataGaps} />;
+  const gapsPanel = <PlanDataGapsPanel key={lowConfidence ? 'open' : 'folded'} gaps={plan.dataGaps} startOpen={lowConfidence} />;
 
   return (
     <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0">
@@ -314,12 +337,9 @@ export const CashPlanTab = ({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <HorizonToggle value={horizon} onChange={handleHorizonChange} />
-        </div>
-
         {simulating ? (
           <div className="space-y-3" aria-busy>
+            <HorizonToggle value={horizon} onChange={handleHorizonChange} />
             <Skeleton className="h-6 w-56 rounded-lg" />
             <Skeleton className="h-24 w-full rounded-xl" />
           </div>
@@ -333,15 +353,30 @@ export const CashPlanTab = ({
             confidence={plan.confidence}
             gapCount={plan.dataGaps.length}
             scenario={heroScenario}
+            controls={<HorizonToggle value={horizon} onChange={handleHorizonChange} />}
           />
         )}
 
-        <PlanFlowPanel mode={plan.mode} input={input} dataGaps={plan.dataGaps} />
+        <PlanFlowPanel mode={plan.mode} input={input} dataGaps={plan.dataGaps} cushion={cushionAfter(featured)} />
 
         {balanced ? (
-          <p className={cn(MONTHLY_PANEL_SHELL_CLASS, 'px-4 py-3 text-sm')} data-testid="plan-balanced-note">
-            {PLAN_COPY.balancedSimulate}
-          </p>
+          <div
+            className={cn(MONTHLY_PANEL_SHELL_CLASS, 'flex flex-wrap items-center justify-between gap-3 px-4 py-3')}
+            data-testid="plan-balanced-note"
+          >
+            <p className="min-w-0 flex-1 basis-56 text-sm">{PLAN_COPY.balancedSimulate}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 rounded-xl"
+              onClick={() => {
+                setSimOpenSignal((count) => count + 1);
+                document.getElementById('plan-simulator')?.scrollIntoView({ block: 'start' });
+              }}
+            >
+              {PLAN_COPY.simulateCta}
+            </Button>
+          </div>
         ) : simulating ? (
           <Skeleton className="h-48 w-full rounded-xl" />
         ) : (
@@ -351,6 +386,19 @@ export const CashPlanTab = ({
               selectedPlanId={selectedPlanId}
               tiePreference={tiePreference}
               onChoose={handleChoose}
+              bridgeInputs={
+                <SimulateLoanControl
+                  idPrefix="bridge-card"
+                  title={PLAN_COPY.bridgeTitle}
+                  rate={bridgeRate}
+                  term={bridgeTerm}
+                  fee={bridgeFee}
+                  onRateChange={setBridgeRate}
+                  onTermChange={setBridgeTerm}
+                  onFeeChange={setBridgeFee}
+                  active={parseLoanSimFields(bridgeRate, bridgeTerm, bridgeFee) != null}
+                />
+              }
               onPreferTie={(preference) => {
                 setTiePreference(preference);
                 setSelectedPlanId(null);
@@ -364,6 +412,9 @@ export const CashPlanTab = ({
               walletNames={walletNames}
               todayYmd={data.as_of}
               incomes={periodIncomes}
+              panelBills={panelBills}
+              missingStatements={missingStatements}
+              doneCount={doneCount}
               monthlyPanelHref={getCurrentMonthlyPanelHref(parseCalendarDate(data.as_of))}
               activateBlockedReason={scenario?.item ? PLAN_COPY.activateScenarioBlocked : null}
               onActivate={() => setActivateOpen(true)}

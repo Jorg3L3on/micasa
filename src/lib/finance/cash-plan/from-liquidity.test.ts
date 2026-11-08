@@ -601,3 +601,35 @@ describe('deferrals only for expenses that exist (MIC-I14)', () => {
     expect(deferred).not.toContain(netflix?.id);
   });
 });
+
+describe('paydays inside the quincena (MIC-I14)', () => {
+  const quincena = (incomeDates: LiquidityProjectionResponse['income_dates']) =>
+    planInputFromLiquidity({
+      projection: { ...projection(), income_dates: incomeDates },
+      monthKey: '2026-09',
+      horizon: 'quincena',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T00:00:00.000Z',
+    });
+
+  it('counts an income dated inside the quincena, whole, and drops the monthly-only gap', () => {
+    const without = quincena([]);
+    const input = quincena([
+      { date: '2026-09-14', amount: 6000, title: 'Nómina' },
+      { date: '2026-09-29', amount: 6000, title: 'Nómina' },
+      { date: '2026-09-05', amount: 500, title: 'Ingreso registrado' },
+    ]);
+    expect(input.gapLines.filter((line) => line.id.startsWith('income-'))).toEqual([
+      { id: 'income-2026-09-14-0', label: 'Nómina · 14 sep', amount: -6000 },
+    ]);
+    expect(input.gapAmount).toBeCloseTo(without.gapAmount - 6000, 2);
+    expect(input.gapLines.reduce((sum, line) => sum + line.amount, 0)).toBeCloseTo(input.gapAmount, 2);
+    expect(input.dataGaps?.map((gap) => gap.code)).not.toContain('income_monthly_only');
+  });
+
+  it('without dated incomes keeps income out and says so', () => {
+    const input = quincena(undefined);
+    expect(input.gapLines.some((line) => line.id.startsWith('income-'))).toBe(false);
+    expect(input.dataGaps?.map((gap) => gap.code)).toContain('income_monthly_only');
+  });
+});

@@ -1,5 +1,5 @@
 import { getCalendarFortnightRefForYmd, ymdFallsInFortnight } from '@/lib/fortnight-calendar';
-import { formatDisplayDate } from '@/lib/calendar-dates';
+import { formatDisplayDate, formatMonthShort } from '@/lib/calendar-dates';
 import type {
   LiquidityProjectionObligationItem,
   LiquidityProjectionResponse,
@@ -388,7 +388,13 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
   }
   const scenarioCents = scenarioLines.reduce((sum, line) => sum + toCents(line.amount), 0);
 
-  if (horizon === 'quincena') {
+  // Quincena: an income counts when its civil day falls inside the period, from today on.
+  // Without dated incomes (an older projection), income stays out and the plan says so.
+  const datedIncomes = projection.income_dates;
+  const periodIncomes = horizon === 'quincena' && datedIncomes
+    ? datedIncomes.filter((income) => income.amount > 0 && income.date >= asOfYmd && inHorizon(income.date))
+    : [];
+  if (horizon === 'quincena' && !datedIncomes) {
     dataGaps.push({
       code: 'income_monthly_only',
       message: 'El ingreso está por mes. Esta quincena no lo parte a la mitad.',
@@ -416,7 +422,17 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     });
   }
 
-  const incomeCents = horizon === 'mes' ? toCents(month?.expected_income_total ?? 0) : 0;
+  const incomeCents = horizon === 'mes'
+    ? toCents(month?.expected_income_total ?? 0)
+    : periodIncomes.reduce((sum, income) => sum + toCents(income.amount), 0);
+  const incomeLines: GapBreakdownLine[] = periodIncomes.map((income, index) => {
+    const [, incomeMonth, incomeDay] = income.date.split('-').map(Number);
+    return {
+      id: `income-${income.date}-${index}`,
+      label: `${income.title} · ${incomeDay} ${formatMonthShort(incomeMonth)}`,
+      amount: fromCents(-toCents(income.amount)),
+    };
+  });
   const paymentCents = horizon === 'mes'
     ? toCents(month?.total_payments_due ?? 0)
     : added.reduce((sum, line) => sum + toCents(line.amount), 0);
@@ -432,9 +448,12 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     : [
       ...added,
       { id: 'cash', label: 'Efectivo disponible', amount: fromCents(-cashCents) },
+      ...incomeLines,
     ];
   const gapNote = horizon === 'quincena'
-    ? 'No entran plantillas sin gasto en la quincena, ni tarjetas cuyo pago de este periodo ya está cubierto. El ingreso del mes no se parte.'
+    ? datedIncomes
+      ? 'No entran plantillas sin gasto en la quincena, ni tarjetas cuyo pago de este periodo ya está cubierto. Solo entra el ingreso que cae dentro de la quincena, completo; no se parte.'
+      : 'No entran plantillas sin gasto en la quincena, ni tarjetas cuyo pago de este periodo ya está cubierto. El ingreso del mes no se parte.'
     : undefined;
 
   const untouchableIds = obligations

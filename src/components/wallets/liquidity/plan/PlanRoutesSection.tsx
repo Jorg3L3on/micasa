@@ -23,6 +23,8 @@ type PlanRoutesSectionProps = {
   onPreferTie: (preference: TiePreference) => void;
   /** Rendered under the featured route's card (the step checklist until T4). */
   featuredFooter?: ReactNode;
+  /** Shortfall: the bridge-loan fields, inside the bridge card (or a card of their own until it exists). */
+  bridgeInputs?: ReactNode;
 };
 
 /**
@@ -36,6 +38,7 @@ export const PlanRoutesSection = ({
   onChoose,
   onPreferTie,
   featuredFooter,
+  bridgeInputs,
 }: PlanRoutesSectionProps) => {
   const routes = rankedRoutes(plan);
   const featured = resolveFeaturedPlan(plan, selectedPlanId, tiePreference);
@@ -66,9 +69,25 @@ export const PlanRoutesSection = ({
                 selected={route.id === featured.id}
                 onChoose={() => onChoose(route.id)}
                 tie={plan.tie && route.id === plan.primary.id ? { preference: tiePreference, onPrefer: onPreferTie } : null}
-              />
+              >
+                {route.strategyKey === 'bridge' ? bridgeInputs : null}
+              </PlanRouteCard>
             </div>
           ))}
+          {plan.mode === 'shortfall' && bridgeInputs && !routes.some((route) => route.strategyKey === 'bridge') ? (
+            <section
+              aria-labelledby="plan-bridge-draft-title"
+              data-testid="bridge-draft-card"
+              className={cn(MONTHLY_PANEL_SHELL_CLASS, 'flex min-w-0 flex-col gap-3 p-4 max-md:hidden sm:p-5')}
+            >
+              <span className="inline-flex min-h-7 w-fit items-center rounded-full border border-border px-2.5 text-xs font-semibold">
+                {PLAN_COPY.badgeSimulated}
+              </span>
+              <h3 id="plan-bridge-draft-title" className="text-title">{PLAN_COPY.bridgeDraftTitle}</h3>
+              <p className="text-sm text-muted-foreground">{PLAN_COPY.bridgeDraftBody}</p>
+              {bridgeInputs}
+            </section>
+          ) : null}
         </div>
         {routes.length > 1 ? (
           <ul className="space-y-2 md:hidden" aria-label={PLAN_COPY.otherRoutes}>

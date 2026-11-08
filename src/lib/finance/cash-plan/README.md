@@ -59,7 +59,7 @@ Each `RankedPlan` may carry `debtsClosed`: the debts the route leaves at $0 this
 - Bridge and consolidation run only with caller-supplied APR, term, and fee. They always carry `approval_uncertain`.
 - A consolidation APR at or above the balance-weighted APR is not the primary route.
 - Missing APR defaults to `exclude_from_apr_rank`. `assume_median` (36%) and `assume_high` (72%) run only when the caller opts in. Missing APR or a card minimum sets `confidence: low` and a data gap. A loan installment is not copied into `minimumDue`.
-- The Plan tab opens on **quincena**. Quincena does not split monthly income in half. An MSI installment enters that fortnight only when its schedule has a civil due date inside it. Without a date, the plan records `undated_obligation` and does not invent a day. `balanceTotal` is never the period payment.
+- The Plan tab opens on **quincena**. Quincena does not split monthly income in half: an income counts, whole, when its civil day (`projection.income_dates`: a registered income, or a template on its quincena's payday) falls inside the quincena from today on. A projection without `income_dates` leaves income out and records `income_monthly_only`. An MSI installment enters that fortnight only when its schedule has a civil due date inside it. Without a date, the plan records `undated_obligation` and does not invent a day. `balanceTotal` is never the period payment.
 
 ## Golden cases
 

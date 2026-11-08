@@ -31,6 +31,8 @@ type PlanSimulatorPanelProps = {
   resultInset?: string | null;
   bridge: LoanFields;
   consolidate: LoanFields;
+  /** Ask the panel to open (the Cuadra "Simular" button); a new truthy value opens it. */
+  startOpen?: number;
 };
 
 const ResultInset = ({ text }: { text: string }) => (
@@ -44,9 +46,16 @@ const ResultInset = ({ text }: { text: string }) => (
  * scenario and, only when the period falls short, the bridge loan and
  * consolidation. Nothing is stored.
  */
-export const PlanSimulatorPanel = ({ mode, whatIf, resultInset, bridge, consolidate }: PlanSimulatorPanelProps) => {
+export const PlanSimulatorPanel = ({ mode, whatIf, resultInset, bridge, consolidate, startOpen }: PlanSimulatorPanelProps) => {
   const loans = mode === 'shortfall';
   const [chosen, setChosen] = useState<Tab>(whatIf?.active?.kind ?? 'purchase');
+  // Phones: folded behind "Abrir" until asked; desktop always shows it.
+  const [openOnPhone, setOpenOnPhone] = useState(Boolean(whatIf?.active) || Boolean(startOpen));
+  const [seenStartOpen, setSeenStartOpen] = useState(startOpen);
+  if (seenStartOpen !== startOpen) {
+    setSeenStartOpen(startOpen);
+    if (startOpen) setOpenOnPhone(true);
+  }
   const tab: Tab = !loans && (chosen === 'bridge' || chosen === 'consolidate') ? 'purchase' : chosen;
   const options = [
     ...(whatIf
@@ -67,14 +76,24 @@ export const PlanSimulatorPanel = ({ mode, whatIf, resultInset, bridge, consolid
   const loan = shown === 'bridge' ? bridge : shown === 'consolidate' ? consolidate : null;
 
   return (
-    <section className={cn(MONTHLY_PANEL_SHELL_CLASS, 'space-y-4 p-4')} aria-labelledby="plan-sim-title">
+    <section id="plan-simulator" className={cn(MONTHLY_PANEL_SHELL_CLASS, 'space-y-4 p-4')} aria-labelledby="plan-sim-title">
       <div className="flex items-start gap-2">
         <FlaskConical className="mt-0.5 size-4 shrink-0 text-[color-mix(in_srgb,var(--chart-2)_70%,white)]" aria-hidden />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 id="plan-sim-title" className="text-sm font-semibold">{PLAN_COPY.simTitle}</h3>
           <p className="mt-0.5 text-sm text-muted-foreground">{PLAN_COPY.simHint}</p>
         </div>
+        <button
+          type="button"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-xl border border-border px-3 text-sm font-semibold lg:hidden"
+          aria-expanded={openOnPhone}
+          aria-controls="plan-sim-body"
+          onClick={() => setOpenOnPhone((open) => !open)}
+        >
+          {openOnPhone ? PLAN_COPY.fold : PLAN_COPY.unfold}
+        </button>
       </div>
+      <div id="plan-sim-body" className={cn('space-y-4', !openOnPhone && 'max-lg:hidden')}>
 
       {options.length > 1 ? (
         <div
@@ -127,6 +146,7 @@ export const PlanSimulatorPanel = ({ mode, whatIf, resultInset, bridge, consolid
           {resultInset && whatIf.active && !whatIf.loading ? <ResultInset text={resultInset} /> : null}
         </div>
       ) : null}
+      </div>
     </section>
   );
 };
