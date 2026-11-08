@@ -43,7 +43,10 @@ export const planWritePreview = (
       key: `card-${plan.walletId}`,
       kind: 'card' as const,
       title: PLAN_COPY.activateCardWrite(formatCurrency(fromCents(plan.amountCents)), plan.label),
-      subtitle: stepDateLabel(plan.dueDate, todayYmd, incomes) ?? PLAN_COPY.stepNoDate,
+      subtitle: [
+        stepDateLabel(plan.dueDate, todayYmd, incomes) ?? PLAN_COPY.stepNoDate,
+        plan.uncappedCents != null ? PLAN_COPY.activateCardCapped : null,
+      ].filter(Boolean).join(' · '),
     })),
     ...collectLoanAbonos(actions, obligations).map((abono) => ({
       key: `loan-${abono.loanId}`,

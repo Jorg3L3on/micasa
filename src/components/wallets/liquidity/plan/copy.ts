@@ -94,6 +94,7 @@ export const PLAN_COPY = {
   activateUnchangedLabel: 'Sin cambio',
   activateNothing: 'Esta ruta no tiene pagos que programar ni gastos que mover.',
   activateCardWrite: (amount: string, card: string) => `Programar pago de ${amount} a ${card}`,
+  activateCardCapped: 'queda en $0',
   activateLoanWrite: (amount: string, loan: string) => `Agendar abono de ${amount} a ${loan}`,
   activateLoanHint: 'gasto planeado sin pagar',
   activateMoveWrite: 'Pasa a la siguiente quincena, sin pagar',

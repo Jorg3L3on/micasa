@@ -73,6 +73,8 @@ export type CardPlanDraft = {
   label: string;
   dueDate?: string;
   amountCents: number;
+  /** Set when the plan was cut to the card's known balance: what the route had for it. */
+  uncappedCents?: number;
 };
 
 /**
@@ -102,11 +104,16 @@ export const collectCardPlans = (
     plans.set(walletId, current);
   }
   return [...plans.values()].map(({ types, ...plan }) => {
-    const onlyExtra = [...types].every((type) => EXTRA_ACTIONS.has(type));
-    if (!onlyExtra) return plan;
     const obligation = obligations.find((item) => item.id === `card-${plan.walletId}`);
-    const due = obligation?.dueInHorizon ? toCents(obligation.statementDue ?? 0) : 0;
-    return { ...plan, amountCents: plan.amountCents + due };
+    const onlyExtra = [...types].every((type) => EXTRA_ACTIONS.has(type));
+    const due = onlyExtra && obligation?.dueInHorizon ? toCents(obligation.statementDue ?? 0) : 0;
+    const amountCents = plan.amountCents + due;
+    // A payment never goes above what the card owes; the rest stays in cash.
+    const balance = obligation?.balanceTotal != null ? toCents(obligation.balanceTotal) : null;
+    if (balance != null && balance > 0 && amountCents > balance) {
+      return { ...plan, amountCents: balance, uncappedCents: amountCents };
+    }
+    return { ...plan, amountCents };
   });
 };
 

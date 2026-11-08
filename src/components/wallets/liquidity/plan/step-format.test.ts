@@ -55,3 +55,20 @@ describe('activation preview', () => {
     expect(preview.unchanged.map((item) => item.title)).toEqual(['Cuota', 'Colchón']);
   });
 });
+
+describe('activation preview caps', () => {
+  it('a card plan never shows more than the card owes', async () => {
+    const { planWritePreview } = await import('@/components/wallets/liquidity/plan/ActivatePlanSheet');
+    const preview = planWritePreview(
+      [{ type: 'extra_to_debt_avalanche', label: 'Extra', obligationId: 'card-8', amount: 4887.5, dueDate: '2026-11-12', riskTags: [], warnings: [] }],
+      [{ id: 'card-8', kind: 'card_revolving', labelSynthetic: 'Tarjeta B', balanceTotal: 5000, statementDue: 1200, dueInHorizon: true, consequenceTier: 3 }],
+      '2026-11-07',
+    );
+    expect(preview.writes).toEqual([
+      expect.objectContaining({
+        title: 'Programar pago de $5,000.00 a Tarjeta B',
+        subtitle: 'Antes del 12 nov · queda en $0',
+      }),
+    ]);
+  });
+});

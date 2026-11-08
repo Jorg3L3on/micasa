@@ -97,7 +97,7 @@ export async function applyCashPlan(input: ApplyPlanInput): Promise<ApplyPlanRes
       skip(step, 'La tarjeta no tiene deuda registrada.');
       continue;
     }
-    if (plannedCents < plan.amountCents) {
+    if (plannedCents < (plan.uncappedCents ?? plan.amountCents)) {
       skip(step, `La tarjeta queda en $0 con ${formatMoney(fromCents(plannedCents))}; el resto se queda en tu cuenta.`);
     }
     // Undated: this quincena, the one the plan is about.
