@@ -1,14 +1,13 @@
 import prisma from '@/lib/prisma';
-import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
-import { getFortnightYmdBounds, shiftCalendarMonth } from '@/lib/fortnight-calendar';
+import { formatMoney } from '@/lib/money';
+import { formatCalendarDate } from '@/lib/calendar-dates';
+import { getCalendarFortnightRefForYmd, getFortnightYmdBounds, shiftCalendarMonth } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
-import {
-  resolveFortnightIdForDate,
-  upsertCreditCardPaymentPlan,
-} from '@/lib/finance/credit-card-payment-plan.service';
-import { updateExpense } from '@/lib/finance/expense.service';
+import { upsertCreditCardPaymentPlan } from '@/lib/finance/credit-card-payment-plan.service';
+import { createExpense, updateExpense } from '@/lib/finance/expense.service';
 import {
   collectCardPlans,
+  collectLoanAbonos,
   noWriteReason,
   type AppliedWrite,
   type ApplyPlanResult,
@@ -58,6 +57,17 @@ const nextFortnightRef = (year: number, month: number, period: 'FIRST' | 'SECOND
  * expense to the next quincena. Idempotent: a plan row that already has the
  * amount is reported, not rewritten. Must run inside an audit actor scope.
  */
+const ownerOf = (ownerFilter: OwnerFilter) => ({
+  ownerType: ownerFilter.user_id != null ? ('user' as const) : ('house' as const),
+  ownerId: (ownerFilter.user_id ?? ownerFilter.house_id)!,
+});
+
+/** The quincena that holds a civil day, created the way the Panel creates it when missing. */
+const fortnightForDate = async (ownerFilter: OwnerFilter, ymd: string) => {
+  const ref = getCalendarFortnightRefForYmd(ymd);
+  return resolveOrCreateFortnight({ ...ownerOf(ownerFilter), year: ref.year, month: ref.month, period: ref.period });
+};
+
 export async function applyCashPlan(input: ApplyPlanInput): Promise<ApplyPlanResult> {
   const { ownerFilter, actions, obligations, projection } = input;
   const writes: AppliedWrite[] = [];
@@ -72,33 +82,32 @@ export async function applyCashPlan(input: ApplyPlanInput): Promise<ApplyPlanRes
 
   for (const plan of collectCardPlans(actions, obligations)) {
     const step = { type: 'pay_statement' as const, label: plan.label };
-    if (!plan.dueDate) {
-      skip(step, 'Sin fecha de pago; no sabemos en qué quincena programarlo.');
-      continue;
-    }
-    const fortnightId = await resolveFortnightIdForDate(ownerFilter, parseCalendarDate(plan.dueDate));
-    if (fortnightId == null) {
-      skip(step, 'Esa quincena todavía no existe en tu Panel.');
-      continue;
-    }
     const wallet = await prisma.wallet.findFirst({
       where: { id: plan.walletId, ...ownerFilter, active: true },
       select: { amount: true },
     });
-    const amount = fromCents(plan.amountCents);
     if (!wallet) {
       skip(step, 'Tarjeta no encontrada.');
       continue;
     }
-    if (amount > Number(wallet.amount)) {
-      skip(step, 'El monto supera la deuda registrada de la tarjeta; ajústalo en su Panel.');
+    // A payment never goes above what the card owes; the rest stays in cash.
+    const debtCents = toCents(Number(wallet.amount));
+    const plannedCents = Math.min(plan.amountCents, debtCents);
+    if (plannedCents <= 0) {
+      skip(step, 'La tarjeta no tiene deuda registrada.');
       continue;
     }
+    if (plannedCents < plan.amountCents) {
+      skip(step, `La tarjeta queda en $0 con ${formatMoney(fromCents(plannedCents))}; el resto se queda en tu cuenta.`);
+    }
+    // Undated: this quincena, the one the plan is about.
+    const fortnightId = (await fortnightForDate(ownerFilter, plan.dueDate ?? formatCalendarDate(new Date()))).id;
+    const amount = fromCents(plannedCents);
     const existing = await prisma.creditCardPaymentPlan.findUnique({
       where: { credit_card_wallet_id_fortnight_id: { credit_card_wallet_id: plan.walletId, fortnight_id: fortnightId } },
       select: { planned_amount: true, declared_zero: true },
     });
-    if (existing && !existing.declared_zero && toCents(Number(existing.planned_amount)) === plan.amountCents) {
+    if (existing && !existing.declared_zero && toCents(Number(existing.planned_amount)) === plannedCents) {
       writes.push({ kind: 'card_payment_plan', walletId: plan.walletId, label: plan.label, fortnightId, amount, status: 'unchanged' });
       continue;
     }
@@ -111,6 +120,50 @@ export async function applyCashPlan(input: ApplyPlanInput): Promise<ApplyPlanRes
       amount,
       status: existing ? 'updated' : 'created',
     });
+  }
+
+  for (const abono of collectLoanAbonos(actions, obligations)) {
+    const step = { type: 'extra_to_debt_avalanche' as const, label: abono.label };
+    const loan = await prisma.loan.findFirst({
+      where: { id: abono.loanId, ...ownerFilter },
+      select: { id: true },
+    });
+    if (!loan) {
+      skip(step, 'Préstamo no encontrado.');
+      continue;
+    }
+    const dueYmd = abono.dueDate ?? formatCalendarDate(new Date());
+    const fortnight = await fortnightForDate(ownerFilter, dueYmd);
+    const amount = fromCents(abono.amountCents);
+    const existing = await prisma.expense.findFirst({
+      where: {
+        ...ownerFilter,
+        fortnight_id: fortnight.id,
+        description: abono.description,
+        loan_payment_id: null,
+        is_paid: false,
+      },
+      select: { id: true, amount: true },
+    });
+    if (existing && toCents(Number(existing.amount)) === abono.amountCents) {
+      writes.push({ kind: 'loan_abono_planned', loanId: abono.loanId, label: abono.label, fortnightId: fortnight.id, expenseId: existing.id, amount, status: 'unchanged' });
+      continue;
+    }
+    if (existing) {
+      await updateExpense({ id: existing.id, ownerFilter, amount });
+      writes.push({ kind: 'loan_abono_planned', loanId: abono.loanId, label: abono.label, fortnightId: fortnight.id, expenseId: existing.id, amount, status: 'updated' });
+      continue;
+    }
+    const created = await createExpense({
+      fortnightId: fortnight.id,
+      categoryId: null,
+      description: abono.description,
+      amount,
+      isPaid: false,
+      paymentDate: abono.dueDate ?? null,
+      walletId: abono.fromWalletId ?? null,
+    });
+    writes.push({ kind: 'loan_abono_planned', loanId: abono.loanId, label: abono.label, fortnightId: fortnight.id, expenseId: created.id, amount, status: 'created' });
   }
 
   for (const step of actions) {
@@ -141,8 +194,7 @@ export async function applyCashPlan(input: ApplyPlanInput): Promise<ApplyPlanRes
       }
       const next = nextFortnightRef(expense.fortnight.year, expense.fortnight.month, expense.fortnight.period);
       const target = await resolveOrCreateFortnight({
-        ownerType: ownerFilter.user_id != null ? 'user' : 'house',
-        ownerId: (ownerFilter.user_id ?? ownerFilter.house_id)!,
+        ...ownerOf(ownerFilter),
         year: next.year,
         month: next.month,
         period: next.period,

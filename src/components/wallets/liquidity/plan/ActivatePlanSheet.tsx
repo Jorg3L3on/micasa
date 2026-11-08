@@ -13,8 +13,8 @@ import {
 } from '@/components/overlay/overlay-form';
 import { Button } from '@/components/ui/button';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
-import { stepDateLabel } from '@/components/wallets/liquidity/plan/step-format';
-import { collectCardPlans, noWriteReason } from '@/lib/finance/cash-plan/apply-plan-mapping';
+import { stepDateLabel, type StepIncome } from '@/components/wallets/liquidity/plan/step-format';
+import { collectCardPlans, collectLoanAbonos, noWriteReason } from '@/lib/finance/cash-plan/apply-plan-mapping';
 import { fromCents } from '@/lib/finance/cash-plan/money';
 import type { ActionInstance, Obligation } from '@/lib/finance/cash-plan/types';
 import { formatCurrency } from '@/lib/utils';
@@ -26,18 +26,30 @@ type ActivatePlanSheetProps = {
   actions: readonly ActionInstance[];
   obligations: readonly Obligation[];
   todayYmd: string;
+  incomes?: readonly StepIncome[];
   /** Sends the route; resolves when the server answered, rejects with the message to show. */
   onConfirm: () => Promise<void>;
 };
 
 /** What "Activar" will do, in plain words, before anything is written. */
-export const planWritePreview = (actions: readonly ActionInstance[], obligations: readonly Obligation[], todayYmd: string) => {
+export const planWritePreview = (
+  actions: readonly ActionInstance[],
+  obligations: readonly Obligation[],
+  todayYmd: string,
+  incomes: readonly StepIncome[] = [],
+) => {
   const writes = [
     ...collectCardPlans(actions, obligations).map((plan) => ({
       key: `card-${plan.walletId}`,
       kind: 'card' as const,
       title: PLAN_COPY.activateCardWrite(formatCurrency(fromCents(plan.amountCents)), plan.label),
-      subtitle: stepDateLabel(plan.dueDate, todayYmd) ?? PLAN_COPY.stepNoDate,
+      subtitle: stepDateLabel(plan.dueDate, todayYmd, incomes) ?? PLAN_COPY.stepNoDate,
+    })),
+    ...collectLoanAbonos(actions, obligations).map((abono) => ({
+      key: `loan-${abono.loanId}`,
+      kind: 'card' as const,
+      title: PLAN_COPY.activateLoanWrite(formatCurrency(fromCents(abono.amountCents)), abono.label),
+      subtitle: `${stepDateLabel(abono.dueDate, todayYmd, incomes) ?? PLAN_COPY.stepNoDate} · ${PLAN_COPY.activateLoanHint}`,
     })),
     ...actions
       .filter((step) => step.type === 'defer_nonessential')
@@ -67,11 +79,12 @@ export const ActivatePlanSheet = ({
   actions,
   obligations,
   todayYmd,
+  incomes = [],
   onConfirm,
 }: ActivatePlanSheetProps) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { writes, unchanged } = planWritePreview(actions, obligations, todayYmd);
+  const { writes, unchanged } = planWritePreview(actions, obligations, todayYmd, incomes);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setError(null);

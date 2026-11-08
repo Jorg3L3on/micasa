@@ -31,6 +31,8 @@ type GoldenCase = {
   expectFromWalletId?: number;
   /** Primary steps on these obligations carry these civil due dates. */
   expectStepDueDates?: Record<string, string>;
+  /** Debts each route (by id) leaves at $0 this period. */
+  expectDebtsClosed?: Record<string, number>;
 };
 
 const cases = JSON.parse(
@@ -118,6 +120,9 @@ describe('cash plan golden cases', () => {
       const funded = first.primary.actions.filter((item) => item.type !== 'defer_nonessential');
       expect(funded.length).toBeGreaterThan(0);
       for (const item of funded) expect(item.fromWalletId).toBe(golden.expectFromWalletId);
+    }
+    for (const [routeId, closed] of Object.entries(golden.expectDebtsClosed ?? {})) {
+      expect(routes.find((plan) => plan.id === routeId)?.debtsClosed, routeId).toBe(closed);
     }
     for (const [obligationId, dueDate] of Object.entries(golden.expectStepDueDates ?? {})) {
       const step = routes.flatMap((plan) => plan.actions).find((item) => item.obligationId === obligationId);

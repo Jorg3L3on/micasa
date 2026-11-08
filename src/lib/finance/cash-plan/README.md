@@ -37,7 +37,19 @@ Each `ActionInstance` may carry:
 
 - `dueDate`: the civil day (`YYYY-MM-DD`, America/Mexico_City) of the obligation it pays, from `Obligation.dueDate` when that obligation is due in the horizon. An undated obligation gives an undated step and, from `planInputFromLiquidity`, an `undated_obligation` gap.
 - `fromWalletId`: the funding wallet with the highest balance in `PlanInput.fundingWallets` (ties go to the lower id), on every step that pays money out (not on deferrals, bridge or consolidation).
-- `extra_to_debt_avalanche` / `extra_to_debt_snowball` name the debt that receives the extra first (`obligationId`), using the same order as the payoff simulation.
+- `extra_to_debt_avalanche` / `extra_to_debt_snowball`: one step per debt the extra reaches (`obligationId`, amount), in the order the payoff simulation spends it (`extraAllocation`). If every debt reaches $0, what is left stays in cash as a `buffer_reserve` step, under the same buffer rule (whole pesos, at least $100).
+
+Each `RankedPlan` may carry `debtsClosed`: the debts the route leaves at $0 this period (a payoff or consolidation in shortfall; in surplus, the debts the extra clears beyond what minimums alone would).
+
+## Activar este plan
+
+`apply-plan.service.ts` (pure mapping in `apply-plan-mapping.ts`) writes the chosen route to existing models:
+
+- Card steps: one `CreditCardPaymentPlan` per card and quincena (statement + extra, capped at what the card owes). A missing quincena is created as the Panel does.
+- Extra abono or payoff on a loan: one unpaid planned `Expense` ("Abono extra · <préstamo>") in that quincena on the source wallet. Scheduled installments are not touched.
+- `defer_nonessential`: the unpaid expense moves to the next quincena; a paid one is refused.
+- Cushion, MSI, bridge and consolidation write nothing.
+- Running it again with the same amounts writes nothing.
 
 ## Rules that fixtures lock
 

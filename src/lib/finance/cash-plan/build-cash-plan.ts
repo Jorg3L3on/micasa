@@ -4,7 +4,7 @@ import { BALANCED_EPS_CENTS, fromCents, toCents } from '@/lib/finance/cash-plan/
 import { compositeScore, riskScore, TIE_COMPOSITE_EPS } from '@/lib/finance/cash-plan/score';
 import { simulateBridge } from '@/lib/finance/cash-plan/simulate-bridge';
 import { simulateConsolidate } from '@/lib/finance/cash-plan/simulate-consolidate';
-import { firstExtraTargetId, simulatePayoff, type PayoffDebt } from '@/lib/finance/cash-plan/simulate-payoff';
+import { extraAllocation, firstExtraTargetId, simulatePayoff, type PayoffDebt } from '@/lib/finance/cash-plan/simulate-payoff';
 import {
   ASSUMED_HIGH_APR,
   ASSUMED_MEDIAN_APR,
@@ -105,6 +105,8 @@ type Draft = {
   runwayPeriods: number;
   credit: number;
   paidOffIds: string[];
+  /** Debts the route leaves at $0 this period; defaults to `paidOffIds.length`. */
+  debtsClosed?: number;
 };
 
 const emptyPlan = (summary: string): RankedPlan => ({
@@ -296,6 +298,7 @@ const scoreDraft = (draft: Draft, gapCents: number, scaleCents: number): RankedP
     gapClosed: gapCents > 0 ? fromCents(Math.min(gapCents, Math.max(0, draft.netFreedCents))) : undefined,
     surplusAllocated: draft.surplusAllocatedCents != null ? fromCents(draft.surplusAllocatedCents) : undefined,
     impact: draft.impact,
+    debtsClosed: draft.debtsClosed ?? draft.paidOffIds.length,
     warnings: draft.warnings,
     touchesUntouchable: draft.touchesUntouchable,
   };
@@ -685,11 +688,47 @@ const buildSurplusDrafts = (
     monthsDelta: baseline.months - result.months,
     interestDelta: fromCents(baseline.interestCents - result.interestCents),
   });
+  /** Debts the extra itself clears this period (minimums alone are the baseline). */
+  const closedBy = (result: typeof avalanche) =>
+    Math.max(0, result.debtsClearedFirstMonth - baseline.debtsClearedFirstMonth);
 
   const runwayBase = available / Math.max(monthlyNeedCents, 1);
   const bufferCents = bufferAmountCents(extraCents, available, monthlyNeedCents);
-  const avalancheTargetId = firstExtraTargetId(debts, 'avalanche') ?? undefined;
-  const snowballTargetId = firstExtraTargetId(debts, 'snowball') ?? undefined;
+  const labelOf = (id: string) => input.obligations.find((item) => item.id === id)?.labelSynthetic;
+  /**
+   * The extra as one step per debt it reaches, in the order the payoff
+   * simulation spends it. Whatever is left once those debts are at $0 stays
+   * in cash as a buffer step.
+   */
+  const extraSteps = (
+    type: 'extra_to_debt_avalanche' | 'extra_to_debt_snowball',
+    cents: number,
+    detail: string,
+  ): ActionInstance[] => {
+    const strategy = type === 'extra_to_debt_avalanche' ? 'avalanche' : 'snowball';
+    const parts = extraAllocation(debts, cents, strategy);
+    if (parts.length === 0) {
+      return [action(type, { obligationId: firstExtraTargetId(debts, strategy) ?? undefined, amount: fromCents(cents), detail })];
+    }
+    const steps = parts.map((part) => {
+      const name = labelOf(part.id);
+      return action(type, {
+        obligationId: part.id,
+        label: name ? `${ACTION_CATALOG[type].uiLabel} · ${name}` : undefined,
+        amount: fromCents(part.cents),
+        detail,
+      });
+    });
+    // Same buffer rule: whole pesos and never under $100; a smaller rest just stays in cash.
+    const rest = Math.floor((cents - parts.reduce((sum, part) => sum + part.cents, 0)) / 100) * 100;
+    if (rest >= BUFFER_MIN_CENTS) {
+      steps.push(action('buffer_reserve', {
+        amount: fromCents(rest),
+        detail: 'Esas deudas quedan en $0; lo que sobra se queda en tu cuenta.',
+      }));
+    }
+    return steps;
+  };
   const bufferPayoff = simulatePayoff(debts, Math.max(0, extraCents - bufferCents), 'avalanche');
   const drafts: Draft[] = [];
 
@@ -700,11 +739,7 @@ const buildSurplusDrafts = (
       title: 'Extra a la tasa más alta',
       summary: 'Después de los mínimos, el extra de este periodo va a la deuda más cara.',
       actions: [
-        action('extra_to_debt_avalanche', {
-          obligationId: avalancheTargetId,
-          amount: fromCents(extraCents),
-          detail: 'Un solo extra de este periodo; los meses siguientes siguen en mínimo.',
-        }),
+        ...extraSteps('extra_to_debt_avalanche', extraCents, 'Un solo extra de este periodo; los meses siguientes siguen en mínimo.'),
         ...msiActions(due),
       ],
       netFreedCents: extraCents,
@@ -715,6 +750,7 @@ const buildSurplusDrafts = (
       warnings: [],
       surplusAllocatedCents: extraCents,
       impact: impactOf(avalanche),
+      debtsClosed: closedBy(avalanche),
       runwayPeriods: runwayBase,
       credit: creditPreservation(input.obligations, new Set()),
       paidOffIds: [],
@@ -725,11 +761,7 @@ const buildSurplusDrafts = (
       title: 'Extra a la deuda más chica',
       summary: 'Después de los mínimos, el extra va al saldo más bajo para cerrarlo antes.',
       actions: [
-        action('extra_to_debt_snowball', {
-          obligationId: snowballTargetId,
-          amount: fromCents(extraCents),
-          detail: 'Misma caja que la avalancha; cambia a cuál deuda le pega primero.',
-        }),
+        ...extraSteps('extra_to_debt_snowball', extraCents, 'Misma caja que la avalancha; cambia a cuál deuda le pega primero.'),
         ...msiActions(due),
       ],
       netFreedCents: extraCents,
@@ -740,6 +772,7 @@ const buildSurplusDrafts = (
       warnings: [],
       surplusAllocatedCents: extraCents,
       impact: impactOf(snowball),
+      debtsClosed: closedBy(snowball),
       runwayPeriods: runwayBase,
       credit: creditPreservation(input.obligations, new Set()),
       paidOffIds: [],
@@ -755,13 +788,7 @@ const buildSurplusDrafts = (
       }),
     ];
     if (debtSlice > 0 && debts.length > 0) {
-      actions.push(
-        action('extra_to_debt_avalanche', {
-          obligationId: avalancheTargetId,
-          amount: fromCents(debtSlice),
-          detail: 'El resto del extra va a la tasa más alta.',
-        }),
-      );
+      actions.push(...extraSteps('extra_to_debt_avalanche', debtSlice, 'El resto del extra va a la tasa más alta.'));
     }
     drafts.push({
       id: 'buffer',
@@ -778,6 +805,7 @@ const buildSurplusDrafts = (
       worseRate: false,
       warnings: [],
       surplusAllocatedCents: bufferCents,
+      debtsClosed: debts.length > 0 ? closedBy(bufferPayoff) : 0,
       runwayPeriods: (available + bufferCents) / Math.max(monthlyNeedCents, 1),
       credit: creditPreservation(input.obligations, new Set()),
       paidOffIds: [],

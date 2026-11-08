@@ -141,7 +141,8 @@
     },
     "expectedMode": "shortfall",
     "expectedPrimaryActionTypes": ["pay_off"],
-    "forbiddenPrimaryActionTypes": ["bridge_loan"]
+    "forbiddenPrimaryActionTypes": ["bridge_loan"],
+    "expectDebtsClosed": { "payoff-small": 1 }
   },
   {
     "id": "SF-04-surplus-avalanche",
@@ -216,7 +217,8 @@
     "expectedPrimaryStrategy": "snowball",
     "expectedPrimaryActionTypes": ["extra_to_debt_snowball"],
     "forbidActionAmount": 0.01,
-    "forbidStrategies": ["buffer"]
+    "forbidStrategies": ["buffer"],
+    "expectDebtsClosed": { "snowball": 1, "avalanche": 0 }
   },
   {
     "id": "SF-06-missing-apr",

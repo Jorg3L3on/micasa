@@ -19,11 +19,11 @@ const RISK_BAR = {
   high: 'bg-status-overdue',
 } as const;
 
-const monthsLabel = (months: number): string => (months === 1 ? '1 mes' : `${months} meses`);
+const debtsLabel = (count: number): string => (count === 1 ? '1 deuda' : `${count} deudas`);
 
 /** Routes side by side: cost, risk, cushion and what each one closes. */
 export const PlanCompareTable = ({ routes, mode, selectedId }: PlanCompareTableProps) => {
-  const lastHeader = mode === 'shortfall' ? PLAN_COPY.compareGapClosed : PLAN_COPY.statMonths;
+  const lastHeader = mode === 'shortfall' ? PLAN_COPY.compareGapClosed : PLAN_COPY.compareDebtsClosed;
   return (
     <div className="overflow-x-auto rounded-xl border border-border/50">
       <table className="w-full min-w-[34rem] border-collapse text-sm">
@@ -68,7 +68,7 @@ export const PlanCompareTable = ({ routes, mode, selectedId }: PlanCompareTableP
                 <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">
                   {mode === 'shortfall'
                     ? `${Math.round(route.scores.gapClosed * 100)}%`
-                    : monthsLabel(route.impact?.monthsDelta ?? 0)}
+                    : debtsLabel(route.debtsClosed ?? 0)}
                 </td>
               </tr>
             );

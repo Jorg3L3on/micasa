@@ -183,6 +183,8 @@ export type RankedPlan = {
   gapClosed?: number;
   surplusAllocated?: number;
   impact?: PlanImpact;
+  /** Debts this route leaves at $0 this period (payoff in shortfall, the extra in surplus). */
+  debtsClosed?: number;
   warnings: string[];
   touchesUntouchable: boolean;
 };

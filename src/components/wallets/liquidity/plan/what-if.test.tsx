@@ -571,6 +571,17 @@ describe('Plan tab steps, rail and states (MIC-I14-4)', () => {
     expect(screen.getByText('Crea recordatorios y pagos programados en tu Panel. Nada se cobra solo.')).toBeTruthy();
   });
 
+  it('a step on a payday reads "al caer la nómina"', () => {
+    const data = withCash(5000);
+    data.income_dates = [
+      { date: '2026-11-05', amount: 12000, title: 'Nómina' },
+      { date: '2026-12-15', amount: 12000, title: 'Nómina' },
+    ];
+    renderTab(data);
+    const steps = within(screen.getByRole('region', { name: 'Tus pasos con esta ruta' })).getAllByRole('listitem');
+    expect(within(steps[0]!).getByTestId('step-date').textContent).toBe('5 nov · al caer la nómina');
+  });
+
   it('a step whose obligation has a data gap renders amber with its button', () => {
     // The card has no minimum: missing_minimum is general; an APR-less card gets missing_apr on its line.
     const data = withCash(5000);

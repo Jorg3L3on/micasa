@@ -131,3 +131,32 @@ export const firstExtraTargetId = (
   const target = strategy === 'avalanche' ? avalancheTarget(working) : snowballTarget(working);
   return target?.id ?? null;
 };
+
+/**
+ * Where a month-1 extra goes under `strategy`: each debt it reaches and how
+ * much, in the order `simulatePayoff` spends it. What is left after every
+ * debt is at $0 is not listed.
+ */
+export const extraAllocation = (
+  debts: readonly PayoffDebt[],
+  extraCents: number,
+  strategy: 'avalanche' | 'snowball',
+): Array<{ id: string; cents: number }> => {
+  const working: WorkingDebt[] = debts
+    .filter((debt) => debt.balanceCents > 0)
+    .map((debt) => ({ ...debt, minimumCents: Math.max(0, debt.minimumCents), balance: debt.balanceCents }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  for (const debt of working) accrue(debt);
+  for (const debt of working) payToward(debt, Math.min(debt.balance, debt.minimumCents || debt.balance));
+  const out: Array<{ id: string; cents: number }> = [];
+  let leftover = Math.max(0, extraCents);
+  while (leftover > 0) {
+    const target = strategy === 'avalanche' ? avalancheTarget(working) : snowballTarget(working);
+    if (!target) break;
+    const before = leftover;
+    leftover = payToward(target, leftover);
+    if (leftover === before) break;
+    out.push({ id: target.id, cents: before - leftover });
+  }
+  return out;
+};

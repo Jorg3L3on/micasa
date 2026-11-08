@@ -18,6 +18,16 @@ export type AppliedWrite =
     status: 'created' | 'updated' | 'unchanged';
   }
   | {
+    kind: 'loan_abono_planned';
+    loanId: number;
+    label: string;
+    fortnightId: number;
+    expenseId: number;
+    amount: number;
+    /** `unchanged`: the planned abono already existed with this amount. */
+    status: 'created' | 'updated' | 'unchanged';
+  }
+  | {
     kind: 'expense_moved';
     expenseId: number;
     label: string;
@@ -100,14 +110,63 @@ export const collectCardPlans = (
   });
 };
 
+export const loanId = (obligationId: string | undefined | null): number | null => {
+  const match = /^loan-(\d+)$/.exec(obligationId ?? '');
+  return match ? Number(match[1]) : null;
+};
+
+/** Loan steps that become a planned abono: an extra or a payoff (installments are already scheduled). */
+const LOAN_ABONO_ACTIONS = new Set<ActionTypeId>(['extra_to_debt_avalanche', 'extra_to_debt_snowball', 'pay_off']);
+
+export type LoanAbonoDraft = {
+  loanId: number;
+  label: string;
+  /** Text of the planned expense; also its key for idempotency. */
+  description: string;
+  dueDate?: string;
+  fromWalletId?: number;
+  amountCents: number;
+};
+
+/**
+ * One planned abono per loan: an unpaid expense in the step's quincena, on
+ * the source wallet. It reminds; it charges nothing by itself.
+ */
+export const collectLoanAbonos = (
+  actions: readonly ActionInstance[],
+  obligations: readonly Obligation[],
+): LoanAbonoDraft[] => {
+  const abonos = new Map<number, LoanAbonoDraft>();
+  for (const step of actions) {
+    if (!LOAN_ABONO_ACTIONS.has(step.type)) continue;
+    const id = loanId(step.obligationId);
+    if (id == null || step.amount == null || step.amount <= 0) continue;
+    const label = obligations.find((item) => item.id === step.obligationId)?.labelSynthetic ?? step.label;
+    const current = abonos.get(id) ?? {
+      loanId: id,
+      label,
+      description: `${step.type === 'pay_off' ? 'Liquidar' : 'Abono extra'} · ${label}`,
+      dueDate: step.dueDate,
+      fromWalletId: step.fromWalletId,
+      amountCents: 0,
+    };
+    current.dueDate ??= step.dueDate;
+    current.fromWalletId ??= step.fromWalletId;
+    current.amountCents += toCents(step.amount);
+    abonos.set(id, current);
+  }
+  return [...abonos.values()];
+};
+
 /** Why a step writes nothing, or null when it maps to a write. */
 export const noWriteReason = (step: Pick<ActionInstance, 'type' | 'obligationId'>): string | null => {
   const fixed = NO_WRITE_REASON[step.type];
   if (fixed) return fixed;
+  if (loanId(step.obligationId) != null) {
+    return LOAN_ABONO_ACTIONS.has(step.type) ? null : 'Las cuotas del préstamo ya están en su calendario.';
+  }
   if (CARD_ACTIONS.has(step.type) && cardWalletId(step.obligationId) == null) {
-    return step.obligationId?.startsWith('loan-')
-      ? 'Los abonos a préstamos se registran en Préstamos.'
-      : 'Este paso no tiene una tarjeta a la cual programar el pago.';
+    return 'Este paso no tiene una tarjeta a la cual programar el pago.';
   }
   if (step.type === 'split_hybrid') return 'Ajusta este paso a mano en tu Panel.';
   return null;

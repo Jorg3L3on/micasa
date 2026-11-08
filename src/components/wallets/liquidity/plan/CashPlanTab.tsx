@@ -20,7 +20,7 @@ import { HorizonToggle } from '@/components/wallets/liquidity/plan/HorizonToggle
 import { parseLoanSimFields } from '@/components/wallets/liquidity/plan/loan-sim-fields';
 import { PlanFlowPanel } from '@/components/wallets/liquidity/plan/PlanFlowPanel';
 import { PlanHero, type PlanHeroScenario } from '@/components/wallets/liquidity/plan/PlanHero';
-import { planPeriodLabel, planTodayLabel } from '@/components/wallets/liquidity/plan/plan-period';
+import { planPeriodBounds, planPeriodLabel, planTodayLabel } from '@/components/wallets/liquidity/plan/plan-period';
 import { PlanRoutesSection } from '@/components/wallets/liquidity/plan/PlanRoutesSection';
 import { resolveFeaturedPlan, type TiePreference } from '@/components/wallets/liquidity/plan/route-selection';
 import { PlanSimulatorPanel } from '@/components/wallets/liquidity/plan/PlanSimulatorPanel';
@@ -256,6 +256,10 @@ export const CashPlanTab = ({
     ? PLAN_COPY.simConsolidateResult(formatCurrency(consolidateRoute.estimatedCost), placeOf(consolidateRoute.id))
     : null;
   const walletNames = new Map(data.funding_wallets.map((wallet) => [wallet.id, wallet.name]));
+  const period = planPeriodBounds(horizon, monthKey, data.as_of);
+  const periodIncomes = [...(data.income_dates ?? [])]
+    .filter((income) => income.date >= period.startYmd && income.date <= period.endYmd)
+    .sort((a, b) => a.date.localeCompare(b.date));
   const lowConfidence = plan.confidence === 'low';
   const balanced = plan.mode === 'balanced';
 
@@ -359,6 +363,7 @@ export const CashPlanTab = ({
               dataGaps={plan.dataGaps}
               walletNames={walletNames}
               todayYmd={data.as_of}
+              incomes={periodIncomes}
               monthlyPanelHref={getCurrentMonthlyPanelHref(parseCalendarDate(data.as_of))}
               activateBlockedReason={scenario?.item ? PLAN_COPY.activateScenarioBlocked : null}
               onActivate={() => setActivateOpen(true)}
@@ -380,6 +385,7 @@ export const CashPlanTab = ({
               actions={featured.actions}
               obligations={input.obligations}
               todayYmd={data.as_of}
+              incomes={periodIncomes}
               onConfirm={async () => {
                 const result = await applyCashPlanRoute(
                   {

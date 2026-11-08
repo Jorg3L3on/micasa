@@ -105,6 +105,16 @@ describe('route cards', () => {
   });
 });
 
+describe('comparison table', () => {
+  it('surplus rows say how many debts each route closes', () => {
+    const plan = buildCashPlan(goldenInput('SF-05-surplus-snowball'));
+    render(<Harness plan={plan} />);
+    expect(screen.getByRole('columnheader', { name: 'deudas que cierra' })).toBeTruthy();
+    expect(within(row('snowball')).getByText('1 deuda')).toBeTruthy();
+    expect(within(row('avalanche')).getByText('0 deudas')).toBeTruthy();
+  });
+});
+
 describe('tie', () => {
   it.each([['SF-09-tie'], ['SF-04-surplus-avalanche']])(
     '%s: chip pair instead of the badge; each chip re-ranks as pickTiePlan',

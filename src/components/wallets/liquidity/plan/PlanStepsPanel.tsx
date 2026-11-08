@@ -8,7 +8,7 @@ import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { gapHref } from '@/components/wallets/liquidity/plan/plan-flow';
-import { stepButton, stepDateLabel } from '@/components/wallets/liquidity/plan/step-format';
+import { stepButton, stepDateLabel, type StepIncome } from '@/components/wallets/liquidity/plan/step-format';
 import type { DataGap, Obligation, RankedPlan } from '@/lib/finance/cash-plan/types';
 import { cn, formatCurrency } from '@/lib/utils';
 
@@ -19,6 +19,8 @@ type PlanStepsPanelProps = {
   /** Funding wallet names by id, for "origen → destino". */
   walletNames: ReadonlyMap<number, string>;
   todayYmd: string;
+  /** Expected incomes inside the plan's period, by date. */
+  incomes?: readonly StepIncome[];
   monthlyPanelHref: string;
   onActivate: () => void;
   onMarkOnly: () => void;
@@ -41,6 +43,7 @@ export const PlanStepsPanel = ({
   dataGaps,
   walletNames,
   todayYmd,
+  incomes = [],
   monthlyPanelHref,
   onActivate,
   onMarkOnly,
@@ -57,7 +60,7 @@ export const PlanStepsPanel = ({
         {plan.actions.map((step, index) => {
           const obligation = step.obligationId ? obligations.find((item) => item.id === step.obligationId) : undefined;
           const gap = step.obligationId ? dataGaps.find((item) => item.obligationId === step.obligationId) : undefined;
-          const date = stepDateLabel(step.dueDate, todayYmd);
+          const date = stepDateLabel(step.dueDate, todayYmd, incomes, step.type);
           const from = step.fromWalletId != null ? walletNames.get(step.fromWalletId) : undefined;
           const to = obligation?.labelSynthetic;
           const button = gap
