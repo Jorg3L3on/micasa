@@ -15,6 +15,7 @@ import {
   formatDateYmd,
   formatLoanDueYmd,
   generateLoanPaymentSchedule,
+  getLoanEndDate,
   loanDueDateForStorage,
   parseYmdAsUtcDate,
 } from '@/lib/finance/loan-schedule';
@@ -38,6 +39,7 @@ import type {
   LoanDuePaymentItem,
   LoanListItem,
   LoanPaymentActionValue,
+  LoanPaymentFrequencyValue,
   LoanPaymentListItem,
   LoanStatusValue,
   PlannerLoanPaymentsResponse,
@@ -847,6 +849,20 @@ export async function batchUpdateLoanPaymentsForOwner(
   });
 }
 
+/** YYYY-MM-DD of a loan's last installment, from its schedule inputs. */
+function loanEndYmd(loan: {
+  start_date: Date;
+  payment_count: number;
+  frequency: string;
+}): string | null {
+  const end = getLoanEndDate(
+    loan.start_date,
+    loan.payment_count,
+    loan.frequency as LoanPaymentFrequencyValue,
+  );
+  return end ? formatDateYmd(end) : null;
+}
+
 async function listLoanPaymentsForPlannerMonthImpl(
   ownerFilter: OwnerFilter,
   year: number,
@@ -893,6 +909,8 @@ async function listLoanPaymentsForPlannerMonthImpl(
     linkedWalletId: payment.loan.linked_wallet_id,
     linkedWalletName: payment.loan.linked_wallet?.name ?? null,
     incomeTemplateName: payment.loan.income_template?.name ?? null,
+    paymentCount: payment.loan.payment_count,
+    loanEndDate: loanEndYmd(payment.loan),
   }));
 
   return {
