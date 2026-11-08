@@ -45,8 +45,8 @@ const GapRow = ({ gap, children }: { gap: DataGap; children?: ReactNode }) => {
   const href = gapHref(gap);
   return (
     <li className={AMBER_ROW_CLASS} data-gap-code={gap.code}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0 flex-1 basis-40 text-sm">
           {children}
           <p className={cn('text-xs leading-snug text-status-pending', children ? 'mt-1' : null)}>
             {gap.message}
@@ -250,7 +250,9 @@ export const PlanFlowPanel = ({ mode, input, dataGaps }: PlanFlowPanelProps) => 
                 <GapRow key={`${gap.code}-${gap.obligationId}`} gap={gap} />
               ))}
             </ul>
-          ) : null}
+          ) : (
+            <p className="border-t border-border/50 pt-3 text-xs text-muted-foreground">{PLAN_COPY.flowNothingDue}</p>
+          )}
         </Inset>
 
         <Inset title={restTitle} total={flow.net} tone={restTone}>

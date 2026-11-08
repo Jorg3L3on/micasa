@@ -29,6 +29,7 @@ export const PLAN_COPY = {
   flowShort: 'Falta',
   flowLeftNote: 'Si falta un dato de abajo, este número puede bajar.',
   flowShortNote: 'Es lo que no alcanza a cubrir el efectivo de hoy con lo que vence en el periodo.',
+  flowNothingDue: 'Nada vence en este periodo.',
   gapAdd: 'Agregar',
   gapsTitle: 'Datos por completar',
   horizonLabel: 'Horizonte',
