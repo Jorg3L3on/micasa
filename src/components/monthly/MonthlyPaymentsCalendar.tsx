@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   CalendarDays,
   ChevronLeft,
@@ -545,6 +545,8 @@ export const MonthlyPaymentsCalendar = ({
   );
 
   useEffect(() => {
+    // id 0 is the provider's placeholder before the owner is known: wait for it.
+    if (context.id <= 0) return;
     let cancelled = false;
     void getCreatedMonths(context)
       .then((list) => {
@@ -575,16 +577,35 @@ export const MonthlyPaymentsCalendar = ({
       return;
     }
 
-    if (windowMonths(initialWeek.startYmd, initialWeek.endYmd).length > 1) {
-      void navigateToWindow(initialWeek);
-    }
+    // The server sent the viewed month; fetch only the other month the week spans.
+    const otherMonths = windowMonths(
+      initialWeek.startYmd,
+      initialWeek.endYmd,
+    ).filter((m) => m.year !== year || m.month !== month);
+    if (otherMonths.length === 0) return;
+    setLoadingMonth(true);
+    setLoadingBounds(initialWeek);
+    void Promise.all(otherMonths.map((m) => fetchMonth(m.year, m.month)))
+      .then((results) => {
+        applyWindowData(initialWeek, [
+          ...initialItems,
+          ...results.flatMap((result) => result.items),
+        ]);
+      })
+      .catch((error) => {
+        console.error('Error loading payments calendar window:', error);
+      })
+      .finally(() => {
+        setLoadingMonth(false);
+        setLoadingBounds(null);
+      });
   }, [
     applyWindowData,
     createdMonths,
+    fetchMonth,
     initialItems,
     initialWeek,
     month,
-    navigateToWindow,
     year,
   ]);
 

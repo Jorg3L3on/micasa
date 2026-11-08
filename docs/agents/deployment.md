@@ -25,3 +25,13 @@ Agents open slice PRs into `feat/<slug>`, **merge those slice PRs** once CI is g
 Keep **Production Branch = `main`**.
 
 Unexpected API failures log a JSON line (`event: api.unexpected_error`) with `route`, `owner_type`, and `owner_id`. User id only — no email in the line. Vercel runtime logs are the place to read them.
+
+## Database host (Neon)
+
+Production runs on Vercel with `@prisma/adapter-neon` (`src/lib/prisma.ts`), which opens a pool per serverless instance. `DATABASE_URL` should use Neon's **pooled** host (`<endpoint>-pooler.<region>.aws.neon.tech`) so many short-lived instances share PgBouncer connections instead of each opening its own.
+
+Migrations read the same `DATABASE_URL` (`prisma.config.ts`). PgBouncer in transaction mode does not keep the session advisory lock `prisma migrate deploy` takes, so run migrations with the **direct** host (same URL without `-pooler`), e.g. `DATABASE_URL=<direct url> npx prisma migrate deploy`.
+
+## Server timings
+
+`measure()` (`src/features/monthly/server/monthly.performance.ts`) prints `[perf] <step> <ms>` lines only when `MICASA_PERF_LOG=1`. Leave it unset on Vercel; set it locally when measuring the Panel.
