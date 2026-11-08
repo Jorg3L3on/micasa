@@ -3,7 +3,6 @@
 import { useState, type ComponentProps } from 'react';
 import { FlaskConical } from 'lucide-react';
 import { MONTHLY_PANEL_SHELL_CLASS, PANEL_INSET_CLASS } from '@/components/monthly/monthly-panel-shell';
-import { SegmentedControl } from '@/components/segmented-control';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import { SimulateLoanControl } from '@/components/wallets/liquidity/plan/SimulateLoanControl';
 import { WhatIfPanel } from '@/components/wallets/liquidity/plan/WhatIfPanel';
@@ -78,16 +77,33 @@ export const PlanSimulatorPanel = ({ mode, whatIf, resultInset, bridge, consolid
       </div>
 
       {options.length > 1 ? (
-        <SegmentedControl
-          value={shown}
-          onValueChange={(next) => setChosen(next as Tab)}
-          ariaLabel={PLAN_COPY.simTabsLabel}
-          stretch
-          className="w-full"
-          wrapperClassName="min-w-0 flex-1"
-          listClassName="w-full flex-wrap"
-          options={options}
-        />
+        <div
+          role="tablist"
+          aria-label={PLAN_COPY.simTabsLabel}
+          className={cn(
+            'grid gap-1 rounded-2xl border border-border/60 p-1',
+            'grid-cols-2',
+          )}
+        >
+          {options.map((option) => {
+            const selected = option.value === shown;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setChosen(option.value as Tab)}
+                className={cn(
+                  'min-h-11 rounded-xl px-3 text-sm font-semibold transition-colors',
+                  selected ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       ) : null}
 
       {loan ? (

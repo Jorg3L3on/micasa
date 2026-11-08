@@ -160,7 +160,8 @@ export const WhatIfPanel = ({
 
   const shellClass = bare ? '' : cn(MONTHLY_LIQUID_PANEL_CLASS, 'px-4 py-4');
   const header = (subtitle: string) => bare ? (
-    <p id={`${baseId}-title`} className="text-sm text-muted-foreground">{subtitle}</p>
+    // Inside the simulator panel its own title and hint already say this.
+    <span id={`${baseId}-title`} className="sr-only">{SCENARIO_COPY.title}</span>
   ) : (
     <div className="flex items-start gap-2">
       <FlaskConical className="mt-0.5 size-4 shrink-0 text-[color-mix(in_srgb,var(--chart-2)_70%,white)]" aria-hidden />

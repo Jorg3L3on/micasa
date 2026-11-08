@@ -115,7 +115,7 @@ export const PlanRouteCard = ({ plan, mode, isPrimary, selected, onChoose, tie, 
                 onClick={() => tie.onPrefer(preference)}
                 className={cn(
                   CHIP_CLASS,
-                  'min-h-9 cursor-pointer border-border',
+                  'min-h-11 cursor-pointer border-border px-3.5',
                   tie.preference === preference && 'border-primary bg-primary text-primary-foreground',
                 )}
               >
@@ -183,7 +183,7 @@ export const PlanRouteCard = ({ plan, mode, isPrimary, selected, onChoose, tie, 
         </div>
       ) : null}
 
-      <div className="grid grid-cols-3 gap-3 border-t border-border/50 pt-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-x-3 gap-y-2 border-t border-border/50 pt-3">
         <RouteStats plan={plan} mode={mode} />
       </div>
 

@@ -122,7 +122,7 @@ export const PlanStepsPanel = ({
 
       {children}
 
-      <div className="sticky bottom-24 z-10 flex flex-col gap-2 md:static md:flex-row md:items-center">
+      <div className="sticky bottom-24 z-10 -mx-2 flex flex-col gap-2 rounded-2xl bg-background/90 p-2 backdrop-blur md:static md:mx-0 md:flex-row md:items-center md:bg-transparent md:p-0 md:backdrop-blur-none">
         <Button type="button" className="h-11 rounded-xl shadow-lg md:shadow-none" onClick={onActivate}>
           {PLAN_COPY.activate}
         </Button>
