@@ -8,14 +8,12 @@ import { useFinanceContext } from '@/context/finance-context';
 import { getFinanceOwnerKey } from '@/lib/api/client-fetch';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
-import { SegmentedControl } from '@/components/segmented-control';
 import { Button } from '@/components/ui/button';
 import { formatDisplayDate, parseCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency } from '@/lib/utils';
 import { buildCashPlan, planInputFromLiquidity } from '@/lib/finance/cash-plan';
 import { isScenarioGapLine } from '@/lib/finance/cash-plan/from-liquidity';
-import type { PlanHorizon, RankedPlan } from '@/lib/finance/cash-plan/types';
+import type { PlanHorizon } from '@/lib/finance/cash-plan/types';
 import type { LiquidityProjectionResponse } from '@/types/catalog';
 import { ApplyPlanChecklist } from '@/components/wallets/liquidity/plan/ApplyPlanChecklist';
 import { HorizonToggle } from '@/components/wallets/liquidity/plan/HorizonToggle';
@@ -23,9 +21,9 @@ import { parseLoanSimFields } from '@/components/wallets/liquidity/plan/loan-sim
 import { PlanFlowPanel } from '@/components/wallets/liquidity/plan/PlanFlowPanel';
 import { PlanHero, type PlanHeroScenario } from '@/components/wallets/liquidity/plan/PlanHero';
 import { planPeriodLabel, planTodayLabel } from '@/components/wallets/liquidity/plan/plan-period';
-import { PlanRouteCard } from '@/components/wallets/liquidity/plan/PlanRouteCard';
+import { PlanRoutesSection } from '@/components/wallets/liquidity/plan/PlanRoutesSection';
+import { resolveFeaturedPlan, type TiePreference } from '@/components/wallets/liquidity/plan/route-selection';
 import { SimulateLoanControl } from '@/components/wallets/liquidity/plan/SimulateLoanControl';
-import { WhyPanel } from '@/components/wallets/liquidity/plan/WhyPanel';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import {
   isWhatIfWalletType,
@@ -73,21 +71,6 @@ const useWhatIfWallets = (enabled: boolean): WhatIfWallet[] | null => {
   return loaded?.ownerKey === ownerKey ? loaded.wallets : null;
 };
 
-type SurplusStrategy = 'avalanche' | 'snowball';
-
-const pickTiePlan = (
-  primary: RankedPlan,
-  other: RankedPlan | undefined,
-  preference: 'cost' | 'risk',
-): RankedPlan => {
-  if (!other) return primary;
-  const pair = [primary, other];
-  if (preference === 'cost') {
-    return [...pair].sort((left, right) => left.scores.cost - right.scores.cost || left.id.localeCompare(right.id))[0] ?? primary;
-  }
-  return [...pair].sort((left, right) => left.scores.risk - right.scores.risk || left.id.localeCompare(right.id))[0] ?? primary;
-};
-
 export const CashPlanTab = ({
   data,
   loading,
@@ -97,7 +80,6 @@ export const CashPlanTab = ({
   scenario,
 }: CashPlanTabProps) => {
   const [horizon, setHorizon] = useState<PlanHorizon>('quincena');
-  const [strategy, setStrategy] = useState<SurplusStrategy>('avalanche');
   const [bridgeRate, setBridgeRate] = useState('');
   const [bridgeTerm, setBridgeTerm] = useState('');
   const [bridgeFee, setBridgeFee] = useState('');
@@ -107,7 +89,7 @@ export const CashPlanTab = ({
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const [tiePreference, setTiePreference] = useState<'cost' | 'risk' | null>(null);
+  const [tiePreference, setTiePreference] = useState<TiePreference | null>(null);
 
   const monthKey = selectedMonthKey || data?.as_of.slice(0, 7) || '';
   const wallets = useWhatIfWallets(scenario != null);
@@ -159,12 +141,6 @@ export const CashPlanTab = ({
     setSelectedPlanId(null);
     setChecklistOpen(false);
     setTiePreference(null);
-  };
-
-  const handleStrategyChange = (next: SurplusStrategy) => {
-    setStrategy(next);
-    setSelectedPlanId(null);
-    setChecklistOpen(false);
   };
 
   const handleChoose = (planId: string) => {
@@ -256,18 +232,7 @@ export const CashPlanTab = ({
       onSimulate={scenario.simulate}
     />
   ) : null;
-  const plans = [plan.primary, ...plan.alternatives];
-  const tieOther = plan.tiePlanId ? plans.find((item) => item.id === plan.tiePlanId) : undefined;
-  const surplusFeatured = plan.mode === 'surplus'
-    ? plans.find((item) => item.strategyKey === strategy) ?? plan.primary
-    : plan.primary;
-  const tieFeatured = plan.tie && tiePreference
-    ? pickTiePlan(plan.primary, tieOther, tiePreference)
-    : surplusFeatured;
-  const featured = selectedPlanId
-    ? plans.find((item) => item.id === selectedPlanId) ?? tieFeatured
-    : tieFeatured;
-  const alternatives = plans.filter((item) => item.id !== featured.id);
+  const featured = resolveFeaturedPlan(plan, selectedPlanId, tiePreference);
 
   return (
     <div
@@ -288,18 +253,6 @@ export const CashPlanTab = ({
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <HorizonToggle value={horizon} onChange={handleHorizonChange} />
-          {plan.mode === 'surplus' ? (
-            <SegmentedControl
-              value={strategy}
-              onValueChange={(next) => handleStrategyChange(next as 'avalanche' | 'snowball')}
-              ariaLabel={PLAN_COPY.strategyLabel}
-              frameClassName={cn(MONTHLY_LIQUID_PANEL_CLASS, 'inline-flex w-fit max-w-full p-1 sm:p-1.5')}
-              options={[
-                { value: 'avalanche', label: PLAN_COPY.avalanche },
-                { value: 'snowball', label: PLAN_COPY.snowball },
-              ]}
-            />
-          ) : null}
         </div>
 
         {simulating ? (
@@ -328,72 +281,44 @@ export const CashPlanTab = ({
       ) : null}
 
       <div className="space-y-6 lg:col-start-1">
-        {plan.primary.id === 'empty' ? (
-          <p className="text-sm text-muted-foreground">{PLAN_COPY.noSafePrimary}</p>
-        ) : null}
-
-        {plan.tie ? (
-          <div className="rounded-xl border border-border/60 px-4 py-3">
-            <p className="text-sm font-medium">{PLAN_COPY.tieTitle}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{PLAN_COPY.tieBody}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className={cn('rounded-xl', tiePreference === 'cost' && 'bg-muted')}
-                aria-pressed={tiePreference === 'cost'}
-                onClick={() => setTiePreference('cost')}
-              >
-                {PLAN_COPY.preferCost}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className={cn('h-9', tiePreference === 'risk' && 'bg-muted')}
-                aria-pressed={tiePreference === 'risk'}
-                onClick={() => setTiePreference('risk')}
-              >
-                {PLAN_COPY.preferRisk}
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
         {simulating ? (
           <Skeleton className="h-48 w-full rounded-xl" />
         ) : (
-          <PlanRouteCard
-            plan={featured}
-            featured
-            ctaLabel={PLAN_COPY.apply}
-            onChoose={() => setChecklistOpen(true)}
-          >
-            {checklistOpen ? (
-              <ApplyPlanChecklist
-                planId={featured.id}
-                actions={featured.actions}
-                checked={checked}
-                onToggle={handleToggleStep}
-              />
-            ) : null}
-          </PlanRouteCard>
+          <PlanRoutesSection
+            plan={plan}
+            selectedPlanId={selectedPlanId}
+            tiePreference={tiePreference}
+            onChoose={handleChoose}
+            onPreferTie={(preference) => {
+              setTiePreference(preference);
+              setSelectedPlanId(null);
+              setChecklistOpen(false);
+            }}
+            featuredFooter={
+              featured.actions.length > 0 ? (
+                <div className="space-y-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 rounded-xl"
+                    aria-pressed={checklistOpen}
+                    onClick={() => setChecklistOpen((open) => !open)}
+                  >
+                    {PLAN_COPY.apply}
+                  </Button>
+                  {checklistOpen ? (
+                    <ApplyPlanChecklist
+                      planId={featured.id}
+                      actions={featured.actions}
+                      checked={checked}
+                      onToggle={handleToggleStep}
+                    />
+                  ) : null}
+                </div>
+              ) : null
+            }
+          />
         )}
-
-        {alternatives.length > 0 ? (
-          <div className="space-y-3">
-            {alternatives.map((item) => (
-              <PlanRouteCard
-                key={item.id}
-                plan={item}
-                featured={false}
-                ctaLabel={PLAN_COPY.choose}
-                onChoose={() => handleChoose(item.id)}
-              />
-            ))}
-          </div>
-        ) : null}
-
-        <WhyPanel explainability={plan.explainability} />
 
         <SimulateLoanControl
           idPrefix="bridge"
