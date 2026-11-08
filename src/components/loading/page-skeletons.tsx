@@ -107,3 +107,17 @@ export const FormPageSkeleton = () => (
     <Skeleton className="h-11 w-full rounded-xl" />
   </div>
 );
+
+/** Préstamos: summary strip (Avance tile from md) plus two lender cards. */
+export const LoansListSkeleton = () => (
+  <div className="space-y-3" aria-busy="true" aria-label="Cargando préstamos">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <Skeleton className="col-span-2 h-[5.5rem] rounded-2xl md:col-span-1" />
+      <Skeleton className="h-[5.5rem] rounded-2xl" />
+      <Skeleton className="h-[5.5rem] rounded-2xl" />
+      <Skeleton className="hidden h-[5.5rem] rounded-2xl md:block" />
+    </div>
+    <PanelCardSkeleton bodyClassName="h-40" />
+    <PanelCardSkeleton bodyClassName="h-28" />
+  </div>
+);
