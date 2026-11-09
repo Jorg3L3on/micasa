@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, type Variants } from "motion/react";
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, type Variants } from "framer-motion";
 import { motionTokens } from "../lib/motion-tokens";
 import { AnimatedCounter } from "../animated-counter/animated-counter";
 import styles from "./metric-card.module.css";
