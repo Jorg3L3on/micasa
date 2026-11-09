@@ -38,6 +38,14 @@ export type Obligation = {
   creditLimit?: number;
   /** Bill the household can move without touching housing, utilities, or payroll. */
   discretionary?: boolean;
+  /** Civil due day (YYYY-MM-DD, America/Mexico_City) inside the horizon. Absent when unknown. */
+  dueDate?: string;
+};
+
+/** A cash or debit wallet the plan can pay from. */
+export type FundingWallet = {
+  id: number;
+  balance: number;
 };
 
 export type BridgeSimInput = {
@@ -89,6 +97,8 @@ export type PlanInput = {
   /** Caller-supplied so the same input stays deterministic. */
   computedAt?: string;
   dataGaps?: DataGap[];
+  /** Cash and debit wallets; the one with the highest balance funds each step. */
+  fundingWallets?: FundingWallet[];
 };
 
 export type ActionTypeId =
@@ -124,6 +134,10 @@ export type ActionInstance = {
   riskTags: RiskTag[];
   warnings: string[];
   touchesUntouchable?: boolean;
+  /** Civil day (YYYY-MM-DD, America/Mexico_City) of the obligation this step pays. Absent when undated. */
+  dueDate?: string;
+  /** Funding wallet the money leaves from: the highest balance in `PlanInput.fundingWallets`. */
+  fromWalletId?: number;
 };
 
 export type ScoreVector = {
@@ -169,6 +183,8 @@ export type RankedPlan = {
   gapClosed?: number;
   surplusAllocated?: number;
   impact?: PlanImpact;
+  /** Debts this route leaves at $0 this period (payoff in shortfall, the extra in surplus). */
+  debtsClosed?: number;
   warnings: string[];
   touchesUntouchable: boolean;
 };

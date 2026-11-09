@@ -8,27 +8,39 @@ import { useFinanceContext } from '@/context/finance-context';
 import { getFinanceOwnerKey } from '@/lib/api/client-fetch';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
-import { SegmentedControl } from '@/components/segmented-control';
 import { Button } from '@/components/ui/button';
 import { formatDisplayDate, parseCalendarDate } from '@/lib/calendar-dates';
 import { cn, formatCurrency } from '@/lib/utils';
 import { buildCashPlan, planInputFromLiquidity } from '@/lib/finance/cash-plan';
 import { isScenarioGapLine } from '@/lib/finance/cash-plan/from-liquidity';
-import type { PlanHorizon, RankedPlan } from '@/lib/finance/cash-plan/types';
+import type { PlanHorizon } from '@/lib/finance/cash-plan/types';
 import type { LiquidityProjectionResponse } from '@/types/catalog';
 import { ApplyPlanChecklist } from '@/components/wallets/liquidity/plan/ApplyPlanChecklist';
-import { DataGapCallout } from '@/components/wallets/liquidity/plan/DataGapCallout';
 import { HorizonToggle } from '@/components/wallets/liquidity/plan/HorizonToggle';
 import { parseLoanSimFields } from '@/components/wallets/liquidity/plan/loan-sim-fields';
+import { PlanFlowPanel } from '@/components/wallets/liquidity/plan/PlanFlowPanel';
 import { PlanHero, type PlanHeroScenario } from '@/components/wallets/liquidity/plan/PlanHero';
-import { PlanRouteCard } from '@/components/wallets/liquidity/plan/PlanRouteCard';
+import { planPeriodBounds, planPeriodLabel, planTodayLabel } from '@/components/wallets/liquidity/plan/plan-period';
+import { PlanRoutesSection } from '@/components/wallets/liquidity/plan/PlanRoutesSection';
+import { cushionAfter, resolveFeaturedPlan, type TiePreference } from '@/components/wallets/liquidity/plan/route-selection';
+import { PlanSimulatorPanel } from '@/components/wallets/liquidity/plan/PlanSimulatorPanel';
 import { SimulateLoanControl } from '@/components/wallets/liquidity/plan/SimulateLoanControl';
-import { WhyPanel } from '@/components/wallets/liquidity/plan/WhyPanel';
+import { PlanStepsPanel } from '@/components/wallets/liquidity/plan/PlanStepsPanel';
+import { ActivatePlanSheet } from '@/components/wallets/liquidity/plan/ActivatePlanSheet';
+import { applyCashPlanRoute } from '@/lib/api/cash-plan';
+import { toast } from 'sonner';
+import {
+  PlanDataGapsPanel,
+  PlanUntouchablesPanel,
+  PlanWeightsPanel,
+} from '@/components/wallets/liquidity/plan/PlanRailPanels';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import { getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
+import { simulateBridge } from '@/lib/finance/cash-plan/simulate-bridge';
+import { toCents } from '@/lib/finance/cash-plan/money';
 import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
 import {
   isWhatIfWalletType,
-  WhatIfPanel,
   type WhatIfWallet,
 } from '@/components/wallets/liquidity/plan/WhatIfPanel';
 import { SCENARIO_COPY } from '@/components/wallets/liquidity/scenario/copy';
@@ -72,21 +84,6 @@ const useWhatIfWallets = (enabled: boolean): WhatIfWallet[] | null => {
   return loaded?.ownerKey === ownerKey ? loaded.wallets : null;
 };
 
-type SurplusStrategy = 'avalanche' | 'snowball';
-
-const pickTiePlan = (
-  primary: RankedPlan,
-  other: RankedPlan | undefined,
-  preference: 'cost' | 'risk',
-): RankedPlan => {
-  if (!other) return primary;
-  const pair = [primary, other];
-  if (preference === 'cost') {
-    return [...pair].sort((left, right) => left.scores.cost - right.scores.cost || left.id.localeCompare(right.id))[0] ?? primary;
-  }
-  return [...pair].sort((left, right) => left.scores.risk - right.scores.risk || left.id.localeCompare(right.id))[0] ?? primary;
-};
-
 export const CashPlanTab = ({
   data,
   loading,
@@ -96,7 +93,6 @@ export const CashPlanTab = ({
   scenario,
 }: CashPlanTabProps) => {
   const [horizon, setHorizon] = useState<PlanHorizon>('quincena');
-  const [strategy, setStrategy] = useState<SurplusStrategy>('avalanche');
   const [bridgeRate, setBridgeRate] = useState('');
   const [bridgeTerm, setBridgeTerm] = useState('');
   const [bridgeFee, setBridgeFee] = useState('');
@@ -106,7 +102,10 @@ export const CashPlanTab = ({
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const [tiePreference, setTiePreference] = useState<'cost' | 'risk' | null>(null);
+  const [tiePreference, setTiePreference] = useState<TiePreference | null>(null);
+  const [activateOpen, setActivateOpen] = useState(false);
+  const [simOpenSignal, setSimOpenSignal] = useState(0);
+  const { context: financeContext } = useFinanceContext();
 
   const monthKey = selectedMonthKey || data?.as_of.slice(0, 7) || '';
   const wallets = useWhatIfWallets(scenario != null);
@@ -160,12 +159,6 @@ export const CashPlanTab = ({
     setTiePreference(null);
   };
 
-  const handleStrategyChange = (next: SurplusStrategy) => {
-    setStrategy(next);
-    setSelectedPlanId(null);
-    setChecklistOpen(false);
-  };
-
   const handleChoose = (planId: string) => {
     setSelectedPlanId(planId);
     setChecklistOpen(false);
@@ -209,7 +202,7 @@ export const CashPlanTab = ({
   const { input, plan } = computed;
 
   let heroScenario: PlanHeroScenario | null = null;
-  let resultNote: string | null = null;
+  let resultInset: string | null = null;
   if (scenario?.item && scenarioData && baseline) {
     if (scenarioInPeriod) {
       const delta = input.gapAmount - baseline.input.gapAmount;
@@ -222,87 +215,131 @@ export const CashPlanTab = ({
           : SCENARIO_COPY.gapShrank(formatCurrency(delta)),
       };
       const gapValue = (gap: number) => SCENARIO_COPY.gapValue(gap, formatCurrency(Math.abs(gap)));
-      resultNote = SCENARIO_COPY.simulatedGap(
-        gapValue(baseline.input.gapAmount),
-        gapValue(input.gapAmount),
-      );
+      const routeChanged = baseline.plan.primary.id !== plan.primary.id;
+      resultInset = `${SCENARIO_COPY.simulatedGap(gapValue(baseline.input.gapAmount), gapValue(input.gapAmount))} · ${
+        routeChanged ? PLAN_COPY.simRouteChanges : PLAN_COPY.simRouteSame
+      }`;
     } else {
       const delta = scenarioData.scenario_delta;
+      const liquidity = delta
+        ? `${formatWholeCurrency(delta.baseline.end_liquidity)} → ${formatWholeCurrency(delta.scenario.end_liquidity)}`
+        : SCENARIO_COPY.noChange;
       heroScenario = {
         kind: 'unchanged',
         title: SCENARIO_COPY.noChangePeriod(horizon),
-        body: SCENARIO_COPY.noChangeBody(
-          horizon,
-          formatDisplayDate(scenarioDateOf(scenario.item)),
-          delta
-            ? `${formatWholeCurrency(delta.baseline.end_liquidity)} → ${formatWholeCurrency(delta.scenario.end_liquidity)}`
-            : SCENARIO_COPY.noChange,
-        ),
+        body: SCENARIO_COPY.noChangeBody(horizon, formatDisplayDate(scenarioDateOf(scenario.item)), liquidity),
       };
+      resultInset = `${PLAN_COPY.simLiquidityEnd} ${liquidity} · ${PLAN_COPY.simRouteSame}`;
     }
   }
   const simulating = scenario?.loading ?? false;
-  const whatIf = scenario ? (
-    <WhatIfPanel
-      wallets={wallets}
-      asOf={data.as_of}
-      until={data.until}
-      active={scenario.item}
-      loading={scenario.loading}
-      error={scenario.error}
-      fieldErrors={scenario.fieldErrors}
-      resultNote={resultNote}
-      onSimulate={scenario.simulate}
+  const featured = resolveFeaturedPlan(plan, selectedPlanId, tiePreference);
+  const routes = [plan.primary, ...plan.alternatives];
+  const placeOf = (id: string) => routes.findIndex((route) => route.id === id) + 1;
+  const bridgeRoute = routes.find((route) => route.strategyKey === 'bridge');
+  const consolidateRoute = routes.find((route) => route.strategyKey === 'consolidate');
+  const bridgeSim = input.bridgeSim && bridgeRoute
+    ? simulateBridge({
+      amountCents: toCents(input.bridgeSim.amount ?? Math.max(0, input.gapAmount)),
+      aprAnnual: input.bridgeSim.aprAnnual,
+      termMonths: input.bridgeSim.termMonths,
+      feePct: input.bridgeSim.feePct,
+    })
+    : null;
+  const bridgeResult = bridgeRoute && bridgeSim && input.bridgeSim
+    ? PLAN_COPY.simBridgeResult(
+      formatCurrency(bridgeSim.paymentCents / 100),
+      input.bridgeSim.termMonths,
+      formatCurrency(bridgeRoute.estimatedCost),
+      placeOf(bridgeRoute.id),
+    )
+    : null;
+  const consolidateResult = consolidateRoute
+    ? PLAN_COPY.simConsolidateResult(formatCurrency(consolidateRoute.estimatedCost), placeOf(consolidateRoute.id))
+    : null;
+  const walletNames = new Map(data.funding_wallets.map((wallet) => [wallet.id, wallet.name]));
+  const period = planPeriodBounds(horizon, monthKey, data.as_of);
+  const periodIncomes = [...(data.income_dates ?? [])]
+    .filter((income) => income.date >= period.startYmd && income.date <= period.endYmd)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  // Payments the period already has and the chosen route leaves as they are.
+  const routeTouches = new Set(
+    featured.actions
+      .filter((step) => step.type !== 'extra_to_debt_avalanche' && step.type !== 'extra_to_debt_snowball' && step.type !== 'buffer_reserve')
+      .map((step) => step.obligationId)
+      .filter(Boolean),
+  );
+  const panelBills = input.obligations
+    .filter((item) => item.dueInHorizon && item.dueDate && !item.id.startsWith('scenario-') && !routeTouches.has(item.id))
+    .map((item) => ({
+      obligationId: item.id,
+      label: item.labelSynthetic,
+      amount: item.kind === 'card_msi' ? item.msiInstallment ?? 0 : item.statementDue ?? 0,
+      dueDate: item.dueDate!,
+    }))
+    .filter((bill) => bill.amount > 0);
+  const missingStatements = (data.summary.unresolved_card_obligations ?? [])
+    .filter((card) => card.statement_due_date >= period.startYmd && card.statement_due_date <= period.endYmd)
+    .map((card) => ({ walletId: card.wallet_id, name: card.wallet_name, dueDate: card.statement_due_date }));
+  const doneCount = featured.actions.filter((_, index) => checked[`${featured.id}:${index}`] === true).length;
+  const lowConfidence = plan.confidence === 'low';
+  const balanced = plan.mode === 'balanced';
+
+  const simulator = (
+    <PlanSimulatorPanel
+      mode={plan.mode}
+      whatIf={scenario ? {
+        wallets,
+        asOf: data.as_of,
+        until: data.until,
+        active: scenario.item,
+        loading: scenario.loading,
+        error: scenario.error,
+        fieldErrors: scenario.fieldErrors,
+        onSimulate: scenario.simulate,
+      } : null}
+      resultInset={resultInset}
+      startOpen={simOpenSignal}
+      bridge={{
+        rate: bridgeRate,
+        term: bridgeTerm,
+        fee: bridgeFee,
+        onRateChange: setBridgeRate,
+        onTermChange: setBridgeTerm,
+        onFeeChange: setBridgeFee,
+        active: parseLoanSimFields(bridgeRate, bridgeTerm, bridgeFee) != null,
+        result: bridgeResult,
+      }}
+      consolidate={{
+        rate: consolidateRate,
+        term: consolidateTerm,
+        fee: consolidateFee,
+        onRateChange: setConsolidateRate,
+        onTermChange: setConsolidateTerm,
+        onFeeChange: setConsolidateFee,
+        active: parseLoanSimFields(consolidateRate, consolidateTerm, consolidateFee) != null,
+        result: consolidateResult,
+      }}
     />
-  ) : null;
-  const plans = [plan.primary, ...plan.alternatives];
-  const tieOther = plan.tiePlanId ? plans.find((item) => item.id === plan.tiePlanId) : undefined;
-  const surplusFeatured = plan.mode === 'surplus'
-    ? plans.find((item) => item.strategyKey === strategy) ?? plan.primary
-    : plan.primary;
-  const tieFeatured = plan.tie && tiePreference
-    ? pickTiePlan(plan.primary, tieOther, tiePreference)
-    : surplusFeatured;
-  const featured = selectedPlanId
-    ? plans.find((item) => item.id === selectedPlanId) ?? tieFeatured
-    : tieFeatured;
-  const alternatives = plans.filter((item) => item.id !== featured.id);
+  );
+  const gapsPanel = <PlanDataGapsPanel key={lowConfidence ? 'open' : 'folded'} gaps={plan.dataGaps} startOpen={lowConfidence} />;
 
   return (
-    <div
-      className={cn(
-        'space-y-6',
-        whatIf && 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0',
-      )}
-    >
-      <div className="space-y-6 lg:col-start-1">
+    <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:space-y-0">
+      <div className="min-w-0 space-y-6">
         {error ? (
           <div className="space-y-2">
             <ErrorBanner>No se pudo actualizar el panorama.</ErrorBanner>
-            <Button type="button" variant="ghost" className="h-9" onClick={onReload}>
+            <p className="text-sm text-muted-foreground">{PLAN_COPY.errorKeepsPlan}</p>
+            <Button type="button" variant="ghost" className="h-11" onClick={onReload}>
               {PLAN_COPY.retry}
             </Button>
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <HorizonToggle value={horizon} onChange={handleHorizonChange} />
-          {plan.mode === 'surplus' ? (
-            <SegmentedControl
-              value={strategy}
-              onValueChange={(next) => handleStrategyChange(next as 'avalanche' | 'snowball')}
-              ariaLabel={PLAN_COPY.strategyLabel}
-              frameClassName={cn(MONTHLY_LIQUID_PANEL_CLASS, 'inline-flex w-fit max-w-full p-1 sm:p-1.5')}
-              options={[
-                { value: 'avalanche', label: PLAN_COPY.avalanche },
-                { value: 'snowball', label: PLAN_COPY.snowball },
-              ]}
-            />
-          ) : null}
-        </div>
-
         {simulating ? (
           <div className="space-y-3" aria-busy>
+            <HorizonToggle value={horizon} onChange={handleHorizonChange} />
             <Skeleton className="h-6 w-56 rounded-lg" />
             <Skeleton className="h-24 w-full rounded-xl" />
           </div>
@@ -311,110 +348,135 @@ export const CashPlanTab = ({
             mode={plan.mode}
             gapAmount={input.gapAmount}
             horizon={horizon}
-            lines={input.gapLines}
-            note={input.gapNote}
+            periodLabel={planPeriodLabel(horizon, monthKey, data.as_of)}
+            todayLabel={planTodayLabel(data.as_of)}
+            confidence={plan.confidence}
+            gapCount={plan.dataGaps.length}
             scenario={heroScenario}
+            controls={<HorizonToggle value={horizon} onChange={handleHorizonChange} />}
           />
         )}
-      </div>
 
-      {whatIf ? (
-        <div className="lg:sticky lg:top-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">{whatIf}</div>
-      ) : null}
+        <PlanFlowPanel mode={plan.mode} input={input} dataGaps={plan.dataGaps} cushion={cushionAfter(featured)} />
 
-      <div className="space-y-6 lg:col-start-1">
-        <DataGapCallout gaps={plan.dataGaps} lowConfidence={plan.confidence === 'low'} />
-
-        {plan.primary.id === 'empty' ? (
-          <p className="text-sm text-muted-foreground">{PLAN_COPY.noSafePrimary}</p>
-        ) : null}
-
-        {plan.tie ? (
-          <div className="rounded-xl border border-border/60 px-4 py-3">
-            <p className="text-sm font-medium">{PLAN_COPY.tieTitle}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{PLAN_COPY.tieBody}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className={cn('rounded-xl', tiePreference === 'cost' && 'bg-muted')}
-                aria-pressed={tiePreference === 'cost'}
-                onClick={() => setTiePreference('cost')}
-              >
-                {PLAN_COPY.preferCost}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className={cn('h-9', tiePreference === 'risk' && 'bg-muted')}
-                aria-pressed={tiePreference === 'risk'}
-                onClick={() => setTiePreference('risk')}
-              >
-                {PLAN_COPY.preferRisk}
-              </Button>
-            </div>
+        {balanced ? (
+          <div
+            className={cn(MONTHLY_PANEL_SHELL_CLASS, 'flex flex-wrap items-center justify-between gap-3 px-4 py-3')}
+            data-testid="plan-balanced-note"
+          >
+            <p className="min-w-0 flex-1 basis-56 text-sm">{PLAN_COPY.balancedSimulate}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 rounded-xl"
+              onClick={() => {
+                setSimOpenSignal((count) => count + 1);
+                document.getElementById('plan-simulator')?.scrollIntoView({ block: 'start' });
+              }}
+            >
+              {PLAN_COPY.simulateCta}
+            </Button>
           </div>
-        ) : null}
-
-        {simulating ? (
+        ) : simulating ? (
           <Skeleton className="h-48 w-full rounded-xl" />
         ) : (
-          <PlanRouteCard
-            plan={featured}
-            featured
-            ctaLabel={PLAN_COPY.apply}
-            onChoose={() => setChecklistOpen(true)}
-          >
-            {checklistOpen ? (
-              <ApplyPlanChecklist
-                planId={featured.id}
-                actions={featured.actions}
-                checked={checked}
-                onToggle={handleToggleStep}
-              />
-            ) : null}
-          </PlanRouteCard>
+          <>
+            <PlanRoutesSection
+              plan={plan}
+              selectedPlanId={selectedPlanId}
+              tiePreference={tiePreference}
+              onChoose={handleChoose}
+              bridgeInputs={
+                <SimulateLoanControl
+                  idPrefix="bridge-card"
+                  title={PLAN_COPY.bridgeTitle}
+                  rate={bridgeRate}
+                  term={bridgeTerm}
+                  fee={bridgeFee}
+                  onRateChange={setBridgeRate}
+                  onTermChange={setBridgeTerm}
+                  onFeeChange={setBridgeFee}
+                  active={parseLoanSimFields(bridgeRate, bridgeTerm, bridgeFee) != null}
+                />
+              }
+              onPreferTie={(preference) => {
+                setTiePreference(preference);
+                setSelectedPlanId(null);
+                setChecklistOpen(false);
+              }}
+            />
+            <PlanStepsPanel
+              plan={featured}
+              obligations={input.obligations}
+              dataGaps={plan.dataGaps}
+              walletNames={walletNames}
+              todayYmd={data.as_of}
+              incomes={periodIncomes}
+              panelBills={panelBills}
+              missingStatements={missingStatements}
+              doneCount={doneCount}
+              monthlyPanelHref={getCurrentMonthlyPanelHref(parseCalendarDate(data.as_of))}
+              activateBlockedReason={scenario?.item ? PLAN_COPY.activateScenarioBlocked : null}
+              onActivate={() => setActivateOpen(true)}
+              onMarkOnly={() => setChecklistOpen((open) => !open)}
+            >
+              {checklistOpen ? (
+                <ApplyPlanChecklist
+                  planId={featured.id}
+                  actions={featured.actions}
+                  checked={checked}
+                  onToggle={handleToggleStep}
+                />
+              ) : null}
+            </PlanStepsPanel>
+            <ActivatePlanSheet
+              open={activateOpen}
+              onOpenChange={setActivateOpen}
+              routeTitle={featured.title}
+              actions={featured.actions}
+              obligations={input.obligations}
+              todayYmd={data.as_of}
+              incomes={periodIncomes}
+              onConfirm={async () => {
+                const result = await applyCashPlanRoute(
+                  {
+                    horizon,
+                    monthKey,
+                    routeId: featured.id,
+                    actions: featured.actions.map((step) => ({
+                      type: step.type,
+                      obligationId: step.obligationId ?? null,
+                      amount: step.amount ?? null,
+                    })),
+                    bridgeSim: input.bridgeSim ?? null,
+                    consolidateSim: input.consolidateSim ?? null,
+                  },
+                  financeContext ?? undefined,
+                );
+                setActivateOpen(false);
+                const changed = result.writes.filter(
+                  (write) => write.kind !== 'card_payment_plan' || write.status !== 'unchanged',
+                ).length;
+                const panelHref = getCurrentMonthlyPanelHref(parseCalendarDate(data.as_of));
+                toast.success(changed > 0 ? PLAN_COPY.activateDone(changed) : PLAN_COPY.activateAlready, {
+                  action: { label: PLAN_COPY.activateSeePanel, onClick: () => window.location.assign(panelHref) },
+                });
+                onReload();
+              }}
+            />
+          </>
         )}
-
-        {alternatives.length > 0 ? (
-          <div className="space-y-3">
-            {alternatives.map((item) => (
-              <PlanRouteCard
-                key={item.id}
-                plan={item}
-                featured={false}
-                ctaLabel={PLAN_COPY.choose}
-                onChoose={() => handleChoose(item.id)}
-              />
-            ))}
-          </div>
-        ) : null}
-
-        <WhyPanel explainability={plan.explainability} />
-
-        <SimulateLoanControl
-          idPrefix="bridge"
-          title={PLAN_COPY.bridgeTitle}
-          rate={bridgeRate}
-          term={bridgeTerm}
-          fee={bridgeFee}
-          onRateChange={setBridgeRate}
-          onTermChange={setBridgeTerm}
-          onFeeChange={setBridgeFee}
-          active={parseLoanSimFields(bridgeRate, bridgeTerm, bridgeFee) != null}
-        />
-        <SimulateLoanControl
-          idPrefix="consolidate"
-          title={PLAN_COPY.consolidateTitle}
-          rate={consolidateRate}
-          term={consolidateTerm}
-          fee={consolidateFee}
-          onRateChange={setConsolidateRate}
-          onTermChange={setConsolidateTerm}
-          onFeeChange={setConsolidateFee}
-          active={parseLoanSimFields(consolidateRate, consolidateTerm, consolidateFee) != null}
-        />
       </div>
+
+      <aside className="min-w-0 space-y-4 lg:sticky lg:top-4" aria-label={PLAN_COPY.railLabel}>
+        {lowConfidence ? gapsPanel : null}
+        {simulator}
+        {lowConfidence ? null : gapsPanel}
+        {plan.mode === 'shortfall' ? (
+          <PlanUntouchablesPanel labels={plan.explainability.untouchableLabels} obligations={input.obligations} />
+        ) : null}
+        {balanced ? null : <PlanWeightsPanel />}
+      </aside>
     </div>
   );
 };

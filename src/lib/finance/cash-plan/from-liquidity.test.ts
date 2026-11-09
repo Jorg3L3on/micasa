@@ -519,3 +519,117 @@ describe('planInputFromLiquidity with a scenario', () => {
     expect(input.gapLines.find((line) => line.id === 'scenario-0-1')?.amount).toBe(1800);
   });
 });
+
+describe('step due dates and source wallet (MIC-I14-3)', () => {
+  const mesInput = (wallets?: LiquidityProjectionResponse['funding_wallets']) => {
+    const base = projection();
+    return planInputFromLiquidity({
+      projection: wallets ? { ...base, funding_wallets: wallets } : base,
+      monthKey: '2026-09',
+      horizon: 'mes',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T00:00:00.000Z',
+    });
+  };
+
+  it('an undated MSI records undated_obligation and its step has no dueDate', () => {
+    const input = mesInput();
+    const gap = input.dataGaps?.find((item) => item.code === 'undated_obligation');
+    expect(gap?.obligationId).toBe('msi-1-2026-09');
+    expect(input.obligations.find((item) => item.id === 'msi-1-2026-09')?.dueDate).toBeUndefined();
+
+    const result = buildCashPlan(input);
+    const steps = [result.primary, ...result.alternatives].flatMap((plan) => plan.actions);
+    const msiSteps = steps.filter((step) => step.obligationId === 'msi-1-2026-09');
+    expect(msiSteps.length).toBeGreaterThan(0);
+    for (const step of msiSteps) expect(step.dueDate).toBeUndefined();
+
+    // A dated obligation carries its milestone's civil day.
+    const cardSteps = steps.filter((step) => step.obligationId === 'card-7');
+    expect(cardSteps.length).toBeGreaterThan(0);
+    for (const step of cardSteps) expect(step.dueDate).toBe('2026-09-10');
+  });
+
+  it('fromWalletId is the funding wallet with the highest balance', () => {
+    const input = mesInput([
+      { id: 1, name: 'Efectivo sintético', type: 'CASH', balance: 300 },
+      { id: 2, name: 'Débito sintético', type: 'DEBIT_CARD', balance: 700 },
+    ]);
+    expect(input.fundingWallets).toEqual([{ id: 1, balance: 300 }, { id: 2, balance: 700 }]);
+    const result = buildCashPlan(input);
+    const funded = [result.primary, ...result.alternatives]
+      .flatMap((plan) => plan.actions)
+      .filter((step) => step.type !== 'defer_nonessential' && step.type !== 'bridge_loan' && step.type !== 'consolidate');
+    expect(funded.length).toBeGreaterThan(0);
+    for (const step of funded) expect(step.fromWalletId).toBe(2);
+  });
+});
+
+describe('deferrals only for expenses that exist (MIC-I14)', () => {
+  it('a template bill is never offered as a deferral; an unpaid expense is', () => {
+    const base = projection();
+    base.milestones[1]!.obligations.push({
+      source: 'unpaid_expense',
+      wallet_id: 1,
+      wallet_name: 'Efectivo sintético',
+      wallet_type: 'CASH',
+      statement_start: '',
+      statement_end: '',
+      statement_due_date: '2026-09-20',
+      last_statement_balance: 0,
+      payments_applied_to_statement: 0,
+      next_due_payment: 150,
+      expense_id: 77,
+      expense_description: 'Cine',
+    });
+    const input = planInputFromLiquidity({
+      projection: base,
+      monthKey: '2026-09',
+      horizon: 'mes',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T00:00:00.000Z',
+    });
+    const netflix = input.obligations.find((item) => item.labelSynthetic === 'Netflix');
+    expect(netflix?.discretionary).toBe(false);
+    const cine = input.obligations.find((item) => item.labelSynthetic === 'Cine');
+    expect(cine?.discretionary).toBe(true);
+    const result = buildCashPlan(input);
+    const deferred = [result.primary, ...result.alternatives]
+      .flatMap((plan) => plan.actions)
+      .filter((step) => step.type === 'defer_nonessential')
+      .map((step) => step.obligationId);
+    expect(deferred).not.toContain(netflix?.id);
+  });
+});
+
+describe('paydays inside the quincena (MIC-I14)', () => {
+  const quincena = (incomeDates: LiquidityProjectionResponse['income_dates']) =>
+    planInputFromLiquidity({
+      projection: { ...projection(), income_dates: incomeDates },
+      monthKey: '2026-09',
+      horizon: 'quincena',
+      asOfYmd: '2026-09-10',
+      computedAt: '2026-09-10T00:00:00.000Z',
+    });
+
+  it('counts an income dated inside the quincena, whole, and drops the monthly-only gap', () => {
+    const without = quincena([]);
+    const input = quincena([
+      { date: '2026-09-14', amount: 6000, title: 'Nómina' },
+      { date: '2026-09-29', amount: 6000, title: 'Nómina' },
+      { date: '2026-09-05', amount: 500, title: 'Ingreso registrado' },
+    ]);
+    expect(input.gapLines.filter((line) => line.id.startsWith('income-'))).toEqual([
+      { id: 'income-2026-09-14-0', label: 'Nómina · 14 sep', amount: -6000 },
+    ]);
+    expect(input.gapAmount).toBeCloseTo(without.gapAmount - 6000, 2);
+    expect(input.gapLines.reduce((sum, line) => sum + line.amount, 0)).toBeCloseTo(input.gapAmount, 2);
+    expect(input.dataGaps?.map((gap) => gap.code)).not.toContain('income_monthly_only');
+  });
+
+  it('without dated incomes keeps income out and says so', () => {
+    const input = quincena(undefined);
+    expect(input.gapLines.some((line) => line.id.startsWith('income-'))).toBe(false);
+    expect(input.dataGaps?.map((gap) => gap.code)).toContain('income_monthly_only');
+  });
+});

@@ -469,6 +469,63 @@ describe('listLoanPaymentsForPlannerMonth', () => {
       }),
     );
   });
+
+  it('carries the lender provider icon key from the loaded lender', async () => {
+    const loan = {
+      name: 'Préstamo personal',
+      lender: 'Banco Ejemplo',
+      lender_id: 3,
+      type: 'PERSONAL',
+      payment_source: 'WALLET',
+      source_wallet_id: null,
+      source_wallet: null,
+      linked_wallet_id: null,
+      linked_wallet: null,
+      income_template: null,
+    };
+    const row = {
+      sequence: 1,
+      amount: '700',
+      status: 'SCHEDULED',
+      paid_at: null,
+      source_wallet_id: null,
+      source_wallet: null,
+      linked_expense: null,
+      note: null,
+    };
+    findManyLoanPayment.mockResolvedValueOnce([
+      {
+        ...row,
+        id: 31,
+        loan_id: 6,
+        due_date: parseCalendarDate('2026-07-08'),
+        loan: { id: 6, ...loan, lender_entity: { provider_icon_key: 'BBVA' } },
+      },
+      {
+        ...row,
+        id: 32,
+        loan_id: 7,
+        due_date: parseCalendarDate('2026-07-20'),
+        loan: { id: 7, ...loan, lender_id: null, lender_entity: null },
+      },
+    ]);
+
+    const result = await listLoanPaymentsForPlannerMonth(ownerFilter, 2026, 7);
+
+    expect(findManyLoanPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          loan: expect.objectContaining({
+            include: expect.objectContaining({
+              lender_entity: { select: { provider_icon_key: true } },
+            }),
+          }),
+        }),
+      }),
+    );
+    expect(result.first[0]?.lenderProviderIconKey).toBe('BBVA');
+    expect(result.second[0]?.lenderProviderIconKey).toBeNull();
+  });
 });
 
 describe('aggregateLoanPaymentsForFortnights', () => {

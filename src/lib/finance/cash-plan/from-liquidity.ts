@@ -1,5 +1,5 @@
 import { getCalendarFortnightRefForYmd, ymdFallsInFortnight } from '@/lib/fortnight-calendar';
-import { formatDisplayDate } from '@/lib/calendar-dates';
+import { formatDisplayDate, formatMonthShort } from '@/lib/calendar-dates';
 import type {
   LiquidityProjectionObligationItem,
   LiquidityProjectionResponse,
@@ -153,13 +153,13 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     added.push(line);
   };
 
-  const scenarioItems: LiquidityProjectionObligationItem[] = [];
+  const scenarioItems: Array<{ item: LiquidityProjectionObligationItem; dueDate: string }> = [];
 
   for (const milestone of projection.milestones) {
     if (!inHorizon(milestone.due_date)) continue;
     for (const item of milestone.obligations) {
       if (item.source === 'scenario') {
-        scenarioItems.push(item);
+        scenarioItems.push({ item, dueDate: milestone.due_date });
         continue;
       }
       if (item.source === 'expense_template') {
@@ -172,8 +172,10 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           labelSynthetic: label,
           statementDue: item.next_due_payment,
           dueInHorizon: true,
+          dueDate: milestone.due_date,
           consequenceTier: classified.tier,
-          discretionary: classified.discretionary,
+          // A template occurrence has no expense to move yet, so it is never offered as a deferral.
+          discretionary: false,
         }, {
           id: `bill-${item.expense_template_id ?? label}`,
           label,
@@ -216,6 +218,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           catAnnual,
           creditLimit: card?.credit_limit ?? undefined,
           dueInHorizon: true,
+          dueDate: milestone.due_date,
           consequenceTier: 3,
         }, {
           id: `card-${item.wallet_id}`,
@@ -242,6 +245,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           statementDue: item.next_due_payment,
           aprAnnual: loanApr,
           dueInHorizon: true,
+          dueDate: milestone.due_date,
           consequenceTier: classified.tier,
         }, {
           id: `loan-${item.loan_id ?? item.loan_payment_id}`,
@@ -261,6 +265,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
           labelSynthetic: label,
           statementDue: item.next_due_payment,
           dueInHorizon: true,
+          dueDate: milestone.due_date,
           consequenceTier: classified.tier,
           discretionary: classified.discretionary,
         }, {
@@ -277,6 +282,14 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     if (item.kind !== 'msi') continue;
     const installment = item.payment_amount ?? 0;
     if (installment <= 0) continue;
+    if (horizon === 'mes' && !item.due_date) {
+      // Counted in the month, but no civil day to schedule its step on.
+      dataGaps.push({
+        code: 'undated_obligation',
+        obligationId: item.id,
+        message: `La mensualidad de ${item.title} no tiene día de pago, así que su paso no lleva fecha.`,
+      });
+    }
     if (horizon === 'quincena') {
       if (!item.due_date) {
         dataGaps.push({
@@ -297,6 +310,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
       balanceTotal: item.amount,
       msiInstallment: installment,
       dueInHorizon: true,
+      ...(item.due_date ? { dueDate: item.due_date } : {}),
       consequenceTier: 3,
     }, {
       id: item.id,
@@ -311,7 +325,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
   // card's statement, so the route can pay that card's minimum; a card
   // instalment is a cuota.
   const scenarioLines: GapBreakdownLine[] = [];
-  for (const item of scenarioItems) {
+  for (const { item, dueDate } of scenarioItems) {
     const id = scenarioLineId(item);
     const label = scenarioLabel(item);
     const line: GapBreakdownLine = {
@@ -328,6 +342,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
         labelSynthetic: label,
         statementDue: item.next_due_payment,
         dueInHorizon: true,
+        dueDate,
         consequenceTier: 3,
         discretionary: true,
       }, line);
@@ -341,6 +356,7 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
         balanceTotal: item.next_due_payment,
         msiInstallment: item.next_due_payment,
         dueInHorizon: true,
+        dueDate,
         consequenceTier: 3,
       }, line);
       continue;
@@ -366,12 +382,19 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
       catAnnual: item.cat_annual != null && item.cat_annual > 0 ? item.cat_annual : null,
       creditLimit: utilization?.credit_limit ?? undefined,
       dueInHorizon: true,
+      dueDate,
       consequenceTier: 3,
     }, line);
   }
   const scenarioCents = scenarioLines.reduce((sum, line) => sum + toCents(line.amount), 0);
 
-  if (horizon === 'quincena') {
+  // Quincena: an income counts when its civil day falls inside the period, from today on.
+  // Without dated incomes (an older projection), income stays out and the plan says so.
+  const datedIncomes = projection.income_dates;
+  const periodIncomes = horizon === 'quincena' && datedIncomes
+    ? datedIncomes.filter((income) => income.amount > 0 && income.date >= asOfYmd && inHorizon(income.date))
+    : [];
+  if (horizon === 'quincena' && !datedIncomes) {
     dataGaps.push({
       code: 'income_monthly_only',
       message: 'El ingreso está por mes. Esta quincena no lo parte a la mitad.',
@@ -379,7 +402,19 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
   }
 
   const unresolvedCards = projection.summary.unresolved_card_obligation_count ?? 0;
-  if (unresolvedCards > 0) {
+  const unresolvedInHorizon = (projection.summary.unresolved_card_obligations ?? []).filter(
+    (card) => inHorizon(card.statement_due_date),
+  );
+  if (unresolvedInHorizon.length > 0) {
+    // One gap per card, so the plan can show it on that card's line.
+    for (const card of unresolvedInHorizon) {
+      dataGaps.push({
+        code: 'missing_statement',
+        obligationId: `card-${card.wallet_id}`,
+        message: `Falta el pago del corte de ${card.wallet_name} (vence el ${formatDisplayDate(card.statement_due_date)}). No está sumado aquí.`,
+      });
+    }
+  } else if (unresolvedCards > 0 && (projection.summary.unresolved_card_obligations ?? []).length === 0) {
     dataGaps.push({
       code: 'missing_statement',
       message:
@@ -387,7 +422,17 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     });
   }
 
-  const incomeCents = horizon === 'mes' ? toCents(month?.expected_income_total ?? 0) : 0;
+  const incomeCents = horizon === 'mes'
+    ? toCents(month?.expected_income_total ?? 0)
+    : periodIncomes.reduce((sum, income) => sum + toCents(income.amount), 0);
+  const incomeLines: GapBreakdownLine[] = periodIncomes.map((income, index) => {
+    const [, incomeMonth, incomeDay] = income.date.split('-').map(Number);
+    return {
+      id: `income-${income.date}-${index}`,
+      label: `${income.title} · ${incomeDay} ${formatMonthShort(incomeMonth)}`,
+      amount: fromCents(-toCents(income.amount)),
+    };
+  });
   const paymentCents = horizon === 'mes'
     ? toCents(month?.total_payments_due ?? 0)
     : added.reduce((sum, line) => sum + toCents(line.amount), 0);
@@ -403,9 +448,12 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     : [
       ...added,
       { id: 'cash', label: 'Efectivo disponible', amount: fromCents(-cashCents) },
+      ...incomeLines,
     ];
   const gapNote = horizon === 'quincena'
-    ? 'No entran plantillas sin gasto en la quincena, ni tarjetas cuyo pago de este periodo ya está cubierto. El ingreso del mes no se parte.'
+    ? datedIncomes
+      ? 'No entran plantillas sin gasto en la quincena, ni tarjetas cuyo pago de este periodo ya está cubierto. Solo entra el ingreso que cae dentro de la quincena, completo; no se parte.'
+      : 'No entran plantillas sin gasto en la quincena, ni tarjetas cuyo pago de este periodo ya está cubierto. El ingreso del mes no se parte.'
     : undefined;
 
   const untouchableIds = obligations
@@ -430,5 +478,6 @@ export const planInputFromLiquidity = (selection: LiquidityPlanSelection): PlanI
     consolidateSim: selection.consolidateSim ?? null,
     computedAt: selection.computedAt,
     dataGaps,
+    fundingWallets: projection.funding_wallets.map((wallet) => ({ id: wallet.id, balance: wallet.balance })),
   };
 };

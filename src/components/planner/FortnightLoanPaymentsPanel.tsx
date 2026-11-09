@@ -17,18 +17,29 @@ import {
   type PlannerListSortDir,
   type PlannerListSortMode,
 } from '@/lib/finance/planner-list-sort';
-import LenderPayDialog from '@/components/loans/LenderPayDialog';
+import dynamic from 'next/dynamic';
+import { useOpenedOnce } from '@/hooks/use-opened-once';
 import { LoanPaymentManageOverlay } from '@/components/loans/LoanPaymentManageOverlay';
 import { useFinanceContext } from '@/context/finance-context';
 import { getLender, payLender } from '@/lib/api/lenders';
 import { getPaymentMethodOptions } from '@/lib/api/wallets';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
+import { DueRowProviderLogo } from '@/components/planner/DueRowProviderLogo';
+import { getWalletProviderLogoOption } from '@/lib/wallet-provider-icons';
+import { inferLenderProviderIconKey } from '@/lib/finance/lender-identity';
+import {
+  formatLoanInstallmentCaption,
+  getLoanSourceLabel,
+} from '@/lib/finance/loan-labels';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import {
   AURA_TONE_HEX,
   getDueRowTone,
   type DueRowStatus,
 } from '@/lib/ui/aura-palette';
+
+// The pay dialog's form loads when a payment is opened.
+const LenderPayDialog = dynamic(() => import('@/components/loans/LenderPayDialog'), { ssr: false });
 
 type FortnightLoanPaymentsPanelProps = {
   items: LoanDuePaymentItem[];
@@ -42,6 +53,15 @@ type FortnightLoanPaymentsPanelProps = {
 };
 
 type VisualStatus = Exclude<DueRowStatus, 'missing'>;
+
+/** "Salario Carmen · cuota 19 de 24 · termina jun 2027" for one installment. */
+const installmentCaption = (item: LoanDuePaymentItem): string =>
+  formatLoanInstallmentCaption({
+    source: getLoanSourceLabel(item),
+    sequence: item.sequence,
+    paymentCount: item.paymentCount,
+    endDate: item.loanEndDate,
+  });
 
 const getDaysLeft = (dueDateYmd: string, todayYmd: string): number => {
   const [dy, dm, dd] = dueDateYmd.split('-').map((n) => parseInt(n, 10));
@@ -79,6 +99,7 @@ export default function FortnightLoanPaymentsPanel({
   );
   const [manageOpen, setManageOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const payDialogMounted = useOpenedOnce(payOpen);
   const [payingLender, setPayingLender] = useState<LenderListItem | null>(null);
   const [fundingWallets, setFundingWallets] = useState<PaymentMethodOption[]>(
     [],
@@ -118,7 +139,7 @@ export default function FortnightLoanPaymentsPanel({
     setPayingLender({
       id: group.lenderId,
       name: group.lenderName,
-      providerIconKey: null,
+      providerIconKey: group.items[0]?.lenderProviderIconKey ?? null,
       notes: null,
       active: true,
       remainingPrincipal: 0,
@@ -220,6 +241,14 @@ export default function FortnightLoanPaymentsPanel({
           const daysLeft = getDaysLeft(group.dueDate, todayYmd);
           const isPayroll = group.paymentSource === 'PAYROLL_DEDUCTION';
           const Icon = isPayroll ? Landmark : HandCoins;
+          // Same lookup as LenderIdentity on Préstamos. Without a logo the
+          // generic icon stays (payroll keeps Landmark).
+          const providerLogo = getWalletProviderLogoOption(
+            inferLenderProviderIconKey(
+              group.lenderName,
+              group.items[0]?.lenderProviderIconKey,
+            ),
+          );
           const isDueSoon = visual === 'pending' && daysLeft <= 7;
           const rowTone = getDueRowTone(visual, daysLeft);
           const scheduledItems = group.items.filter(
@@ -229,6 +258,11 @@ export default function FortnightLoanPaymentsPanel({
           const firstScheduled = scheduledItems[0] ?? group.items[0]!;
           const isPayLoading =
             group.lenderId != null && payLoadingLenderId === group.lenderId;
+          const singleCaption =
+            group.items.length === 1 ? installmentCaption(group.items[0]!) : '';
+          const groupTitle = isPayroll
+            ? `Nómina · ${group.lenderName}`
+            : `Pagar a ${group.lenderName}`;
 
           return (
             <li
@@ -269,46 +303,70 @@ export default function FortnightLoanPaymentsPanel({
                             : 'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                   )}
                 >
-                  <Icon
-                    className={cn(
-                      'h-4 w-4',
-                      visual === 'paid'
-                        ? 'text-status-income'
-                        : visual === 'overdue'
-                          ? 'text-destructive'
-                          : visual === 'muted'
-                            ? 'text-muted-foreground'
-                            : isDueSoon
-                              ? 'text-status-pending'
-                              : 'text-status-info',
-                    )}
-                    aria-hidden
-                  />
+                  {providerLogo ? (
+                    <DueRowProviderLogo provider={providerLogo} />
+                  ) : (
+                    <Icon
+                      className={cn(
+                        'h-4 w-4',
+                        visual === 'paid'
+                          ? 'text-status-income'
+                          : visual === 'overdue'
+                            ? 'text-destructive'
+                            : visual === 'muted'
+                              ? 'text-muted-foreground'
+                              : isDueSoon
+                                ? 'text-status-pending'
+                                : 'text-status-info',
+                      )}
+                      aria-hidden
+                    />
+                  )}
                 </span>
 
                 <div className="min-w-0 flex-1">
+                  {/*
+                    Two lines, never one truncated line: "FONACOT Carmen" vs "FONACOT Jorge".
+                    Below sm the "Pagar a" / "Nómina ·" prefix moves out of the name
+                    (the Pagar button and the Nómina caption carry it) so the lender reads whole.
+                  */}
                   <button
                     type="button"
                     onClick={() => handleOpenManageGroup(group.items)}
+                    title={groupTitle}
+                    aria-label={groupTitle}
                     className={cn(
-                      'block min-w-0 truncate text-left font-semibold hover:underline',
+                      'block min-w-0 max-w-full text-left font-semibold leading-snug hover:underline',
                       isCompact ? 'text-xs' : 'text-sm',
                       visual === 'paid' || visual === 'muted'
                         ? 'text-muted-foreground'
                         : 'text-foreground',
                     )}
                   >
-                    {isPayroll
-                      ? `Nómina · ${group.lenderName}`
-                      : `Pagar a ${group.lenderName}`}
+                    <span className="line-clamp-2 break-words">
+                      <span className="hidden sm:inline">
+                        {isPayroll ? 'Nómina · ' : 'Pagar a '}
+                      </span>
+                      {group.lenderName}
+                    </span>
                   </button>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-muted-foreground">
-                    <span>
-                      {group.items.length} contrato
-                      {group.items.length === 1 ? '' : 's'}
-                    </span>
+                    {isPayroll && !singleCaption ? (
+                      <>
+                        <span className="sm:hidden">Nómina</span>
+                        <span className="text-muted-foreground/30 sm:hidden">·</span>
+                      </>
+                    ) : null}
+                    {group.items.length === 1 && singleCaption ? (
+                      <span className="break-words">{singleCaption}</span>
+                    ) : (
+                      <span>
+                        {group.items.length} contrato
+                        {group.items.length === 1 ? '' : 's'}
+                      </span>
+                    )}
                     <span className="text-muted-foreground/30">·</span>
-                    <span>
+                    <span className="whitespace-nowrap">
                       {group.isRange
                         ? `${formatDate(group.dueDate)} – ${formatDate(group.dueDateEnd)}`
                         : formatDate(group.dueDate)}
@@ -316,8 +374,9 @@ export default function FortnightLoanPaymentsPanel({
                   </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="font-sans text-sm font-bold tabular-nums">
+                {/* Below sm the amount sits over the action so the name keeps its width. */}
+                <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+                  <span className="whitespace-nowrap font-sans text-sm font-bold tabular-nums">
                     {formatCurrency(group.amount)}
                   </span>
                   {canPay ? (
@@ -325,7 +384,7 @@ export default function FortnightLoanPaymentsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="gap-1"
+                      className="h-11 gap-1 sm:h-8"
                       onClick={() =>
                         isPayroll
                           ? handleOpenManageGroup(group.items)
@@ -348,7 +407,7 @@ export default function FortnightLoanPaymentsPanel({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="gap-1"
+                      className="h-11 gap-1 sm:h-8"
                       onClick={() => handleOpenManage(scheduledItems)}
                       aria-label={
                         scheduledItems.length > 1
@@ -364,7 +423,7 @@ export default function FortnightLoanPaymentsPanel({
               </div>
 
               {group.items.length > 1 ? (
-                <ul className="mt-2 space-y-1 border-l-2 border-border/60 pl-2.5 dark:border-white/[0.08]">
+                <ul className="mt-2 space-y-1.5 border-l-2 border-border/60 pl-2.5 dark:border-white/[0.08]">
                   {group.items.map((item) => (
                     <li
                       key={item.id}
@@ -373,19 +432,27 @@ export default function FortnightLoanPaymentsPanel({
                       <button
                         type="button"
                         onClick={() => handleOpenManage(item)}
-                        className="min-w-0 truncate text-left hover:underline"
+                        title={item.loanName}
+                        className="min-w-0 flex-1 text-left leading-snug hover:underline"
                       >
-                        {item.loanName}
+                        <span className="line-clamp-2 break-words">
+                          {item.loanName}
+                        </span>
+                        {installmentCaption(item) ? (
+                          <span className="mt-0.5 block break-words text-caption text-muted-foreground/80">
+                            {installmentCaption(item)}
+                          </span>
+                        ) : null}
                       </button>
-                      <span className="flex shrink-0 items-center gap-2">
-                        <span className="font-sans tabular-nums">
+                      <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+                        <span className="whitespace-nowrap font-sans tabular-nums">
                           {formatCurrency(item.amount)}
                         </span>
                         {item.status === 'SCHEDULED' ? (
                           <Button
                             type="button"
-                            size="sm"
-                            variant="ghost"
+                            variant="outline"
+                            className="h-11 rounded-full px-3.5 text-xs font-semibold shadow-none sm:h-9"
                             onClick={() => handleOpenManage(item)}
                             aria-label={`Gestionar ${item.loanName}`}
                           >
@@ -407,7 +474,7 @@ export default function FortnightLoanPaymentsPanel({
         items={managingItems}
         onSuccess={onUpdated}
       />
-      <LenderPayDialog
+      {payDialogMounted ? <LenderPayDialog
         open={payOpen}
         onOpenChange={(open) => {
           setPayOpen(open);
@@ -418,7 +485,7 @@ export default function FortnightLoanPaymentsPanel({
         submitting={paySubmitting}
         error={payError}
         onConfirm={handlePayLender}
-      />
+      /> : null}
     </div>
   );
 }

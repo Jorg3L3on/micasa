@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { getFortnightCommitmentBar } from '@/components/monthly/fortnight-income-commitment';
 import { NumberTicker } from '@/components/motion/number-ticker';
 import { SPRING_LAYOUT } from '@/components/motion/ease';
@@ -14,6 +14,7 @@ import {
 import { STATUS_FILL_CLASS } from '@/lib/status-tone';
 import { AURA_TONE_HEX } from '@/lib/ui/aura-palette';
 import { cn, formatCurrency } from '@/lib/utils';
+import { pickAmountSizeClass } from '@/lib/ui/amount-size';
 
 type SegmentKey = 'paid' | 'pending' | 'budget' | 'free';
 
@@ -58,6 +59,13 @@ const BAR_REVEAL_SHOWN = 'inset(-10px -10px -10px -10px round 9999px)';
 
 type BarSegment = { key: SegmentKey; percent: number };
 
+/** Half-width legend tiles on phones: long amounts step down until `sm`. */
+const LEGEND_AMOUNT_SIZES = [
+  'text-lg',
+  'text-base sm:text-lg',
+  'text-sm sm:text-lg',
+] as const;
+
 type LegendEntry = {
   key: SegmentKey;
   amount: number;
@@ -89,7 +97,10 @@ export type CommitmentMeterProps = {
   showFree: boolean;
   /** Fourth legend entry for past / next fortnights (Te queda / Te falta). */
   remainderEntry?: CommitmentRemainderEntry;
-  /** Rendered after the Pendiente label (composition tooltip). */
+  /**
+   * Control at the Pendiente tile's top-right (composition info). Rendered
+   * beside the tile's button, not inside it, so it can be a button itself.
+   */
   pendingAdornment?: ReactNode;
   /** The "% comprometido" headline; off when the card header shows it. */
   showHeader?: boolean;
@@ -324,54 +335,60 @@ export const CommitmentMeter = ({
           const percentOfIncome = toPercentOfIncome(entry.amount, periodIncome);
           const isActive = activeKey === entry.key;
           const isDimmed = activeKey != null && !isActive;
+          const adornment = entry.key === 'pending' ? pendingAdornment : null;
           return (
-            <button
-              key={entry.key}
-              type="button"
-              aria-pressed={pinnedKey === entry.key}
-              aria-label={`${entry.label ?? style.label}, ${formatCurrency(entry.amount)}, ${percentOfIncome}% del ingreso`}
-              className={cn(
-                'flex min-w-0 flex-col items-stretch justify-start rounded-xl px-2 py-1.5 text-left transition-[background-color,opacity] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                isActive && 'bg-muted/40',
-                isDimmed && 'opacity-50',
-              )}
-              onPointerEnter={handleMousePointerEnter(entry.key)}
-              onPointerLeave={handleMousePointerLeave}
-              onFocus={handleLegendKeyboardFocus(entry.key)}
-              onBlur={handleLegendBlur}
-              onClick={() => handleLegendToggle(entry.key)}
-            >
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className={cn(
-                    'h-1.5 w-1.5 shrink-0 rounded-full',
-                    style.dotClass,
-                    entry.key !== 'free' && style.glowClass,
-                  )}
-                  aria-hidden
-                />
-                <span className="eyebrow min-w-0 truncate text-muted-foreground">
-                  {entry.label ?? style.label}
+            <div key={entry.key} className="relative min-w-0">
+              <button
+                type="button"
+                aria-pressed={pinnedKey === entry.key}
+                aria-label={`${entry.label ?? style.label}, ${formatCurrency(entry.amount)}, ${percentOfIncome}% del ingreso`}
+                className={cn(
+                  'flex w-full min-w-0 flex-col items-stretch justify-start rounded-xl px-2 py-1.5 text-left transition-[background-color,opacity] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                  adornment != null && 'pr-8',
+                  isActive && 'bg-muted/40',
+                  isDimmed && 'opacity-50',
+                )}
+                onPointerEnter={handleMousePointerEnter(entry.key)}
+                onPointerLeave={handleMousePointerLeave}
+                onFocus={handleLegendKeyboardFocus(entry.key)}
+                onBlur={handleLegendBlur}
+                onClick={() => handleLegendToggle(entry.key)}
+              >
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span
+                    className={cn(
+                      'h-1.5 w-1.5 shrink-0 rounded-full',
+                      style.dotClass,
+                      entry.key !== 'free' && style.glowClass,
+                    )}
+                    aria-hidden
+                  />
+                  <span className="eyebrow min-w-0 truncate text-muted-foreground">
+                    {entry.label ?? style.label}
+                  </span>
                 </span>
-                {entry.key === 'pending' ? pendingAdornment : null}
-              </span>
-              <span className="mt-1 flex min-w-0 items-baseline gap-1.5">
-                <span
-                  className={cn(
-                    'truncate font-sans text-lg font-bold tabular-nums text-foreground',
-                    entry.amountClassName,
-                  )}
-                >
-                  {formatCurrency(entry.amount)}
+                <span className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+                  <span
+                    className={cn(
+                      'whitespace-nowrap font-sans font-bold tabular-nums text-foreground',
+                      pickAmountSizeClass(entry.amount, LEGEND_AMOUNT_SIZES),
+                      entry.amountClassName,
+                    )}
+                  >
+                    {formatCurrency(entry.amount)}
+                  </span>
+                  <span className="shrink-0 text-caption font-semibold tabular-nums text-muted-foreground">
+                    {percentOfIncome}%
+                  </span>
                 </span>
-                <span className="shrink-0 text-caption font-semibold tabular-nums text-muted-foreground">
-                  {percentOfIncome}%
+                <span className="mt-0.5 line-clamp-2 block text-caption leading-snug text-muted-foreground">
+                  {entry.subtitle}
                 </span>
-              </span>
-              <span className="mt-0.5 line-clamp-2 block text-caption leading-snug text-muted-foreground">
-                {entry.subtitle}
-              </span>
-            </button>
+              </button>
+              {adornment != null ? (
+                <div className="absolute -top-3 right-0">{adornment}</div>
+              ) : null}
+            </div>
           );
         })}
       </div>

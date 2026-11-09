@@ -161,12 +161,28 @@ export async function computePeriodSpendByAllocations(
     _sum: { amount: true },
   });
 
+  return spendFromGroupedRows(allocations, rollupMap, grouped);
+}
+
+type SpendRow = {
+  wallet_id: number | null;
+  category_id: number | null;
+  _sum: { amount: Prisma.Decimal | number | null };
+};
+
+/** Sum grouped expense rows into each allocation (wallet+category, parent rolls up children). */
+function spendFromGroupedRows(
+  allocations: BudgetAllocationSpendInput[],
+  rollupMap: ReadonlyMap<number, readonly number[]>,
+  rows: SpendRow[],
+): PeriodSpendResult {
   const spentByPair = new Map<string, number>();
   const spentByCategory = new Map<number, number>();
-  for (const row of grouped) {
+  for (const row of rows) {
     if (row.category_id == null) continue;
     const amount = Number(row._sum.amount ?? 0);
-    spentByPair.set(`${row.wallet_id}|${row.category_id}`, amount);
+    const pairKey = `${row.wallet_id}|${row.category_id}`;
+    spentByPair.set(pairKey, (spentByPair.get(pairKey) ?? 0) + amount);
     spentByCategory.set(
       row.category_id,
       (spentByCategory.get(row.category_id) ?? 0) + amount,
@@ -193,4 +209,73 @@ export async function computePeriodSpendByAllocations(
   );
 
   return { total_spent, by_allocation };
+}
+
+export type PeriodSpendRequest = {
+  allocations: BudgetAllocationSpendInput[];
+  window: DateRange;
+};
+
+/**
+ * `computePeriodSpendByAllocations` for several periods with two queries in
+ * total: one category rollup and one `groupBy` over the union window (by
+ * wallet, category and payment date), split per period in memory. Results come
+ * back in request order and match the per-period function.
+ */
+export async function computePeriodSpendsByAllocations(
+  db: ExpenseClient & Partial<CategoryClient>,
+  requests: PeriodSpendRequest[],
+  ownerFilter: OwnerFilter,
+): Promise<PeriodSpendResult[]> {
+  const active = requests.filter((request) => request.allocations.length > 0);
+  if (active.length === 0) {
+    return requests.map(() => ({ total_spent: 0, by_allocation: [] }));
+  }
+
+  const allAllocations = active.flatMap((request) => request.allocations);
+  const rollupMap =
+    db.category != null
+      ? await resolveCategoryRollupIds(
+          { category: db.category },
+          allAllocations.map((a) => a.category_id),
+        )
+      : new Map(
+          allAllocations.map((a) => [a.category_id, [a.category_id]] as const),
+        );
+
+  const allCategoryIds = [
+    ...new Set(
+      allAllocations.flatMap((a) => rollupMap.get(a.category_id) ?? [a.category_id]),
+    ),
+  ];
+  const matchAnyWallet = allAllocations.some((a) => a.wallet_id == null);
+  const walletIds = [
+    ...new Set(allAllocations.flatMap((a) => (a.wallet_id == null ? [] : [a.wallet_id]))),
+  ];
+  const start = new Date(Math.min(...active.map((r) => r.window.start_date.getTime())));
+  const end = new Date(Math.max(...active.map((r) => r.window.end_date.getTime())));
+
+  const grouped = await db.expense.groupBy({
+    by: ['wallet_id', 'category_id', 'payment_date'],
+    where: {
+      ...ownerFilter,
+      is_paid: true,
+      ...(matchAnyWallet ? {} : { wallet_id: { in: walletIds } }),
+      category_id: { in: allCategoryIds },
+      payment_date: { gte: start, lte: end },
+      ...whereExcludeCreditInstallments(),
+    },
+    _sum: { amount: true },
+  });
+
+  return requests.map(({ allocations, window }) => {
+    if (allocations.length === 0) return { total_spent: 0, by_allocation: [] };
+    const rows = grouped.filter(
+      (row) =>
+        row.payment_date != null &&
+        row.payment_date >= window.start_date &&
+        row.payment_date <= window.end_date,
+    );
+    return spendFromGroupedRows(allocations, rollupMap, rows);
+  });
 }

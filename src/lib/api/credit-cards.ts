@@ -14,7 +14,7 @@ import type {
   MercadoPagoStatementImportResponse,
   InstallmentProjectionMonthItem,
 } from '@/types/catalog';
-import { WalletFormValues } from '@/schemas/wallet.schema';
+import type { WalletFormValues } from '@/schemas/wallet.schema';
 import {
   NETWORK_ERROR_MESSAGE,
   isBrowserNetworkError,

@@ -1,8 +1,9 @@
 import { auth } from '@/lib/auth';
-import { getAppHomeHref, getCurrentMonthlyPanelHref } from '@/lib/fortnight-calendar';
+import { getAppHomeHref } from '@/lib/fortnight-calendar';
 import { buildAuthorizePath, buildOAuthLoginPath } from '@/lib/oauth-consent';
 import { resolveConsentDocument } from '@/lib/server/mcp-oauth/consent-document-csp';
 import { NextResponse } from 'next/server';
+import { OWNER_HINT_COOKIE, ownerQueryFromHint } from '@/lib/owner-hint';
 
 /** Routes that must stay reachable without a session (landing + auth + legal). */
 const PUBLIC_PATHS = new Set([
@@ -14,9 +15,24 @@ const PUBLIC_PATHS = new Set([
   '/offline',
 ]);
 
+/**
+ * Owner params for a logged-in redirect to the Panel, so the first server
+ * render already has the owner and the client never re-renders to add them.
+ * The cookie is a hint: the page validates membership like any query param.
+ */
+function homeOwnerQuery(
+  hintValue: string | undefined,
+  userId: string | undefined,
+): URLSearchParams {
+  const id = Number(userId);
+  if (!Number.isSafeInteger(id) || id <= 0) return new URLSearchParams();
+  return ownerQueryFromHint(hintValue, id);
+}
+
 const proxy = auth(async (req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
+  const ownerHint = req.cookies.get(OWNER_HINT_COOKIE)?.value;
 
   // Document CSP for the no-JS consent form: form-action is 'self' plus the
   // origin of the redirect_uri only after that URI is allowed for the client.
@@ -81,7 +97,10 @@ const proxy = auth(async (req) => {
 
   if (isLoggedIn && (pathname === '/login' || pathname === '/register')) {
     return Response.redirect(
-      new URL(getCurrentMonthlyPanelHref(), req.nextUrl),
+      new URL(
+        getAppHomeHref(homeOwnerQuery(ownerHint, req.auth?.user?.id)),
+        req.nextUrl,
+      ),
     );
   }
 
@@ -89,7 +108,7 @@ const proxy = auth(async (req) => {
   // renders once (a redirect from the page would reload it mid-animation).
   // The (app) layout still sends unfinished onboarding to /onboarding.
   if (isLoggedIn && pathname === '/') {
-    const query = new URLSearchParams();
+    const query = homeOwnerQuery(ownerHint, req.auth?.user?.id);
     const quick = req.nextUrl.searchParams.get('quick');
     if (quick === 'expense' || quick === 'income') {
       query.set('quick', quick);
@@ -102,13 +121,12 @@ const proxy = auth(async (req) => {
     isLoggedIn &&
     (pathname === '/dashboard' || pathname.startsWith('/dashboard/'))
   ) {
-    const query = new URLSearchParams();
     const ownerType = req.nextUrl.searchParams.get('ownerType');
     const ownerId = req.nextUrl.searchParams.get('ownerId');
-    if (ownerType && ownerId) {
-      query.set('ownerType', ownerType);
-      query.set('ownerId', ownerId);
-    }
+    const query =
+      ownerType && ownerId
+        ? new URLSearchParams({ ownerType, ownerId })
+        : homeOwnerQuery(ownerHint, req.auth?.user?.id);
     return Response.redirect(new URL(getAppHomeHref(query), req.nextUrl));
   }
 

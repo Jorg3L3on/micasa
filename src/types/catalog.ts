@@ -332,6 +332,8 @@ export type DuePaymentItem = {
   walletId: number;
   walletName: string;
   walletType: string;
+  /** `Wallet.provider_icon_key`; null when the card has no provider logo. */
+  providerIconKey: string | null;
   dueDay: number;
   cutoff_day: number;
   nextDuePayment: number;
@@ -626,6 +628,8 @@ export type LiquidityProjectionResponse = {
   projection_events: LiquidityProjectionEvent[];
   projection_tracks: LiquidityProjectionTrack[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
+  /** Expected incomes by civil day (registered incomes and templates on their payday). */
+  income_dates?: Array<{ date: string; amount: number; title: string }>;
   /** Present only when the request carried `scenario`. */
   scenario_delta?: LiquidityScenarioDelta;
   scenario_assumptions?: string[];

@@ -1,4 +1,6 @@
+import { cache } from 'react';
 import prisma from '@/lib/prisma';
+import { ownerMonthKey, requestMemo } from '@/lib/server/request-memo';
 import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
 import {
   formatCalendarDate,
@@ -605,6 +607,7 @@ export type PlannerInstallmentPlanPaymentItem = {
   planName: string;
   walletId: number;
   walletName: string;
+  providerIconKey: string | null;
   dueDate: string;
   amount: number;
   sequence: number;
@@ -612,7 +615,7 @@ export type PlannerInstallmentPlanPaymentItem = {
 };
 
 /** Scheduled MSI plan rows with dueDate in the planner month (all cuotas, not only next). */
-export async function listInstallmentPlanPaymentsForPlannerMonth(
+async function listInstallmentPlanPaymentsForPlannerMonthImpl(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
@@ -638,7 +641,9 @@ export async function listInstallmentPlanPaymentsForPlannerMonth(
         select: {
           id: true,
           name: true,
-          credit_card_wallet: { select: { id: true, name: true } },
+          credit_card_wallet: {
+            select: { id: true, name: true, provider_icon_key: true },
+          },
         },
       },
     },
@@ -651,11 +656,43 @@ export async function listInstallmentPlanPaymentsForPlannerMonth(
     planName: row.plan.name,
     walletId: row.plan.credit_card_wallet.id,
     walletName: row.plan.credit_card_wallet.name,
+    providerIconKey: row.plan.credit_card_wallet.provider_icon_key ?? null,
     dueDate: formatCalendarDate(row.due_date),
     amount: decimalToNumber(row.amount),
     sequence: row.sequence,
     status: row.status,
   }));
+}
+
+/**
+ * The card-dues planner and the payments calendar both read these rows for the
+ * same month: `cache` shares them within one RSC render and `requestMemo` within
+ * one GET route request. Keys are primitives because `cache` compares by reference.
+ */
+const listInstallmentPlanPaymentsForPlannerMonthCached = cache(
+  (userId: number | null, houseId: number | null, year: number, month: number) =>
+    requestMemo(ownerMonthKey('planner-installment-plans', userId, houseId, year, month), () =>
+      listInstallmentPlanPaymentsForPlannerMonthImpl(
+        userId != null
+          ? { user_id: userId, house_id: null }
+          : { user_id: null, house_id: houseId as number },
+        year,
+        month,
+      ),
+    ),
+);
+
+export function listInstallmentPlanPaymentsForPlannerMonth(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<PlannerInstallmentPlanPaymentItem[]> {
+  return listInstallmentPlanPaymentsForPlannerMonthCached(
+    ownerFilter.user_id ?? null,
+    ownerFilter.house_id ?? null,
+    year,
+    month,
+  );
 }
 
 export async function listActiveInstallmentPlansForOwner(

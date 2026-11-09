@@ -19,7 +19,11 @@ import {
 } from '@/components/ui/tooltip';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { cn, formatCurrency } from '@/lib/utils';
+import { pickAmountSizeClass } from '@/lib/ui/amount-size';
 import { Banknote, Info, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { OVERLAY_GROUPED_CARD_CLASS } from '@/components/overlay/overlay-form';
 
 type FortnightSummaryHeroProps = {
   periodIncome: number;
@@ -62,46 +66,85 @@ type CompositionInfoProps = {
   compositionRows: DueToPayCompositionRow[];
 };
 
-/** Info tooltip listing what the pending commitment includes. */
+/**
+ * What the pending commitment includes. A real button (44px hit area) that
+ * opens the list in a sheet on phones / dialog on desktop, since touch has no
+ * hover; the hover tooltip stays for pointers. Rendered beside the legend
+ * tile's own button, never inside it.
+ */
 const CompositionInfo = ({ compositionRows }: CompositionInfoProps) => {
-  if (compositionRows.length === 0) return null;
+  const [open, setOpen] = useState(false);
   return (
-    <Tooltip delayDuration={0}>
-      <TooltipTrigger asChild>
-        <span
-          role="img"
-          aria-label="Qué incluye pendiente"
-          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
+    <>
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label="Qué incluye pendiente"
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            className="group flex size-11 items-center justify-center rounded-full focus-visible:outline-none"
+          >
+            <span className="flex size-[22px] items-center justify-center rounded-full text-muted-foreground/70 transition-colors group-hover:text-muted-foreground group-focus-visible:ring-2 group-focus-visible:ring-ring/50">
+              <Info className="size-3.5" aria-hidden data-icon="inline-start" />
+            </span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="hidden max-w-[16rem] space-y-1.5 px-3 py-2 text-left sm:block"
         >
-          <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="max-w-[16rem] space-y-1.5 px-3 py-2 text-left"
+          <p className="eyebrow text-background/70">
+            Qué incluye
+          </p>
+          <ul className="space-y-1">
+            {compositionRows.map((row) => (
+              <li key={row.key ?? row.label} className="text-xs">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-background/85">{row.label}</span>
+                  <span className="font-sans tabular-nums">
+                    {formatCurrency(row.amount)}
+                  </span>
+                </div>
+                {row.note ? (
+                  <p className="mt-0.5 text-caption leading-snug text-background/70">
+                    {row.note}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </TooltipContent>
+      </Tooltip>
+      <ResponsiveOverlay
+        open={open}
+        onOpenChange={setOpen}
+        title="Qué incluye pendiente"
+        description="Lo que suma el pendiente de la quincena y de dónde sale."
+        dismissLabel="Cerrar"
       >
-        <p className="eyebrow text-background/70">
-          Qué incluye
-        </p>
-        <ul className="space-y-1">
+        <ul className={OVERLAY_GROUPED_CARD_CLASS}>
           {compositionRows.map((row) => (
-            <li key={row.key ?? row.label} className="text-xs">
+            <li key={row.key ?? row.label} className="px-3 py-2.5">
               <div className="flex items-baseline justify-between gap-3">
-                <span className="text-background/85">{row.label}</span>
-                <span className="font-sans tabular-nums">
+                <span className="min-w-0 text-sm text-foreground">
+                  {row.label}
+                </span>
+                <span className="shrink-0 whitespace-nowrap font-sans text-sm font-semibold tabular-nums">
                   {formatCurrency(row.amount)}
                 </span>
               </div>
               {row.note ? (
-                <p className="mt-0.5 text-caption leading-snug text-background/70">
+                <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
                   {row.note}
                 </p>
               ) : null}
             </li>
           ))}
         </ul>
-      </TooltipContent>
-    </Tooltip>
+      </ResponsiveOverlay>
+    </>
   );
 };
 
@@ -120,6 +163,16 @@ type AccountMetricProps = {
   /** Health chip at the end of the eyebrow row (glass tiles). */
   badge?: { label: string; tone: StatusTone };
 };
+
+/**
+ * Half-width phone tiles: long amounts step down until `sm`. Below 360px the
+ * tiles stack (FortnightAccountMetrics), so full width keeps text-2xl.
+ */
+const BADGE_AMOUNT_SIZES = [
+  'text-2xl',
+  'text-2xl min-[360px]:text-xl sm:text-2xl',
+  'text-2xl min-[360px]:text-lg sm:text-2xl',
+] as const;
 
 const AccountMetricBody = ({
   label,
@@ -141,7 +194,7 @@ const AccountMetricBody = ({
         >
           <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
         </span>
-        <span className="eyebrow truncate text-muted-foreground">
+        <span className="eyebrow min-w-0 leading-tight text-muted-foreground">
           {label}
         </span>
       </span>
@@ -157,11 +210,16 @@ const AccountMetricBody = ({
         </Badge>
       ) : null}
     </div>
-    <p className="whitespace-nowrap">
+    <p className="min-w-0 whitespace-nowrap">
       <CurrencyTicker
         value={amount}
         className={cn(
-          badge ? 'text-2xl font-semibold tabular-nums' : 'text-lg font-bold sm:text-xl',
+          badge
+            ? cn(
+                'font-semibold tabular-nums',
+                pickAmountSizeClass(amount, BADGE_AMOUNT_SIZES),
+              )
+            : 'text-lg font-bold sm:text-xl',
           amountClassName,
         )}
       />
@@ -225,7 +283,7 @@ export const FortnightAccountMetrics = ({
   const liquidityNegative = fundingLiquidity < 0;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+    <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4">
       <AccountMetric
         label="Balance actual"
         amount={fundingInAccounts}
@@ -328,7 +386,11 @@ export const FortnightSummaryHero = ({
               }
             : undefined
         }
-        pendingAdornment={<CompositionInfo compositionRows={compositionRows} />}
+        pendingAdornment={
+          compositionRows.length > 0 ? (
+            <CompositionInfo compositionRows={compositionRows} />
+          ) : undefined
+        }
       />
     </div>
   );

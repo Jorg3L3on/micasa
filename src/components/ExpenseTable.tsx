@@ -37,8 +37,8 @@ import { paidExpenseExceedsWalletBalance } from '@/lib/finance/expense-wallet-ba
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ChevronDown, History, MoreVertical, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import { AuditHistoryOverlay } from '@/components/audit/AuditHistoryOverlay';
-import EditExpenseAmountDialog from '@/components/EditExpenseAmountDialog';
-import { ExpenseAmountFormValues } from '@/schemas/expense.schema';
+import dynamic from 'next/dynamic';
+import type { ExpenseAmountFormValues } from '@/schemas/expense.schema';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { InsufficientWalletExpenseDialog } from '@/components/expenses/insufficient-wallet-expense';
 import { CategoryIcon } from '@/components/categories/CategoryIcon';
@@ -59,6 +59,9 @@ import {
   type PlannerListSortDir,
   type PlannerListSortMode,
 } from '@/lib/finance/planner-list-sort';
+
+// The amount form (zod, react-hook-form) loads when an expense is edited.
+const EditExpenseAmountDialog = dynamic(() => import('@/components/EditExpenseAmountDialog'), { ssr: false });
 
 /** Rows from combined transaction feeds use income ids that are not expense ids. */
 const isExpenseTransactionRow = (row: TransactionRow) => row.type !== 'income';

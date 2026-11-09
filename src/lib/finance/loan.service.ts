@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { ownerMonthKey, requestMemo } from '@/lib/server/request-memo';
 import prisma from '@/lib/prisma';
 import { PaymentMethodType, type Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -15,6 +16,7 @@ import {
   formatDateYmd,
   formatLoanDueYmd,
   generateLoanPaymentSchedule,
+  getLoanEndDate,
   loanDueDateForStorage,
   parseYmdAsUtcDate,
 } from '@/lib/finance/loan-schedule';
@@ -38,6 +40,7 @@ import type {
   LoanDuePaymentItem,
   LoanListItem,
   LoanPaymentActionValue,
+  LoanPaymentFrequencyValue,
   LoanPaymentListItem,
   LoanStatusValue,
   PlannerLoanPaymentsResponse,
@@ -847,6 +850,20 @@ export async function batchUpdateLoanPaymentsForOwner(
   });
 }
 
+/** YYYY-MM-DD of a loan's last installment, from its schedule inputs. */
+function loanEndYmd(loan: {
+  start_date: Date;
+  payment_count: number;
+  frequency: string;
+}): string | null {
+  const end = getLoanEndDate(
+    loan.start_date,
+    loan.payment_count,
+    loan.frequency as LoanPaymentFrequencyValue,
+  );
+  return end ? formatDateYmd(end) : null;
+}
+
 async function listLoanPaymentsForPlannerMonthImpl(
   ownerFilter: OwnerFilter,
   year: number,
@@ -869,6 +886,7 @@ async function listLoanPaymentsForPlannerMonthImpl(
           source_wallet: { select: { name: true } },
           linked_wallet: { select: { name: true } },
           income_template: { select: { name: true } },
+          lender_entity: { select: { provider_icon_key: true } },
         },
       },
     },
@@ -884,12 +902,16 @@ async function listLoanPaymentsForPlannerMonthImpl(
     loanName: payment.loan.name,
     lender: payment.loan.lender,
     lenderId: payment.loan.lender_id ?? null,
+    lenderProviderIconKey:
+      payment.loan.lender_entity?.provider_icon_key ?? null,
     loanType: payment.loan.type as LoanDuePaymentItem['loanType'],
     paymentSource:
       payment.loan.payment_source as LoanDuePaymentItem['paymentSource'],
     linkedWalletId: payment.loan.linked_wallet_id,
     linkedWalletName: payment.loan.linked_wallet?.name ?? null,
     incomeTemplateName: payment.loan.income_template?.name ?? null,
+    paymentCount: payment.loan.payment_count,
+    loanEndDate: loanEndYmd(payment.loan),
   }));
 
   return {
@@ -905,9 +927,9 @@ async function listLoanPaymentsForPlannerMonthImpl(
 /**
  * Request-scoped memo: the monthly panel calls this several times per render
  * (directly, via report summaries, and via planning transactions). `cache`
- * dedupes those calls within one RSC/route request and is a passthrough outside
- * React (tests, scripts). Keys are primitives because `cache` compares object
- * arguments by reference.
+ * dedupes those calls within one RSC render and `requestMemo` within one GET
+ * route request; both are passthroughs elsewhere (tests, scripts). Keys are
+ * primitives because `cache` compares object arguments by reference.
  */
 const listLoanPaymentsForPlannerMonthCached = cache(
   (
@@ -916,13 +938,15 @@ const listLoanPaymentsForPlannerMonthCached = cache(
     year: number,
     month: number,
   ) =>
-    listLoanPaymentsForPlannerMonthImpl(
-      userId != null
-        ? { user_id: userId, house_id: null }
-        : // OwnerFilter guarantees house_id is set when user_id is null.
-          { user_id: null, house_id: houseId as number },
-      year,
-      month,
+    requestMemo(ownerMonthKey('planner-loans', userId, houseId, year, month), () =>
+      listLoanPaymentsForPlannerMonthImpl(
+        userId != null
+          ? { user_id: userId, house_id: null }
+          : // OwnerFilter guarantees house_id is set when user_id is null.
+            { user_id: null, house_id: houseId as number },
+        year,
+        month,
+      ),
     ),
 );
 

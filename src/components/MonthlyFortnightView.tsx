@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
+import { FortnightBudgetDesgloseSection } from '@/components/monthly/FortnightBudgetBreakdown';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { MonthlyPaymentsCalendar } from '@/components/monthly/MonthlyPaymentsCalendar';
 import { WalletCarouselPanel } from '@/components/monthly/WalletCarouselPanel';
@@ -172,6 +173,9 @@ export default function MonthlyFortnightView({
     setPanelBudget(budgetPanel);
   }, [first, second, wallets, budgetPanel, ownerKey]);
 
+  /** Fortnights whose data predates the last refresh; refetched when shown. */
+  const staleSlicesRef = useRef(new Set<FortnightPeriod>());
+
   const refreshPanelData = useCallback(async () => {
     const patchFortnight = (
       target: FortnightPeriod,
@@ -187,18 +191,17 @@ export default function MonthlyFortnightView({
     };
 
     const monthParam = String(month).padStart(2, '0');
-    const [firstSlice, secondSlice, budget, walletList, cardDues, loanDues] =
+    // Only the visible fortnight reloads now; the other one is refetched when
+    // the user switches to it (its previous data stays on screen meanwhile).
+    const hiddenPeriod: FortnightPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
+    staleSlicesRef.current.add(hiddenPeriod);
+    staleSlicesRef.current.delete(period);
+    const [visibleSlice, budget, walletList, cardDues, loanDues] =
       await Promise.allSettled([
         fetchFortnightPanelSlice<FortnightSummary>(
           year,
           month,
-          'FIRST',
-          context,
-        ),
-        fetchFortnightPanelSlice<FortnightSummary>(
-          year,
-          month,
-          'SECOND',
+          period,
           context,
         ),
         clientFetchFromApi<MonthlyBudgetPanelResult>(
@@ -215,11 +218,8 @@ export default function MonthlyFortnightView({
         getPlannerLoanPayments(year, month, context),
       ]);
 
-    if (firstSlice.status === 'fulfilled') {
-      patchFortnight('FIRST', firstSlice.value);
-    }
-    if (secondSlice.status === 'fulfilled') {
-      patchFortnight('SECOND', secondSlice.value);
+    if (visibleSlice.status === 'fulfilled') {
+      patchFortnight(period, visibleSlice.value);
     }
     if (budget.status === 'fulfilled') {
       setPanelBudget(budget.value);
@@ -240,10 +240,32 @@ export default function MonthlyFortnightView({
     // inside the widget rather than forcing Panel-month items.
     setCalendarRefreshNonce((n) => n + 1);
 
-    const visibleSlice = period === 'FIRST' ? firstSlice : secondSlice;
     if (visibleSlice.status === 'rejected') {
       throw visibleSlice.reason;
     }
+  }, [context, month, period, year]);
+
+  // A new owner or month starts from server data: nothing is stale.
+  useEffect(() => {
+    staleSlicesRef.current.clear();
+  }, [ownerKey, year, month]);
+
+  useEffect(() => {
+    if (!staleSlicesRef.current.has(period)) return;
+    staleSlicesRef.current.delete(period);
+    let cancelled = false;
+    void fetchFortnightPanelSlice<FortnightSummary>(year, month, period, context)
+      .then((slice) => {
+        if (cancelled) return;
+        const setBundle = period === 'FIRST' ? setFirstBundle : setSecondBundle;
+        setBundle((current) => ({ ...current, ...slice }));
+      })
+      .catch((error) => {
+        console.error('Error refreshing fortnight data:', error);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [context, month, period, year]);
 
   useRegisterMonthlyPanelRefresh(refreshPanelData);
@@ -420,24 +442,37 @@ export default function MonthlyFortnightView({
   const budgetSidebar = (
     <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
       {walletCarousel}
+      {/* Below xl the budget lives inside Ver desglose (budgetDesglose). */}
       {panelBudget ? (
         <MonthlyBudgetSidebar
           panel={panelBudget}
           ownerQuery={budgetOwnerQuery}
+          className="hidden xl:block"
         />
       ) : (
-        <PanelCardSkeleton bodyClassName="h-40" />
+        <PanelCardSkeleton bodyClassName="h-40" className="hidden xl:block" />
       )}
       <MonthlyPaymentsCalendar
         key={`${year}-${month}-${ownerKey}`}
         year={year}
         month={month}
+        period={period}
         items={paymentsCalendarItems}
         todayYmd={todayYmd}
         refreshNonce={calendarRefreshNonce}
       />
     </div>
   );
+
+  const budgetDesglose = panelBudget ? (
+    <FortnightBudgetDesgloseSection
+      scope={period === 'FIRST' ? panelBudget.first : panelBudget.second}
+      ownerQuery={budgetOwnerQuery}
+      periodLabel={
+        period === 'FIRST' ? 'primera quincena' : 'segunda quincena'
+      }
+    />
+  ) : null;
 
   const activeSummary = activeBundle.summary;
   const columnReady =
@@ -463,6 +498,7 @@ export default function MonthlyFortnightView({
               summaryFundingRefreshNonce={summaryFundingRefreshNonce}
               preferenceScope={preferenceScope}
               dualColumnLayout={false}
+              budgetDesglose={budgetDesglose}
               onPanelRefresh={refreshPanelData}
             />
           ) : failedPeriod === period && loadingPeriod !== period ? (

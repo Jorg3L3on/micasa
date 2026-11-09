@@ -3,6 +3,7 @@ import {
   buildOwnerQuery,
   getFinanceOwnerKey,
   isOwnerContextPending,
+  isPanelOwnerPending,
   parseOwnerQuery,
 } from './client-fetch';
 
@@ -51,5 +52,34 @@ describe('isOwnerContextPending', () => {
       true,
     );
     expect(getFinanceOwnerKey({ type: 'house', id: 5 })).toBe('house-5');
+  });
+});
+
+describe('isPanelOwnerPending', () => {
+  it('is true when the URL named no owner, even before the client syncs', () => {
+    expect(isPanelOwnerPending({ type: 'user', id: 0 }, 'user-7', false)).toBe(
+      true,
+    );
+    expect(isPanelOwnerPending({ type: 'house', id: 5 }, 'user-7', false)).toBe(
+      true,
+    );
+  });
+
+  it('is false when the URL owner matches the client', () => {
+    expect(isPanelOwnerPending({ type: 'house', id: 5 }, 'house-5', true)).toBe(
+      false,
+    );
+  });
+
+  it('trusts the URL owner before the client context has synced', () => {
+    expect(isPanelOwnerPending({ type: 'user', id: 0 }, 'house-5', true)).toBe(
+      false,
+    );
+  });
+
+  it('is true when the client switched owner ahead of the page', () => {
+    expect(isPanelOwnerPending({ type: 'house', id: 5 }, 'house-3', true)).toBe(
+      true,
+    );
   });
 });

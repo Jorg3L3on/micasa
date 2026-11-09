@@ -65,11 +65,17 @@ export type LoanDuePaymentItem = LoanPaymentListItem & {
   loanName: string;
   lender: string;
   lenderId: number | null;
+  /** `Lender.provider_icon_key`; null without a lender or a logo. */
+  lenderProviderIconKey: string | null;
   loanType: LoanTypeValue;
   paymentSource: LoanPaymentSourceValue;
   linkedWalletId: number | null;
   linkedWalletName: string | null;
   incomeTemplateName: string | null;
+  /** Installments in the contract ("cuota 19 de 24"). */
+  paymentCount?: number;
+  /** YYYY-MM-DD of the last installment ("termina jun 2027"). */
+  loanEndDate?: string | null;
 };
 
 export type PlannerLoanPaymentsResponse = {

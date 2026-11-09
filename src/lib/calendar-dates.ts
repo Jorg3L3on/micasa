@@ -546,3 +546,53 @@ export function formatWallClockDateRange(
   const showYear = startYmd.year !== currentYear;
   return `${formatWallClockDateLabel(startDate, false)} – ${formatWallClockDateLabel(endDate, showYear)}`;
 }
+
+type CalendarDayParts = { year: number; month: number; day: number };
+
+/** YYYY-MM-DD string (or stored instant) → Mexico City civil day parts. */
+const readCalendarDayParts = (value: string | Date): CalendarDayParts | null => {
+  let ymd: string;
+  if (typeof value === 'string') {
+    const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+    if (match && isValidCalendarDateString(match[1]!)) {
+      ymd = match[1]!;
+    } else {
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return null;
+      ymd = formatCalendarDate(parsed);
+    }
+  } else {
+    if (Number.isNaN(value.getTime())) return null;
+    ymd = formatCalendarDate(value);
+  }
+  const [year, month, day] = ymd.split('-').map(Number);
+  return { year: year!, month: month!, day: day! };
+};
+
+/**
+ * Short month and year, always with the year: "jun 2027".
+ * Used for loan ranges ("termina jun 2027"), where the year carries meaning.
+ */
+export function formatMonthYear(value: string | Date): string {
+  const parts = readCalendarDayParts(value);
+  if (!parts) return String(value);
+  return `${formatMonthShort(parts.month)} ${parts.year}`;
+}
+
+/**
+ * Day and short month: "1 ene". With `yearIfNotCurrent` (default) the year is
+ * added only when it is not the current Mexico City year: "1 ene 2027".
+ */
+export function formatDayMonth(
+  value: string | Date,
+  options: { yearIfNotCurrent?: boolean; now?: Date } = {},
+): string {
+  const parts = readCalendarDayParts(value);
+  if (!parts) return String(value);
+  const { yearIfNotCurrent = true, now = new Date() } = options;
+  const base = `${parts.day} ${formatMonthShort(parts.month)}`;
+  if (yearIfNotCurrent && parts.year !== currentCalendarYear(now)) {
+    return `${base} ${parts.year}`;
+  }
+  return base;
+}

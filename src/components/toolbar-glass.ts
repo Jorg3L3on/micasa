@@ -11,7 +11,7 @@
  */
 export const TOOLBAR_GLASS_GROUP =
   [
-    'flex h-10 shrink-0 items-center overflow-hidden rounded-full px-0.5',
+    'flex h-12 shrink-0 items-center overflow-hidden rounded-full px-0.5 sm:h-10',
     'border border-black/[0.08] bg-white/80',
     'shadow-panel',
     'backdrop-blur-xl backdrop-saturate-150',
@@ -22,7 +22,8 @@ export const TOOLBAR_GLASS_GROUP =
 /** Icon slot inside TOOLBAR_GLASS_GROUP — no second glass disc. */
 export const TOOLBAR_GLASS_GROUP_ITEM =
   [
-    'relative size-9 shrink-0 rounded-full border-0 bg-transparent shadow-none',
+    // 44px touch target on phones; 36px from sm.
+    'relative size-11 shrink-0 rounded-full border-0 bg-transparent shadow-none sm:size-9',
     'text-foreground/90 hover:bg-black/[0.06] hover:text-foreground',
     'active:bg-black/[0.1] active:opacity-90',
     'dark:hover:bg-white/[0.12] dark:active:bg-white/[0.16]',

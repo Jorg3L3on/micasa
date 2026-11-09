@@ -2,22 +2,20 @@
 
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import { getDefaultDateForFortnight } from '@/lib/fortnight-calendar';
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
+import { useOpenedOnce } from '@/hooks/use-opened-once';
 import { toast } from 'sonner';
 import ExpenseTable from '@/components/ExpenseTable';
 import SummaryBlock from '@/components/SummaryBlock';
-import EditFortnightAmountDialog from '@/components/EditFortnightAmountDialog';
-import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
-import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
-import { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
-import { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
+import type { OverrideAmountFormValues } from '@/schemas/fortnight.schema';
+import type { AddExpenseFormValues, AddIncomeFormValues } from '@/schemas/transaction.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/motion/tabs';
 import { SegmentedControl } from '@/components/segmented-control';
 import { SectionHeader } from '@/components/section-header';
 import EmptyState from '@/components/EmptyState';
-import CreditCardPaymentDialog from '@/components/credit-cards/CreditCardPaymentDialog';
 import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import FortnightCardPaymentsPanel from '@/components/planner/FortnightCardPaymentsPanel';
 import { periodObligationPrefillAmount } from '@/lib/finance/card-period-obligation';
@@ -97,6 +95,12 @@ import type { LoanDuePaymentItem } from '@/types/loans';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getPendingLiquidityLineItems } from '@/lib/finance/pending-liquidity-items';
 
+// Form dialogs (zod, react-hook-form, schemas) load on first open, not with the Panel.
+const EditFortnightAmountDialog = dynamic(() => import('@/components/EditFortnightAmountDialog'), { ssr: false });
+const ConfirmDeleteDialog = dynamic(() => import('@/components/ConfirmDeleteDialog'), { ssr: false });
+const AddTransactionDialog = dynamic(() => import('@/components/transactions/AddTransactionDialog'), { ssr: false });
+const CreditCardPaymentDialog = dynamic(() => import('@/components/credit-cards/CreditCardPaymentDialog'), { ssr: false });
+
 const fortnightTabStorageKey = (p: 'FIRST' | 'SECOND') =>
   `micasa.planificacion.fortnightTab.${p}`;
 
@@ -156,6 +160,8 @@ type FortnightColumnProps = {
   preferenceScope?: string;
   /** Narrow column when both fortnights are shown side by side. */
   dualColumnLayout?: boolean;
+  /** Panel budget block for Ver desglose below xl (the card covers xl+). */
+  budgetDesglose?: ReactNode;
   /** Payments calendar for < xl (sidebar hosts it at xl+). */
   /** Refetch panel data in place. Avoids router.refresh(), which remounts the page. */
   onPanelRefresh: () => Promise<void>;
@@ -176,6 +182,7 @@ export default function FortnightColumn({
   summaryFundingRefreshNonce,
   preferenceScope = 'default',
   dualColumnLayout = false,
+  budgetDesglose = null,
   onPanelRefresh,
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
@@ -217,6 +224,10 @@ export default function FortnightColumn({
     useState(false);
   const [plannerPaymentCard, setPlannerPaymentCard] =
     useState<DuePaymentItem | null>(null);
+  const regenerateConfirmMounted = useOpenedOnce(regenerateConfirmOpen);
+  const overrideDialogMounted = useOpenedOnce(overrideDialogOpen);
+  const addExpenseDialogMounted = useOpenedOnce(addExpenseDialogOpen);
+  const plannerPaymentDialogMounted = useOpenedOnce(plannerPaymentDialogOpen);
   const [plannerPaymentFunding, setPlannerPaymentFunding] = useState<
     PaymentMethodOption[]
   >([]);
@@ -908,6 +919,14 @@ export default function FortnightColumn({
     [sortedTransactions],
   );
 
+  // Nothing to order on an empty tab: the sort control only shows with rows.
+  const activeTabHasRows =
+    columnTab === 'cards'
+      ? cardDueItems.length > 0
+      : columnTab === 'loans'
+        ? loanDueItems.length > 0
+        : sortedTransactions.length > 0;
+
   const listSortMenu = (
     <div className="flex shrink-0 items-center">
               <DropdownMenu>
@@ -918,7 +937,7 @@ export default function FortnightColumn({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
+                        className="h-11 w-11 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
                         aria-label={`Ordenar: ${plannerListSortDisplayLabel(listSortMode, listSortDir)}`}
                       >
                         <ArrowUpDown className="h-4 w-4" aria-hidden />
@@ -1013,6 +1032,7 @@ export default function FortnightColumn({
             summary.planningPayrollLoanDeduction ?? null
           }
           planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
+          budgetDesglose={budgetDesglose}
           fundingWalletBalanceTotal={
             summary.fundingWalletBalanceTotal ?? 0
           }
@@ -1045,7 +1065,7 @@ export default function FortnightColumn({
           icon={Receipt}
           title="Gastos de la quincena"
           subtitle={listSubtitle}
-          actions={listSortMenu}
+          actions={activeTabHasRows ? listSortMenu : undefined}
         />
         <SegmentedControl
           value={columnTab}
@@ -1058,6 +1078,7 @@ export default function FortnightColumn({
           listClassName="min-w-full"
           indicatorClassName={AURA_TAB_INDICATOR_CLASS}
           activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+          overflowControls="fade"
           options={[
             {
               value: 'expenses',
@@ -1091,10 +1112,7 @@ export default function FortnightColumn({
               label: (
                 <span className={plannerTabLabelClass}>
                   <HandCoins className={plannerTabIconClass} aria-hidden />
-                  <span className={cn(!compactTabs && 'sm:hidden')}>Prest.</span>
-                  {!compactTabs ? (
-                    <span className="hidden sm:inline">Préstamos</span>
-                  ) : null}
+                  Préstamos
                   <Badge variant={pendingLoanPaymentsCount > 0 ? 'default' : 'secondary'} className={plannerTabBadgeClass} aria-hidden>
                     {pendingLoanPaymentsCount}
                   </Badge>
@@ -1184,7 +1202,7 @@ export default function FortnightColumn({
         onSuccess={refreshData}
       />
 
-      <ConfirmDeleteDialog
+      {regenerateConfirmMounted ? <ConfirmDeleteDialog
         open={regenerateConfirmOpen}
         onOpenChange={setRegenerateConfirmOpen}
         onConfirm={handleConfirmRegenerate}
@@ -1194,10 +1212,10 @@ export default function FortnightColumn({
         loadingLabel="Regenerando…"
         tone="default"
         busy={isRegenerating}
-      />
+      /> : null}
 
       {/* Override Amount Dialog */}
-      <EditFortnightAmountDialog
+      {overrideDialogMounted ? <EditFortnightAmountDialog
         open={overrideDialogOpen}
         onOpenChange={(open) => {
           setOverrideDialogOpen(open);
@@ -1211,10 +1229,10 @@ export default function FortnightColumn({
         fortnightLabel={label}
         sourceName={editingIncome?.label}
         error={overrideError && overrideDialogOpen ? overrideError : null}
-      />
+      /> : null}
 
       {/* Add Expense Dialog */}
-      <AddTransactionDialog
+      {addExpenseDialogMounted ? <AddTransactionDialog
         open={addExpenseDialogOpen}
         onOpenChange={(open) => {
           setAddExpenseDialogOpen(open);
@@ -1226,9 +1244,9 @@ export default function FortnightColumn({
         defaultDate={getDefaultDateForFortnight(year, month, period)}
         expenseError={addExpenseError && addExpenseDialogOpen ? addExpenseError : null}
         incomeError={addIncomeError && addExpenseDialogOpen ? addIncomeError : null}
-      />
+      /> : null}
 
-      <CreditCardPaymentDialog
+      {plannerPaymentDialogMounted ? <CreditCardPaymentDialog
         open={plannerPaymentDialogOpen && plannerPaymentCard !== null}
         onOpenChange={(open) => {
           setPlannerPaymentDialogOpen(open);
@@ -1247,7 +1265,7 @@ export default function FortnightColumn({
         error={plannerPaymentError}
         fortnightId={fortnightId}
         onConfirm={handlePlannerCardPaymentSubmit}
-      />
+      /> : null}
     </>
   );
 }

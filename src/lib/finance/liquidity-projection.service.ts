@@ -173,6 +173,8 @@ export type LiquidityProjectionResult = {
   projection_events: LiquidityProjectionEvent[];
   projection_tracks: LiquidityProjectionTrack[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
+  /** Expected incomes by civil day, for "al caer la nómina" in the plan steps. */
+  income_dates?: LiquidityIncomeDate[];
   /** Present only with a scenario: baseline vs scenario from the same loaded data. */
   scenario_delta?: LiquidityScenarioDelta;
   /** Present only with a scenario: one sentence per hypothetical item. */
@@ -274,10 +276,18 @@ const mergeMoneyByMonthKey = (
   target.set(monthKey, (target.get(monthKey) ?? 0) + amount);
 };
 
+/** One expected income on its civil day: a registered income or a template on its quincena's payday. */
+export type LiquidityIncomeDate = {
+  date: string;
+  amount: number;
+  title: string;
+};
+
 const collectExpectedIncomeByMonth = async (
   ownerFilter: OwnerFilter,
   asOf: Date,
   until: Date,
+  datesOut?: LiquidityIncomeDate[],
 ): Promise<Map<string, number>> => {
   const map = new Map<string, number>();
   const fortnights = await prisma.fortnight.findMany({
@@ -334,6 +344,13 @@ const collectExpectedIncomeByMonth = async (
       toMonthKeyUtc(income.received_at),
       Number(income.amount),
     );
+    if (Number(income.amount) > 0) {
+      datesOut?.push({
+        date: formatCalendarDate(income.received_at),
+        amount: Number(income.amount),
+        title: 'Ingreso registrado',
+      });
+    }
   }
 
   const existingTemplateKey = new Set(
@@ -356,6 +373,7 @@ const collectExpectedIncomeByMonth = async (
       },
       select: {
         id: true,
+        name: true,
         suggested_amount: true,
       },
     });
@@ -366,6 +384,7 @@ const collectExpectedIncomeByMonth = async (
       const amount = Number(template.suggested_amount ?? 0);
       if (amount <= 0) continue;
       mergeMoneyByMonthKey(map, toMonthKeyUtc(fn.end_date), amount);
+      datesOut?.push({ date: formatCalendarDate(fn.end_date), amount, title: template.name });
     }
   }
 
@@ -898,6 +917,7 @@ export const getLiquidityProjection = async (
       ? await loadScenarioWallets(input.ownerFilter, scenarioItems)
       : null;
 
+  const incomeDates: LiquidityIncomeDate[] = [];
   const [fundingWallets, creditCardsForProjection, creditCardsForUtilization, expectedIncomeByMonth, scheduledCardPayments, paymentPlans] = await Promise.all([
     prisma.wallet.findMany({
       where: {
@@ -959,7 +979,7 @@ export const getLiquidityProjection = async (
       },
       orderBy: { name: 'asc' },
     }),
-    collectExpectedIncomeByMonth(input.ownerFilter, asOf, input.until),
+    collectExpectedIncomeByMonth(input.ownerFilter, asOf, input.until, incomeDates),
     prisma.creditCardScheduledPayment.findMany({
       where: { ...input.ownerFilter, status: 'SCHEDULED' },
       select: {
@@ -1576,6 +1596,7 @@ export const getLiquidityProjection = async (
     projection_events: projectionEvents,
     projection_tracks: projectionTracks,
     card_utilization_summary,
+    income_dates: [...incomeDates].sort((a, b) => a.date.localeCompare(b.date)),
     ...(scenario && scenarioDelta
       ? { scenario_delta: scenarioDelta, scenario_assumptions: scenario.assumptions }
       : {}),
