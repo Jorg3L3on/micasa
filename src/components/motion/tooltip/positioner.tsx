@@ -1,6 +1,6 @@
 "use client";
 
-import { useIsPresent } from "motion/react";
+import { useIsPresent } from "framer-motion";
 import { useCallback, useState, type ReactNode } from "react";
 import { useTooltipPosition } from "./use-position";
 

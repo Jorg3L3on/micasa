@@ -32,7 +32,7 @@ import {
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
-import { EditCardPaymentPlanDialog } from '@/components/planner/EditCardPaymentPlanDialog';
+import dynamic from 'next/dynamic';
 import { cardChargeErrorMessage } from '@/components/credit-cards/over-debt-reason';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
 import { DueRowProviderLogo } from '@/components/planner/DueRowProviderLogo';
@@ -44,6 +44,12 @@ import {
   type DueRowStatus,
 } from '@/lib/ui/aura-palette';
 import type { CardPaymentPlanFormValues } from '@/schemas/credit-card-payment-plan.schema';
+
+// The plan dialog (zod, react-hook-form) loads when a row is edited.
+const EditCardPaymentPlanDialog = dynamic(
+  () => import('@/components/planner/EditCardPaymentPlanDialog').then((m) => m.EditCardPaymentPlanDialog),
+  { ssr: false },
+);
 
 /** Calendar-day difference between the statement due date and today (UTC). */
 const getDaysLeft = (statementDueDateYmd: string, todayYmd: string): number => {

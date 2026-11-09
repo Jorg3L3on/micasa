@@ -1,5 +1,6 @@
 'use client';
 
+import EmptyState from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/error-banner';
 import {
   useCallback,
@@ -35,10 +36,11 @@ import type {
   AddIncomeFormValues,
 } from '@/schemas/transaction.schema';
 import type { WalletFormValues } from '@/schemas/wallet.schema';
-import { Skeleton } from '@/components/ui/skeleton';
+import { RevealGroup, RevealItem } from '@/components/motion/reveal';
 import { Tabs, TabsContent } from '@/components/motion/tabs';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
+import { WalletDetailBodySkeleton } from '@/components/wallets/DetailBodySkeletons';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 import {
   hasWalletVtStash,
@@ -72,6 +74,7 @@ import {
   estimateWalletRunwayDays,
 } from '@/lib/finance/wallet-period-analytics';
 import { formatMonthHeading, todayCalendarDate } from '@/lib/calendar-dates';
+import { cn } from '@/lib/utils';
 import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
 import type {
   WalletDetail,
@@ -102,6 +105,14 @@ const parseYearMonth = (fromDate: string): { year: number; monthIdx: number } =>
   return { year: y, monthIdx: m - 1 };
 };
 
+const currentMonthRange = (today: string): { from: string; to: string } => {
+  const { year, monthIdx } = parseYearMonth(today);
+  return {
+    from: firstDayOfMonth(year, monthIdx),
+    to: lastDayOfMonth(year, monthIdx),
+  };
+};
+
 type WalletDetailTab = 'resumen' | 'movimientos' | 'compromisos';
 
 const WalletDetailSkeleton = ({ walletId }: { walletId: number }) => (
@@ -116,22 +127,7 @@ const WalletDetailSkeleton = ({ walletId }: { walletId: number }) => (
           <WalletCardVtPlaceholder walletId={walletId} variant="funding" />
         </ViewTransition>
       </div>
-      <div className="space-y-3 px-1 py-7 sm:py-9">
-        <Skeleton className="h-12 w-full rounded-full" />
-        <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
-          ))}
-        </div>
-      </div>
-      <div className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm">
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-[4.5rem] rounded-lg" />
-          ))}
-        </div>
-        <Skeleton className="mt-4 h-48 w-full rounded-xl" />
-      </div>
+      <WalletDetailBodySkeleton />
     </div>
   </DirectionalTransition>
 );
@@ -157,10 +153,7 @@ export default function WalletDetailPage() {
     const qFrom = searchParams.get('from');
     const qTo = searchParams.get('to');
     if (qFrom && qTo) return { from: qFrom, to: qTo };
-    const now = new Date();
-    const y = now.getUTCFullYear();
-    const m = now.getUTCMonth();
-    return { from: firstDayOfMonth(y, m), to: lastDayOfMonth(y, m) };
+    return currentMonthRange(todayCalendarDate());
   });
   const [importOpen, setImportOpen] = useState(false);
   const [balanceOpen, setBalanceOpen] = useState(false);
@@ -326,7 +319,10 @@ export default function WalletDetailPage() {
           );
         }
       } catch {
-        /* secondary chrome — keep hero visible */
+        // The hero stays visible, but transfers and payments need these lists.
+        toast.error(
+          'No se pudo cargar toda la información. Algunas acciones podrían no funcionar.',
+        );
       }
     },
     [context, walletId],
@@ -387,10 +383,7 @@ export default function WalletDetailPage() {
   }, [range.from]);
 
   const handleResetToToday = useCallback(() => {
-    const now = new Date();
-    const y = now.getUTCFullYear();
-    const m = now.getUTCMonth();
-    setRange({ from: firstDayOfMonth(y, m), to: lastDayOfMonth(y, m) });
+    setRange(currentMonthRange(todayCalendarDate()));
   }, []);
 
   const isCurrentMonth = useMemo(() => {
@@ -574,9 +567,14 @@ export default function WalletDetailPage() {
   const runwayDays = useMemo(
     () =>
       wallet
-        ? estimateWalletRunwayDays(wallet.amount, analytics.averageDailyOutflow)
+        ? estimateWalletRunwayDays({
+            balance: wallet.amount,
+            averageDailyOutflow: analytics.averageDailyOutflow,
+            elapsedDays: analytics.elapsedDays,
+            isCurrentPeriod: isCurrentMonth,
+          })
         : null,
-    [analytics.averageDailyOutflow, wallet],
+    [analytics.averageDailyOutflow, analytics.elapsedDays, isCurrentMonth, wallet],
   );
 
   const registrarIcon = useMemo(
@@ -628,6 +626,12 @@ export default function WalletDetailPage() {
         icon: <Download data-icon="inline-start" />,
       },
       {
+        key: 'history',
+        label: 'Historial',
+        onClick: () => setHistoryOpen(true),
+        icon: <History data-icon="inline-start" />,
+      },
+      {
         key: 'delete',
         label: 'Eliminar billetera',
         onClick: requestDelete,
@@ -676,7 +680,7 @@ export default function WalletDetailPage() {
   return (
     <DirectionalTransition>
     <div className="relative">
-      <WalletHeroZone wallet={wallet ?? undefined}>
+      <WalletHeroZone>
         <ViewTransition
           name={walletCardViewTransitionName(walletId)}
           share="morph"
@@ -692,18 +696,7 @@ export default function WalletDetailPage() {
 
       <div className="relative">
       {bodyPending || !wallet ? (
-        <div
-          className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm"
-          role="status"
-          aria-label="Cargando movimientos"
-        >
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-[4.5rem] rounded-lg" />
-            ))}
-          </div>
-          <Skeleton className="mt-4 h-48 w-full rounded-xl" />
-        </div>
+        <WalletDetailBodySkeleton />
       ) : (
       <Tabs
         value={activeTab}
@@ -738,16 +731,22 @@ export default function WalletDetailPage() {
             </>
           }
         >
-          <TabsContent value="resumen" className="mt-0">
+          {/* From lg, Resumen stays in the layout and sets the height; the other tabs fill it. */}
+          <div className="relative min-w-0">
+          <div
+            className={cn(
+              activeTab !== 'resumen' &&
+                'invisible max-lg:h-0 max-lg:overflow-hidden',
+            )}
+          >
             <WalletPeriodAnalyticsPanels
               analytics={analytics}
-              balance={wallet.amount}
               rangeLabel={rangeLabel}
-              runwayDays={runwayDays}
+              active={activeTab === 'resumen'}
             />
-          </TabsContent>
+          </div>
 
-          <TabsContent value="movimientos" className="mt-0">
+          <TabsContent value="movimientos" className="mt-0 lg:absolute lg:inset-0">
             <WalletMovementsFeed
               movements={data.movements}
               ownerQueryString={ownerQueryString}
@@ -756,17 +755,30 @@ export default function WalletDetailPage() {
             />
           </TabsContent>
 
-          <TabsContent value="compromisos" className="mt-0 space-y-4">
-            {isCreditWallet ? (
-              <CreditCardPlannedPaymentSection
-                walletId={walletId}
-                items={paymentPlanItems}
-                onPlanUpdated={loadData}
-                onPayCard={handleOpenPlanPayment}
+          <TabsContent
+            value="compromisos"
+            className="mt-0 lg:absolute lg:inset-0 lg:overflow-y-auto"
+          >
+            <RevealGroup className="contents">
+              <RevealItem className="peer space-y-4 empty:hidden">
+                {isCreditWallet ? (
+                  <CreditCardPlannedPaymentSection
+                    walletId={walletId}
+                    items={paymentPlanItems}
+                    onPlanUpdated={loadData}
+                    onPayCard={handleOpenPlanPayment}
+                  />
+                ) : null}
+                <LinkedLoansCard walletId={walletId} />
+              </RevealItem>
+              <EmptyState
+                message="Sin compromisos"
+                description="Aquí verás los préstamos ligados a esta billetera."
+                className="hidden peer-empty:flex lg:h-full"
               />
-            ) : null}
-            <LinkedLoansCard walletId={walletId} />
+            </RevealGroup>
           </TabsContent>
+          </div>
         </WalletPeriodWorkspaceShell>
       </Tabs>
       )}

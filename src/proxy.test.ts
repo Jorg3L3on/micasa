@@ -80,3 +80,49 @@ describe('proxy consent CSP', () => {
     warn.mockRestore();
   });
 });
+
+describe('proxy home redirect owner', () => {
+  const invokeWithCookie = (url: string, cookie: string | null, userId = '42') => {
+    const request = new NextRequest(url, {
+      headers: cookie ? { cookie } : undefined,
+    });
+    return runProxy(Object.assign(request, { auth: { user: { id: userId } } }));
+  };
+
+  const redirectQuery = (response: Response) =>
+    new URL(response.headers.get('location') ?? '').searchParams;
+
+  it('sends / to the user context when there is no owner hint', async () => {
+    const query = redirectQuery(await invokeWithCookie('http://localhost:3000/', null));
+    expect(query.get('ownerType')).toBe('user');
+    expect(query.get('ownerId')).toBe('42');
+  });
+
+  it('sends / to the hinted house of the same user', async () => {
+    const query = redirectQuery(
+      await invokeWithCookie('http://localhost:3000/?quick=expense', 'micasa_owner=42:house:7'),
+    );
+    expect(query.get('ownerType')).toBe('house');
+    expect(query.get('ownerId')).toBe('7');
+    expect(query.get('quick')).toBe('expense');
+  });
+
+  it('ignores a hint written by another account on the device', async () => {
+    const query = redirectQuery(
+      await invokeWithCookie('http://localhost:3000/login', 'micasa_owner=9:house:7'),
+    );
+    expect(query.get('ownerType')).toBe('user');
+    expect(query.get('ownerId')).toBe('42');
+  });
+
+  it('keeps explicit owner params on legacy dashboard links', async () => {
+    const query = redirectQuery(
+      await invokeWithCookie(
+        'http://localhost:3000/dashboard?ownerType=house&ownerId=3',
+        'micasa_owner=42:house:7',
+      ),
+    );
+    expect(query.get('ownerType')).toBe('house');
+    expect(query.get('ownerId')).toBe('3');
+  });
+});

@@ -180,3 +180,39 @@ export const buildAttentionItems = (
     (a, b) => (a.daysUntilDue ?? -1) - (b.daysUntilDue ?? -1),
   );
 };
+
+/** Short reason for the tag on a wallet face. */
+export const attentionCaption = (item: WalletAttentionItem): string => {
+  switch (item.reason) {
+    case 'due-soon':
+      return item.daysUntilDue === 0
+        ? 'Vence hoy'
+        : `Vence en ${item.daysUntilDue} ${item.daysUntilDue === 1 ? 'día' : 'días'}`;
+    case 'missing-due-day':
+      return 'Falta fecha de pago';
+    case 'over-limit':
+      return 'Sobre el límite';
+    default:
+      return 'Saldo negativo';
+  }
+};
+
+/**
+ * The cover flow shows one card at a time, so a flagged card elsewhere in the
+ * rail needs a pointer. Returns how many there are and the next one to the
+ * right of the active card, wrapping around.
+ */
+export const nextAttentionWallet = (
+  items: WalletAttentionItem[],
+  wallets: WalletListItem[],
+  activeId: number,
+): { count: number; nextId: number | null } => {
+  const flagged = new Set(items.map((item) => item.wallet.id));
+  flagged.delete(activeId);
+  const activeIndex = wallets.findIndex((wallet) => wallet.id === activeId);
+  const ordered = [
+    ...wallets.slice(activeIndex + 1),
+    ...wallets.slice(0, Math.max(activeIndex, 0)),
+  ].filter((wallet) => flagged.has(wallet.id));
+  return { count: ordered.length, nextId: ordered[0]?.id ?? null };
+};

@@ -2,7 +2,7 @@
 
 import type { FinanceContextType } from '@/types/finance-context';
 import type { PaymentMethodOption, WalletListItem } from '@/types/catalog';
-import { WalletFormValues } from '@/schemas/wallet.schema';
+import type { WalletFormValues } from '@/schemas/wallet.schema';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
 import type { WalletMetricsResponse } from '@/lib/finance/wallet-balance-evolution.service';
 

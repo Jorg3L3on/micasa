@@ -72,6 +72,10 @@ export type LoanDuePaymentItem = LoanPaymentListItem & {
   linkedWalletId: number | null;
   linkedWalletName: string | null;
   incomeTemplateName: string | null;
+  /** Installments in the contract ("cuota 19 de 24"). */
+  paymentCount?: number;
+  /** YYYY-MM-DD of the last installment ("termina jun 2027"). */
+  loanEndDate?: string | null;
 };
 
 export type PlannerLoanPaymentsResponse = {

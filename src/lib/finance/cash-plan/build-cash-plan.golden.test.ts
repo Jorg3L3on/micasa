@@ -23,6 +23,16 @@ type GoldenCase = {
   expectAlternativeRiskTag?: RiskTag;
   expectAlternativeWarning?: string;
   forbidActionAmount?: number;
+  /** No route of these strategies, primary or alternative. */
+  forbidStrategies?: string[];
+  /** The buffer route keeps exactly this many pesos. */
+  expectBufferAmount?: number;
+  /** Every funded step of the primary leaves from this wallet. */
+  expectFromWalletId?: number;
+  /** Primary steps on these obligations carry these civil due dates. */
+  expectStepDueDates?: Record<string, string>;
+  /** Debts each route (by id) leaves at $0 this period. */
+  expectDebtsClosed?: Record<string, number>;
 };
 
 const cases = JSON.parse(
@@ -89,6 +99,34 @@ describe('cash plan golden cases', () => {
         plan.actions.map((item) => item.amount),
       );
       expect(amounts).not.toContain(golden.forbidActionAmount);
+    }
+    const routes = [first.primary, ...first.alternatives];
+    for (const strategy of golden.forbidStrategies ?? []) {
+      expect(routes.map((plan) => plan.strategyKey)).not.toContain(strategy);
+    }
+    // Buffer rule: a cushion is whole pesos and never under $100.
+    for (const plan of routes) {
+      for (const item of plan.actions) {
+        if (item.type !== 'buffer_reserve' || item.amount == null) continue;
+        expect(item.amount).toBeGreaterThanOrEqual(100);
+        expect(Number.isInteger(item.amount)).toBe(true);
+      }
+    }
+    if (golden.expectBufferAmount != null) {
+      const buffer = routes.find((plan) => plan.strategyKey === 'buffer');
+      expect(buffer?.actions.find((item) => item.type === 'buffer_reserve')?.amount).toBe(golden.expectBufferAmount);
+    }
+    if (golden.expectFromWalletId != null) {
+      const funded = first.primary.actions.filter((item) => item.type !== 'defer_nonessential');
+      expect(funded.length).toBeGreaterThan(0);
+      for (const item of funded) expect(item.fromWalletId).toBe(golden.expectFromWalletId);
+    }
+    for (const [routeId, closed] of Object.entries(golden.expectDebtsClosed ?? {})) {
+      expect(routes.find((plan) => plan.id === routeId)?.debtsClosed, routeId).toBe(closed);
+    }
+    for (const [obligationId, dueDate] of Object.entries(golden.expectStepDueDates ?? {})) {
+      const step = routes.flatMap((plan) => plan.actions).find((item) => item.obligationId === obligationId);
+      expect(step?.dueDate).toBe(dueDate);
     }
     expect(first.primary.actions.every((item) => item.type in ACTION_CATALOG)).toBe(true);
     expect(first.primary.touchesUntouchable).toBe(false);

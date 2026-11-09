@@ -1,3 +1,4 @@
+import { todayCalendarDate } from '@/lib/calendar-dates';
 import type { WalletMovement } from '@/types/wallet-movements';
 
 export type WalletDailyFlowRow = {
@@ -29,7 +30,10 @@ export type WalletPeriodAnalytics = {
   categoryBreakdown: WalletCategoryBreakdownRow[];
   movementMix: WalletMovementMix;
   daysInRange: number;
+  /** Days of the range that have already happened (all of them for a past range). */
+  elapsedDays: number;
   activeDays: number;
+  /** Outflow per elapsed day, whether or not money moved that day. */
   averageDailyOutflow: number;
   projectedMonthlyOutflow: number;
   largestInflow: WalletMovement | null;
@@ -59,6 +63,14 @@ const inclusiveDays = (range: WalletPeriodRange) => {
   return Math.max(1, Math.round((to.getTime() - from.getTime()) / DAY_MS) + 1);
 };
 
+const elapsedDaysInRange = (range: WalletPeriodRange, today: string) => {
+  if (today < range.from) return 0;
+  return inclusiveDays({
+    from: range.from,
+    to: today < range.to ? today : range.to,
+  });
+};
+
 const dateKeysInRange = (range: WalletPeriodRange) => {
   const days = inclusiveDays(range);
   const start = parseYmdAsUtc(range.from);
@@ -74,6 +86,7 @@ const movementSignedAmount = (movement: WalletMovement) =>
 export const buildWalletPeriodAnalytics = (
   movements: WalletMovement[],
   range: WalletPeriodRange,
+  today: string = todayCalendarDate(),
 ): WalletPeriodAnalytics => {
   const daily = new Map<string, { inflow: number; outflow: number }>();
   const categories = new Map<
@@ -162,14 +175,15 @@ export const buildWalletPeriodAnalytics = (
     (row) => row.inflow > 0 || row.outflow > 0,
   ).length;
   const daysInRange = dailyFlow.length;
-  const averageDailyOutflow =
-    activeDays > 0 ? totalOutflow / activeDays : 0;
+  const elapsedDays = elapsedDaysInRange(range, today);
+  const averageDailyOutflow = elapsedDays > 0 ? totalOutflow / elapsedDays : 0;
 
   return {
     dailyFlow,
     categoryBreakdown,
     movementMix,
     daysInRange,
+    elapsedDays,
     activeDays,
     averageDailyOutflow,
     projectedMonthlyOutflow: averageDailyOutflow * daysInRange,
@@ -178,10 +192,26 @@ export const buildWalletPeriodAnalytics = (
   };
 };
 
-export const estimateWalletRunwayDays = (
-  balance: number,
-  averageDailyOutflow: number,
-) => {
+/** Below this, one early payment (rent, a card) would read as the daily rate. */
+export const MIN_ELAPSED_DAYS_FOR_RUNWAY = 7;
+
+/**
+ * Days the balance lasts at the period's rate, or null when that estimate
+ * would not mean anything: a past period (today's balance against an old
+ * rate), too few days to judge a rate, or no outflow.
+ */
+export const estimateWalletRunwayDays = ({
+  balance,
+  averageDailyOutflow,
+  elapsedDays,
+  isCurrentPeriod,
+}: {
+  balance: number;
+  averageDailyOutflow: number;
+  elapsedDays: number;
+  isCurrentPeriod: boolean;
+}) => {
+  if (!isCurrentPeriod || elapsedDays < MIN_ELAPSED_DAYS_FOR_RUNWAY) return null;
   if (averageDailyOutflow <= 0) return null;
   if (balance <= 0) return 0;
   return Math.floor(balance / averageDailyOutflow);

@@ -3,21 +3,22 @@
 import { useMemo, type ReactNode } from 'react';
 import {
   CalendarClock,
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
   CreditCard,
   Landmark,
   Receipt,
-  RotateCcw,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SegmentedControl, type SegmentedOption } from '@/components/segmented-control';
-import { creditCardSegmentedTabChromeClass } from '@/components/credit-cards/credit-card-segmented-tabs';
+import { DETAIL_TAB_BAR_PROPS } from '@/components/credit-cards/credit-card-segmented-tabs';
 import { canAdvanceToNextCreditCardCycle } from '@/lib/finance/credit-card-cycle-types';
 import { getProviderCardStyle } from '@/lib/provider-card-style';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { Money } from '@/components/money';
+import { DetailPeriodNav } from '@/components/wallets/DetailPeriodNav';
+import { WalletFaceArt } from '@/components/wallets/WalletFaceArt';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import type {
   CreditCardListItem,
@@ -31,14 +32,8 @@ export const CreditCardDetailTabsList = ({
   options: readonly SegmentedOption[];
 }) => (
   <SegmentedControl
-    embedded
+    {...DETAIL_TAB_BAR_PROPS}
     ariaLabel="Secciones de la tarjeta"
-    stretch
-    frameClassName={cn(
-      creditCardSegmentedTabChromeClass,
-      'flex w-full min-w-0 items-center',
-    )}
-    wrapperClassName="min-w-0 flex-1"
     options={options}
   />
 );
@@ -130,10 +125,10 @@ export const CreditCardCycleSpendingBar = ({
                 className="flex items-center gap-1.5 text-caption text-muted-foreground"
               >
                 <span className={cn('inline-block h-1.5 w-1.5 rounded-full', color)} />
-                <span className="max-w-[5.5rem] truncate">{category}</span>
-                <span className="font-sans tabular-nums text-foreground/80">
-                  {formatCurrency(amount)}
+                <span className="max-w-[5.5rem] truncate" title={category}>
+                  {category}
                 </span>
+                <Money value={amount} size="caption" tone="neutral" />
               </li>
             ))}
           </ul>
@@ -184,28 +179,17 @@ export const CreditCardVisualHero = ({
     >
       <div
         className={cn(
-          // Grow with content (no fixed aspect): utilization + amounts clip on
-          // narrow viewports when locked to aspect-[1.586/1] + overflow-hidden.
-          'relative w-full overflow-hidden rounded-face border aspect-[1.586] [container-type:inline-size] p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
+          // Flex column, not h-full on the child: Safari ignores padding for
+          // percentage heights inside an aspect-ratio box and clips the bottom.
+          'relative flex w-full flex-col overflow-hidden rounded-face border aspect-[1.586] [container-type:inline-size] p-4 text-white shadow-xl ring-1 ring-inset ring-white/10 sm:p-5',
           !cardStyle &&
             'border-border bg-linear-to-br from-foreground to-background',
         )}
         style={cardStyle}
       >
-        <span
-          className="pointer-events-none absolute -left-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-3xl"
-          aria-hidden
-        />
-        <span
-          className="pointer-events-none absolute -bottom-10 -right-8 h-28 w-28 rounded-full bg-white/8 blur-2xl"
-          aria-hidden
-        />
-        <span
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent"
-          aria-hidden
-        />
+        <WalletFaceArt />
 
-        <div className="relative flex h-full flex-col justify-between gap-2">
+        <div className="relative flex min-h-0 flex-1 flex-col justify-between gap-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {card.provider_icon_key ? (
@@ -336,11 +320,11 @@ export const CreditCardDuePaymentStrip = ({
         <p className="eyebrow text-muted-foreground">
           Toca pagar este corte
         </p>
-        <p className="text-caption text-muted-foreground">
-          No es la deuda total ni el saldo del plan.
-        </p>
         <p className="font-sans text-lg font-bold tabular-nums leading-tight">
           {isMissingCorte ? '—' : formatCurrency(statement.next_due_payment)}
+        </p>
+        <p className="text-caption text-muted-foreground">
+          No es la deuda total ni el saldo del plan.
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -414,51 +398,21 @@ export const CreditCardCycleSummary = ({
 }: CycleSummaryProps) => {
   return (
     <div role="region" aria-label="Navegación de ciclo">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          onClick={onPreviousCycle}
-          aria-label="Ciclo anterior"
-        >
-          <ChevronLeft className="h-4 w-4" data-icon="inline-start" />
-        </Button>
-        <div className="min-w-0 flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 text-center dark:bg-muted/10">
-          <p className="eyebrow text-muted-foreground">
-            {isCurrentCycle ? 'Ciclo actual' : 'Ciclo seleccionado'}
-          </p>
-          <p className="truncate text-xs font-semibold tabular-nums sm:text-sm">
-            {formatCycleRange(statement.current_cycle_start, statement.current_cycle_end)}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          onClick={onNextCycle}
-          disabled={!canAdvanceToNextCreditCardCycle(statement.current_cycle_end)}
-          aria-label="Ciclo siguiente"
-        >
-          <ChevronRight className="h-4 w-4" data-icon="inline-end" />
-        </Button>
-        {!isCurrentCycle ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 shrink-0 rounded-full px-2.5 text-caption"
-            onClick={onResetToToday}
-            aria-label="Volver al ciclo actual"
-          >
-            <RotateCcw
-              className="mr-1 h-3 w-3"
-              aria-hidden
-              data-icon="inline-start"
-            />
-            Hoy
-          </Button>
-        ) : null}
-      </div>
+      <DetailPeriodNav
+        eyebrow={isCurrentCycle ? 'Ciclo actual' : 'Ciclo seleccionado'}
+        label={formatCycleRange(
+          statement.current_cycle_start,
+          statement.current_cycle_end,
+        )}
+        previousLabel="Ciclo anterior"
+        nextLabel="Ciclo siguiente"
+        resetLabel="Volver al ciclo actual"
+        canGoNext={canAdvanceToNextCreditCardCycle(statement.current_cycle_end)}
+        showReset={!isCurrentCycle}
+        onPrevious={onPreviousCycle}
+        onNext={onNextCycle}
+        onReset={onResetToToday}
+      />
     </div>
   );
 };
@@ -478,10 +432,10 @@ export const CreditCardStatementSummaryCard = ({
   const hasPendingDue = !isMissingCorte && statement.next_due_payment > 0;
 
   const body = (
-    <Card className="overflow-hidden border-border/60">
-      <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-status-info/10 dark:bg-status-info/15">
-          <Receipt className="h-3.5 w-3.5 text-status-info" data-icon="inline-start" />
+    <Card className="gap-2 overflow-hidden border-border/60 pt-4 pb-0">
+      <CardHeader className="flex flex-row items-center gap-3 space-y-0 px-4 pb-0">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-status-info-soft text-status-info">
+          <Receipt className="h-4 w-4" aria-hidden data-icon="inline-start" />
         </span>
         <div>
           <CardTitle className="text-sm font-semibold leading-none">
@@ -509,23 +463,27 @@ export const CreditCardStatementSummaryCard = ({
               ? 'Total importado'
               : 'Saldo del corte'}
           </span>
-          <span className="font-sans tabular-nums font-medium">
-            {formatCurrency(
-              statement.imported_statement_total ?? statement.last_statement_balance,
-            )}
-          </span>
+          <Money
+            value={statement.imported_statement_total ?? statement.last_statement_balance}
+            tone="neutral"
+            className="text-xs font-medium"
+          />
         </div>
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="text-muted-foreground">Pagos desde corte</span>
-          <span className="font-sans tabular-nums font-medium">
-            {formatCurrency(statement.payments_since_last_cutoff)}
-          </span>
+          <Money
+            value={statement.payments_since_last_cutoff}
+            tone="neutral"
+            className="text-xs font-medium"
+          />
         </div>
         <div className="flex items-center justify-between px-4 py-2.5 text-xs">
           <span className="text-muted-foreground">Pagos aplicados</span>
-          <span className="font-sans tabular-nums font-medium">
-            {formatCurrency(statement.payments_applied_to_statement)}
-          </span>
+          <Money
+            value={statement.payments_applied_to_statement}
+            tone="neutral"
+            className="text-xs font-medium"
+          />
         </div>
         <div
           className={cn(
@@ -556,11 +514,15 @@ export const CreditCardStatementSummaryCard = ({
 
   return (
     <details className="group rounded-2xl border border-border/60 bg-card/50 open:pb-0">
-      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold outline-none marker:content-none focus-visible:ring-2 focus-visible:ring-primary/45 [&::-webkit-details-marker]:hidden">
         Detalle del corte
-        <span className="ml-2 text-xs font-normal text-muted-foreground">
+        <span className="min-w-0 truncate text-xs font-normal text-muted-foreground">
           {formatDate(statement.statement_start)} – {formatDate(statement.statement_end)}
         </span>
+        <ChevronDown
+          className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-(--motion-base) group-open:rotate-180 motion-reduce:transition-none"
+          aria-hidden
+        />
       </summary>
       <div className="border-t border-border/50 px-1 pb-1 pt-0">{body}</div>
     </details>

@@ -48,13 +48,14 @@ export const fetchRecentMovements = async (
   key: string,
   walletId: number,
   context: FinanceContextType,
+  limit: number = RECENT_MOVEMENTS_LIMIT,
 ): Promise<WalletMovement[]> => {
   const response = await clientFetchFromApi<WalletMovementsResponse>(
-    `/api/wallets/${walletId}/movements?latest=${RECENT_MOVEMENTS_LIMIT}`,
+    `/api/wallets/${walletId}/movements?latest=${limit}`,
     undefined,
     context,
   );
-  const movements = response.movements.slice(0, RECENT_MOVEMENTS_LIMIT);
+  const movements = response.movements.slice(0, limit);
   cache.set(key, { at: Date.now(), movements });
   return movements;
 };

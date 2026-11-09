@@ -252,6 +252,8 @@ describe('listPaymentsCalendarForMonth', () => {
         due_day: null,
         due_day_first_fortnight: null,
         due_day_second_fortnight: 18,
+        applies_first_fortnight: false,
+        applies_second_fortnight: true,
       },
     ]);
 
@@ -291,11 +293,54 @@ describe('listPaymentsCalendarForMonth', () => {
         due_day: null,
         due_day_first_fortnight: null,
         due_day_second_fortnight: 18,
+        applies_first_fortnight: false,
+        applies_second_fortnight: true,
       },
     ]);
 
     const result = await listPaymentsCalendarForMonth(ownerFilter, 2026, 9);
     expect(result.items.some((item) => item.type === 'template')).toBe(false);
+  });
+
+  it('reads templates once for every fortnight and matches each to its period', async () => {
+    fortnightFindMany.mockResolvedValue([
+      { id: 1, year: 2026, month: 9, period: 'FIRST', end_date: parseCalendarDate('2026-09-14') },
+      { id: 2, year: 2026, month: 9, period: 'SECOND', end_date: parseCalendarDate('2026-09-29') },
+    ]);
+    expenseFindMany.mockResolvedValue([]);
+    expenseTemplateFindMany.mockResolvedValue([
+      {
+        id: 9,
+        name: 'Internet',
+        suggested_amount: 650,
+        wallet_id: 10,
+        due_day: null,
+        due_day_first_fortnight: null,
+        due_day_second_fortnight: 18,
+        applies_first_fortnight: false,
+        applies_second_fortnight: true,
+      },
+      {
+        id: 11,
+        name: 'Renta',
+        suggested_amount: 6000,
+        wallet_id: null,
+        due_day: 5,
+        due_day_first_fortnight: null,
+        due_day_second_fortnight: null,
+        applies_first_fortnight: true,
+        applies_second_fortnight: false,
+      },
+    ]);
+
+    const result = await listPaymentsCalendarForMonth(ownerFilter, 2026, 9);
+    const templates = result.items.filter((item) => item.type === 'template');
+    expect(templates.map((item) => [item.sourceId, item.date])).toEqual([
+      [11, '2026-09-05'],
+      [9, '2026-09-18'],
+    ]);
+    expect(expenseTemplateFindMany).toHaveBeenCalledTimes(1);
+    expect(fortnightFindMany).toHaveBeenCalledTimes(1);
   });
 });
 
