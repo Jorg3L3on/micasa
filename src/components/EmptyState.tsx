@@ -9,6 +9,11 @@ type EmptyStateProps = {
   description?: string;
   icon?: LucideIcon;
   className?: string;
+  /**
+   * From `lg`, leave the action out of the centering, so this state lines up
+   * with a sibling tab's empty state that has no action.
+   */
+  hangAction?: boolean;
   action?: {
     label: string;
     onClick?: () => void;
@@ -22,10 +27,11 @@ const EmptyState = ({
   description,
   icon: Icon = Inbox,
   className,
+  hangAction = false,
   action,
 }: EmptyStateProps) => {
-  return (
-    <div className={cn('flex flex-col items-center justify-center gap-3 px-4 py-12', className)}>
+  const body = (
+    <>
       <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60">
         <Icon className="h-6 w-6 text-muted-foreground/60" data-icon="inline-start" />
       </span>
@@ -33,27 +39,48 @@ const EmptyState = ({
       {description ? (
         <p className="max-w-sm text-center text-body text-muted-foreground">{description}</p>
       ) : null}
-      {action?.href ? (
-        <Button
-          type="button"
-          variant={action.variant ?? 'default'}
-          size="sm"
-          className="mt-1 h-11 sm:h-8"
-          asChild
-        >
-          <Link href={action.href}>{action.label}</Link>
-        </Button>
-      ) : action ? (
-        <Button
-          type="button"
-          variant={action.variant ?? 'default'}
-          size="sm"
-          className="mt-1 h-11 sm:h-8"
-          onClick={action.onClick}
-        >
-          {action.label}
-        </Button>
-      ) : null}
+    </>
+  );
+
+  const actionButton = action?.href ? (
+    <Button
+      type="button"
+      variant={action.variant ?? 'default'}
+      size="sm"
+      className="mt-1"
+      asChild
+    >
+      <Link href={action.href}>{action.label}</Link>
+    </Button>
+  ) : action ? (
+    <Button
+      type="button"
+      variant={action.variant ?? 'default'}
+      size="sm"
+      className="mt-1"
+      onClick={action.onClick}
+    >
+      {action.label}
+    </Button>
+  ) : null;
+
+  return (
+    <div className={cn('flex flex-col items-center justify-center gap-3 px-4 py-12', className)}>
+      {hangAction ? (
+        <div className="relative flex flex-col items-center gap-3">
+          {body}
+          {actionButton ? (
+            <div className="lg:absolute lg:left-1/2 lg:top-full lg:mt-3 lg:-translate-x-1/2">
+              {actionButton}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          {body}
+          {actionButton}
+        </>
+      )}
     </div>
   );
 };

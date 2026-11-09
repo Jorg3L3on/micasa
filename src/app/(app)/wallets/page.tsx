@@ -67,13 +67,11 @@ import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import { useWalletQuickActions } from '@/components/wallets/use-wallet-quick-actions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { WalletFlowSection } from '@/components/wallets/WalletFlowSection';
-import { WalletsAttentionBlock } from '@/components/wallets/WalletsAttentionBlock';
 import { WalletsFirstEmptyState } from '@/components/wallets/WalletsFirstEmptyState';
-import { WalletsSummaryStrip } from '@/components/wallets/WalletsSummaryStrip';
+import { WalletsGallery } from '@/components/wallets/WalletsGallery';
 import {
   buildAttentionItems,
   groupWalletsBySection,
-  summarizeWallets,
 } from '@/lib/ui/wallet-cover-flow';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import WalletTransferDialog from '@/components/wallets/WalletTransferDialog';
@@ -412,7 +410,6 @@ export default function WalletsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [balanceWallet, setBalanceWallet] = useState<WalletListItem | null>(null);
   const [transferWallet, setTransferWallet] = useState<WalletListItem | null>(null);
-  const [focusWalletId, setFocusWalletId] = useState<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -912,7 +909,6 @@ export default function WalletsPage() {
     () => groupWalletsBySection(displayWallets),
     [displayWallets],
   );
-  const totals = useMemo(() => summarizeWallets(wallets), [wallets]);
   const attentionItems = useMemo(() => {
     const [year, month, day] = todayCalendarDate().split('-').map(Number);
     return buildAttentionItems(displayWallets, {
@@ -1278,12 +1274,13 @@ export default function WalletsPage() {
               {wallets.length === 0 ? (
                 <WalletsFirstEmptyState onCreate={openCreateDialog} />
               ) : (
-                <div className="mx-auto w-full min-w-0 max-w-3xl space-y-8">
-                  <WalletsSummaryStrip totals={totals} />
-                  <WalletsAttentionBlock
-                    items={attentionItems}
-                    onSelect={setFocusWalletId}
-                  />
+                <div
+                  className={
+                    isMobile
+                      ? 'mx-auto w-full min-w-0 max-w-3xl space-y-8'
+                      : 'w-full min-w-0'
+                  }
+                >
                   {displayWallets.length === 0 ? (
                     error ? null : (
                       <EmptyState
@@ -1295,36 +1292,23 @@ export default function WalletsPage() {
                         }}
                       />
                     )
+                  ) : isMobile ? (
+                    <WalletFlowSection
+                      title="Billeteras"
+                      hideHeader
+                      wallets={displayWallets}
+                      ownerQueryString={ownerQueryString}
+                      attention={attentionItems}
+                      {...flowActions}
+                    />
                   ) : (
-                    isMobile ? (
-                      <WalletFlowSection
-                        title="Billeteras"
-                        hideHeader
-                        wallets={displayWallets}
-                        ownerQueryString={ownerQueryString}
-                        focusWalletId={focusWalletId}
-                        {...flowActions}
-                      />
-                    ) : (
-                    <>
-                      <WalletFlowSection
-                        title="Efectivo y débito"
-                        wallets={sections.funding}
-                        ownerQueryString={ownerQueryString}
-                        focusWalletId={focusWalletId}
-                        {...flowActions}
-                      />
-                      <WalletFlowSection
-                        title="Tarjetas de crédito"
-                        wallets={sections.credit}
-                        ownerQueryString={ownerQueryString}
-                        focusWalletId={focusWalletId}
-                        {...flowActions}
-                      />
-                    </>
-                    )
+                    <WalletsGallery
+                      funding={sections.funding}
+                      credit={sections.credit}
+                      attention={attentionItems}
+                      ownerQueryString={ownerQueryString}
+                    />
                   )}
-
                 </div>
               )}
             </ContentEnter>

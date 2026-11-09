@@ -29,6 +29,10 @@ import { useWalletDelete } from '@/components/wallets/use-wallet-delete';
 import { WalletFormValues } from '@/schemas/wallet.schema';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
+import {
+  CreditCardCycleSkeleton,
+  CreditCardDetailBodySkeleton,
+} from '@/components/wallets/DetailBodySkeletons';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 import {
   hasWalletVtStash,
@@ -60,8 +64,8 @@ import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQ
 import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
 import LinkedLoansCard from '@/components/loans/LinkedLoansCard';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RevealGroup, RevealItem } from '@/components/motion/reveal';
 import { Tabs, TabsContent } from '@/components/motion/tabs';
 import { useFinanceContext } from '@/context/finance-context';
 import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
@@ -131,13 +135,7 @@ const CreditCardDetailSkeleton = ({ cardId }: { cardId: number }) => (
         >
           <WalletCardVtPlaceholder walletId={cardId} variant="credit" />
         </ViewTransition>
-        <Skeleton className="h-14 w-full rounded-2xl" />
-        <Skeleton className="h-20 w-full rounded-2xl" />
-      </div>
-      <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
-        <Skeleton className="mb-3 h-10 w-full rounded-xl" />
-        <Skeleton className="h-10 w-full rounded-xl" />
-        <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
+        <CreditCardDetailBodySkeleton />
       </div>
     </div>
   </DirectionalTransition>
@@ -329,7 +327,10 @@ export default function CreditCardDetailPage() {
           setStatementImports(importsData);
           setPaymentPlanItems(planData.items);
         } catch {
-          /* hero already visible — secondary chrome optional */
+          // The hero stays visible, but Pagar and imports need these lists.
+          toast.error(
+            'No se pudo cargar toda la información. Algunas acciones podrían no funcionar.',
+          );
         }
       } catch (err) {
         setError(
@@ -788,10 +789,7 @@ export default function CreditCardDetailPage() {
             />
           </>
         ) : (
-          <div className="space-y-3" role="status" aria-label="Cargando ciclo">
-            <Skeleton className="h-14 w-full rounded-2xl" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
-          </div>
+          <CreditCardCycleSkeleton />
         )}
 
         <CreditCardDetailTabsList
@@ -805,7 +803,7 @@ export default function CreditCardDetailPage() {
                   {statementReady &&
                   statement.installment_active_purchases.length > 0 ? (
                     <Badge
-                      variant="default"
+                      variant="secondary"
                       className="pointer-events-none ml-1 hidden h-4 min-w-4 shrink-0 justify-center rounded-full border-0 px-1 text-caption font-sans font-semibold tabular-nums shadow-none group-data-[state=active]:bg-primary-foreground/20 group-data-[state=active]:text-primary-foreground sm:inline-flex sm:h-5 sm:min-w-5 sm:px-1.5 sm:text-caption"
                       aria-hidden
                     >
@@ -824,7 +822,7 @@ export default function CreditCardDetailPage() {
             {!statementReady || cycleLoading ? (
               <TabContentSkeleton />
             ) : (
-              <>
+              <RevealGroup className="space-y-4">
                 <CreditCardCycleLedger
                   cycleStart={statement.current_cycle_start}
                   cycleEnd={statement.current_cycle_end}
@@ -837,23 +835,29 @@ export default function CreditCardDetailPage() {
                   onGoToCuotas={() => setTab('cuotas')}
                 />
 
-                <CreditCardPlannedPaymentSection
-                  walletId={creditCardId}
-                  items={paymentPlanItems}
-                  onPlanUpdated={loadData}
-                  onPayCard={handleOpenPlanPayment}
-                  requestedCaptureFortnightId={captureFortnightId}
-                  onRequestedCaptureHandled={handleRequestedCaptureHandled}
-                />
+                <RevealItem index={1} className="empty:hidden">
+                  <CreditCardPlannedPaymentSection
+                    walletId={creditCardId}
+                    items={paymentPlanItems}
+                    onPlanUpdated={loadData}
+                    onPayCard={handleOpenPlanPayment}
+                    requestedCaptureFortnightId={captureFortnightId}
+                    onRequestedCaptureHandled={handleRequestedCaptureHandled}
+                  />
+                </RevealItem>
 
-                <CreditCardStatementSummaryCard
-                  statement={statement}
-                  daysUntilDue={daysUntilDue}
-                  collapsible
-                />
+                <RevealItem index={2}>
+                  <CreditCardStatementSummaryCard
+                    statement={statement}
+                    daysUntilDue={daysUntilDue}
+                    collapsible
+                  />
+                </RevealItem>
 
-                <LinkedLoansCard walletId={creditCardId} />
-              </>
+                <RevealItem index={3} className="empty:hidden">
+                  <LinkedLoansCard walletId={creditCardId} />
+                </RevealItem>
+              </RevealGroup>
             )}
           </TabsContent>
 

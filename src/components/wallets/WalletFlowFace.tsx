@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { motion, type MotionValue } from 'framer-motion';
+import type { MotionValue } from 'framer-motion';
 import { BookmarkIcon } from 'lucide-react';
 import {
   type PaymentMethodType,
@@ -17,6 +17,7 @@ import { effectiveCreditLimit } from '@/lib/ui/wallet-cover-flow';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { WalletListItem } from '@/types/catalog';
 import { Badge } from '@/components/ui/badge';
+import { WalletFaceArt } from '@/components/wallets/WalletFaceArt';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 
 type WalletFlowFaceProps = {
@@ -59,11 +60,7 @@ export const WalletFlowFace = ({ wallet, className, drift }: WalletFlowFaceProps
       )}
       style={style}
     >
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute -inset-x-[18%] inset-y-0 opacity-35 [background-image:radial-gradient(circle_at_30%_15%,rgba(255,255,255,0.32),transparent_55%),linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:auto,22px_22px,22px_22px]"
-        style={{ x: drift }}
-      />
+      <WalletFaceArt drift={drift} />
       <div className="relative flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <WalletProviderIcon
