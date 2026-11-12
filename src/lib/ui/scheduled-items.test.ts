@@ -352,8 +352,8 @@ describe('perMonth and perYear', () => {
     });
     expect(perMonth(both)).toBe(501);
     expect(perYear(both)).toBe(6012);
-    expect(perMonth(e({ suggestedAmount: 99.99 }))).toBe(99.99);
-    expect(perYear(e({ suggestedAmount: 99.99 }))).toBe(1199.88);
+    expect(perMonth(e({ suggestedAmount: 99 }))).toBe(99);
+    expect(perYear(e({ suggestedAmount: 99 }))).toBe(1188);
   });
 
   it('is null for a variable item', () => {
