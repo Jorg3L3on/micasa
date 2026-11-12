@@ -145,10 +145,15 @@ export type ExpenseTemplateListItem = {
   name: string;
   category: string;
   categoryIcon?: string | null;
+  categoryId: number | null;
   suggestedAmount: number | null;
   paymentMethod: string | null;
   paymentMethodId: number | null;
   paymentMethodProviderIconKey?: string | null;
+  /** Wallet type; null with no wallet. */
+  paymentMethodType: ExpenseWalletType | null;
+  /** The wallet's statement cutoff day (`Wallet.cutoff_day`, set on cards); null when unset or with no wallet. */
+  paymentMethodCutoffDay: number | null;
   active: boolean;
   totalEstimatedAmount?: number;
   dueDayFirst: number | null;

@@ -16,7 +16,15 @@ type TemplateOwner = Pick<OwnerContextSuccess, 'ownerType' | 'ownerId'>;
 
 const TEMPLATE_INCLUDE = {
   category: { select: { name: true, icon: true } },
-  wallet: { select: { id: true, name: true, provider_icon_key: true } },
+  wallet: {
+    select: {
+      id: true,
+      name: true,
+      provider_icon_key: true,
+      type: true,
+      cutoff_day: true,
+    },
+  },
 } satisfies Prisma.ExpenseTemplateInclude;
 
 const TEMPLATE_WITH_EXPENSES_INCLUDE = {

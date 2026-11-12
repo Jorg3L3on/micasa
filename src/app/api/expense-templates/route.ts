@@ -36,12 +36,15 @@ export async function GET(request: NextRequest) {
           name: template.name,
           category: template.category?.name ?? null,
           categoryIcon: template.category?.icon ?? null,
+          categoryId: template.category_id ?? null,
           suggestedAmount: template.suggested_amount
             ? Number(template.suggested_amount)
             : null,
           paymentMethod: template.wallet?.name || null,
           paymentMethodId: template.wallet?.id || null,
           paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
+          paymentMethodType: template.wallet?.type ?? null,
+          paymentMethodCutoffDay: template.wallet?.cutoff_day ?? null,
           active: template.active,
           totalEstimatedAmount: totalAmount,
           expenseIds: [], // Will be populated from form selections in UI
@@ -167,12 +170,15 @@ export async function PUT(request: NextRequest) {
           name: template.name,
           category: template.category?.name ?? null,
           categoryIcon: template.category?.icon ?? null,
+          categoryId: template.category_id ?? null,
           suggestedAmount: template.suggested_amount
             ? Number(template.suggested_amount)
             : null,
           paymentMethod: template.wallet?.name || null,
           paymentMethodId: template.wallet?.id || null,
           paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
+          paymentMethodType: template.wallet?.type ?? null,
+          paymentMethodCutoffDay: template.wallet?.cutoff_day ?? null,
           active: template.active,
           totalEstimatedAmount:
             totalAmount ||
