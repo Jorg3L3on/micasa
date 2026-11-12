@@ -15,8 +15,11 @@ import { useFinanceContext } from '@/context/finance-context';
 import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { ClientApiError } from '@/lib/api/client-fetch';
-import { deleteExpenseTemplate } from '@/lib/api/expense-templates';
-import { deleteIncomeTemplate } from '@/lib/api/incomes';
+import {
+  deleteExpenseTemplate,
+  setExpenseTemplateActive,
+} from '@/lib/api/expense-templates';
+import { deleteIncomeTemplate, setIncomeTemplateActive } from '@/lib/api/incomes';
 import {
   sectionize,
   summarize,
@@ -24,6 +27,7 @@ import {
   type ScheduledView,
 } from '@/lib/ui/scheduled-items';
 import { cn } from '@/lib/utils';
+import { ScheduledDetailOverlay } from './ScheduledDetailOverlay';
 import { ScheduledRow, SCHEDULED_GRID_CLASS } from './ScheduledRow';
 import { ScheduledSummary } from './ScheduledSummary';
 import {
@@ -88,6 +92,13 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
   const [pendingDelete, setPendingDelete] = useState<ScheduledRowModel | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  /** Row whose detail overlay is open. */
+  const [detailId, setDetailId] = useState<number | null>(null);
+  /** Optimistic Activo values, by id, until the server list catches up. */
+  const [activeOverrides, setActiveOverrides] = useState<ReadonlyMap<number, boolean>>(
+    new Map(),
+  );
+  const [savingActive, setSavingActive] = useState(false);
 
   const withQuery = useCallback(
     (path: string) => `${path}${queryString ? `?${queryString}` : ''}`,
@@ -98,13 +109,43 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
     router.push(withQuery(`${BASE_PATH[kind]}/new`));
   }, [kind, router, withQuery]);
 
-  // Until the detail overlay lands (MIC-I16-3), a row opens the edit route.
-  const handleOpen = useCallback(
+  // A row opens the read-first detail overlay.
+  const handleOpen = useCallback((row: ScheduledRowModel) => {
+    setDetailId(row.item.id);
+  }, []);
+
+  // Until the form overlay lands (MIC-I16-4), Editar opens the edit route.
+  const handleEdit = useCallback(
     (row: ScheduledRowModel) => {
       router.push(withQuery(`${BASE_PATH[kind]}/${row.item.id}/edit`));
     },
     [kind, router, withQuery],
   );
+
+  const setOverride = (id: number, active: boolean) =>
+    setActiveOverrides((prev) => new Map(prev).set(id, active));
+
+  const handleActiveChange = async (row: ScheduledRowModel, next: boolean) => {
+    const id = row.item.id;
+    const previous = row.item.active;
+    setOverride(id, next);
+    setSavingActive(true);
+    try {
+      if (kind === 'expense') {
+        await setExpenseTemplateActive(id, next, context);
+      } else {
+        await setIncomeTemplateActive(id, next, context);
+      }
+      router.refresh();
+    } catch {
+      setOverride(id, previous);
+      toast.error(
+        `No se pudo ${next ? 'activar' : 'desactivar'} el ${copy.singular}. Inténtalo de nuevo.`,
+      );
+    } finally {
+      setSavingActive(false);
+    }
+  };
 
   const primaryActionIcon = useMemo(() => <Plus data-icon="inline-start" />, []);
 
@@ -122,8 +163,20 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
   });
 
   const liveRows = useMemo(
-    () => rows.filter((row) => !removedIds.has(row.item.id)),
-    [rows, removedIds],
+    () =>
+      rows
+        .filter((row) => !removedIds.has(row.item.id))
+        .map((row) => {
+          const active = activeOverrides.get(row.item.id);
+          return active === undefined || active === row.item.active
+            ? row
+            : { ...row, item: { ...row.item, active } };
+        }),
+    [rows, removedIds, activeOverrides],
+  );
+  const detailRow = useMemo(
+    () => (detailId === null ? null : liveRows.find((r) => r.item.id === detailId) ?? null),
+    [detailId, liveRows],
   );
   const summary = useMemo(() => summarize(liveRows.map((r) => r.item)), [liveRows]);
   const counts = useMemo(() => chipCounts(liveRows), [liveRows]);
@@ -180,6 +233,7 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
       }
       setRemovedIds((prev) => new Set(prev).add(target.item.id));
       setPendingDelete(null);
+      if (detailId === target.item.id) setDetailId(null);
       toast.success(
         kind === 'expense' ? 'Gasto programado eliminado' : 'Ingreso programado eliminado',
       );
@@ -392,6 +446,20 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
           )}
         </section>
       </div>
+
+      <ScheduledDetailOverlay
+        row={detailRow}
+        onOpenChange={(open) => {
+          if (!open) setDetailId(null);
+        }}
+        onActiveChange={handleActiveChange}
+        savingActive={savingActive}
+        onEdit={handleEdit}
+        onRequestDelete={(target) => {
+          setDeleteError(null);
+          setPendingDelete(target);
+        }}
+      />
 
       {pendingDelete ? (
         <ConfirmDeleteDialog

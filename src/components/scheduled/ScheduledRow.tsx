@@ -33,12 +33,14 @@ type ScheduledRowProps = {
   onRequestDelete: (row: ScheduledRowModel) => void;
 };
 
-const RowIcon = ({
+export const RowIcon = ({
   row,
   className,
+  iconClassName = "h-[18px] w-[18px]",
 }: {
   row: ScheduledRowModel;
   className?: string;
+  iconClassName?: string;
 }) => {
   const Fallback = row.item.kind === "income" ? Banknote : Receipt;
   return (
@@ -52,16 +54,16 @@ const RowIcon = ({
       {row.categoryIcon ? (
         <CategoryIcon
           icon={row.categoryIcon}
-          iconClassName="h-[18px] w-[18px]"
+          iconClassName={iconClassName}
         />
       ) : (
-        <Fallback className="h-[18px] w-[18px]" strokeWidth={1.8} />
+        <Fallback className={iconClassName} strokeWidth={1.8} />
       )}
     </span>
   );
 };
 
-const SubscriptionBadge = () => (
+export const SubscriptionBadge = () => (
   <Badge
     variant="outline"
     className="shrink-0 rounded-full px-2 py-0 text-caption font-normal"

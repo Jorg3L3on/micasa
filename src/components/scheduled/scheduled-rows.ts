@@ -1,5 +1,6 @@
 import type {
   ExpenseTemplateListItem,
+  ExpenseWalletType,
   IncomeTemplateListItem,
   WalletListItem,
 } from '@/types/catalog';
@@ -25,6 +26,16 @@ export type ScheduledRowModel = {
   categoryIcon: string | null;
   walletName: string | null;
   walletIconKey: string | null;
+  /** Category name alone, for the detail's Categoría row. */
+  categoryName: string | null;
+  /** Expense wallet type; null for incomes and with no wallet. */
+  walletType: ExpenseWalletType | null;
+  /** The wallet's statement cutoff (`Wallet.cutoff_day`); expenses only. */
+  walletCutoffDay: number | null;
+  /** Income Origen. */
+  source: string | null;
+  /** Income Aporta (the member the income belongs to). */
+  contributor: string | null;
 };
 
 export type ScheduledFilters = {
@@ -73,6 +84,11 @@ export const expenseRows = (
     categoryIcon: item.categoryIcon ?? null,
     walletName: item.paymentMethod ?? null,
     walletIconKey: item.paymentMethodProviderIconKey ?? null,
+    categoryName: item.category || null,
+    walletType: item.paymentMethodType ?? null,
+    walletCutoffDay: item.paymentMethodCutoffDay ?? null,
+    source: null,
+    contributor: null,
   }));
 
 export const incomeRows = (
@@ -91,6 +107,11 @@ export const incomeRows = (
       categoryIcon: item.categoryIcon ?? null,
       walletName: wallet?.name ?? null,
       walletIconKey: wallet?.provider_icon_key ?? null,
+      categoryName: item.categoryName || null,
+      walletType: null,
+      walletCutoffDay: null,
+      source: item.source?.trim() || null,
+      contributor: item.userName?.trim() || null,
     };
   });
 };

@@ -105,6 +105,13 @@ export const createExpenseTemplateSchema = z
 /** PUT replaces the full resource; same shape as create (form always sends all fields). */
 export const updateExpenseTemplateSchema = createExpenseTemplateSchema;
 
+/**
+ * PATCH changes `active` only. The detail overlay's Activo toggle uses it so
+ * it never rewrites the other fields (PUT replaces the whole resource and
+ * would drop a legacy `due_day`).
+ */
+export const setExpenseTemplateActiveSchema = z.object({ active: z.boolean() }).strict();
+
 export const expenseTemplateSchema = z
   .object({
     name: z.string().min(1, 'Nombre es requerido'),
@@ -143,6 +150,9 @@ export const expenseTemplateSchema = z
 // Type exports
 export type CreateExpenseTemplateInput = z.infer<
   typeof createExpenseTemplateSchema
+>;
+export type SetExpenseTemplateActiveInput = z.infer<
+  typeof setExpenseTemplateActiveSchema
 >;
 export type UpdateExpenseTemplateInput = z.infer<
   typeof updateExpenseTemplateSchema

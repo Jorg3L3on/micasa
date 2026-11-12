@@ -132,6 +132,21 @@ export async function updateExpenseTemplateForOwner(
   });
 }
 
+/** Changes `active` only; every other column stays as it is. */
+export async function setExpenseTemplateActiveForOwner(
+  id: number,
+  ownerFilter: OwnerFilter,
+  active: boolean,
+) {
+  await findExpenseTemplateForOwner(id, ownerFilter);
+
+  return prisma.expenseTemplate.update({
+    where: { id },
+    data: { active },
+    include: TEMPLATE_WITH_EXPENSES_INCLUDE,
+  });
+}
+
 /** Deletes the template and detaches the expenses it generated. */
 export async function deleteExpenseTemplateForOwner(
   id: number,

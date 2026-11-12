@@ -1,13 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { findManyExpenseTemplate, getOwnerContext } = vi.hoisted(() => ({
+const {
+  findManyExpenseTemplate,
+  findFirstExpenseTemplate,
+  updateExpenseTemplate,
+  getOwnerContext,
+} = vi.hoisted(() => ({
   findManyExpenseTemplate: vi.fn(),
+  findFirstExpenseTemplate: vi.fn(),
+  updateExpenseTemplate: vi.fn(),
   getOwnerContext: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
-    expenseTemplate: { findMany: findManyExpenseTemplate },
+    expenseTemplate: {
+      findMany: findManyExpenseTemplate,
+      findFirst: findFirstExpenseTemplate,
+      update: updateExpenseTemplate,
+    },
   },
 }));
 
@@ -15,7 +26,7 @@ vi.mock('@/lib/server/get-owner-context', () => ({
   getOwnerContext,
 }));
 
-import { GET } from './route';
+import { GET, PATCH } from './route';
 
 const ownerContext = {
   userId: 1,
@@ -142,5 +153,79 @@ describe('GET /api/expense-templates', () => {
       suggestedAmount: null,
       totalEstimatedAmount: 80,
     });
+  });
+});
+
+describe('PATCH /api/expense-templates (Activo toggle)', () => {
+  // A row saved before per-quincena days: only the legacy due_day is set.
+  // A full PUT would null it; PATCH must leave it alone.
+  const legacyRow = {
+    ...cardTemplate,
+    id: 13,
+    due_day: 7,
+    due_day_first_fortnight: null,
+    due_day_second_fortnight: null,
+  };
+
+  const patch = (body: unknown, id = '13') =>
+    PATCH(
+      new Request(`http://localhost/api/expense-templates?id=${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }) as Parameters<typeof PATCH>[0],
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getOwnerContext.mockResolvedValue(ownerContext);
+    findFirstExpenseTemplate.mockResolvedValue(legacyRow);
+    updateExpenseTemplate.mockResolvedValue({ ...legacyRow, active: false });
+  });
+
+  it('writes only `active`, scoped to the owner', async () => {
+    const response = await patch({ active: false });
+
+    expect(response.status).toBe(200);
+    expect(findFirstExpenseTemplate).toHaveBeenCalledWith({
+      where: { id: 13, user_id: null, house_id: 7 },
+    });
+    expect(updateExpenseTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 13 }, data: { active: false } }),
+    );
+  });
+
+  it('returns the item with every other field unchanged', async () => {
+    const body = await (await patch({ active: false })).json();
+
+    expect(body).toMatchObject({
+      id: 13,
+      active: false,
+      suggestedAmount: 199,
+      categoryId: 42,
+      paymentMethodId: 9,
+      dueDay: 7,
+      dueDayFirst: null,
+      dueDaySecond: null,
+      cutoffDay: 3,
+      isSubscription: true,
+      appliesFirstFortnight: true,
+    });
+  });
+
+  it('rejects any other field or a missing flag', async () => {
+    expect((await patch({ active: true, name: 'Otro' })).status).toBe(400);
+    expect((await patch({})).status).toBe(400);
+    expect(updateExpenseTemplate).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for an item of another owner', async () => {
+    findFirstExpenseTemplate.mockResolvedValue(null);
+
+    expect((await patch({ active: true })).status).toBe(404);
+    expect(updateExpenseTemplate).not.toHaveBeenCalled();
+  });
+
+  it('answers 400 without a valid id', async () => {
+    expect((await patch({ active: true }, 'x')).status).toBe(400);
   });
 });

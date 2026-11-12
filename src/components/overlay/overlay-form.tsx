@@ -38,6 +38,10 @@ export const OVERLAY_ROW_TEXTAREA_CLASS =
 export const OVERLAY_GROUPED_LABEL_CLASS =
   'w-[5rem] shrink-0 text-sm font-medium leading-none text-foreground';
 
+/** Wide label column (6rem) for labels like "1ª quincena" that do not fit 5rem. */
+export const OVERLAY_GROUPED_LABEL_WIDE_CLASS =
+  'w-[6rem] shrink-0 text-sm font-medium leading-none text-foreground';
+
 export const OVERLAY_GROUPED_CARD_CLASS =
   'divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card';
 
@@ -256,25 +260,32 @@ export const OverlayListRow = ({
 export const GroupedRow = ({
   label,
   htmlFor,
+  labelWidth = 'default',
   children,
 }: {
   label: string;
   htmlFor?: string;
+  /** `wide` (6rem) when a label in the card does not fit 5rem. */
+  labelWidth?: 'default' | 'wide';
   children: ReactNode;
-}) => (
-  <div className="space-y-1 px-3 py-1.5">
-    <div className="flex min-h-11 items-center gap-3">
-      {htmlFor ? (
-        <Label htmlFor={htmlFor} className={OVERLAY_GROUPED_LABEL_CLASS}>
-          {label}
-        </Label>
-      ) : (
-        <span className={OVERLAY_GROUPED_LABEL_CLASS}>{label}</span>
-      )}
-      <div className="min-w-0 flex-1">{children}</div>
+}) => {
+  const labelClass =
+    labelWidth === 'wide' ? OVERLAY_GROUPED_LABEL_WIDE_CLASS : OVERLAY_GROUPED_LABEL_CLASS;
+  return (
+    <div className="space-y-1 px-3 py-1.5">
+      <div className="flex min-h-11 items-center gap-3">
+        {htmlFor ? (
+          <Label htmlFor={htmlFor} className={labelClass}>
+            {label}
+          </Label>
+        ) : (
+          <span className={labelClass}>{label}</span>
+        )}
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /** The only error style inside an overlay body. */
 export const OverlayErrorBanner = ({ children }: { children: ReactNode }) => (
