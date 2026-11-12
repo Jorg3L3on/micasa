@@ -1,6 +1,6 @@
 import { documentTitle } from '@/lib/document-title';
 
-export const metadata = documentTitle('Editar plantilla');
+export const metadata = documentTitle('Editar gasto programado');
 
 export default function EditExpenseTemplateLayout({
   children,

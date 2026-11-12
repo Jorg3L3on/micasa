@@ -1,7 +1,7 @@
 import { documentTitle } from '@/lib/document-title';
 
 export const metadata = documentTitle('Ingresos programados', {
-  description: 'Plantillas de ingresos recurrentes por quincena.',
+  description: 'Ingresos que se repiten cada quincena.',
 });
 
 export default function IncomeTemplatesLayout({

@@ -1,6 +1,6 @@
 import { documentTitle } from '@/lib/document-title';
 
-export const metadata = documentTitle('Agregar plantilla de ingresos');
+export const metadata = documentTitle('Agregar ingreso programado');
 
 export default function NewIncomeTemplateLayout({
   children,

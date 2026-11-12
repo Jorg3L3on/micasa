@@ -1,10 +1,10 @@
 import { SkeletonExit } from '@/components/view-transition/SuspenseReveal';
-import { SettingsPageSkeleton } from '@/components/loading/page-skeletons';
+import { ScheduledListSkeleton } from '@/components/loading/page-skeletons';
 
 export default function Loading() {
   return (
     <SkeletonExit>
-      <SettingsPageSkeleton />
+      <ScheduledListSkeleton label="Cargando gastos programados" />
     </SkeletonExit>
   );
 }
