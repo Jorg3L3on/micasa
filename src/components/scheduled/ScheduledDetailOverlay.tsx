@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { ToggleField } from '@/components/ui/toggle';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
 import { cn } from '@/lib/utils';
+import { ScheduledHistory } from './ScheduledHistory';
 import { RowIcon, SubscriptionBadge } from './ScheduledRow';
 import {
   ACTIVE_HELPER,
@@ -34,8 +35,9 @@ type ScheduledDetailBodyProps = {
 /**
  * Read-first detail of a gasto or ingreso programado (MIC-I16-3): amount, per
  * month and per year, grouped rows, Corte from the card, the Activo toggle,
- * then Editar and Eliminar. It renders inside `ScheduledFormOverlay`, which
- * swaps it for the form on Editar.
+ * Últimos generados when there are any (MIC-I16-5), then Editar and
+ * Eliminar. It renders inside `ScheduledFormOverlay`, which swaps it for the
+ * form on Editar.
  */
 export const ScheduledDetailBody = ({
   row,
@@ -114,6 +116,8 @@ export const ScheduledDetailBody = ({
         onCheckedChange={(next) => onActiveChange(row, next)}
         className="px-3"
       />
+
+      <ScheduledHistory key={`${item.kind}-${item.id}`} kind={item.kind} id={item.id} />
 
       <Button
         type="button"

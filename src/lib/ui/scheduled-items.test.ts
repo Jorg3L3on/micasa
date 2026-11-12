@@ -10,6 +10,7 @@ import {
   fromIncomeTemplate,
   isValidDueDay,
   nearestValidDueDay,
+  netAfterExpenses,
   NO_FIXED_DAY_LABEL,
   perMonth,
   perYear,
@@ -409,5 +410,39 @@ describe('isValidDueDay and nearestValidDueDay', () => {
     expect(nearestValidDueDay('SECOND', 3)).toBe(15);
     expect(nearestValidDueDay('FIRST', 9)).toBe(9);
     expect(nearestValidDueDay('FIRST', null)).toBeNull();
+  });
+});
+
+describe('netAfterExpenses', () => {
+  const incomes = [
+    fromIncomeTemplate(income({ id: 1, suggestedAmount: 20000 })),
+    fromIncomeTemplate(income({ id: 2, suggestedAmount: 3000, appliesSecondFortnight: false })),
+    // Inactive and variable incomes add nothing.
+    fromIncomeTemplate(income({ id: 3, suggestedAmount: 9000, active: false })),
+    fromIncomeTemplate(income({ id: 4, suggestedAmount: null })),
+  ];
+  const expenses = [
+    fromExpenseTemplate(expense({ id: 1, suggestedAmount: 8000, appliesSecondFortnight: true })),
+    fromExpenseTemplate(expense({ id: 2, suggestedAmount: 1500 })),
+    fromExpenseTemplate(expense({ id: 3, suggestedAmount: 30000, appliesFirstFortnight: false, appliesSecondFortnight: true })),
+    fromExpenseTemplate(expense({ id: 4, suggestedAmount: 700, active: false })),
+    fromExpenseTemplate(expense({ id: 5, suggestedAmount: null })),
+  ];
+
+  it('is income minus expenses per quincena, both from summarize', () => {
+    const net = netAfterExpenses(summarize(incomes), summarize(expenses));
+    // 1ª: 20000 + 3000 - 8000 - 1500; 2ª: 20000 - 8000 - 30000.
+    expect(net).toEqual({ first: 13500, second: -18000 });
+  });
+
+  it('equals the incomes when there are no gastos programados', () => {
+    expect(netAfterExpenses(summarize(incomes), summarize([]))).toEqual({
+      first: 23000,
+      second: 20000,
+    });
+  });
+
+  it('is null when the expense list failed to load, never 0', () => {
+    expect(netAfterExpenses(summarize(incomes), null)).toBeNull();
   });
 });

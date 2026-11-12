@@ -9,7 +9,16 @@ import {
   incomeRows,
   type ScheduledRowModel,
 } from '@/components/scheduled/scheduled-rows';
-import type { IncomeTemplateListItem, WalletListItem } from '@/types/catalog';
+import {
+  fromExpenseTemplate,
+  summarize,
+  type ScheduledSummary,
+} from '@/lib/ui/scheduled-items';
+import type {
+  ExpenseTemplateListItem,
+  IncomeTemplateListItem,
+  WalletListItem,
+} from '@/types/catalog';
 
 export default async function IncomeTemplatesPage({
   searchParams,
@@ -19,6 +28,16 @@ export default async function IncomeTemplatesPage({
   const ownerContext = ownerContextFromSearchParams(await searchParams);
   let rows: ScheduledRowModel[] = [];
   let loadFailed = false;
+  // "Queda tras gastos" needs the same owner's gastos programados. If they do
+  // not load, the cell is left out instead of netting against nothing.
+  const expenseSummaryPromise: Promise<ScheduledSummary | null> = fetchFromApi<
+    ExpenseTemplateListItem[]
+  >('/api/expense-templates', ownerContext)
+    .then((items) => summarize(items.map(fromExpenseTemplate)))
+    .catch((error) => {
+      console.error('Error fetching gastos programados for the net line:', error);
+      return null;
+    });
   try {
     // The income list carries only `walletId`; the wallet list names it.
     const [items, wallets] = await Promise.all([
@@ -31,12 +50,15 @@ export default async function IncomeTemplatesPage({
     loadFailed = true;
   }
 
+  const expenseSummary = await expenseSummaryPromise;
+
   return (
     <ScheduledList
       kind="income"
       rows={rows}
       createLabel={PAGE_CREATE_ACTION.incomeTemplate.label}
       loadFailed={loadFailed}
+      expenseSummary={expenseSummary}
     />
   );
 }

@@ -21,9 +21,11 @@ import {
 } from '@/lib/api/expense-templates';
 import { deleteIncomeTemplate, setIncomeTemplateActive } from '@/lib/api/incomes';
 import {
+  netAfterExpenses,
   sectionize,
   summarize,
   type ScheduledKind,
+  type ScheduledSummary as ScheduledSummaryData,
   type ScheduledView,
 } from '@/lib/ui/scheduled-items';
 import { cn } from '@/lib/utils';
@@ -46,6 +48,12 @@ type ScheduledListProps = {
   createLabel: string;
   /** The server page could not load the list. */
   loadFailed?: boolean;
+  /**
+   * Ingresos only: the owner's gastos programados summary for "Queda tras
+   * gastos". Null when it failed to load (the cell is omitted); undefined on
+   * Gastos programados.
+   */
+  expenseSummary?: ScheduledSummaryData | null;
 };
 
 const VIEW_OPTIONS = [
@@ -75,7 +83,13 @@ const deleteMessage = (kind: ScheduledKind, err: unknown): string => {
 };
 
 /** Summary, view control, chips and the row list of one programados screen. */
-export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: ScheduledListProps) => {
+export const ScheduledList = ({
+  kind,
+  rows,
+  createLabel,
+  loadFailed = false,
+  expenseSummary,
+}: ScheduledListProps) => {
   const copy = KIND_COPY[kind];
   const router = useRouter();
   const { context } = useFinanceContext();
@@ -215,6 +229,10 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
     return { mode: 'form', row, fromDetail: overlay.fromDetail };
   }, [overlay, liveRows]);
   const summary = useMemo(() => summarize(liveRows.map((r) => r.item)), [liveRows]);
+  const net = useMemo(
+    () => (kind === 'income' ? netAfterExpenses(summary, expenseSummary ?? null) : null),
+    [kind, summary, expenseSummary],
+  );
   const counts = useMemo(() => chipCounts(liveRows), [liveRows]);
 
   const filtered = useMemo(
@@ -373,6 +391,7 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
           summary={summary}
           programados={programadosCount(liveRows)}
           subscriptions={subscriptionsCount(liveRows)}
+          net={net}
         />
 
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">

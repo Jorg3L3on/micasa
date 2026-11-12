@@ -183,6 +183,25 @@ export const summarize = (items: readonly ScheduledItem[]): ScheduledSummary => 
   };
 };
 
+/** "Queda tras gastos" per quincena: income total minus expense total. */
+export type NetByPeriod = { first: number; second: number };
+
+/**
+ * Income summary minus the same owner's expense summary, per quincena, both
+ * from `summarize`. Null when the expense list did not load: the cell is
+ * omitted then, never shown as if there were no gastos.
+ */
+export const netAfterExpenses = (
+  income: ScheduledSummary,
+  expense: ScheduledSummary | null,
+): NetByPeriod | null => {
+  if (!expense) return null;
+  return {
+    first: fromCents(toCents(income.first.total) - toCents(expense.first.total)),
+    second: fromCents(toCents(income.second.total) - toCents(expense.second.total)),
+  };
+};
+
 // ---------------------------------------------------------------------------
 // Sections and order
 // ---------------------------------------------------------------------------

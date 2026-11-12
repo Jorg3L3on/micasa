@@ -1,8 +1,10 @@
 import { Money } from '@/components/money';
 import type {
+  NetByPeriod,
   ScheduledKind,
   ScheduledSummary as ScheduledSummaryData,
 } from '@/lib/ui/scheduled-items';
+import { STATUS_TEXT_CLASS } from '@/lib/status-tone';
 import { cn } from '@/lib/utils';
 import { countLine, splitPercent } from './scheduled-rows';
 import { QUINCENA_DOT_CLASS, QUINCENA_BAR_CLASS } from './scheduled-tokens';
@@ -14,10 +16,18 @@ type ScheduledSummaryProps = {
   programados: number;
   /** Active subscriptions that repeat (expenses). */
   subscriptions: number;
+  /** Ingresos: "Queda tras gastos" per quincena; null or absent = no cell. */
+  net?: NetByPeriod | null;
 };
 
 const EYEBROW_CLASS =
   'flex items-center gap-2 text-caption font-semibold uppercase tracking-[0.06em] text-muted-foreground';
+
+/** A negative net uses the expense tone; otherwise the given tone. */
+const netClass = (value: number, otherwise?: string) =>
+  value < 0 ? STATUS_TEXT_CLASS.expense : otherwise;
+
+const NET_LABEL = 'Queda tras gastos';
 
 const Dot = ({ period }: { period: 'FIRST' | 'SECOND' }) => (
   <span aria-hidden className={cn('size-2 shrink-0 rounded-full', QUINCENA_DOT_CLASS[period])} />
@@ -32,6 +42,7 @@ export const ScheduledSummary = ({
   summary,
   programados,
   subscriptions,
+  net = null,
 }: ScheduledSummaryProps) => {
   const split = splitPercent(summary.first.total, summary.second.total);
   const showSubscriptions = kind === 'expense';
@@ -56,7 +67,7 @@ export const ScheduledSummary = ({
       <div
         className={cn(
           'hidden md:grid md:divide-x md:divide-border/60',
-          showSubscriptions ? 'md:grid-cols-4' : 'md:grid-cols-3',
+          showSubscriptions || net ? 'md:grid-cols-4' : 'md:grid-cols-3',
         )}
       >
         <div className="flex min-w-0 flex-col gap-0.5 px-5 py-4">
@@ -113,6 +124,34 @@ export const ScheduledSummary = ({
             </span>
           </div>
         ) : null}
+        {net ? (
+          <div className="flex min-w-0 flex-col gap-0.5 px-5 py-4" data-testid="scheduled-net">
+            <span className={EYEBROW_CLASS}>{NET_LABEL}</span>
+            <span className="flex flex-wrap gap-x-3.5 gap-y-1 text-[15px] font-bold leading-7">
+              <span>
+                1ª{' '}
+                <Money
+                  value={net.first}
+                  size="row"
+                  tone="neutral"
+                  className={cn('text-[15px] font-bold', netClass(net.first))}
+                />
+              </span>
+              <span>
+                2ª{' '}
+                <Money
+                  value={net.second}
+                  size="row"
+                  tone="neutral"
+                  className={cn('text-[15px] font-bold', netClass(net.second))}
+                />
+              </span>
+            </span>
+            <span className="text-xs text-muted-foreground">
+              ingresos menos gastos programados
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {/* Below md: two columns plus a footer line, no bar. */}
@@ -152,6 +191,24 @@ export const ScheduledSummary = ({
                 size="caption"
                 tone="neutral"
                 className="font-semibold text-foreground"
+              />
+            </span>
+          ) : null}
+          {net ? (
+            <span className="basis-full" data-testid="scheduled-net-mobile">
+              {NET_LABEL}: 1ª{' '}
+              <Money
+                value={net.first}
+                size="caption"
+                tone="positive"
+                className={cn('font-semibold', netClass(net.first))}
+              />{' '}
+              · 2ª{' '}
+              <Money
+                value={net.second}
+                size="caption"
+                tone="positive"
+                className={cn('font-semibold', netClass(net.second))}
               />
             </span>
           ) : null}
