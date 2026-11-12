@@ -916,7 +916,7 @@ describe('delete', () => {
 
     expect(result.isError).toBe(true);
     expect(result.body).toEqual({
-      error: 'La plantilla de ingresos está en uso y no puede eliminarse',
+      error: 'El ingreso programado está en uso y no puede eliminarse',
       code: 'VALIDATION',
     });
     expect(byId('incomeTemplate', 95)).toBeDefined();

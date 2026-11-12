@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { CalendarCheck, ChevronDown, Plus, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -27,7 +27,7 @@ import {
   type ScheduledView,
 } from '@/lib/ui/scheduled-items';
 import { cn } from '@/lib/utils';
-import { ScheduledDetailOverlay } from './ScheduledDetailOverlay';
+import { ScheduledFormOverlay, type ScheduledOverlayState } from './ScheduledFormOverlay';
 import { ScheduledRow, SCHEDULED_GRID_CLASS } from './ScheduledRow';
 import { ScheduledSummary } from './ScheduledSummary';
 import {
@@ -54,10 +54,10 @@ const VIEW_OPTIONS = [
   { value: 'second', label: '2ª quincena' },
 ] as const;
 
-const BASE_PATH: Record<ScheduledKind, string> = {
-  expense: '/settings/expense-templates',
-  income: '/settings/income-templates',
-};
+/** What the one overlay shows: the detail of an item, or the form (new or edit). */
+type OverlayTarget =
+  | { mode: 'detail'; id: number }
+  | { mode: 'form'; id: number | null; fromDetail: boolean };
 
 const SECTION_BAR_CLASS =
   'flex items-center gap-2 border-t border-border/60 bg-muted/30 px-5 text-xs font-semibold text-muted-foreground';
@@ -78,8 +78,6 @@ const deleteMessage = (kind: ScheduledKind, err: unknown): string => {
 export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: ScheduledListProps) => {
   const copy = KIND_COPY[kind];
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const queryString = searchParams.toString();
   const { context } = useFinanceContext();
   const isMobile = useIsMobile();
 
@@ -92,35 +90,69 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
   const [pendingDelete, setPendingDelete] = useState<ScheduledRowModel | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  /** Row whose detail overlay is open. */
-  const [detailId, setDetailId] = useState<number | null>(null);
+  /** The detail or form overlay; null when closed. */
+  const [overlay, setOverlay] = useState<OverlayTarget | null>(null);
+  /** Set after a save until the refreshed list arrives. */
+  const [afterSave, setAfterSave] = useState<{ id: number | null; editing: boolean } | null>(
+    null,
+  );
+  const [refreshing, startRefresh] = useTransition();
   /** Optimistic Activo values, by id, until the server list catches up. */
   const [activeOverrides, setActiveOverrides] = useState<ReadonlyMap<number, boolean>>(
     new Map(),
   );
   const [savingActive, setSavingActive] = useState(false);
 
-  const withQuery = useCallback(
-    (path: string) => `${path}${queryString ? `?${queryString}` : ''}`,
-    [queryString],
-  );
-
+  // The header "+" and the empty state open the form in the overlay.
   const handleCreate = useCallback(() => {
-    router.push(withQuery(`${BASE_PATH[kind]}/new`));
-  }, [kind, router, withQuery]);
+    setOverlay({ mode: 'form', id: null, fromDetail: false });
+  }, []);
 
   // A row opens the read-first detail overlay.
   const handleOpen = useCallback((row: ScheduledRowModel) => {
-    setDetailId(row.item.id);
+    setOverlay({ mode: 'detail', id: row.item.id });
   }, []);
 
-  // Until the form overlay lands (MIC-I16-4), Editar opens the edit route.
-  const handleEdit = useCallback(
-    (row: ScheduledRowModel) => {
-      router.push(withQuery(`${BASE_PATH[kind]}/${row.item.id}/edit`));
-    },
-    [kind, router, withQuery],
-  );
+  // Editar swaps the same overlay to the form (no stacked sheets).
+  const handleEdit = useCallback((row: ScheduledRowModel) => {
+    setOverlay({ mode: 'form', id: row.item.id, fromDetail: true });
+  }, []);
+
+  // Cancelar on a form opened from the detail goes back to the detail.
+  const handleDismiss = useCallback(() => {
+    setOverlay((current) =>
+      current?.mode === 'form' && current.fromDetail && current.id !== null
+        ? { mode: 'detail', id: current.id }
+        : null,
+    );
+  }, []);
+
+  const handleSaved = (id: number | null, editing: boolean) => {
+    toast.success(
+      editing
+        ? `${copy.singular.charAt(0).toUpperCase()}${copy.singular.slice(1)} actualizado`
+        : `${copy.singular.charAt(0).toUpperCase()}${copy.singular.slice(1)} agregado`,
+    );
+    if (id !== null) {
+      setActiveOverrides((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+    setAfterSave({ id, editing });
+    startRefresh(() => router.refresh());
+  };
+
+  // Once the refreshed list is in, an edit shows the detail with the new values.
+  useEffect(() => {
+    if (!afterSave || refreshing) return;
+    setOverlay(
+      afterSave.editing && afterSave.id !== null ? { mode: 'detail', id: afterSave.id } : null,
+    );
+    setAfterSave(null);
+  }, [afterSave, refreshing]);
 
   const setOverride = (id: number, active: boolean) =>
     setActiveOverrides((prev) => new Map(prev).set(id, active));
@@ -174,10 +206,14 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
         }),
     [rows, removedIds, activeOverrides],
   );
-  const detailRow = useMemo(
-    () => (detailId === null ? null : liveRows.find((r) => r.item.id === detailId) ?? null),
-    [detailId, liveRows],
-  );
+  const overlayState = useMemo((): ScheduledOverlayState | null => {
+    if (!overlay) return null;
+    const row =
+      overlay.id === null ? null : liveRows.find((r) => r.item.id === overlay.id) ?? null;
+    if (overlay.mode === 'detail') return row ? { mode: 'detail', row } : null;
+    if (overlay.id !== null && !row) return null;
+    return { mode: 'form', row, fromDetail: overlay.fromDetail };
+  }, [overlay, liveRows]);
   const summary = useMemo(() => summarize(liveRows.map((r) => r.item)), [liveRows]);
   const counts = useMemo(() => chipCounts(liveRows), [liveRows]);
 
@@ -233,7 +269,7 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
       }
       setRemovedIds((prev) => new Set(prev).add(target.item.id));
       setPendingDelete(null);
-      if (detailId === target.item.id) setDetailId(null);
+      if (overlay?.id === target.item.id) setOverlay(null);
       toast.success(
         kind === 'expense' ? 'Gasto programado eliminado' : 'Ingreso programado eliminado',
       );
@@ -244,6 +280,23 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
       toast.error(message);
     }
   };
+
+  const overlayElement = (
+    <ScheduledFormOverlay
+      kind={kind}
+      state={overlayState}
+      onDismiss={handleDismiss}
+      onActiveChange={handleActiveChange}
+      savingActive={savingActive}
+      onEdit={handleEdit}
+      onRequestDelete={(target) => {
+        setDeleteError(null);
+        setPendingDelete(target);
+      }}
+      onSaved={handleSaved}
+      refreshing={refreshing}
+    />
+  );
 
   if (loadFailed) {
     return (
@@ -268,6 +321,7 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
 
   if (liveRows.length === 0) {
     return (
+      <>
       <div className="rounded-xl border border-border/60 bg-card">
         <EmptyState
           icon={CalendarCheck}
@@ -280,6 +334,8 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
           action={{ label: copy.createLabel, onClick: handleCreate }}
         />
       </div>
+      {overlayElement}
+      </>
     );
   }
 
@@ -447,19 +503,7 @@ export const ScheduledList = ({ kind, rows, createLabel, loadFailed = false }: S
         </section>
       </div>
 
-      <ScheduledDetailOverlay
-        row={detailRow}
-        onOpenChange={(open) => {
-          if (!open) setDetailId(null);
-        }}
-        onActiveChange={handleActiveChange}
-        savingActive={savingActive}
-        onEdit={handleEdit}
-        onRequestDelete={(target) => {
-          setDeleteError(null);
-          setPendingDelete(target);
-        }}
-      />
+      {overlayElement}
 
       {pendingDelete ? (
         <ConfirmDeleteDialog

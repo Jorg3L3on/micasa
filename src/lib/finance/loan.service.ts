@@ -116,7 +116,7 @@ async function assertOwnedIncomeTemplate(
     select: { id: true },
   });
   if (!template) {
-    throw new DomainError('VALIDATION', 'La plantilla de ingreso seleccionada no pertenece a este contexto');
+    throw new DomainError('VALIDATION', 'El ingreso programado seleccionado no pertenece a este contexto');
   }
 }
 
@@ -439,7 +439,7 @@ export async function updateLoanForOwner(
     existing.payment_source !== 'PAYROLL_DEDUCTION' &&
     input.incomeTemplateId != null
   ) {
-    throw new DomainError('VALIDATION', 'La plantilla de ingreso solo aplica a préstamos de nómina');
+    throw new DomainError('VALIDATION', 'El ingreso programado solo aplica a préstamos de nómina');
   }
 
   const data: Prisma.LoanUncheckedUpdateInput = {};

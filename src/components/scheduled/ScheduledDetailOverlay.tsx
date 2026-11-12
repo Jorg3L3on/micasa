@@ -8,7 +8,6 @@ import {
   OVERLAY_SECONDARY_BUTTON_CLASS,
   OverlayHint,
 } from '@/components/overlay/overlay-form';
-import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
 import { Button } from '@/components/ui/button';
 import { ToggleField } from '@/components/ui/toggle';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
@@ -17,16 +16,13 @@ import { RowIcon, SubscriptionBadge } from './ScheduledRow';
 import {
   ACTIVE_HELPER,
   cutoffHint,
-  DETAIL_TITLE,
   detailCaption,
   detailRows,
 } from './scheduled-detail';
 import type { ScheduledRowModel } from './scheduled-rows';
 
-type ScheduledDetailOverlayProps = {
-  /** The row to show; null keeps the overlay closed. */
-  row: ScheduledRowModel | null;
-  onOpenChange: (open: boolean) => void;
+type ScheduledDetailBodyProps = {
+  row: ScheduledRowModel;
   /** Saves at once; the caller updates optimistically and rolls back on error. */
   onActiveChange: (row: ScheduledRowModel, active: boolean) => void;
   /** True while the Activo change is being saved. */
@@ -38,48 +34,16 @@ type ScheduledDetailOverlayProps = {
 /**
  * Read-first detail of a gasto or ingreso programado (MIC-I16-3): amount, per
  * month and per year, grouped rows, Corte from the card, the Activo toggle,
- * then Editar and Eliminar. Dialog from `md`, bottom sheet below.
+ * then Editar and Eliminar. It renders inside `ScheduledFormOverlay`, which
+ * swaps it for the form on Editar.
  */
-export const ScheduledDetailOverlay = ({
-  row,
-  onOpenChange,
-  onActiveChange,
-  savingActive,
-  onEdit,
-  onRequestDelete,
-}: ScheduledDetailOverlayProps) => {
-  const kind = row?.item.kind ?? 'expense';
-
-  return (
-    <ResponsiveOverlay
-      open={row !== null}
-      onOpenChange={onOpenChange}
-      title={DETAIL_TITLE[kind]}
-      description={row ? `Detalle de ${row.item.name}` : DETAIL_TITLE[kind]}
-      dismissLabel="Cerrar"
-    >
-      {row ? (
-        <DetailBody
-          row={row}
-          onActiveChange={onActiveChange}
-          savingActive={savingActive}
-          onEdit={onEdit}
-          onRequestDelete={onRequestDelete}
-        />
-      ) : null}
-    </ResponsiveOverlay>
-  );
-};
-
-const DetailBody = ({
+export const ScheduledDetailBody = ({
   row,
   onActiveChange,
   savingActive,
   onEdit,
   onRequestDelete,
-}: Omit<ScheduledDetailOverlayProps, 'row' | 'onOpenChange'> & {
-  row: ScheduledRowModel;
-}) => {
+}: ScheduledDetailBodyProps) => {
   const { item } = row;
   const caption = detailCaption(row);
   const rows = detailRows(row);

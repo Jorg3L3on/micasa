@@ -36,6 +36,11 @@ export type ScheduledRowModel = {
   source: string | null;
   /** Income Aporta (the member the income belongs to). */
   contributor: string | null;
+  /** Ids the edit form preselects (resolved by id, never by name). */
+  categoryId: number | null;
+  walletId: number | null;
+  /** Income owner user id; null on house items. Sent back unchanged on edit. */
+  userId: number | null;
 };
 
 export type ScheduledFilters = {
@@ -89,6 +94,9 @@ export const expenseRows = (
     walletCutoffDay: item.paymentMethodCutoffDay ?? null,
     source: null,
     contributor: null,
+    categoryId: item.categoryId ?? null,
+    walletId: item.paymentMethodId ?? null,
+    userId: null,
   }));
 
 export const incomeRows = (
@@ -112,6 +120,9 @@ export const incomeRows = (
       walletCutoffDay: null,
       source: item.source?.trim() || null,
       contributor: item.userName?.trim() || null,
+      categoryId: item.categoryId ?? null,
+      walletId: item.walletId ?? null,
+      userId: item.userId ?? null,
     };
   });
 };

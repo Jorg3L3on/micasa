@@ -222,7 +222,6 @@ Utilities: `.motion-fade-in` (`--motion-base`) and `.motion-slide-up` (`--motion
 
 Fix these when touching light parity (do not leave new hardcoded dark-only chrome):
 
-- Settings income/expense template inputs: use `TEMPLATE_FIELD_SHELL_CLASS` (theme-aware); avoid raw `border-white/15 bg-black/35`
 - Glass / monthly shells: light uses `--shadow-card`; dark keeps Orion glass under `dark:`
 - Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`), on the landing and in the app
 - Landing follows the same light and dark theme as the app (`ThemeProvider` on the root layout)
@@ -298,7 +297,7 @@ Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these 
 | Grouped card | `rounded-xl border border-border/60 bg-card divide-y divide-border/60` | `OVERLAY_GROUPED_CARD_CLASS` |
 | Row | `px-3 py-1.5`, `min-h-11`, `gap-3` | `GroupedRow` / `FormGroupedRow` |
 | Row label | `w-[5rem] text-sm font-medium` | `OVERLAY_GROUPED_LABEL_CLASS` |
-| Row label, wide ("1ª quincena") | `w-[6rem]`, same type | `GroupedRow labelWidth="wide"` / `OVERLAY_GROUPED_LABEL_WIDE_CLASS` |
+| Row label, wide ("1ª quincena") | `w-[6rem]`, same type | `GroupedRow` or `FormGroupedRow` with `labelWidth="wide"` / `OVERLAY_GROUPED_LABEL_WIDE_CLASS` |
 | Select trigger in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_TRIGGER_CLASS` |
 | Text input in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_INPUT_CLASS` |
 | Number input in a row | same + `font-mono tabular-nums` | `OVERLAY_ROW_NUMBER_INPUT_CLASS` |

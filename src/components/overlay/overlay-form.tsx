@@ -329,18 +329,21 @@ export const OverlaySectionLabel = ({ children }: { children: ReactNode }) => (
 export const FormGroupedRow = ({
   label,
   icon,
+  labelWidth = 'default',
   children,
 }: {
   label: string;
   /** Leading line icon (same 16px muted style across the card). */
   icon?: ReactNode;
+  /** `wide` (6rem) when a label in the card does not fit 5rem, e.g. "1ª quincena". */
+  labelWidth?: 'default' | 'wide';
   children: ReactNode;
 }) => (
   <FormItem className="space-y-1 px-3 py-1.5">
     <div className="flex min-h-11 items-center gap-3">
       <FormLabel
         className={cn(
-          OVERLAY_GROUPED_LABEL_CLASS,
+          labelWidth === 'wide' ? OVERLAY_GROUPED_LABEL_WIDE_CLASS : OVERLAY_GROUPED_LABEL_CLASS,
           icon && 'flex w-[6.75rem] items-center gap-2',
         )}
       >

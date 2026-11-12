@@ -19,3 +19,25 @@ export const ownerContextFromSearchParams = (
   }
   return undefined;
 };
+
+const LIST_PATH = {
+  expense: '/settings/expense-templates',
+  income: '/settings/income-templates',
+} as const;
+
+/**
+ * The list a retired form route (`/new`, `/[id]/edit`) redirects to, keeping
+ * a valid owner context so a bookmark opens the same house or user.
+ */
+export const scheduledListHref = (
+  kind: keyof typeof LIST_PATH,
+  params: OwnerSearchParams,
+): string => {
+  const owner = ownerContextFromSearchParams(params);
+  if (!owner?.ownerType || !owner.ownerId) return LIST_PATH[kind];
+  const query = new URLSearchParams({
+    ownerType: owner.ownerType,
+    ownerId: String(owner.ownerId),
+  });
+  return `${LIST_PATH[kind]}?${query.toString()}`;
+};

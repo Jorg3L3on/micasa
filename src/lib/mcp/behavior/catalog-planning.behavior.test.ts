@@ -546,6 +546,44 @@ describe('create_template', () => {
     });
   });
 
+  it.each([
+    ['due_day_first', 15],
+    ['due_day_second', 31],
+    ['due_day_second', 14],
+  ] as const)('kind expense with %s %i → VALIDATION and nothing is written', async (field, day) => {
+    const result = await callTool(registerTemplateTools, 'create_template', {
+      ...HOUSE,
+      kind: 'expense',
+      name: 'Internet',
+      category_name: 'Hogar',
+      applies_first_fortnight: true,
+      applies_second_fortnight: true,
+      [field]: day,
+    });
+
+    expect(result.body.code).toBe('VALIDATION');
+    expect(db.rows.expenseTemplate).toHaveLength(0);
+  });
+
+  it('kind expense accepts day 15 in SECOND and 14 in FIRST', async () => {
+    const result = await callTool(registerTemplateTools, 'create_template', {
+      ...HOUSE,
+      kind: 'expense',
+      name: 'Internet',
+      category_name: 'Hogar',
+      applies_first_fortnight: true,
+      applies_second_fortnight: true,
+      due_day_first: 14,
+      due_day_second: 15,
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(db.rows.expenseTemplate[0]).toMatchObject({
+      due_day_first_fortnight: 14,
+      due_day_second_fortnight: 15,
+    });
+  });
+
   it('kind income creates a house template with source and funding wallet', async () => {
     const result = await callTool(registerTemplateTools, 'create_template', {
       ...HOUSE,
@@ -921,7 +959,7 @@ describe('create_month', () => {
 
     expect(counts()).toEqual(before);
     expect(again.body).toMatchObject({
-      message: 'Quincenas existentes: se sincronizaron plantillas de gastos e ingresos',
+      message: 'Quincenas existentes: se sincronizaron gastos e ingresos programados',
       created: [],
       expenses_created: { total: 0 },
       income_created: { total: 0 },

@@ -21,7 +21,7 @@ const TEMPLATE_INCLUDE = {
   category: { select: { id: true, name: true, icon: true } },
 } satisfies Prisma.IncomeTemplateInclude;
 
-const NOT_FOUND_MESSAGE = 'Plantilla de ingresos no encontrada';
+const NOT_FOUND_MESSAGE = 'Ingreso programado no encontrado';
 
 const assertFundingWalletOfOwner = async (walletId: number, ownerFilter: OwnerFilter) => {
   const wallet = await prisma.wallet.findFirst({
@@ -101,7 +101,7 @@ export async function updateIncomeTemplateForOwner(
   } else if (existing.category_id == null) {
     throw new DomainError(
       'CATEGORY_REQUIRED',
-      'La categoría es requerida. Asigna una categoría de ingreso a esta plantilla.',
+      'La categoría es requerida. Asigna una categoría de ingreso a este ingreso programado.',
     );
   }
 
@@ -149,7 +149,7 @@ export async function deleteIncomeTemplateForOwner(
   if (relatedIncome) {
     throw new DomainError(
       'TEMPLATE_IN_USE',
-      'La plantilla de ingresos está en uso y no puede eliminarse',
+      'El ingreso programado está en uso y no puede eliminarse',
       409,
     );
   }

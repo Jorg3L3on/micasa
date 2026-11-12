@@ -6,23 +6,40 @@ import {
   defaultBooleanSchema,
 } from './common.schema';
 
-const optionalDueDayFirstSchema = z
+/**
+ * Day 15 belongs to the 2ª quincena (MIC-I16): the 1ª takes days 1-14 and the
+ * 2ª days 15-30. A due day is looked up inside its quincena, so 15 in the 1ª
+ * or 31 in the 2ª would never match a date.
+ */
+export const DUE_DAY_FIRST_MIN = 1;
+export const DUE_DAY_FIRST_MAX = 14;
+export const DUE_DAY_SECOND_MIN = 15;
+export const DUE_DAY_SECOND_MAX = 30;
+
+const DUE_DAY_FIRST_MESSAGE = `En la 1ª quincena el día de vencimiento debe estar entre ${DUE_DAY_FIRST_MIN} y ${DUE_DAY_FIRST_MAX}`;
+const DUE_DAY_SECOND_MESSAGE = `En la 2ª quincena el día de vencimiento debe estar entre ${DUE_DAY_SECOND_MIN} y ${DUE_DAY_SECOND_MAX}`;
+
+export const dueDayFirstSchema = z
   .number()
   .int()
-  .min(1)
-  .max(15)
-  .optional()
-  .nullable();
+  .min(DUE_DAY_FIRST_MIN, DUE_DAY_FIRST_MESSAGE)
+  .max(DUE_DAY_FIRST_MAX, DUE_DAY_FIRST_MESSAGE);
 
-const optionalDueDaySecondSchema = z
+export const dueDaySecondSchema = z
   .number()
   .int()
-  .min(16)
-  .max(31)
-  .optional()
-  .nullable();
+  .min(DUE_DAY_SECOND_MIN, DUE_DAY_SECOND_MESSAGE)
+  .max(DUE_DAY_SECOND_MAX, DUE_DAY_SECOND_MESSAGE);
 
-/** Billing-cycle cutoff on the template; optional — not used when expanding fortnight expenses. */
+const optionalDueDayFirstSchema = dueDayFirstSchema.optional().nullable();
+
+const optionalDueDaySecondSchema = dueDaySecondSchema.optional().nullable();
+
+/**
+ * Billing-cycle cutoff on the template; optional, not used when expanding
+ * fortnight expenses. The form no longer sends it (Corte is read from the
+ * card); an update without it keeps the stored value.
+ */
 const optionalCutoffDaySchema = z
   .number()
   .int()
@@ -43,13 +60,12 @@ export const refineExpenseTemplateDueDays = (
   if (data.appliesFirstFortnight) {
     if (
       data.dueDayFirst != null &&
-      (data.dueDayFirst < 1 || data.dueDayFirst > 15)
+      (data.dueDayFirst < DUE_DAY_FIRST_MIN || data.dueDayFirst > DUE_DAY_FIRST_MAX)
     ) {
       ctx.addIssue({
         code: 'custom',
         path: ['dueDayFirst'],
-        message:
-          'En la 1ª quincena el día de vencimiento debe estar entre 1 y 15',
+        message: DUE_DAY_FIRST_MESSAGE,
       });
     }
   } else if (data.dueDayFirst != null) {
@@ -64,13 +80,12 @@ export const refineExpenseTemplateDueDays = (
   if (data.appliesSecondFortnight) {
     if (
       data.dueDaySecond != null &&
-      (data.dueDaySecond < 16 || data.dueDaySecond > 31)
+      (data.dueDaySecond < DUE_DAY_SECOND_MIN || data.dueDaySecond > DUE_DAY_SECOND_MAX)
     ) {
       ctx.addIssue({
         code: 'custom',
         path: ['dueDaySecond'],
-        message:
-          'En la 2ª quincena el día de vencimiento debe estar entre 16 y 31',
+        message: DUE_DAY_SECOND_MESSAGE,
       });
     }
   } else if (data.dueDaySecond != null) {
@@ -88,8 +103,9 @@ export const createExpenseTemplateSchema = z
   .object({
     name: requiredStringSchema,
     categoryId: positiveIntSchema,
-    suggestedAmount: maxAmountSchema.optional(),
-    paymentMethodId: positiveIntSchema.optional(),
+    /** Null clears it: the item then has a variable amount. */
+    suggestedAmount: maxAmountSchema.optional().nullable(),
+    paymentMethodId: positiveIntSchema.optional().nullable(),
     active: defaultBooleanSchema,
     expenseIds: z.array(positiveIntSchema).optional().default([]),
     dueDayFirst: optionalDueDayFirstSchema,
@@ -124,22 +140,8 @@ export const expenseTemplateSchema = z
       .nullable(),
     paymentMethodId: z.number().int().positive().optional().nullable(),
     active: z.boolean(),
-    dueDayFirst: z.union([
-      z.number().int().min(1).max(15),
-      z.null(),
-    ]),
-    dueDaySecond: z.union([
-      z.number().int().min(16).max(31),
-      z.null(),
-    ]),
-    cutoffDay: z.union([
-      z
-        .number()
-        .int()
-        .min(1, 'El día de corte debe estar entre 1 y 31')
-        .max(31, 'El día de corte debe estar entre 1 y 31'),
-      z.null(),
-    ]),
+    dueDayFirst: z.union([dueDayFirstSchema, z.null()]),
+    dueDaySecond: z.union([dueDaySecondSchema, z.null()]),
     isRecurring: z.boolean(),
     appliesFirstFortnight: z.boolean(),
     appliesSecondFortnight: z.boolean(),

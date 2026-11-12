@@ -105,7 +105,7 @@ export default function EditFortnightAmountDialog({
             </div>
             {sourceName ? (
               <OverlayHint>
-                Solo cambia esta quincena. La plantilla de ingresos y el saldo
+                Solo cambia esta quincena. El ingreso programado y el saldo
                 no cambian.
               </OverlayHint>
             ) : null}
