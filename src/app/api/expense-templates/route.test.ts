@@ -40,7 +40,7 @@ const ownerContext = {
 const cardTemplate = {
   id: 11,
   name: 'Suscripción demo',
-  suggested_amount: '199.00',
+  suggested_amount: '199',
   is_recurring: true,
   applies_first_fortnight: true,
   applies_second_fortnight: false,
@@ -78,7 +78,7 @@ const noWalletTemplate = {
   wallet_id: null,
   category: null,
   wallet: null,
-  expenses: [{ id: 1, amount: '80.00' }],
+  expenses: [{ id: 1, amount: '80' }],
 };
 
 describe('GET /api/expense-templates', () => {
