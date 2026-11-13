@@ -182,6 +182,18 @@ export async function updateIncomeTemplate(
   }, context);
 }
 
+/**
+ * Activo toggle. The income PUT is partial (absent fields are left alone), so
+ * sending `{ active }` alone changes nothing else.
+ */
+export async function setIncomeTemplateActive(
+  id: number,
+  active: boolean,
+  context?: FinanceContextType,
+) {
+  return updateIncomeTemplate(id, { active }, context);
+}
+
 export async function deleteIncomeTemplate(
   id: number,
   context?: FinanceContextType,

@@ -311,7 +311,7 @@ export function ReceivePayrollButton({
       open={open}
       onOpenChange={onOpenChange}
       title="Recibir quincena"
-      description={`${periodTitle} — ${periodLabel}. El monto se suma a la billetera de la plantilla.`}
+      description={`${periodTitle} — ${periodLabel}. El monto se suma a la billetera del ingreso programado.`}
       busy={submitting}
     >
       {({ handleSelectOpenChange }) => (
@@ -331,7 +331,7 @@ export function ReceivePayrollButton({
             </OverlayErrorBanner>
           ) : !hasEntries ? (
             <EmptyState
-              message="No hay plantillas de ingresos configuradas para esta quincena."
+              message="No hay ingresos programados para esta quincena."
               className="py-6"
             />
           ) : (

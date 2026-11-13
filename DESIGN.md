@@ -222,7 +222,6 @@ Utilities: `.motion-fade-in` (`--motion-base`) and `.motion-slide-up` (`--motion
 
 Fix these when touching light parity (do not leave new hardcoded dark-only chrome):
 
-- Settings income/expense template inputs: use `TEMPLATE_FIELD_SHELL_CLASS` (theme-aware); avoid raw `border-white/15 bg-black/35`
 - Glass / monthly shells: light uses `--shadow-card`; dark keeps Orion glass under `dark:`
 - Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`), on the landing and in the app
 - Landing follows the same light and dark theme as the app (`ThemeProvider` on the root layout)
@@ -298,6 +297,7 @@ Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these 
 | Grouped card | `rounded-xl border border-border/60 bg-card divide-y divide-border/60` | `OVERLAY_GROUPED_CARD_CLASS` |
 | Row | `px-3 py-1.5`, `min-h-11`, `gap-3` | `GroupedRow` / `FormGroupedRow` |
 | Row label | `w-[5rem] text-sm font-medium` | `OVERLAY_GROUPED_LABEL_CLASS` |
+| Row label, wide ("1ª quincena") | `w-[6rem]`, same type | `GroupedRow` or `FormGroupedRow` with `labelWidth="wide"` / `OVERLAY_GROUPED_LABEL_WIDE_CLASS` |
 | Select trigger in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_TRIGGER_CLASS` |
 | Text input in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_INPUT_CLASS` |
 | Number input in a row | same + `font-mono tabular-nums` | `OVERLAY_ROW_NUMBER_INPUT_CLASS` |
@@ -366,6 +366,7 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
   - Statement parsers keep a month map because they read bank files. Préstamos uses these helpers.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
 - Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
+  - **Exception: Gastos programados and Ingresos programados** (`src/components/scheduled/ScheduledSummary.tsx`). The summary there is one calm `bg-card` card split by hairlines, with a dot before 1ª / 2ª quincena (`bg-primary` / `bg-chart-4`, the same colours as the row chips) and a thin 1ª-vs-2ª bar under Al mes. No coloured left border and no `METRIC_STRIP_CLASS`. Jorge's decision for these two screens only; every other metric strip keeps the rule above.
 - Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.
 - Brand badges (`WalletProviderIcon`, catalog in `src/lib/wallet-provider-icons.ts`) are a valid exception to that palette. The mark keeps the issuer hue so a billetera stays recognizable. That color is not income, expense, or paid. The short label or fallback glyph must stay at least 4.5:1 against the badge fill in both themes. Do not reuse those classes for status.
   - An expense row uses **expense** for the icon, the amount, and the type badge. A due or paid chip may use **overdue**, **pending**, or **success** — that is the time status, not a second type color.

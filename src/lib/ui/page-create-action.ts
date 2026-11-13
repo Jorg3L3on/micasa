@@ -59,11 +59,11 @@ export const PAGE_CREATE_ACTION = {
   },
   expenseTemplate: {
     kind: 'expense-template',
-    label: 'Agregar plantilla de gasto',
+    label: 'Agregar gasto programado',
   },
   incomeTemplate: {
     kind: 'income-template',
-    label: 'Agregar plantilla de ingreso',
+    label: 'Agregar ingreso programado',
   },
   cardPurchase: {
     kind: 'card-purchase',

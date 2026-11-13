@@ -157,7 +157,7 @@ export async function createMonthFortnightsForOwner(
         ? 'Mes creado: ambas quincenas creadas'
         : created.length === 1
           ? `Quincena(s) creada(s): ${created.map((c) => c.label).join(', ')}`
-          : 'Quincenas existentes: se sincronizaron plantillas de gastos e ingresos',
+          : 'Quincenas existentes: se sincronizaron gastos e ingresos programados',
     created,
     year,
     month,

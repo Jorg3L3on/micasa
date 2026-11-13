@@ -97,16 +97,16 @@ export function getPageTitle(pathname: string): {
   if (segments[0] === 'settings') {
     if (segments[1] === 'expense-templates') {
       if (segments[2] === 'new')
-        return { title: 'Agregar plantilla de gastos', isHome: false, showBack };
+        return { title: 'Agregar gasto programado', isHome: false, showBack };
       if (segments[3] === 'edit')
-        return { title: 'Editar plantilla', isHome: false, showBack };
+        return { title: 'Editar gasto programado', isHome: false, showBack };
       return { title: 'Gastos programados', isHome: false, showBack };
     }
     if (segments[1] === 'income-templates') {
       if (segments[2] === 'new')
-        return { title: 'Agregar plantilla de ingresos', isHome: false, showBack };
+        return { title: 'Agregar ingreso programado', isHome: false, showBack };
       if (segments[3] === 'edit')
-        return { title: 'Editar plantilla', isHome: false, showBack };
+        return { title: 'Editar ingreso programado', isHome: false, showBack };
       return { title: 'Ingresos programados', isHome: false, showBack };
     }
     if (segments[1] === 'house-users') {
@@ -136,18 +136,18 @@ export function getPageTitle(pathname: string): {
 
   if (segments[0] === 'expense-templates') {
     if (segments[1] === 'new')
-      return { title: 'Agregar plantilla de gastos', isHome: false, showBack };
+      return { title: 'Agregar gasto programado', isHome: false, showBack };
     if (segments[2] === 'edit')
-      return { title: 'Editar plantilla', isHome: false, showBack };
-    return { title: 'Plantillas de gastos', isHome: false, showBack };
+      return { title: 'Editar gasto programado', isHome: false, showBack };
+    return { title: 'Gastos programados', isHome: false, showBack };
   }
 
   if (segments[0] === 'income-templates') {
     if (segments[1] === 'new')
-      return { title: 'Agregar plantilla de ingresos', isHome: false, showBack };
+      return { title: 'Agregar ingreso programado', isHome: false, showBack };
     if (segments[2] === 'edit')
-      return { title: 'Editar plantilla', isHome: false, showBack };
-    return { title: 'Plantillas de ingresos', isHome: false, showBack };
+      return { title: 'Editar ingreso programado', isHome: false, showBack };
+    return { title: 'Ingresos programados', isHome: false, showBack };
   }
 
   if (
