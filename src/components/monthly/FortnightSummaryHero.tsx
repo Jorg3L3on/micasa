@@ -5,7 +5,7 @@ import {
   type DueToPayCompositionRow,
 } from '@/components/monthly/fortnight-summary-header';
 import { CommitmentMeter } from '@/components/monthly/CommitmentMeter';
-import { kpiMetricCardShellClass, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
+import { KPI_METRIC_CARD_SHELL_CLASS, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { AuraSurface } from '@/components/aura/aura-surface';
@@ -234,7 +234,7 @@ const AccountMetricBody = ({
 export const AccountMetric = (props: AccountMetricProps) => {
   if (props.kpiTone) {
     return (
-      <div className={kpiMetricCardShellClass(props.kpiTone)} role="region" aria-label={props.label}>
+      <div className={KPI_METRIC_CARD_SHELL_CLASS} role="region" aria-label={props.label}>
         <AccountMetricBody {...props} />
       </div>
     );

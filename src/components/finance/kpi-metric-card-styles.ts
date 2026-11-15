@@ -1,15 +1,7 @@
 import { cn } from '@/lib/utils';
 
-/** Calm KPI tile. Tone is a left border, not a gradient fill. */
+/** Calm KPI tile. Tone lives on the label and value color; no left accent, no gradient fill. */
 export type KpiMetricTone = 'blue' | 'emerald' | 'income' | 'destructive' | 'neutral';
-
-const shellByTone: Record<KpiMetricTone, string> = {
-  blue: 'border-border/60 border-l-[3px] border-l-status-info bg-card',
-  emerald: 'border-border/60 border-l-[3px] border-l-status-success bg-card',
-  income: 'border-border/60 border-l-[3px] border-l-status-income bg-card',
-  destructive: 'border-border/60 border-l-[3px] border-l-status-expense bg-card',
-  neutral: 'border-border/60 bg-card',
-};
 
 const labelByTone: Record<KpiMetricTone, string> = {
   blue: 'text-status-info',
@@ -19,8 +11,8 @@ const labelByTone: Record<KpiMetricTone, string> = {
   neutral: 'text-muted-foreground',
 };
 
-export const kpiMetricCardShellClass = (tone: KpiMetricTone) =>
-  cn('relative overflow-hidden rounded-xl border px-2 py-1.5 shadow-card', shellByTone[tone]);
+export const KPI_METRIC_CARD_SHELL_CLASS =
+  'relative overflow-hidden rounded-xl border border-border/60 bg-card px-2 py-1.5 shadow-card';
 
 export const kpiMetricLabelClass = (tone: KpiMetricTone) =>
   cn('truncate text-caption font-semibold leading-tight', labelByTone[tone]);

@@ -277,7 +277,7 @@ export function DataTable<TData>({
                   className={cn(
                     onRowClick && 'cursor-pointer hover:bg-muted/40',
                     isSelected &&
-                      'bg-muted/30 border-l-[3px] border-l-status-info/50',
+                      'bg-status-info/[0.08] dark:bg-status-info/10',
                   )}
                   onClick={() => onRowClick?.(row.original)}
                   onKeyDown={(e) => {

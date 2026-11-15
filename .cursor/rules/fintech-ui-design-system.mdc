@@ -26,15 +26,9 @@ Every card gets an **icon badge** in a tinted pill + title + optional subtitle:
 
 ## Color-Accented Metric Cards
 
-Use a **colored left border only** for metric strips—**no** tinted panel fill (`bg-*-500/5` etc.). Keep the shell calm (`border-border/60`, `bg-transparent`); identity comes from the **3px left accent** plus typography and optional **icon pill** tints.
+**No colored left accents** and **no** tinted panel fill (`bg-*-500/5` etc.) on metric strips (DESIGN.md, Plania decision 41117366). Keep the shell calm with `METRIC_STRIP_CLASS` from `src/components/ui/metric-strip.ts`; status comes from the value color, a `STATUS_BADGE` chip, typography and optional **icon pill** tints.
 
-```tsx
-<div className="rounded-lg border border-border/60 border-l-[3px] border-l-blue-500/50 bg-transparent px-2.5 py-2">
-```
-
-For metric panels, prefer the shared constant `METRIC_STRIP_CLASS` from `src/components/ui/metric-strip.ts` and add the matching `border-l-*` class.
-
-Color mapping (left border + text/icon colors):
+Color mapping (text/icon colors):
 - **Income / Bank**: blue (`blue-500`)
 - **Paid / Success**: green (`green-500`)
 - **Pending / Warning**: amber (`amber-500`)

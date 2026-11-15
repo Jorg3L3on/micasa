@@ -198,8 +198,6 @@ const getAuraToneCardStyle = (
 export const getListToneCardStyle = (baseColor: string): CSSProperties => ({
   background: `linear-gradient(112deg, ${rgba(baseColor, 0.18)} 0%, ${rgba(baseColor, 0.06)} 40%, transparent 72%)`,
   borderColor: rgba(baseColor, 0.28),
-  borderLeftWidth: '3px',
-  borderLeftColor: rgba(baseColor, 0.5),
 });
 
 export const getProviderCardStyle = (
