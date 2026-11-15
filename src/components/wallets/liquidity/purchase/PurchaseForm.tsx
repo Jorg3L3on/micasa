@@ -2,7 +2,12 @@
 
 import { useId } from 'react';
 import { Info, Minus, Plus, ShoppingBag, TriangleAlert } from 'lucide-react';
-import { MONTHLY_LIQUID_PANEL_CLASS, PANEL_INSET_CLASS } from '@/components/monthly/monthly-panel-shell';
+import {
+  AURA_TAB_INDICATOR_CLASS,
+  GLASS_TAB_ACTIVE_LABEL_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
+import { SegmentedControl } from '@/components/segmented-control';
 import {
   AmountRow,
   DateStepper,
@@ -14,6 +19,15 @@ import {
 import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { formatDisplayDate } from '@/lib/calendar-dates';
 import { MSI_MONTH_OPTIONS } from '@/lib/finance/purchase-simulation/constants';
@@ -45,28 +59,66 @@ const walletInfo = (w: SimulationWallet) =>
         .join(' · ')
     : `Saldo ${formatMoney(w.balance ?? 0)}`;
 
-const WalletChoice = ({ wallet, selected, onSelect }: { wallet: SimulationWallet; selected: boolean; onSelect: () => void }) => (
-  <button
-    type="button"
-    role="radio"
-    aria-checked={selected}
-    onClick={onSelect}
-    className={cn(
-      'flex min-h-12 w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-      selected ? 'border-primary/70 bg-primary/15' : 'border-border/60 bg-white/[0.03] hover:bg-white/[0.06]',
-    )}
-  >
-    <WalletProviderIcon providerIconKey={wallet.providerIconKey} />
-    <span className="min-w-0 flex-1">
-      <span className="block truncate text-sm font-semibold" title={wallet.name}>{wallet.name}</span>
-      <span className="block text-caption text-muted-foreground">{walletInfo(wallet)}</span>
-    </span>
-    <span
-      aria-hidden
-      className={cn('size-4 shrink-0 rounded-full border', selected ? 'border-[5px] border-primary' : 'border-muted-foreground/60')}
-    />
-  </button>
-);
+/** One select for every wallet choice: trigger shows the chosen one, the menu groups cards and cash/debit. */
+export const WalletSelect = ({
+  label,
+  wallets,
+  value,
+  onChange,
+  showInfo = true,
+}: {
+  label: string;
+  wallets: SimulationWallet[];
+  value: number | null;
+  onChange: (id: number) => void;
+  showInfo?: boolean;
+}) => {
+  const id = useId();
+  const selected = wallets.find((w) => w.id === value) ?? null;
+  const cards = wallets.filter((w) => w.isCard);
+  const funding = wallets.filter((w) => !w.isCard);
+  const item = (w: SimulationWallet) => (
+    <SelectItem key={w.id} value={String(w.id)} className="min-h-11 py-2">
+      <WalletProviderIcon providerIconKey={w.providerIconKey} className="size-6" showTooltipLabel={false} />
+      <span className="flex min-w-0 flex-col items-start">
+        <span className="truncate font-medium">{w.name}</span>
+        <span className="text-caption text-muted-foreground">{walletInfo(w)}</span>
+      </span>
+    </SelectItem>
+  );
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block px-1 text-xs font-medium text-muted-foreground">{label}</label>
+      <Select value={value != null ? String(value) : undefined} onValueChange={(v) => onChange(Number(v))}>
+        <SelectTrigger id={id} className="h-12 w-full rounded-xl border-border/60 bg-card px-3 data-[size=default]:h-12">
+          <SelectValue placeholder="Elige una billetera">
+            {selected ? (
+              <span className="flex min-w-0 items-center gap-2.5">
+                <WalletProviderIcon providerIconKey={selected.providerIconKey} className="size-6" showTooltipLabel={false} />
+                <span className="truncate text-sm font-semibold" title={selected.name}>{selected.name}</span>
+              </span>
+            ) : null}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent position="popper" className="max-h-80">
+          {cards.length > 0 ? (
+            <SelectGroup>
+              <SelectLabel>Tarjetas</SelectLabel>
+              {cards.map(item)}
+            </SelectGroup>
+          ) : null}
+          {funding.length > 0 ? (
+            <SelectGroup>
+              <SelectLabel>Efectivo y débito</SelectLabel>
+              {funding.map(item)}
+            </SelectGroup>
+          ) : null}
+        </SelectContent>
+      </Select>
+      {showInfo && selected ? <p className="mt-1.5 px-1 text-caption text-muted-foreground">{walletInfo(selected)}</p> : null}
+    </div>
+  );
+};
 
 const ChipGroup = <T extends string | number>({
   label,
@@ -183,34 +235,28 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
 
       <div>
         <p className="mb-1.5 px-1 text-xs font-medium text-muted-foreground">{C.how}</p>
-        <div role="radiogroup" aria-label={C.how} className={cn(PANEL_INSET_CLASS, 'flex gap-1 p-1')}>
-          {modes.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={draft.mode === m.id}
-              onClick={() => onChange({ mode: m.id, knownPayment: null })}
-              className={cn(
-                'min-h-11 min-w-0 flex-1 rounded-lg px-1.5 text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                draft.mode === m.id ? 'bg-primary/25 text-foreground ring-1 ring-primary/60' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          value={draft.mode}
+          onValueChange={(mode) => onChange({ mode: mode as PurchaseMode, knownPayment: null })}
+          ariaLabel={C.how}
+          stretch
+          frameClassName={cn(MONTHLY_LIQUID_PANEL_CLASS, 'flex w-full min-w-0 items-center p-1 sm:p-1.5')}
+          wrapperClassName="min-w-0 flex-1"
+          listClassName="w-full"
+          triggerClassName="px-1.5 text-xs leading-tight sm:text-sm"
+          indicatorClassName={AURA_TAB_INDICATOR_CLASS}
+          activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
+          options={modes.map((m) => ({ value: m.id, label: m.label }))}
+        />
       </div>
 
       {draft.mode !== 'credito' ? (
-        <div>
-          <p className="mb-1.5 px-1 text-xs font-medium text-muted-foreground">{draft.mode === 'msi' ? C.whichCard : C.payWith}</p>
-          <div role="radiogroup" aria-label={draft.mode === 'msi' ? C.whichCard : C.payWith} className="flex flex-col gap-1.5">
-            {(draft.mode === 'msi' ? cards : [...cards, ...funding]).map((w) => (
-              <WalletChoice key={w.id} wallet={w} selected={draft.walletId === w.id} onSelect={() => onChange({ walletId: w.id })} />
-            ))}
-          </div>
-        </div>
+        <WalletSelect
+          label={draft.mode === 'msi' ? C.whichCard : C.payWith}
+          wallets={draft.mode === 'msi' ? cards : [...cards, ...funding]}
+          value={draft.walletId}
+          onChange={(walletId) => onChange({ walletId })}
+        />
       ) : null}
 
       {draft.mode === 'msi' ? (
@@ -251,19 +297,9 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
             ) : null}
           </div>
           {isNew && funding.length > 0 ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                {C.downFrom}
-                <select value={draft.downWalletId ?? ''} onChange={(e) => onChange({ downWalletId: Number(e.target.value) })} className="h-11 rounded-xl border border-border/60 bg-card px-2 text-sm text-foreground">
-                  {funding.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                {C.payFrom}
-                <select value={draft.payWalletId ?? ''} onChange={(e) => onChange({ payWalletId: Number(e.target.value) })} className="h-11 rounded-xl border border-border/60 bg-card px-2 text-sm text-foreground">
-                  {funding.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                </select>
-              </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <WalletSelect label={C.downFrom} wallets={funding} value={draft.downWalletId} onChange={(downWalletId) => onChange({ downWalletId })} showInfo={false} />
+              <WalletSelect label={C.payFrom} wallets={funding} value={draft.payWalletId} onChange={(payWalletId) => onChange({ payWalletId })} showInfo={false} />
             </div>
           ) : null}
           <button

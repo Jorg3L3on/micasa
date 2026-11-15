@@ -138,10 +138,14 @@ describe('Simular compra tab', () => {
   it('every form control is a real button or input reachable by keyboard', async () => {
     render(<PurchaseSimulatorTab />);
     await screen.findByText(PURCHASE_COPY.emptyTitle);
+    const modes = screen.getByRole('tablist', { name: PURCHASE_COPY.how });
     for (const name of [PURCHASE_COPY.modeContado, PURCHASE_COPY.modeMsi, PURCHASE_COPY.modeCredito]) {
-      const el = screen.getByRole('radio', { name });
+      const el = within(modes).getByRole('tab', { name });
       expect(el.tagName).toBe('BUTTON');
       expect(el.className).toMatch(/min-h-11/);
     }
+    // The wallet choice is one select (combobox), not a list of every wallet.
+    expect(screen.getByRole('combobox', { name: PURCHASE_COPY.whichCard })).toBeTruthy();
+    expect(screen.queryByRole('radio', { name: /Tarjeta Dos/ })).toBeNull();
   });
 });
