@@ -390,12 +390,9 @@ const overLimit = (plan: PurchasePlan, wallets: Map<number, SimulationWallet>): 
 };
 
 export const ASSUMPTIONS_ES = [
-  'Cada quincena se calcula como en tu Panel: lo que entra menos lo que ya tienes que pagar y tus presupuestos.',
-  'La quincena de hoy cuenta solo lo que falta desde hoy; tu dinero de hoy ya incluye lo que pasó.',
-  'Donde aún no creas la quincena, usamos tus ingresos y gastos programados: los gastos sueltos que no registras no aparecen.',
-  'Tus tarjetas: pagas el total de cada estado de cuenta. Donde no hay estado proyectado, sumamos tu consumo habitual (promedio de tus estados recientes).',
-  'No incluye cambios de sueldo, el pago mínimo de las tarjetas ni gastos que aún no registras.',
-  'No se guarda nada y nadie recibe aviso. Es lo que pasaría, no una recomendación ni asesoría financiera.',
+  'Cada quincena, como en tu Panel: lo que entra menos lo que tienes que pagar y tus presupuestos. La de hoy cuenta solo lo que falta.',
+  'Tarjetas: pagas el total de cada estado de cuenta; donde no hay estado, tu consumo habitual.',
+  'No incluye cambios de sueldo ni pagos mínimos. No se guarda nada.',
 ];
 
 export async function simulatePurchase(params: {

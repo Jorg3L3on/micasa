@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CalendarDays, Info } from 'lucide-react';
+import { CalendarDays, ChevronDown, Info } from 'lucide-react';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { SectionHeader } from '@/components/section-header';
 import { formatDisplayDate } from '@/lib/calendar-dates';
@@ -76,13 +76,30 @@ export const PaymentCalendar = ({ result, dimmed }: { result: PurchaseSimulation
   );
 };
 
-export const AssumptionsPanel = ({ result }: { result: PurchaseSimulationResult }) => (
-  <section aria-labelledby="sc-how" className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-3 sm:p-4')}>
-    <SectionHeader id="sc-how" icon={Info} title={C.howTitle} className="mb-3" />
-    <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
-      <li>Empiezas con {formatMoney(result.starting_liquidity)} en efectivo y débito (lo que cuenta en tu liquidez).</li>
-      {result.assumptions.map((a) => <li key={a}>{a}</li>)}
-      {result.card_consumption.map((c) => <li key={c.walletId}>Consumo habitual estimado de {c.name}: {formatMoney(c.amount)} por estado de cuenta.</li>)}
-    </ul>
-  </section>
-);
+/** Folded by default: one row that opens to a short list. */
+export const AssumptionsPanel = ({ result }: { result: PurchaseSimulationResult }) => {
+  const [open, setOpen] = useState(false);
+  const consumption = result.card_consumption.map((c) => `${c.name} ${formatMoney(c.amount)}`).join(' · ');
+  return (
+    <section aria-labelledby="sc-how" className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'px-3 py-1 sm:px-4')}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="sc-how-list"
+        onClick={() => setOpen((v) => !v)}
+        className="flex min-h-10 w-full items-center gap-2 text-left text-caption text-muted-foreground hover:text-foreground"
+      >
+        <Info className="size-3.5 shrink-0" aria-hidden />
+        <span id="sc-how" className="flex-1 font-medium">{C.howTitle}</span>
+        <ChevronDown className={cn('size-4 shrink-0 transition-transform', open && 'rotate-180')} aria-hidden />
+      </button>
+      {open ? (
+        <ul id="sc-how-list" className="flex list-disc flex-col gap-0.5 pb-2.5 pl-5 text-caption text-muted-foreground">
+          <li>Empiezas con {formatMoney(result.starting_liquidity)} en efectivo y débito.</li>
+          {result.assumptions.map((a) => <li key={a}>{a}</li>)}
+          {consumption ? <li>Consumo habitual por estado de cuenta: {consumption}.</li> : null}
+        </ul>
+      ) : null}
+    </section>
+  );
+};
