@@ -202,7 +202,7 @@ const QuincenaDetail = ({ row, showBase }: { row: QuincenaRow; showBase: boolean
           {showBase ? <p className="text-caption text-muted-foreground">{C.colSin}: {formatMoney(row.sinCompra)}</p> : null}
         </div>
       </div>
-      <div className="mt-3 grid gap-4 md:grid-cols-[1fr_1.6fr]">
+      <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
         <div>
           <p className="flex justify-between border-b border-border/60 pb-1.5 text-caption font-semibold text-muted-foreground"><span>{C.detailIncome}</span><span className="tabular-nums">{formatMoney(row.entra)}</span></p>
           {row.incomes.length === 0 ? <p className="py-2 text-caption text-muted-foreground">Sin ingresos esta quincena.</p> : null}

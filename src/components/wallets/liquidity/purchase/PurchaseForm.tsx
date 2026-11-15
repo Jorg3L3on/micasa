@@ -297,7 +297,7 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
             ) : null}
           </div>
           {isNew && funding.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <WalletSelect label={C.downFrom} wallets={funding} value={draft.downWalletId} onChange={(downWalletId) => onChange({ downWalletId })} showInfo={false} />
               <WalletSelect label={C.payFrom} wallets={funding} value={draft.payWalletId} onChange={(payWalletId) => onChange({ payWalletId })} showInfo={false} />
             </div>

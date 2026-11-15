@@ -34,7 +34,7 @@ const ResultSkeleton = () => (
       <Skeleton className="h-8 w-2/3" />
       <Skeleton className="h-4 w-full" />
     </div>
-    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
       {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
     </div>
     <div className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'flex h-60 items-end gap-1 p-4')}>
