@@ -274,7 +274,7 @@ export const QuincenaPanel = ({ result, selectedKey, onSelect, dimmed }: Props) 
   );
 };
 
-const TABLE_LIMIT = 12;
+const TABLE_LIMIT = 6;
 
 export const QuincenaTable = ({ result, selectedKey, onSelect, dimmed }: Props) => {
   const [showAll, setShowAll] = useState(false);
