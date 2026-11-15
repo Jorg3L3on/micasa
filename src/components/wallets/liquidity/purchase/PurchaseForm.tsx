@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { formatDisplayDate } from '@/lib/calendar-dates';
-import { MSI_MONTH_OPTIONS } from '@/lib/finance/purchase-simulation/plan';
+import { MSI_MONTH_OPTIONS } from '@/lib/finance/purchase-simulation/constants';
 import type { PurchaseSimulationResult, SimulationWallet } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { formatMoney } from '@/lib/money';

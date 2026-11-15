@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { dateStringSchema } from '@/schemas/common.schema';
-import { CREDIT_MAX_MONTHS, MSI_MONTH_OPTIONS } from '@/lib/finance/purchase-simulation/plan';
+import { CREDIT_MAX_MONTHS, MSI_MONTH_OPTIONS } from '@/lib/finance/purchase-simulation/constants';
 
 /** Horizon cap: 30 years of quincenas. */
 export const PURCHASE_SIMULATION_MAX_HORIZON_MONTHS = 360;
