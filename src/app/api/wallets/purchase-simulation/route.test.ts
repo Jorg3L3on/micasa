@@ -103,9 +103,9 @@ describe('POST /api/wallets/purchase-simulation', () => {
 
   it('handles 24, 99 and 720 quincenas', async () => {
     for (const [body, min] of [
-      [{ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12, horizon_months: 12 }, 24],
+      [{ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 }, 24],
       [{ total: 320000, date: today, mode: 'credito', lender: 'new', pay_wallet_id: 3, down_wallet_id: 3, down_payment: 40000, months: 48, annual_rate: 13.9 }, 99],
-      [{ total: 1800000, date: today, mode: 'credito', lender: 'new', pay_wallet_id: 3, months: 360, annual_rate: 10, horizon_months: 360 }, 720],
+      [{ total: 1800000, date: today, mode: 'credito', lender: 'new', pay_wallet_id: 3, months: 360, annual_rate: 10 }, 720],
     ] as const) {
       const started = Date.now();
       const res = await post(body);

@@ -69,7 +69,6 @@ export const PURCHASE_COPY = {
   legendWeight: 'Lo que pesa la compra',
   legendBaseline: 'Sin la compra',
   estimated: 'Estimado',
-  createFortnights: 'Crear quincenas',
   tableTitle: { quincena: 'Todas las quincenas', mes: 'Todos los meses', año: 'Todos los años' },
   tableHint: 'Toca una fila para ver qué más pagas ahí.',
   colEntra: 'Entra',

@@ -2,9 +2,6 @@ import { z } from 'zod';
 import { dateStringSchema } from '@/schemas/common.schema';
 import { CREDIT_MAX_MONTHS, MSI_MONTH_OPTIONS } from '@/lib/finance/purchase-simulation/constants';
 
-/** Horizon cap: 30 years of quincenas. */
-export const PURCHASE_SIMULATION_MAX_HORIZON_MONTHS = 360;
-
 const money = z
   .number({ message: 'Escribe un monto.' })
   .max(99999999.99, 'El monto es demasiado alto.');
@@ -35,13 +32,6 @@ export const purchaseSimulationSchema = z
     pay_wallet_id: walletId.optional(),
     payment_day: z.number().int().min(1).max(31).optional(),
     extra_monthly: money.min(0).optional(),
-    /** Months to project; omitted = until the last payment (+3 quincenas). */
-    horizon_months: z
-      .number()
-      .int()
-      .min(1)
-      .max(PURCHASE_SIMULATION_MAX_HORIZON_MONTHS)
-      .optional(),
   })
   .superRefine((value, ctx) => {
     const issue = (path: string, message: string) =>

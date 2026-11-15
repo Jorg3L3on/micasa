@@ -12,7 +12,6 @@ import type {
   PurchaseSimulationResult,
   SimulationWallet,
 } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
-import { addMonthsYmd } from '@/lib/finance/purchase-simulation/plan';
 
 /** Fictional data for UI tests: two cards and one debit wallet. */
 export const TEST_WALLETS: SimulationWallet[] = [
@@ -34,7 +33,7 @@ const baseline = (today: string, until: string, tightSecond: boolean): BaselineF
 /** Builds a result like the API would for a body, with the real pure engine. */
 export function fakeSimulation(body: {
   total: number; date: string; mode: 'contado' | 'msi' | 'credito'; wallet_id?: number; months?: number;
-  pay_wallet_id?: number; annual_rate?: number; down_payment?: number; horizon_months?: number; name?: string;
+  pay_wallet_id?: number; annual_rate?: number; down_payment?: number; name?: string;
 }, today: string): PurchaseSimulationResult {
   const wallet = TEST_WALLETS.find((w) => w.id === (body.wallet_id ?? body.pay_wallet_id)) ?? TEST_WALLETS[2];
   const pw: PlanWallet = { id: wallet.id, name: wallet.name, isCard: wallet.isCard, cutoff_day: wallet.cutoffDay, due_day: wallet.dueDay };
@@ -42,7 +41,7 @@ export function fakeSimulation(body: {
     total: body.total, date: body.date, mode: body.mode, wallet: pw, months: body.months, lender: 'new',
     annualRatePct: body.annual_rate, downPayment: body.down_payment, payWallet: { id: 3, name: 'Débito prueba' }, downWallet: { id: 3, name: 'Débito prueba' },
   });
-  const until = body.horizon_months ? addMonthsYmd(today, body.horizon_months) : defaultHorizonEnd(plan);
+  const until = defaultHorizonEnd(plan);
   const name = body.name ?? 'tu compra';
   const series = buildQuincenaSeries({
     todayYmd: today, untilYmd: until, startingLiquidity: 45000,

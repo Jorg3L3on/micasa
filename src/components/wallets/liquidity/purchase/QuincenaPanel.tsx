@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { BarChart3, Info, List } from 'lucide-react';
 import { MONTHLY_LIQUID_PANEL_CLASS, PANEL_INSET_CLASS } from '@/components/monthly/monthly-panel-shell';
@@ -32,7 +31,7 @@ type Props = {
   dimmed?: boolean;
 };
 
-/** First quincena without a Fortnight row, for the "Crear quincenas" link. */
+/** First quincena without a Fortnight row (estimated from here on). */
 const firstMissing = (rows: QuincenaRow[]) => rows.find((r) => r.estimated) ?? null;
 
 export const lastCreatedLabel = (key: string | null) => {
@@ -228,7 +227,6 @@ export const QuincenaPanel = ({ result, selectedKey, onSelect, dimmed }: Props) 
           <span className="min-w-0 flex-[1_1_16rem]">
             {created ? `Tus quincenas están creadas hasta la ${created}.` : 'Aún no creas quincenas para estas fechas.'} De ahí en adelante calculamos con tus ingresos y gastos programados: los gastos sueltos que aún no registras no aparecen.
           </span>
-          <Link href={`/monthly/${missing.year}/${missing.month}`} className="text-xs font-semibold text-primary-text underline underline-offset-4">{C.createFortnights}</Link>
         </div>
       ) : null}
       {result.plan.purchaseDate > result.as_of ? (

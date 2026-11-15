@@ -498,7 +498,7 @@ Jorge's rules for every new or redesigned app page, decided in the Simular compr
 ### States and data notices
 
 - First load: skeletons with the card silhouettes. Recalculation: the last result stays dimmed with a "Calculando…" chip. Empty: `EmptyState` inside the card. Error: `ErrorBanner` with "Reintentar", the previous result dimmed under it.
-- Data the page leaves out or assumes gets a one-line notice with one action ("Crear quincenas", "Completar datos").
+- Data the page leaves out or assumes gets a one-line notice, with one action when there is a clear one ("Completar datos").
 
 ### Check before a PR
 

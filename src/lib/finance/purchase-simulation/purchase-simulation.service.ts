@@ -516,13 +516,8 @@ export async function simulatePurchase(params: {
   })();
 
   const name = input.name?.trim() || 'tu compra';
-  // A chosen period always ends on a whole quincena.
-  const untilYmd = input.horizon_months
-    ? (() => {
-        const ref = getCalendarFortnightRefForYmd(addMonthsYmd(todayYmd, input.horizon_months!));
-        return getFortnightYmdBounds(ref.year, ref.month, ref.period).endYmd;
-      })()
-    : defaultHorizonEnd(plan);
+  // Always until the last payment, plus three quincenas.
+  const untilYmd = defaultHorizonEnd(plan);
 
   // The alternatives may end later than the chosen plan; load the baseline once for the longest.
   const altDefs = alternativePatches(input, wallets);
@@ -533,9 +528,7 @@ export async function simulatePurchase(params: {
       return [];
     }
   });
-  const loadUntil = input.horizon_months
-    ? untilYmd
-    : [untilYmd, ...altPlans.map((a) => defaultHorizonEnd(a.plan))].sort().at(-1)!;
+  const loadUntil = [untilYmd, ...altPlans.map((a) => defaultHorizonEnd(a.plan))].sort().at(-1)!;
 
   const loaded = await loadBaseline(params.ownerFilter, wallets, todayYmd, loadUntil, asOf);
   const withinUntil = (until: string) => loaded.baseline.filter((f) => f.date <= until);
@@ -551,7 +544,7 @@ export async function simulatePurchase(params: {
   const verdict = verdictFacts(series, overLimit(plan, byId));
 
   const alternatives: SimulationAlternative[] = altPlans.map((a) => {
-    const until = input.horizon_months ? untilYmd : defaultHorizonEnd(a.plan);
+    const until = defaultHorizonEnd(a.plan);
     const altSeries = buildQuincenaSeries({
       todayYmd,
       untilYmd: until,
