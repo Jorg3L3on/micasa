@@ -111,10 +111,9 @@ export const listQuincenas = (fromYmd: string, toYmd: string): CalendarFortnight
   return out;
 };
 
-/** Default horizon: the last payment's quincena plus three more. */
+/** The simulation ends with the quincena of the last payment (Jorge, 2026-11-15). */
 export const defaultHorizonEnd = (plan: PurchasePlan): string => {
-  let ref = getCalendarFortnightRefForYmd(plan.lastDueDate);
-  for (let i = 0; i < 3; i++) ref = nextQuincena(ref);
+  const ref = getCalendarFortnightRefForYmd(plan.lastDueDate);
   return getFortnightYmdBounds(ref.year, ref.month, ref.period).endYmd;
 };
 

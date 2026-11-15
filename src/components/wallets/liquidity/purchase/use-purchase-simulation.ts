@@ -73,7 +73,7 @@ export function resolveDraft(draft: PurchaseDraft, wallets: SimulationWallet[]):
 
 export function draftToBody(draft: PurchaseDraft): PurchaseSimulationInput | null {
   if (!(draft.total > 0)) return null;
-  // Always until the purchase is paid off (+3 quincenas): the server's default.
+  // Always until the quincena of the last payment: the server's default.
   const base = { name: draft.name.trim() || undefined, total: draft.total, date: draft.date };
   if (draft.mode === 'contado') {
     return draft.walletId == null ? null : { ...base, mode: 'contado', wallet_id: draft.walletId };

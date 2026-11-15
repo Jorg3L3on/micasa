@@ -516,7 +516,7 @@ export async function simulatePurchase(params: {
   })();
 
   const name = input.name?.trim() || 'tu compra';
-  // Always until the last payment, plus three quincenas.
+  // Always until the quincena of the last payment.
   const untilYmd = defaultHorizonEnd(plan);
 
   // The alternatives may end later than the chosen plan; load the baseline once for the longest.

@@ -54,7 +54,7 @@ describe('buildQuincenaSeries', () => {
     expect(withPurchase).toHaveLength(12);
     expect(withPurchase.every((r) => r.period === 'SECOND')).toBe(true);
     expect(series[0].key).toBe('2026-11-1');
-    expect(series.at(-1)!.key).toBe('2028-01-1');
+    expect(series.at(-1)!.key).toBe('2027-11-2');
   });
 
   it('marks quincenas without a Fortnight row as estimated', () => {
