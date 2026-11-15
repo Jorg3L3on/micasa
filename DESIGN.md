@@ -365,8 +365,9 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
   - **Steppers** (`formatStepperDate`) always include the year. The control is an input, so the saved day stays unambiguous.
   - Statement parsers keep a month map because they read bank files. Préstamos uses these helpers.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
-- Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
-  - **Exception: Gastos programados and Ingresos programados** (`src/components/scheduled/ScheduledSummary.tsx`). The summary there is one calm `bg-card` card split by hairlines, with a dot before 1ª / 2ª quincena (`bg-primary` / `bg-chart-4`, the same colours as the row chips) and a thin 1ª-vs-2ª bar under Al mes. No coloured left border and no `METRIC_STRIP_CLASS`. Jorge's decision for these two screens only; every other metric strip keeps the rule above.
+- **No colored left accents** (Jorge, 2026-11-15, Plania decision 41117366). No `border-l-[3px]` / `border-l-*` status or brand stripe on any card, tile, strip or row, no inline `borderLeftColor`, and no inset left shadow that draws one. Status goes on the value color, a `STATUS_BADGE` chip or a soft tint (`src/lib/status-tone.ts`). A neutral hairline (`border-l border-border/60`) for a nested list is fine. Enforced by `npm run validate:metric-strips`.
+- Metric / KPI strips: `METRIC_STRIP_CLASS` (even calm border, `bg-card`). **No** tinted panel fills (`bg-*-500/5`). Enforced by the same validator.
+  - Gastos programados and Ingresos programados (`src/components/scheduled/ScheduledSummary.tsx`) use one calm `bg-card` card split by hairlines, with a dot before 1ª / 2ª quincena (`bg-primary` / `bg-chart-4`, the same colours as the row chips) and a thin 1ª-vs-2ª bar under Al mes.
 - Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.
 - Brand badges (`WalletProviderIcon`, catalog in `src/lib/wallet-provider-icons.ts`) are a valid exception to that palette. The mark keeps the issuer hue so a billetera stays recognizable. That color is not income, expense, or paid. The short label or fallback glyph must stay at least 4.5:1 against the badge fill in both themes. Do not reuse those classes for status.
   - An expense row uses **expense** for the icon, the amount, and the type badge. A due or paid chip may use **overdue**, **pending**, or **success** — that is the time status, not a second type color.
@@ -403,7 +404,7 @@ Three surfaces. Radius does not change with the theme.
 
 **Onboarding** sits outside the `(app)` layout, so it draws `AppAtmosphere` itself and uses the planner glass shell, the type scale, and one progress bar. Four steps (Billeteras, Ingresos, Gastos, Todo listo), each with one `h1` (the question) and one description line; the header names the next step. The card is capped to the viewport and its body scrolls, so header and footer never clip. Each draft is an `OnboardingItemCard`: the overlay kit's grouped card (`GroupedRow`, `AmountRow`) with a header and the viewport delete rule. Defaults are pre-filled (Efectivo, Cuenta de débito, Sueldo), so the minimum path is one amount. Gastos is optional. Create copy starts with **Agregar**.
 
-Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
+Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card (`KPI_METRIC_CARD_SHELL_CLASS`) with the status on the label and value color: no left accent, no gradient fill. `--shadow-glow` is only the planner progress knob.
 
 ## Empty, error, and loading
 
@@ -514,7 +515,7 @@ When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
 1. Pick the archetype (planner, collection, detail, settings) and keep domain structure (tables vs cards) from `.claude/skills/dashboard-ui/SKILL.md`.
 2. Planner-grade panels use `MONTHLY_PANEL_SHELL_CLASS`; settings stay calm cards; card faces stay solid.
 3. Register the one primary action in the app header; overflow for rare actions.
-4. Metric strips stay calm + left border.
+4. Metric strips stay calm: no colored left accent, no tinted fill.
 5. Verify in **dark and light** at desktop and a narrow viewport.
 
 ---
