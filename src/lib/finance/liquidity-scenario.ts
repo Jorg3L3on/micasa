@@ -50,7 +50,7 @@ const addMonthsToYmd = (ymd: string, offset: number): string =>
  * Statement a charge on `chargeYmd` is billed on: a charge on the cutoff day
  * closes with that statement, a later one waits for the next cutoff.
  */
-const cardStatementForCharge = (chargeYmd: string, cutoffDay: number, dueDay: number) => {
+export const cardStatementForCharge = (chargeYmd: string, cutoffDay: number, dueDay: number) => {
   const window = resolveCreditCardStatementWindow(
     parseCalendarDate(chargeYmd),
     cutoffDay,
