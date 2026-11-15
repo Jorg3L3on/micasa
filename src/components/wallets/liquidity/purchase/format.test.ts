@@ -79,3 +79,12 @@ describe('groupUnits', () => {
     expect(units[1].keys).toHaveLength(24);
   });
 });
+
+describe('quincenaMid', () => {
+  it('adds the year to a past month and to months more than 11 ahead', async () => {
+    const { quincenaMid } = await import('@/components/wallets/liquidity/purchase/format');
+    expect(quincenaMid({ year: 2026, month: 4, period: 'SECOND' }, NOW)).toBe('2ª de abril de 2026');
+    expect(quincenaMid({ year: 2026, month: 12, period: 'SECOND' }, NOW)).toBe('2ª de diciembre');
+    expect(quincenaMid({ year: 2027, month: 12, period: 'FIRST' }, NOW)).toBe('1ª de diciembre de 2027');
+  });
+});

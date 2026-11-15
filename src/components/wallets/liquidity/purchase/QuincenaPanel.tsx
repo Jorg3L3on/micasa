@@ -238,7 +238,12 @@ export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelec
         icon={BarChart3}
         title={title}
         subtitle={subtitle}
-        actions={<Toggle checked={showBase} onCheckedChange={setShowBase} aria-label={C.showBaseline} />}
+        actions={
+          <span className="flex items-center gap-2">
+            <span id="sc-base-label" className="hidden text-caption text-muted-foreground sm:inline">{C.showBaseline}</span>
+            <Toggle checked={showBase} onCheckedChange={setShowBase} aria-label={C.showBaseline} />
+          </span>
+        }
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div role="group" aria-label={C.horizon} className="flex flex-wrap gap-1.5">

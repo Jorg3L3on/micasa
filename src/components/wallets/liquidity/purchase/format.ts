@@ -14,11 +14,11 @@ const ord = (r: QRef) => (r.period === 'FIRST' ? '1ª' : '2ª');
 export const quincenaShort = (r: QRef, now = new Date()) =>
   `${ord(r)} ${formatMonthShort(r.month)}${r.year !== currentCalendarYear(now) ? ` ${String(r.year).slice(2)}` : ''}`;
 
-/** `2ª de diciembre`; adds the year when it is more than 11 months away. */
+/** `2ª de diciembre`; adds the year when it is in a past month or more than 11 months away. */
 export const quincenaMid = (r: QRef, now = new Date()) => {
   const today = new Date(now.toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
   const ahead = (r.year - today.getFullYear()) * 12 + (r.month - (today.getMonth() + 1));
-  return `${ord(r)} de ${formatMonthPhrase(r.month)}${ahead > 11 ? ` de ${r.year}` : ''}`;
+  return `${ord(r)} de ${formatMonthPhrase(r.month)}${ahead > 11 || ahead < 0 ? ` de ${r.year}` : ''}`;
 };
 
 export const quincenaTitle = (r: QRef, now = new Date()) =>
