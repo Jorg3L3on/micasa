@@ -20,7 +20,7 @@ import { PURCHASE_COPY as C } from '@/components/wallets/liquidity/purchase/copy
 import { PurchaseForm } from '@/components/wallets/liquidity/purchase/PurchaseForm';
 import { KpiTiles, VerdictPanel } from '@/components/wallets/liquidity/purchase/VerdictPanel';
 import { QuincenaPanel, QuincenaTable } from '@/components/wallets/liquidity/purchase/QuincenaPanel';
-import { AlternativesPanel, AssumptionsPanel, DebtPanel, PaymentCalendar } from '@/components/wallets/liquidity/purchase/PlanPanels';
+import { AlternativesPanel, AssumptionsPanel, PaymentCalendar } from '@/components/wallets/liquidity/purchase/PlanPanels';
 import {
   applyPatch,
   usePurchaseSimulation,
@@ -92,7 +92,6 @@ export const PurchaseResults = ({ sim }: { sim: PurchaseSimulationController }) 
         dimmed={dimmed}
       />
       <QuincenaTable result={result} selectedKey={selectedKey} onSelect={setSelectedKey} dimmed={dimmed} />
-      <DebtPanel result={result} dimmed={dimmed} />
       <div className="grid grid-cols-1 items-start gap-5 2xl:grid-cols-2">
         <PaymentCalendar result={result} dimmed={dimmed} />
         <AlternativesPanel

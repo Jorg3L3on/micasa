@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { formatCalendarDate, parseCalendarDate, parseDateOnly } from '@/lib/calendar-dates';
+import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import { DomainError } from '@/lib/finance/domain-error';
 import { getLiquidityProjection } from '@/lib/finance/liquidity-projection.service';
 import { cardStatementForCharge } from '@/lib/finance/liquidity-scenario';
@@ -29,12 +29,6 @@ import {
   type QuincenaRow,
   type VerdictFacts,
 } from '@/lib/finance/purchase-simulation/series';
-import {
-  buildDebtSeries,
-  type CardDebtInput,
-  type DebtSeries,
-  type LoanDebtInput,
-} from '@/lib/finance/purchase-simulation/debt';
 import type { PurchaseSimulationInput } from '@/schemas/purchase-simulation.schema';
 
 /**
@@ -89,12 +83,10 @@ export type PurchaseSimulationResult = {
   as_of: string;
   until: string;
   starting_liquidity: number;
-  last_created_quincena: string | null;
   wallets: SimulationWallet[];
   plan: PurchasePlan;
   series: QuincenaRow[];
   verdict: VerdictFacts;
-  debt: DebtSeries;
   alternatives: SimulationAlternative[];
   assumptions: string[];
   card_consumption: { walletId: number; name: string; amount: number }[];
@@ -109,9 +101,6 @@ type Loaded = {
   startingLiquidity: number;
   baseline: BaselineFlow[];
   createdKeys: Set<string>;
-  lastCreatedKey: string | null;
-  cards: CardDebtInput[];
-  loans: LoanDebtInput[];
   consumption: { walletId: number; name: string; amount: number }[];
 };
 
@@ -226,7 +215,7 @@ const loadBaseline = async (
   }
 
   const refs = listQuincenas(todayYmd, untilYmd);
-  const [fortnights, expenseTemplates, incomeTemplates, budgets, loanPayments] = await Promise.all([
+  const [fortnights, expenseTemplates, incomeTemplates, budgets] = await Promise.all([
     prisma.fortnight.findMany({
       where: { ...ownerFilter },
       select: { id: true, year: true, month: true, period: true },
@@ -243,21 +232,11 @@ const loadBaseline = async (
       where: { ...ownerFilter, active: true },
       select: { name: true, total_amount: true, frequency: true, start_date: true, end_date: true, recurrent: true },
     }),
-    prisma.loanPayment.findMany({
-      where: {
-        status: 'SCHEDULED',
-        due_date: { gte: parseDateOnly(todayYmd) },
-        loan: { ...ownerFilter, status: 'ACTIVE' },
-      },
-      select: { amount: true, due_date: true, loan: { select: { id: true, name: true } } },
-    }),
   ]);
 
   const createdKeys = new Set(
     fortnights.map((f) => quincenaKey({ year: f.year, month: f.month, period: f.period })),
   );
-  let lastCreatedKey: string | null = null;
-  for (const key of createdKeys) if (!lastCreatedKey || key > lastCreatedKey) lastCreatedKey = key;
 
   // Projection lines only where no quincena exists yet: Panel's own numbers cover the created ones.
   const firstKey = quincenaKey(refs[0]);
@@ -323,12 +302,10 @@ const loadBaseline = async (
   // Habitual card consumption: cycles the projection could not resolve get the
   // average of the card's resolved statements (first three), flagged as estimate.
   const consumption: Loaded['consumption'] = [];
-  const cards: CardDebtInput[] = [];
   for (const card of wallets.filter((w) => w.isCard)) {
     const resolved = (statementByCard.get(card.id) ?? []).sort((a, b) => a.date.localeCompare(b.date));
     const sample = resolved.filter((r) => r.amount > 0).slice(0, 3);
     const avg = sample.length > 0 ? cents(sample.reduce((s, r) => s + r.amount, 0) / sample.length) : 0;
-    let floor: CardDebtInput['consumptionFloor'] = null;
     if (avg > 0 && card.cutoffDay != null && card.dueDay != null) {
       const resolvedDates = new Set(resolved.map((r) => r.date));
       for (let i = 0; i < 400; i++) {
@@ -337,26 +314,9 @@ const loadBaseline = async (
         if (due > untilYmd) break;
         if (due < todayYmd || resolvedDates.has(due) || createdKeys.has(keyOf(due))) continue;
         baseline.push({ date: due, amount: avg, kind: 'consumption', name: `Consumo habitual ${card.name}`, walletName: card.name, estimated: true });
-        if (!floor) floor = { fromDate: due, amount: avg };
       }
       consumption.push({ walletId: card.id, name: card.name, amount: avg });
     }
-    cards.push({
-      id: card.id,
-      name: card.name,
-      providerIconKey: card.providerIconKey,
-      limit: card.limit,
-      debtToday: card.debt ?? 0,
-      statementPayments: resolved,
-      consumptionFloor: floor,
-    });
-  }
-
-  const loansById = new Map<number, LoanDebtInput>();
-  for (const p of loanPayments) {
-    const entry = loansById.get(p.loan.id) ?? { id: p.loan.id, name: p.loan.name, payments: [] };
-    entry.payments.push({ date: formatCalendarDate(p.due_date), amount: num(p.amount) });
-    loansById.set(p.loan.id, entry);
   }
 
   return {
@@ -365,9 +325,6 @@ const loadBaseline = async (
     startingLiquidity: cents(projection.funding_wallets.reduce((s, w) => s + w.balance, 0)),
     baseline,
     createdKeys,
-    lastCreatedKey,
-    cards,
-    loans: [...loansById.values()],
     consumption,
   };
 };
@@ -570,25 +527,14 @@ export async function simulatePurchase(params: {
     };
   });
 
-  const debt = buildDebtSeries({
-    todayYmd,
-    untilYmd,
-    cards: loaded.cards,
-    loans: loaded.loans,
-    plan,
-    purchaseName: name,
-  });
-
   return {
     as_of: todayYmd,
     until: untilYmd,
     starting_liquidity: loaded.startingLiquidity,
-    last_created_quincena: loaded.lastCreatedKey,
     wallets,
     plan,
     series,
     verdict,
-    debt,
     alternatives,
     assumptions: [...ASSUMPTIONS_ES],
     card_consumption: loaded.consumption,

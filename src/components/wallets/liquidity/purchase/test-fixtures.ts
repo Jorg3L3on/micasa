@@ -7,7 +7,6 @@ import {
   verdictFacts,
   type BaselineFlow,
 } from '@/lib/finance/purchase-simulation/series';
-import { buildDebtSeries } from '@/lib/finance/purchase-simulation/debt';
 import type {
   PurchaseSimulationResult,
   SimulationWallet,
@@ -50,9 +49,8 @@ export function fakeSimulation(body: {
   });
   const verdict = verdictFacts(series, 0);
   return {
-    as_of: today, until, starting_liquidity: 45000, last_created_quincena: series[3]?.key ?? null,
+    as_of: today, until, starting_liquidity: 45000,
     wallets: TEST_WALLETS, plan, series, verdict,
-    debt: buildDebtSeries({ todayYmd: today, untilYmd: until, cards: [{ id: 7, name: 'Tarjeta Uno', providerIconKey: null, limit: 25000, debtToday: 8900, statementPayments: [], consumptionFloor: null }], loans: [], plan, purchaseName: name }),
     alternatives: [
       { id: 'msi-8-12', label: '12 MSI · Tarjeta Dos', patch: { mode: 'msi', wallet_id: 8, months: 12 }, current: false, level: 'green', redCount: 0, quincenas: 28, tightestQueda: 1300, regularPayment: 500, count: 12, interest: 0, lastDueDate: '2027-11-10' },
     ],

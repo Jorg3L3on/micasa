@@ -83,7 +83,6 @@ export const PURCHASE_COPY = {
   detailIncome: 'Entra',
   detailOut: 'Lo que ya tienes que pagar',
   simulated: 'Simulado',
-  debtTitle: 'Deuda por billetera',
   includesPurchase: 'Incluye esta compra',
   calendarTitle: 'Cuándo pagas esta compra',
   altTitle: '¿Y si lo pagas diferente?',

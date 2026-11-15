@@ -430,7 +430,7 @@ Use these names in the UI, in `PageTitle`, and in the browser tab. The document 
 | Ellipsis | **…** | `...` |
 | Analysis section | **Análisis** | Liquidez y análisis, as a nav item |
 
-**Análisis** is the section (nav, document title, header). Its three views are the tabs **Proyección**, **Deudas**, and **Simular compra**. The tab list is named Análisis. Simular compra (MIC-I17) took the place of Plan: a purchase described as contado, meses sin intereses or con intereses, with a verdict (Buena idea / Con cuidado / Mala idea por ahora, always with its reason and "Qué pasaría, no asesoría financiera"), quincena-by-quincena bars until payoff (by month past 2 years, by year past 10), debt per wallet and other ways to pay. Nothing is stored; Proyección and Deudas never show the simulation.
+**Análisis** is the section (nav, document title, header). Its three views are the tabs **Proyección**, **Deudas**, and **Simular compra**. The tab list is named Análisis. Simular compra (MIC-I17) took the place of Plan: a purchase described as contado, meses sin intereses or con intereses, with a verdict (Buena idea / Con cuidado / Mala idea por ahora, always with its reason and "Qué pasaría, no asesoría financiera"), quincena-by-quincena bars until payoff (by month past 2 years, by year past 10), the payment calendar and other ways to pay. Nothing is stored; Proyección and Deudas never show the simulation.
 
 Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` in Spanish (`Comida`, not `Food`). Existing rows already stored as `Food` are not migrated in code.
 

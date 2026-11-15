@@ -352,12 +352,3 @@ export function buildPurchasePlan(input: PurchasePlanInput): PurchasePlan {
     dataGaps: gaps,
   };
 }
-
-/** Debt left on the purchase after every payment dated on or before `ymd`. */
-export const pendingPrincipalAt = (plan: PurchasePlan, ymd: string): number => {
-  if (plan.debtWalletId == null || ymd < plan.purchaseDate) return 0;
-  const paid = plan.payments
-    .filter((p) => p.kind !== 'enganche' && p.date <= ymd)
-    .reduce((sum, p) => sum + p.principal, 0);
-  return Math.max(0, cents(plan.principal - paid));
-};

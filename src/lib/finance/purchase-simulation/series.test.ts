@@ -8,7 +8,6 @@ import {
   verdictFacts,
   type BaselineFlow,
 } from '@/lib/finance/purchase-simulation/series';
-import { buildDebtSeries, monthEnds } from '@/lib/finance/purchase-simulation/debt';
 
 const TODAY = '2026-11-14';
 const ml: PlanWallet = { id: 7, name: 'Tarjeta ML', isCard: true, cutoff_day: 5, due_day: 25 };
@@ -135,24 +134,3 @@ describe('verdictFacts', () => {
   });
 });
 
-describe('buildDebtSeries', () => {
-  it('adds the pending cuotas to the card and tracks loans and a new credit', () => {
-    const plan = buildPurchasePlan({ total: 6000, date: TODAY, mode: 'msi', wallet: ml, months: 12 });
-    const debt = buildDebtSeries({
-      todayYmd: TODAY,
-      untilYmd: '2027-02-28',
-      cards: [{ id: 7, name: 'Tarjeta ML', providerIconKey: null, limit: 25000, debtToday: 8900, statementPayments: [{ date: '2026-11-25', amount: 2500 }], consumptionFloor: null }],
-      loans: [{ id: 1, name: 'Préstamo', payments: [{ date: '2026-12-05', amount: 2150 }, { date: '2027-01-05', amount: 2150 }] }],
-      plan,
-      purchaseName: 'Carrito',
-    });
-    expect(debt.points).toEqual(monthEnds(TODAY, '2027-02-28'));
-    const card = debt.wallets.find((w) => w.id === 'card-7')!;
-    expect(card.includesPurchase).toBe(true);
-    expect(card.values[0]).toBe(8900 + 6000);
-    expect(card.valuesSinCompra[1]).toBe(6400);
-    expect(card.values[2]).toBe(6400 + 5500);
-    const loan = debt.wallets.find((w) => w.kind === 'loan')!;
-    expect(loan.values.slice(0, 3)).toEqual([4300, 4300, 2150]);
-  });
-});

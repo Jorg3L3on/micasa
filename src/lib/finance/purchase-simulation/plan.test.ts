@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   addMonthsYmd,
   buildPurchasePlan,
-  pendingPrincipalAt,
   PurchasePlanError,
   type PlanWallet,
 } from '@/lib/finance/purchase-simulation/plan';
@@ -178,14 +177,6 @@ describe('data gaps and helpers', () => {
     expect(addMonthsYmd('2026-12-25', 1)).toBe('2027-01-25');
     expect(addMonthsYmd('2027-01-31', 1)).toBe('2027-02-28');
     expect(addMonthsYmd('2026-11-14', 13, 5)).toBe('2027-12-05');
-  });
-
-  it('pendingPrincipalAt goes down with each payment', () => {
-    const plan = buildPurchasePlan({ total: 6000, date: '2026-11-14', mode: 'msi', wallet: card(5, 25), months: 12 });
-    expect(pendingPrincipalAt(plan, '2026-11-13')).toBe(0);
-    expect(pendingPrincipalAt(plan, '2026-11-30')).toBe(6000);
-    expect(pendingPrincipalAt(plan, '2026-12-31')).toBe(5500);
-    expect(pendingPrincipalAt(plan, '2027-11-30')).toBe(0);
   });
 });
 

@@ -15,7 +15,6 @@ const { getOwnerContext, getLiquidityProjection, getReportSummary, listPlanningT
       expenseTemplate: model(),
       incomeTemplate: model(),
       budget: model(),
-      loanPayment: model(),
       income: model(),
     },
   };
@@ -54,7 +53,6 @@ beforeEach(() => {
   prismaMock.budget.findMany.mockResolvedValue([
     { name: 'Súper', total_amount: 2900, frequency: 'BIWEEKLY', start_date: null, end_date: null, recurrent: true },
   ]);
-  prismaMock.loanPayment.findMany.mockResolvedValue([]);
   getLiquidityProjection.mockResolvedValue({
     funding_wallets: [{ id: 3, name: 'Débito prueba', type: 'DEBIT_CARD', balance: 45000 }],
     milestones: [],
@@ -96,7 +94,6 @@ describe('POST /api/wallets/purchase-simulation', () => {
     expect(later.entra).toBe(16500);
     expect(later.outflows.map((o: { name: string }) => o.name)).toContain('Súper');
     expect(body.plan.count).toBe(12);
-    expect(body.debt.wallets.find((w: { id: string }) => w.id === 'card-7').includesPurchase).toBe(true);
     expect(body.alternatives.length).toBeGreaterThan(3);
     expect(['green', 'amber', 'red']).toContain(body.verdict.level);
   });
