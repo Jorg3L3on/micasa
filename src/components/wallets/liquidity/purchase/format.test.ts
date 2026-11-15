@@ -88,3 +88,25 @@ describe('quincenaMid', () => {
     expect(quincenaMid({ year: 2027, month: 12, period: 'FIRST' }, NOW)).toBe('1ª de diciembre de 2027');
   });
 });
+
+describe('niceTicks', () => {
+  it('rounds the top just above the tallest bar with round steps', async () => {
+    const { niceTicks } = await import('@/components/wallets/liquidity/purchase/format');
+    expect(niceTicks(14_820, 0)).toEqual({ top: 15_000, bottom: 0, step: 5_000, ticks: [0, 5_000, 10_000, 15_000] });
+    expect(niceTicks(9_030, 0).ticks).toEqual([0, 5_000, 10_000]);
+    expect(niceTicks(2_400, 0).ticks).toEqual([0, 1_000, 2_000, 3_000]);
+  });
+
+  it('adds negative ticks and keeps $0', async () => {
+    const { niceTicks } = await import('@/components/wallets/liquidity/purchase/format');
+    const t = niceTicks(6_000, 2_000);
+    expect(t.ticks).toContain(0);
+    expect(t.bottom).toBeGreaterThanOrEqual(2_000);
+    expect(t.top).toBeGreaterThanOrEqual(6_000);
+  });
+
+  it('handles an empty chart', async () => {
+    const { niceTicks } = await import('@/components/wallets/liquidity/purchase/format');
+    expect(niceTicks(0, 0).ticks).toContain(0);
+  });
+});

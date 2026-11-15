@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { PURCHASE_COPY as C } from '@/components/wallets/liquidity/purchase/copy';
 import {
   granularityFor,
+  niceTicks,
   groupUnits,
   quincenaMid,
   quincenaRange,
@@ -59,18 +60,20 @@ export const QuincenaChart = ({
       maxN = Math.max(maxN, -v);
     }
   }
-  if (maxP + maxN === 0) maxP = 1;
-  const scale = CHART_H / (maxP + maxN);
-  const y0 = maxP * scale;
+  const axis = niceTicks(maxP, maxN);
+  // Headroom above the top tick for the selected bar's value label.
+  const HEAD = 22;
+  const scale = (CHART_H - HEAD) / (axis.top + axis.bottom);
+  const y0 = HEAD + axis.top * scale;
   const Y = (v: number) => y0 - v * scale;
   const estIndex = units.findIndex((u) => u.estimated);
   const gap = units.length > 60 ? 1 : units.length > 30 ? 2 : 4;
   return (
     <div className="flex gap-2">
       <div aria-hidden className="relative w-11 shrink-0 text-caption text-muted-foreground tabular-nums" style={{ height: CHART_H }}>
-        <span className="absolute right-0 -translate-y-1/2" style={{ top: 0 }}>{formatAxisMoney(maxP)}</span>
-        {maxN > 0 && maxP > 1 && y0 > 14 && CHART_H - y0 > 14 ? <span className="absolute right-0 -translate-y-1/2" style={{ top: y0 }}>$0</span> : null}
-        <span className="absolute right-0 -translate-y-1/2" style={{ top: CHART_H }}>{maxN > 0 ? formatAxisMoney(-maxN) : '$0'}</span>
+        {axis.ticks.map((t) => (
+          <span key={t} className="absolute right-0 -translate-y-1/2" style={{ top: Y(t) }}>{formatAxisMoney(t)}</span>
+        ))}
       </div>
       <div className="min-w-0 flex-1 overflow-x-auto pb-1">
         <div className="relative" style={{ height: CHART_H + 26, minWidth: units.length * 10 }}>
@@ -83,9 +86,11 @@ export const QuincenaChart = ({
               <span className="absolute left-1.5 top-1 text-caption text-muted-foreground">{C.estimated}</span>
             </div>
           ) : null}
-          <div aria-hidden className="absolute inset-x-0 h-px bg-foreground/30" style={{ top: y0 }} />
+          {axis.ticks.map((t) => (
+            <div key={t} aria-hidden className={cn('absolute inset-x-0 h-px', t === 0 ? 'bg-foreground/30' : 'bg-foreground/[0.07]')} style={{ top: Y(t) }} />
+          ))}
           <div className="absolute inset-x-0 top-0 flex" style={{ height: CHART_H, gap }}>
-            {units.map((u) => {
+            {units.map((u, i) => {
               const lo = Math.min(u.queda, u.sinCompra);
               const hi = Math.max(u.queda, u.sinCompra);
               const sel = u.keys.some((k) => selectedKeys.has(k));
@@ -111,6 +116,19 @@ export const QuincenaChart = ({
                     </>
                   ) : null}
                   {u.keys.length > 1 && u.redCount > 0 ? <span className="absolute left-1/2 top-0.5 size-1.5 -translate-x-1/2 rounded-full bg-status-overdue" /> : null}
+                  {sel ? (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'absolute z-10 whitespace-nowrap rounded-md border border-border bg-popover px-1.5 py-0.5 text-caption font-semibold tabular-nums shadow-panel',
+                        u.queda < 0 ? 'text-status-overdue' : 'text-foreground',
+                        i < 2 ? 'left-0' : i > units.length - 3 ? 'right-0' : 'left-1/2 -translate-x-1/2',
+                      )}
+                      style={{ top: Math.max(0, Y(Math.max(u.queda, showBase && u.compra > 0 ? u.sinCompra : u.queda, 0)) - 22) }}
+                    >
+                      {formatMoney(u.queda)}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
@@ -235,6 +253,7 @@ export const QuincenaPanel = ({ result, selectedKey, onSelect, dimmed }: Props) 
         </p>
       ) : null}
 
+      <p className="text-sm text-foreground/90">{g === 'quincena' ? C.chartCaption : g === 'mes' ? C.chartCaptionMonth : C.chartCaptionYear}</p>
       <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-caption text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm bg-primary" />{C.legendLeft}</span>
         <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm bg-status-overdue" />{C.legendShort}</span>

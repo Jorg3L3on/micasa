@@ -173,3 +173,23 @@ export function groupUnits(rows: QuincenaRow[], g: Granularity, now = new Date()
 
 export const levelTone = (level: VerdictLevel) =>
   level === 'green' ? 'success' : level === 'amber' ? 'pending' : 'overdue';
+
+/**
+ * Round axis ticks for the quincena chart: a step of 1, 2, 2.5 or 5 × 10ⁿ
+ * (about three steps over the range), the top just above the tallest bar and
+ * the bottom just below the deepest one. $0 is always a tick.
+ */
+export function niceTicks(maxPositive: number, maxNegative: number) {
+  const pos = Math.max(0, maxPositive);
+  const neg = Math.max(0, maxNegative);
+  const range = pos + neg || 1;
+  const raw = range / 3;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const n = raw / mag;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+  const top = pos > 0 ? Math.ceil(pos / step) * step : 0;
+  const bottom = neg > 0 ? Math.ceil(neg / step) * step : 0;
+  const ticks: number[] = [];
+  for (let v = -bottom; v <= top + step / 2; v += step) ticks.push(Math.round(v * 100) / 100 || 0);
+  return { top: top || step, bottom, step, ticks: top ? ticks : [...ticks, step] };
+}
