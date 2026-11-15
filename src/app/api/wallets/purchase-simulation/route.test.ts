@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getOwnerContext, getLiquidityProjection, prismaMock, writes } = vi.hoisted(() => {
+const { getOwnerContext, getLiquidityProjection, getReportSummary, listPlanningTransactions, prismaMock, writes } = vi.hoisted(() => {
   const writes = { create: vi.fn(), update: vi.fn(), delete: vi.fn(), upsert: vi.fn() };
   const model = () => ({ findMany: vi.fn().mockResolvedValue([]), ...writes });
   return {
     getOwnerContext: vi.fn(),
     getLiquidityProjection: vi.fn(),
+    getReportSummary: vi.fn(),
+    listPlanningTransactions: vi.fn(),
     writes,
     prismaMock: {
       wallet: model(),
@@ -14,12 +16,15 @@ const { getOwnerContext, getLiquidityProjection, prismaMock, writes } = vi.hoist
       incomeTemplate: model(),
       budget: model(),
       loanPayment: model(),
+      income: model(),
     },
   };
 });
 
 vi.mock('@/lib/server/get-owner-context', () => ({ getOwnerContext }));
 vi.mock('@/lib/finance/liquidity-projection.service', () => ({ getLiquidityProjection }));
+vi.mock('@/lib/finance/report-summary.service', () => ({ getReportSummary }));
+vi.mock('@/lib/finance/planning-transactions.service', () => ({ listPlanningTransactions }));
 vi.mock('@/lib/prisma', () => ({ default: prismaMock }));
 
 import { POST } from './route';
@@ -118,21 +123,48 @@ describe('POST /api/wallets/purchase-simulation', () => {
     expect(body.verdict.level).toBe('red');
   });
 
-  it('leaves out unpaid expenses from past quincenas, like Panel', async () => {
-    const old = '2026-04-30';
+  it('a created quincena uses Panel\'s own figures', async () => {
+    const ref = new Date(`${today}T12:00:00Z`);
+    const day = ref.getUTCDate();
+    const lastDay = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + 1, 0)).getUTCDate();
+    // Today's quincena (the last day of a month belongs to the next month's 1ª).
+    const nextMonth = day === lastDay;
+    const y = nextMonth && ref.getUTCMonth() === 11 ? ref.getUTCFullYear() + 1 : ref.getUTCFullYear();
+    const m = nextMonth ? ((ref.getUTCMonth() + 1) % 12) + 1 : ref.getUTCMonth() + 1;
+    const period = nextMonth || day <= 14 ? 'FIRST' : 'SECOND';
+    prismaMock.fortnight.findMany.mockResolvedValue([{ id: 101, year: y, month: m, period }]);
+    prismaMock.income.findMany.mockResolvedValue([{ id: 2 }]); // already credited: in today's balance
+    getReportSummary.mockResolvedValue({
+      incomeItems: [
+        { id: 1, amount: 15000, templateName: 'Salario A', source: null },
+        { id: 2, amount: 6000, templateName: 'Salario B', source: null },
+      ],
+      planningPayrollLoanDeduction: { total: 500, count: 1 },
+    });
+    listPlanningTransactions.mockResolvedValue([
+      { description: 'Luz', amount: 300, is_paid: false, wallet_type: 'DEBIT_CARD', paymentMethod: 'Débito prueba', date: today },
+      { description: 'Ya pagado', amount: 900, is_paid: true, wallet_type: 'DEBIT_CARD', paymentMethod: 'Débito prueba', date: today },
+      { description: 'Cargo a tarjeta', amount: 450, is_paid: false, wallet_type: 'CREDIT_CARD', paymentMethod: 'Tarjeta prueba', date: today },
+      { description: 'Préstamo nómina', amount: 500, is_paid: false, planning_row_kind: 'loan_payment', loan_payment_source: 'PAYROLL_DEDUCTION', paymentMethod: 'Nómina', date: today },
+      { description: 'Pago tarjeta: Tarjeta prueba', amount: 1200, is_paid: false, planning_row_kind: 'card_payment', wallet_type: 'CREDIT_CARD', paymentMethod: 'Tarjeta prueba', date: today },
+    ]);
     getLiquidityProjection.mockResolvedValueOnce({
       funding_wallets: [{ id: 3, name: 'Débito prueba', type: 'DEBIT_CARD', balance: 45000 }],
-      milestones: [
-        { due_date: old, obligations: [{ source: 'unpaid_expense', wallet_id: 3, wallet_name: 'Débito prueba', next_due_payment: 8950, expense_description: 'Gasto viejo' }] },
-        { due_date: today, obligations: [{ source: 'unpaid_expense', wallet_id: 3, wallet_name: 'Débito prueba', next_due_payment: 300, expense_description: 'Luz' }] },
-      ],
-      income_dates: [],
+      milestones: [{ due_date: today, obligations: [{ source: 'credit_card_statement', wallet_id: 7, wallet_name: 'Tarjeta prueba', next_due_payment: 1200 }] }],
+      income_dates: [{ date: today, amount: 99999, title: 'No se usa' }],
     });
     const res = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
     const body = await res.json();
-    expect(body).not.toHaveProperty('old_unpaid');
-    const names = body.series[0].outflows.map((o: { name: string }) => o.name);
-    expect(names).toContain('Luz');
-    expect(names).not.toContain('Gasto viejo');
+    const row = body.series[0];
+    expect(row.estimated).toBe(false);
+    expect(row.incomes.map((i: { name: string }) => i.name)).toEqual(['Salario A']);
+    const names = row.outflows.map((o: { name: string }) => o.name);
+    expect(names).toEqual(expect.arrayContaining(['Luz', 'Deducciones de nómina', 'Pago tarjeta: Tarjeta prueba']));
+    expect(names).not.toContain('Ya pagado');
+    expect(names).not.toContain('Cargo a tarjeta');
+    expect(names).not.toContain('Préstamo nómina');
+    // The projection's own card line and incomes are not added on top of Panel's.
+    expect(names.filter((n: string) => n.startsWith('Pago Tarjeta prueba'))).toHaveLength(0);
+    expect(getReportSummary).toHaveBeenCalledWith(expect.objectContaining({ excludeCreditInstallment: true, resolvedFortnightIds: [101] }));
   });
 });

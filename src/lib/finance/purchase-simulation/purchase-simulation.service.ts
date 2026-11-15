@@ -4,7 +4,9 @@ import { DomainError } from '@/lib/finance/domain-error';
 import { getLiquidityProjection } from '@/lib/finance/liquidity-projection.service';
 import { cardStatementForCharge } from '@/lib/finance/liquidity-scenario';
 import { isFundingWalletType } from '@/lib/finance/wallet-accounting';
-import { getCalendarFortnightRefForYmd, getFortnightYmdBounds } from '@/lib/fortnight-calendar';
+import { getCalendarFortnightRefForYmd, getFortnightYmdBounds, type CalendarFortnightRef } from '@/lib/fortnight-calendar';
+import { getReportSummary } from '@/lib/finance/report-summary.service';
+import { listPlanningTransactions } from '@/lib/finance/planning-transactions.service';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
   addMonthsYmd,
@@ -23,6 +25,7 @@ import {
   quincenaKey,
   verdictFacts,
   type BaselineFlow,
+  type FlowKind,
   type QuincenaRow,
   type VerdictFacts,
 } from '@/lib/finance/purchase-simulation/series';
@@ -120,6 +123,74 @@ const overlapDays = (start: string, end: string, from: string, to: string): numb
   return Math.round((parseCalendarDate(b).getTime() - parseCalendarDate(a).getTime()) / 86_400_000) + 1;
 };
 
+/**
+ * One created quincena as Panel computes it: incomes recorded in it (today's
+ * leaves out the ones already credited to a wallet, which today's balance
+ * already holds), unpaid planning rows (gastos, pending card dues, wallet loan
+ * cuotas; cuotas a meses excluded) and payroll deductions.
+ */
+const panelQuincenas = async (
+  ownerFilter: OwnerFilter,
+  refs: CalendarFortnightRef[],
+  idByKey: Map<string, number>,
+  todayYmd: string,
+  currentKey: string,
+): Promise<BaselineFlow[]> => {
+  const out: BaselineFlow[] = [];
+  for (let i = 0; i < refs.length; i += 4) {
+    const batch = refs.slice(i, i + 4);
+    const results = await Promise.all(
+      batch.map(async (ref) => {
+        const key = quincenaKey(ref);
+        const id = idByKey.get(key)!;
+        const params = {
+          ownerFilter,
+          year: String(ref.year),
+          month: String(ref.month),
+          period: ref.period,
+          excludeCreditInstallment: true,
+          resolvedFortnightIds: [id],
+        };
+        const [summary, rows, credited] = await Promise.all([
+          getReportSummary(params),
+          listPlanningTransactions({ ...params, type: 'expense' }),
+          key === currentKey
+            ? prisma.income.findMany({ where: { ...ownerFilter, fortnight_id: id, wallet_credited: true }, select: { id: true } })
+            : Promise.resolve([] as { id: number }[]),
+        ]);
+        return { ref, key, summary, rows, creditedIds: new Set(credited.map((c) => c.id)) };
+      }),
+    );
+    for (const { ref, summary, rows, creditedIds } of results) {
+      const { startYmd, endYmd } = getFortnightYmdBounds(ref.year, ref.month, ref.period);
+      const at = (ymd: string | null | undefined) => {
+        const d = ymd && ymd >= startYmd && ymd <= endYmd ? ymd : endYmd;
+        return d < todayYmd ? todayYmd : d;
+      };
+      for (const inc of summary.incomeItems) {
+        if (creditedIds.has(inc.id) || !(inc.amount > 0)) continue;
+        out.push({ date: endYmd < todayYmd ? todayYmd : endYmd, amount: inc.amount, kind: 'income', name: inc.templateName ?? inc.source ?? 'Ingreso', walletName: 'Ingreso', estimated: false });
+      }
+      for (const row of rows) {
+        const amount = num(row.amount);
+        if (row.is_paid || !(amount > 0)) continue;
+        // Like Panel: a charge on a card reaches cash through the card's payment (its own row).
+        const onCard = row.wallet_type === 'CREDIT_CARD' || row.wallet_type === 'DEPARTMENT_STORE_CARD';
+        if (onCard && (row.planning_row_kind ?? 'expense') === 'expense') continue;
+        // Payroll loan cuotas come out of the sueldo: counted once, as Panel's payroll deduction below.
+        if (row.loan_payment_source === 'PAYROLL_DEDUCTION') continue;
+        const kind: FlowKind = row.planning_row_kind === 'card_payment' ? 'card' : row.planning_row_kind === 'loan_payment' ? 'loan' : 'expense';
+        out.push({ date: at(row.date), amount, kind, name: row.description, walletName: row.paymentMethod, estimated: false });
+      }
+      const payroll = summary.planningPayrollLoanDeduction?.total ?? 0;
+      if (payroll > 0) {
+        out.push({ date: at(endYmd), amount: payroll, kind: 'loan', name: 'Deducciones de nómina', walletName: 'Nómina', estimated: false });
+      }
+    }
+  }
+  return out;
+};
+
 const loadBaseline = async (
   ownerFilter: OwnerFilter,
   wallets: SimulationWallet[],
@@ -137,9 +208,8 @@ const loadBaseline = async (
   });
 
   const baseline: BaselineFlow[] = [];
-  const todayRef = getCalendarFortnightRefForYmd(todayYmd);
-  const currentStart = getFortnightYmdBounds(todayRef.year, todayRef.month, todayRef.period).startYmd;
   const statementByCard = new Map<number, { date: string; amount: number }[]>();
+  const projected: BaselineFlow[] = [];
   for (const milestone of projection.milestones) {
     for (const o of milestone.obligations) {
       const date = milestone.due_date;
@@ -148,27 +218,18 @@ const loadBaseline = async (
         const list = statementByCard.get(o.wallet_id) ?? [];
         list.push({ date, amount });
         statementByCard.set(o.wallet_id, list);
-        baseline.push({ date, amount, kind: 'card', name: `Pago ${o.wallet_name}`, walletName: o.wallet_name, estimated: false });
+        projected.push({ date, amount, kind: 'card', name: `Pago ${o.wallet_name}`, walletName: o.wallet_name, estimated: true });
       } else if (o.source === 'loan_payment') {
-        baseline.push({ date, amount, kind: 'loan', name: o.loan_name ?? 'Préstamo', walletName: o.wallet_name, estimated: false });
-      } else if (o.source === 'expense_template') {
-        baseline.push({ date, amount, kind: 'template', name: o.template_name ?? 'Gasto programado', walletName: o.wallet_name, estimated: false });
-      } else if (o.source === 'unpaid_expense') {
-        // Like Panel: only this quincena's unpaid expenses; older ones are left out.
-        if (date < currentStart) continue;
-        baseline.push({ date, amount, kind: 'expense', name: o.expense_description ?? 'Gasto', walletName: o.wallet_name, estimated: false });
+        projected.push({ date, amount, kind: 'loan', name: o.loan_name ?? 'Préstamo', walletName: o.wallet_name, estimated: true });
       }
     }
-  }
-  for (const income of projection.income_dates ?? []) {
-    baseline.push({ date: income.date, amount: income.amount, kind: 'income', name: income.title, walletName: 'Ingreso', estimated: false });
   }
 
   const refs = listQuincenas(todayYmd, untilYmd);
   const [fortnights, expenseTemplates, incomeTemplates, budgets, loanPayments] = await Promise.all([
     prisma.fortnight.findMany({
       where: { ...ownerFilter },
-      select: { year: true, month: true, period: true },
+      select: { id: true, year: true, month: true, period: true },
     }),
     prisma.expenseTemplate.findMany({
       where: { ...ownerFilter, active: true, category_id: { not: null }, wallet_id: { not: null } },
@@ -197,6 +258,19 @@ const loadBaseline = async (
   );
   let lastCreatedKey: string | null = null;
   for (const key of createdKeys) if (!lastCreatedKey || key > lastCreatedKey) lastCreatedKey = key;
+
+  // Projection lines only where no quincena exists yet: Panel's own numbers cover the created ones.
+  const firstKey = quincenaKey(refs[0]);
+  const keyOf = (date: string) => (date < todayYmd ? firstKey : quincenaKey(getCalendarFortnightRefForYmd(date)));
+  for (const flow of projected) if (!createdKeys.has(keyOf(flow.date))) baseline.push(flow);
+
+  // Created quincenas: the same figures Panel shows (incomes, pending expenses, card and loan dues).
+  const fortnightIdByKey = new Map(
+    fortnights.map((f) => [quincenaKey({ year: f.year, month: f.month, period: f.period }), f.id]),
+  );
+  const createdInRange = refs.filter((r) => createdKeys.has(quincenaKey(r)));
+  const panelRows = await panelQuincenas(ownerFilter, createdInRange, fortnightIdByKey, todayYmd, firstKey);
+  baseline.push(...panelRows);
 
   const walletName = new Map(wallets.map((w) => [w.id, w]));
   for (const ref of refs) {
@@ -261,7 +335,7 @@ const loadBaseline = async (
         const charge = addMonthsYmd(todayYmd, i, card.cutoffDay);
         const due = cardStatementForCharge(charge, card.cutoffDay, card.dueDay).dueDate;
         if (due > untilYmd) break;
-        if (due < todayYmd || resolvedDates.has(due)) continue;
+        if (due < todayYmd || resolvedDates.has(due) || createdKeys.has(keyOf(due))) continue;
         baseline.push({ date: due, amount: avg, kind: 'consumption', name: `Consumo habitual ${card.name}`, walletName: card.name, estimated: true });
         if (!floor) floor = { fromDate: due, amount: avg };
       }
@@ -442,8 +516,12 @@ export async function simulatePurchase(params: {
   })();
 
   const name = input.name?.trim() || 'tu compra';
+  // A chosen period always ends on a whole quincena.
   const untilYmd = input.horizon_months
-    ? addMonthsYmd(todayYmd, input.horizon_months)
+    ? (() => {
+        const ref = getCalendarFortnightRefForYmd(addMonthsYmd(todayYmd, input.horizon_months!));
+        return getFortnightYmdBounds(ref.year, ref.month, ref.period).endYmd;
+      })()
     : defaultHorizonEnd(plan);
 
   // The alternatives may end later than the chosen plan; load the baseline once for the longest.
