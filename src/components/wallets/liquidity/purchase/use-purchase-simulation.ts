@@ -12,7 +12,6 @@ import type { PurchaseSimulationInput } from '@/schemas/purchase-simulation.sche
 import { PURCHASE_COPY } from '@/components/wallets/liquidity/purchase/copy';
 
 export type PurchaseMode = 'contado' | 'msi' | 'credito';
-export type HorizonChoice = 'payoff' | 12 | 24 | 60 | 120;
 
 /** What the form holds. Nothing here is persisted. */
 export type PurchaseDraft = {
@@ -32,7 +31,6 @@ export type PurchaseDraft = {
   downWalletId: number | null;
   payWalletId: number | null;
   extra: number;
-  horizon: HorizonChoice;
 };
 
 export const DEBOUNCE_MS = 400;
@@ -52,7 +50,6 @@ export const emptyDraft = (today = todayCalendarDate()): PurchaseDraft => ({
   downWalletId: null,
   payWalletId: null,
   extra: 0,
-  horizon: 'payoff',
 });
 
 const richestFunding = (wallets: SimulationWallet[]) =>
@@ -76,8 +73,8 @@ export function resolveDraft(draft: PurchaseDraft, wallets: SimulationWallet[]):
 
 export function draftToBody(draft: PurchaseDraft): PurchaseSimulationInput | null {
   if (!(draft.total > 0)) return null;
-  const horizon = draft.horizon === 'payoff' ? undefined : draft.horizon;
-  const base = { name: draft.name.trim() || undefined, total: draft.total, date: draft.date, horizon_months: horizon };
+  // Always until the purchase is paid off (+3 quincenas): the server's default.
+  const base = { name: draft.name.trim() || undefined, total: draft.total, date: draft.date };
   if (draft.mode === 'contado') {
     return draft.walletId == null ? null : { ...base, mode: 'contado', wallet_id: draft.walletId };
   }

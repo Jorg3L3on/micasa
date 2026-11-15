@@ -87,8 +87,6 @@ export const PurchaseResults = ({ sim }: { sim: PurchaseSimulationController }) 
       <KpiTiles result={result} dimmed={dimmed} />
       <QuincenaPanel
         result={result}
-        horizon={sim.draft.horizon}
-        onHorizon={(horizon) => sim.update({ horizon })}
         selectedKey={selectedKey}
         onSelect={setSelectedKey}
         dimmed={dimmed}

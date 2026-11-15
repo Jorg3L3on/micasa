@@ -12,7 +12,6 @@ import type { QuincenaRow } from '@/lib/finance/purchase-simulation/series';
 import { formatAxisMoney, formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import { PURCHASE_COPY as C } from '@/components/wallets/liquidity/purchase/copy';
-import { InCardTabs } from '@/components/wallets/liquidity/purchase/InCardTabs';
 import {
   granularityFor,
   groupUnits,
@@ -21,23 +20,13 @@ import {
   quincenaTitle,
   type ChartUnit,
 } from '@/components/wallets/liquidity/purchase/format';
-import type { HorizonChoice } from '@/components/wallets/liquidity/purchase/use-purchase-simulation';
 
 const CHART_H = 200;
 const DETAIL_LIMIT = 8;
-const HORIZONS: { id: HorizonChoice; label: string }[] = [
-  { id: 'payoff', label: C.horizonPayoffShort },
-  { id: 12, label: '1 año' },
-  { id: 24, label: '2 años' },
-  { id: 60, label: '5 años' },
-  { id: 120, label: '10 años' },
-];
 const STRIPES = 'repeating-linear-gradient(135deg, color-mix(in oklch, var(--chart-2) 85%, transparent) 0 3px, color-mix(in oklch, var(--chart-2) 25%, transparent) 3px 6px)';
 
 type Props = {
   result: PurchaseSimulationResult;
-  horizon: HorizonChoice;
-  onHorizon: (h: HorizonChoice) => void;
   selectedKey: string | null;
   onSelect: (key: string) => void;
   dimmed?: boolean;
@@ -206,7 +195,7 @@ const QuincenaDetail = ({ row, showBase }: { row: QuincenaRow; showBase: boolean
   );
 };
 
-export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelect, dimmed }: Props) => {
+export const QuincenaPanel = ({ result, selectedKey, onSelect, dimmed }: Props) => {
   const [showBase, setShowBase] = useState(true);
   const rows = result.series;
   const g = granularityFor(rows.length);
@@ -215,7 +204,6 @@ export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelec
   const row = rows.find((r) => r.key === key)!;
   const missing = firstMissing(rows);
   const created = lastCreatedLabel(result.last_created_quincena);
-  const lastPayment = result.plan.lastDueDate;
   const title = g === 'quincena' ? C.quincenaTitle : g === 'mes' ? C.monthTitle : C.yearTitle;
   const subtitle = g === 'quincena' ? C.quincenaSubtitle : g === 'mes' ? C.monthSubtitle : C.yearSubtitle;
 
@@ -233,13 +221,6 @@ export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelec
           </span>
         }
       />
-      <InCardTabs
-        label={C.horizon}
-        showLabel={false}
-        value={horizon}
-        options={HORIZONS.map((h) => ({ value: h.id, label: h.label }))}
-        onChange={onHorizon}
-      />
 
       {missing ? (
         <div role="status" className={cn(PANEL_INSET_CLASS, 'flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm')}>
@@ -249,11 +230,6 @@ export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelec
           </span>
           <Link href={`/monthly/${missing.year}/${missing.month}`} className="text-xs font-semibold text-primary-text underline underline-offset-4">{C.createFortnights}</Link>
         </div>
-      ) : null}
-      {lastPayment > rows.at(-1)!.endYmd ? (
-        <p role="status" className="rounded-xl border border-status-pending-border bg-status-pending-soft px-3 py-2.5 text-sm text-foreground">
-          Este periodo termina antes de tu último pago ({formatDisplayDate(lastPayment)}). Elige “{C.horizonPayoff}” para verlo completo.
-        </p>
       ) : null}
       {result.plan.purchaseDate > result.as_of ? (
         <p role="status" className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">
@@ -277,7 +253,7 @@ export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelec
 
 const TABLE_LIMIT = 12;
 
-export const QuincenaTable = ({ result, selectedKey, onSelect, dimmed }: Omit<Props, 'horizon' | 'onHorizon'>) => {
+export const QuincenaTable = ({ result, selectedKey, onSelect, dimmed }: Props) => {
   const [showAll, setShowAll] = useState(false);
   const g = granularityFor(result.series.length);
   const units = useMemo(() => groupUnits(result.series, g), [result.series, g]);
