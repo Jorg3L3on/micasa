@@ -323,7 +323,7 @@ export const QuincenaTable = ({ result, selectedKey, onSelect, dimmed }: Omit<Pr
                 type="button"
                 onClick={() => onSelect(u.selectKey)}
                 aria-pressed={sel}
-                className={cn('grid min-h-11 w-full grid-cols-[minmax(9rem,1.6fr)_repeat(5,minmax(0,1fr))] items-center gap-2 border-b border-border/30 px-2.5 py-1.5 text-left text-sm', sel ? 'bg-primary/15 shadow-[inset_3px_0_0_var(--primary)]' : red ? 'bg-status-overdue-soft/50 shadow-[inset_3px_0_0_var(--status-overdue)]' : 'hover:bg-white/[0.03]')}
+                className={cn('grid min-h-11 w-full grid-cols-[minmax(9rem,1.6fr)_repeat(5,minmax(0,1fr))] items-center gap-2 border-b border-border/30 px-2.5 py-1.5 text-left text-sm', sel ? 'bg-primary/15' : red ? 'bg-status-overdue-soft/50' : 'hover:bg-white/[0.03]')}
               >
                 <span className="min-w-0">
                   <span className="flex items-center gap-1.5 font-semibold">{u.label}{u.estimated ? <span className="rounded-full border border-dashed border-foreground/35 px-1.5 text-[0.65rem] font-medium">{C.estimated}</span> : null}</span>

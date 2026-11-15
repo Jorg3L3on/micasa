@@ -89,13 +89,12 @@ export function kpiTiles(result: PurchaseSimulationResult): Tile[] {
   ];
 }
 
-const EDGE = { neutral: 'border-l-primary/60', success: 'border-l-status-success', overdue: 'border-l-status-overdue', pending: 'border-l-status-pending' } as const;
 const VALUE = { neutral: 'text-foreground', success: 'text-status-success', overdue: 'text-status-overdue', pending: 'text-foreground' } as const;
 
 export const KpiTiles = ({ result, dimmed }: { result: PurchaseSimulationResult; dimmed?: boolean }) => (
   <div className={cn('grid grid-cols-2 gap-2.5 lg:grid-cols-5', dimmed && 'opacity-50')}>
     {kpiTiles(result).map((t, i) => (
-      <div key={t.label} className={cn('card-surface min-w-0 rounded-xl border border-border/60 border-l-[3px] px-3.5 py-3', EDGE[t.tone], i === 0 && 'col-span-2 lg:col-span-1')}>
+      <div key={t.label} className={cn('card-surface min-w-0 rounded-xl border border-border/60 px-3.5 py-3', i === 0 && 'col-span-2 lg:col-span-1')}>
         <p className="text-caption text-muted-foreground">{t.label}</p>
         <p className={cn('mt-1 text-lg font-bold tabular-nums', VALUE[t.tone])}>{t.value}</p>
         <p className="mt-0.5 text-caption text-muted-foreground">{t.sub}</p>
