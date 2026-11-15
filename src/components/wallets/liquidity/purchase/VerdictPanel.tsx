@@ -19,7 +19,7 @@ const ICON = { green: CircleCheck, amber: TriangleAlert, red: CircleX } as const
 const BLOOM = { green: AURA_TONE_HEX.emerald, amber: AURA_TONE_HEX.amber, red: AURA_TONE_HEX.destructive } as const;
 
 /** Panel's status chip: soft fill, no border, caption weight (same as "Holgado" / "Saludable"). */
-export const StatusChip = ({ tone, children, className }: { tone: StatusTone; children: ReactNode; className?: string }) => (
+const StatusChip = ({ tone, children, className }: { tone: StatusTone; children: ReactNode; className?: string }) => (
   <Badge variant="outline" className={cn('h-5 shrink-0 rounded-full border-transparent px-2 text-caption font-semibold', STATUS_SOFT_CLASS[tone], className)}>
     {children}
   </Badge>

@@ -20,9 +20,8 @@ import { PURCHASE_COPY as C } from '@/components/wallets/liquidity/purchase/copy
 import { PurchaseForm } from '@/components/wallets/liquidity/purchase/PurchaseForm';
 import { KpiTiles, VerdictPanel } from '@/components/wallets/liquidity/purchase/VerdictPanel';
 import { QuincenaPanel, QuincenaTable } from '@/components/wallets/liquidity/purchase/QuincenaPanel';
-import { AlternativesPanel, AssumptionsPanel, PaymentCalendar } from '@/components/wallets/liquidity/purchase/PlanPanels';
+import { AssumptionsPanel, PaymentCalendar } from '@/components/wallets/liquidity/purchase/PlanPanels';
 import {
-  applyPatch,
   usePurchaseSimulation,
   type PurchaseSimulationController,
 } from '@/components/wallets/liquidity/purchase/use-purchase-simulation';
@@ -92,17 +91,7 @@ export const PurchaseResults = ({ sim }: { sim: PurchaseSimulationController }) 
         dimmed={dimmed}
       />
       <QuincenaTable result={result} selectedKey={selectedKey} onSelect={setSelectedKey} dimmed={dimmed} />
-      <div className="grid grid-cols-1 items-start gap-5 2xl:grid-cols-2">
-        <PaymentCalendar result={result} dimmed={dimmed} />
-        <AlternativesPanel
-          result={result}
-          dimmed={dimmed}
-          onApply={(alt) => {
-            setSelectedKey(null);
-            sim.setDraft((d) => applyPatch(d, alt.patch));
-          }}
-        />
-      </div>
+      <PaymentCalendar result={result} dimmed={dimmed} />
       <AssumptionsPanel result={result} />
     </div>
   );

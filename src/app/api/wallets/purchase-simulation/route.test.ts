@@ -94,7 +94,6 @@ describe('POST /api/wallets/purchase-simulation', () => {
     expect(later.entra).toBe(16500);
     expect(later.outflows.map((o: { name: string }) => o.name)).toContain('Súper');
     expect(body.plan.count).toBe(12);
-    expect(body.alternatives.length).toBeGreaterThan(3);
     expect(['green', 'amber', 'red']).toContain(body.verdict.level);
   });
 

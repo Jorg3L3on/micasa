@@ -111,18 +111,6 @@ describe('Simular compra tab', () => {
     expect(within(q).getByRole('heading', { level: 3 }).textContent).not.toBe(before);
   });
 
-  it('applying another way to pay changes the form and recalculates', async () => {
-    render(<PurchaseSimulatorTab />);
-    await screen.findByText(PURCHASE_COPY.emptyTitle);
-    typeTotal('6000');
-    await settle();
-    await screen.findByText(/aprieta/);
-    fireEvent.click(screen.getByRole('button', { name: /12 MSI · Tarjeta Dos/ }));
-    await settle();
-    await waitFor(() => expect(posts().length).toBeGreaterThanOrEqual(2));
-    expect(JSON.parse(String(posts().at(-1)![1].body))).toMatchObject({ wallet_id: 8, months: 12 });
-  });
-
   it('clears the simulation with a notice when the context changes', async () => {
     const view = render(<PurchaseSimulatorTab />);
     await screen.findByText(PURCHASE_COPY.emptyTitle);

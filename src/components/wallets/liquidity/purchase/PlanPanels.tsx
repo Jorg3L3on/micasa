@@ -1,17 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeftRight, CalendarDays, Info } from 'lucide-react';
+import { CalendarDays, Info } from 'lucide-react';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { SectionHeader } from '@/components/section-header';
 import { formatDisplayDate } from '@/lib/calendar-dates';
-import type { PurchaseSimulationResult, SimulationAlternative } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
+import type { PurchaseSimulationResult } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import { PURCHASE_COPY as C } from '@/components/wallets/liquidity/purchase/copy';
-import { levelTone, quincenaShort } from '@/components/wallets/liquidity/purchase/format';
-import { StatusChip } from '@/components/wallets/liquidity/purchase/VerdictPanel';
+import { quincenaShort } from '@/components/wallets/liquidity/purchase/format';
 
 const qShort = (ymd: string) => quincenaShort(getCalendarFortnightRefForYmd(ymd));
 
@@ -73,60 +72,6 @@ export const PaymentCalendar = ({ result, dimmed }: { result: PurchaseSimulation
         </button>
       ) : null}
       <p className="text-sm font-semibold">En total pagas {formatMoney(paid)}{plan.interest > 0 ? ` · ${formatMoney(plan.interest)} son intereses` : ' · sin intereses'}</p>
-    </section>
-  );
-};
-
-const RANK = { green: 0, amber: 1, red: 2 } as const;
-
-export const pickBetterAlternative = (current: PurchaseSimulationResult['verdict'], alts: SimulationAlternative[]) => {
-  let best: SimulationAlternative | null = null;
-  for (const a of alts) {
-    if (!best || RANK[a.level] < RANK[best.level] || (RANK[a.level] === RANK[best.level] && (a.redCount < best.redCount || (a.redCount === best.redCount && a.tightestQueda > best.tightestQueda)))) best = a;
-  }
-  return best && !best.current && RANK[best.level] < RANK[current.level] ? best : null;
-};
-
-export const AlternativesPanel = ({
-  result,
-  onApply,
-  dimmed,
-}: {
-  result: PurchaseSimulationResult;
-  onApply: (alt: SimulationAlternative) => void;
-  dimmed?: boolean;
-}) => {
-  if (result.alternatives.length === 0) return null;
-  const best = pickBetterAlternative(result.verdict, result.alternatives);
-  return (
-    <section aria-labelledby="sc-alt" className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'flex flex-col gap-3 p-3 sm:p-4', dimmed && 'opacity-50')}>
-      <SectionHeader id="sc-alt" icon={ArrowLeftRight} title={C.altTitle} subtitle={C.altSubtitle} />
-      {best ? (
-        <p className="rounded-xl border border-status-success-border bg-status-success-soft px-3 py-2.5 text-sm text-foreground">
-          Si eliges “{best.label}”, el veredicto sería “{C.chip[best.level]}”: {best.redCount} en rojo, la más justa con {formatMoney(best.tightestQueda)}.
-        </p>
-      ) : null}
-      <div className="flex flex-col gap-1.5">
-        {result.alternatives.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            aria-pressed={a.current}
-            onClick={() => onApply(a)}
-            className={cn('flex min-h-13 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-3 py-2 text-left', a.current ? 'border-primary/60 bg-primary/15' : 'border-border/50 bg-white/[0.02] hover:bg-white/[0.05]')}
-          >
-            <span className="min-w-0 flex-[1_1_10rem]">
-              <span className="flex items-center gap-1.5 text-sm font-semibold">{a.label}{a.current ? <span className="rounded-full bg-primary/40 px-1.5 text-[0.65rem] font-bold">{C.current}</span> : null}</span>
-              <span className="block text-caption text-muted-foreground">
-                {a.count === 1 ? `${formatMoney(a.regularPayment)} una vez` : `${formatMoney(a.regularPayment)} × ${a.count}${a.interest > 0 ? ` · ${formatMoney(a.interest)} de intereses` : ' · sin intereses'}`} · terminas {formatDisplayDate(a.lastDueDate)}
-              </span>
-            </span>
-            <span className="whitespace-nowrap text-caption text-muted-foreground">{a.redCount} en rojo</span>
-            <span className={cn('whitespace-nowrap text-caption tabular-nums', a.tightestQueda < 0 ? 'text-status-overdue' : 'text-muted-foreground')}>más justa {formatMoney(a.tightestQueda)}</span>
-            <StatusChip tone={levelTone(a.level)}>{C.chip[a.level]}</StatusChip>
-          </button>
-        ))}
-      </div>
     </section>
   );
 };

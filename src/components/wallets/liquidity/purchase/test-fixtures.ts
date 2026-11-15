@@ -51,9 +51,6 @@ export function fakeSimulation(body: {
   return {
     as_of: today, until, starting_liquidity: 45000,
     wallets: TEST_WALLETS, plan, series, verdict,
-    alternatives: [
-      { id: 'msi-8-12', label: '12 MSI · Tarjeta Dos', patch: { mode: 'msi', wallet_id: 8, months: 12 }, current: false, level: 'green', redCount: 0, quincenas: 28, tightestQueda: 1300, regularPayment: 500, count: 12, interest: 0, lastDueDate: '2027-11-10' },
-    ],
     assumptions: ['No se guarda nada.'],
     card_consumption: [],
   };

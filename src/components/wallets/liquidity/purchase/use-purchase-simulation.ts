@@ -102,18 +102,6 @@ export function draftToBody(draft: PurchaseDraft): PurchaseSimulationInput | nul
   };
 }
 
-/** Applies an alternative's API patch back onto the form. */
-export function applyPatch(draft: PurchaseDraft, patch: Partial<PurchaseSimulationInput>): PurchaseDraft {
-  const next = { ...draft, knownPayment: null };
-  if (patch.mode) next.mode = patch.mode;
-  if (patch.wallet_id != null) next.walletId = patch.wallet_id;
-  if (patch.months != null) {
-    if ((patch.mode ?? draft.mode) === 'credito') next.creditMonths = patch.months;
-    else next.months = patch.months;
-  }
-  return next;
-}
-
 type State = {
   result: PurchaseSimulationResult | null;
   loading: boolean;

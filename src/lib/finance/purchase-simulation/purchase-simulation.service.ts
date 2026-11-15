@@ -11,7 +11,6 @@ import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import {
   addMonthsYmd,
   buildPurchasePlan,
-  MSI_MONTH_OPTIONS,
   PurchasePlanError,
   type PlanWallet,
   type PurchasePlan,
@@ -64,21 +63,6 @@ export type SimulationWallet = {
   aprAnnualPct: number | null;
 };
 
-export type SimulationAlternative = {
-  id: string;
-  label: string;
-  patch: Partial<PurchaseSimulationInput>;
-  current: boolean;
-  level: VerdictFacts['level'];
-  redCount: number;
-  quincenas: number;
-  tightestQueda: number;
-  regularPayment: number;
-  count: number;
-  interest: number;
-  lastDueDate: string;
-};
-
 export type PurchaseSimulationResult = {
   as_of: string;
   until: string;
@@ -87,7 +71,6 @@ export type PurchaseSimulationResult = {
   plan: PurchasePlan;
   series: QuincenaRow[];
   verdict: VerdictFacts;
-  alternatives: SimulationAlternative[];
   assumptions: string[];
   card_consumption: { walletId: number; name: string; amount: number }[];
 };
@@ -406,39 +389,6 @@ const overLimit = (plan: PurchasePlan, wallets: Map<number, SimulationWallet>): 
   return Math.max(0, cents(plan.principal - w.available));
 };
 
-const alternativePatches = (
-  input: PurchaseSimulationInput,
-  wallets: SimulationWallet[],
-): { id: string; label: string; patch: Partial<PurchaseSimulationInput> }[] => {
-  const cards = wallets.filter((w) => w.isCard && w.cutoffDay != null && w.dueDay != null);
-  const funding = wallets.filter((w) => !w.isCard);
-  if (input.mode === 'credito' && (input.lender ?? 'new') === 'new') {
-    return [24, 36, 48, 60, 72].map((m) => ({ id: `credit-${m}`, label: `Crédito a ${m} meses`, patch: { months: m } }));
-  }
-  if (input.mode === 'credito') {
-    return [6, 12, 18, 24].map((m) => ({ id: `card-int-${m}`, label: `${m} meses con intereses`, patch: { months: m } }));
-  }
-  const current = input.wallet_id != null ? wallets.find((w) => w.id === input.wallet_id) : undefined;
-  const card = current?.isCard ? current : cards[0];
-  const out: { id: string; label: string; patch: Partial<PurchaseSimulationInput> }[] = [];
-  const richest = [...funding].sort((a, b) => (b.balance ?? 0) - (a.balance ?? 0))[0];
-  if (richest) out.push({ id: `contado-${richest.id}`, label: `De contado · ${richest.name}`, patch: { mode: 'contado', wallet_id: richest.id } });
-  if (card) {
-    out.push({ id: `contado-${card.id}`, label: `De contado · ${card.name}`, patch: { mode: 'contado', wallet_id: card.id } });
-    for (const m of [3, 6, 12, 18] as const) {
-      out.push({ id: `msi-${card.id}-${m}`, label: `${m} MSI · ${card.name}`, patch: { mode: 'msi', wallet_id: card.id, months: m } });
-    }
-    const months = input.mode === 'msi' && input.months ? input.months : 12;
-    for (const other of cards.filter((c) => c.id !== card.id).slice(0, 2)) {
-      out.push({ id: `msi-${other.id}-${months}`, label: `${months} MSI · ${other.name}`, patch: { mode: 'msi', wallet_id: other.id, months } });
-    }
-  }
-  return out.filter((a) => a.patch.mode !== 'msi' || (MSI_MONTH_OPTIONS as readonly number[]).includes(a.patch.months!));
-};
-
-const isCurrent = (input: PurchaseSimulationInput, patch: Partial<PurchaseSimulationInput>) =>
-  (Object.keys(patch) as (keyof PurchaseSimulationInput)[]).every((k) => input[k] === patch[k]);
-
 export const ASSUMPTIONS_ES = [
   'Cada quincena se calcula como en tu Panel: lo que entra menos lo que ya tienes que pagar y tus presupuestos.',
   'La quincena de hoy cuenta solo lo que falta desde hoy; tu dinero de hoy ya incluye lo que pasó.',
@@ -476,56 +426,17 @@ export async function simulatePurchase(params: {
   // Always until the quincena of the last payment.
   const untilYmd = defaultHorizonEnd(plan);
 
-  // The alternatives may end later than the chosen plan; load the baseline once for the longest.
-  const altDefs = alternativePatches(input, wallets);
-  const altPlans = altDefs.flatMap((a) => {
-    try {
-      return [{ ...a, plan: buildPurchasePlan(toPlanInput({ ...input, ...a.patch, monthly_payment: a.patch.months ? undefined : input.monthly_payment }, byId)) }];
-    } catch {
-      return [];
-    }
-  });
-  const loadUntil = [untilYmd, ...altPlans.map((a) => defaultHorizonEnd(a.plan))].sort().at(-1)!;
-
-  const loaded = await loadBaseline(params.ownerFilter, wallets, todayYmd, loadUntil, asOf);
-  const withinUntil = (until: string) => loaded.baseline.filter((f) => f.date <= until);
+  const loaded = await loadBaseline(params.ownerFilter, wallets, todayYmd, untilYmd, asOf);
 
   const series = buildQuincenaSeries({
     todayYmd,
     untilYmd,
     startingLiquidity: loaded.startingLiquidity,
-    baseline: withinUntil(untilYmd),
+    baseline: loaded.baseline,
     purchase: purchaseFlows(plan, name, untilYmd),
     createdKeys: loaded.createdKeys,
   });
   const verdict = verdictFacts(series, overLimit(plan, byId));
-
-  const alternatives: SimulationAlternative[] = altPlans.map((a) => {
-    const until = defaultHorizonEnd(a.plan);
-    const altSeries = buildQuincenaSeries({
-      todayYmd,
-      untilYmd: until,
-      startingLiquidity: loaded.startingLiquidity,
-      baseline: withinUntil(until),
-      purchase: purchaseFlows(a.plan, name, until),
-      createdKeys: loaded.createdKeys,
-    });
-    const facts = verdictFacts(altSeries, overLimit(a.plan, byId));
-    return {
-      id: a.id,
-      label: a.label,
-      patch: a.patch,
-      current: isCurrent(input, a.patch),
-      level: facts.level,
-      redCount: facts.redKeys.length,
-      quincenas: facts.quincenas,
-      tightestQueda: facts.tightestQueda,
-      regularPayment: a.plan.regularPayment,
-      count: a.plan.count,
-      interest: a.plan.interest,
-      lastDueDate: a.plan.lastDueDate,
-    };
-  });
 
   return {
     as_of: todayYmd,
@@ -535,7 +446,6 @@ export async function simulatePurchase(params: {
     plan,
     series,
     verdict,
-    alternatives,
     assumptions: [...ASSUMPTIONS_ES],
     card_consumption: loaded.consumption,
   };

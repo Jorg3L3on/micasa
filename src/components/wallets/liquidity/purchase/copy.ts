@@ -45,7 +45,7 @@ export const PURCHASE_COPY = {
   chip: { green: 'Buena idea', amber: 'Con cuidado', red: 'Mala idea por ahora' },
   emptyTitle: '¿Te alcanza para comprarlo?',
   emptyBody:
-    'Escribe cuánto cuesta y cómo lo pagarías. Verás quincena por quincena cuánto te sobra o te falta hasta terminar de pagarlo y cuánto deberías en cada tarjeta.',
+    'Escribe cuánto cuesta y cómo lo pagarías. Verás quincena por quincena cuánto te sobra o te falta hasta terminar de pagarlo.',
   noWalletsTitle: 'Agrega una billetera para simular',
   noWalletsBody: 'Necesitamos saber de dónde saldría el dinero: una cuenta de débito, efectivo o una tarjeta.',
   addWallet: 'Agregar billetera',
@@ -85,8 +85,5 @@ export const PURCHASE_COPY = {
   simulated: 'Simulado',
   includesPurchase: 'Incluye esta compra',
   calendarTitle: 'Cuándo pagas esta compra',
-  altTitle: '¿Y si lo pagas diferente?',
-  altSubtitle: 'La misma compra con otras formas de pago. Toca una para verla completa.',
-  current: 'Actual',
   howTitle: 'Cómo lo calculamos',
 } as const;

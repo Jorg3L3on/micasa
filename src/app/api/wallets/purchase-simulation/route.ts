@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
  * POST /api/wallets/purchase-simulation (MIC-I17)
  * Body: one purchase (total, date, contado | msi | credito…). Read-only: returns
  * the payment plan, the quincena series with and without it,
- * the verdict facts and other ways to pay. Nothing is stored.
+ * and the verdict facts. Nothing is stored.
  */
 export async function POST(request: NextRequest) {
   const started = Date.now();
