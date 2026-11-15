@@ -89,6 +89,8 @@ type AmountRowProps = {
   ariaLabel?: string;
   disabled?: boolean;
   enterKeyHint?: 'next' | 'done';
+  /** Thousands separators while not editing. */
+  grouped?: boolean;
 };
 
 /** Presentational amount row (no react-hook-form). */
@@ -100,6 +102,7 @@ export const AmountRow = ({
   ariaLabel,
   disabled,
   enterKeyHint = 'next',
+  grouped,
 }: AmountRowProps) => (
   <div className="space-y-1 px-3 py-2">
     <span className="text-sm font-medium text-foreground">{label}</span>
@@ -115,6 +118,7 @@ export const AmountRow = ({
         disabled={disabled}
         className={OVERLAY_AMOUNT_INPUT_CLASS}
         enterKeyHint={enterKeyHint}
+        grouped={grouped}
         aria-label={ariaLabel ?? label}
       />
     </div>

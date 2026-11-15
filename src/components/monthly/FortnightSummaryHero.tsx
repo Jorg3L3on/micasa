@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import {
   getFortnightRemainderCopy,
   type DueToPayCompositionRow,
@@ -162,6 +164,8 @@ type AccountMetricProps = {
   amountClassName: string;
   /** Health chip at the end of the eyebrow row (glass tiles). */
   badge?: { label: string; tone: StatusTone };
+  /** Shown instead of the animated amount when the figure is not money ("1 de 29", a date). */
+  display?: ReactNode;
 };
 
 /**
@@ -182,6 +186,7 @@ const AccountMetricBody = ({
   icon: Icon,
   amountClassName,
   badge,
+  display,
 }: AccountMetricProps) => (
   <>
     <div className="mb-1.5 flex items-center justify-between gap-1.5">
@@ -211,6 +216,9 @@ const AccountMetricBody = ({
       ) : null}
     </div>
     <p className="min-w-0 whitespace-nowrap">
+      {display != null ? (
+        <span className={cn(badge ? 'text-2xl font-semibold tabular-nums' : 'text-lg font-bold sm:text-xl', amountClassName)}>{display}</span>
+      ) : (
       <CurrencyTicker
         value={amount}
         className={cn(
@@ -223,6 +231,7 @@ const AccountMetricBody = ({
           amountClassName,
         )}
       />
+      )}
     </p>
     <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
       {subtitle}

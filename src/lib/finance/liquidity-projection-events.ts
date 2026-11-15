@@ -70,7 +70,7 @@ const toMonthKey = (ymd: string) => ymd.slice(0, 7);
 
 export const compareMonthKeys = (a: string, b: string): number => a.localeCompare(b);
 
-export const monthKeyFromOffset = (baseMonthKey: string, offsetMonths: number): string => {
+const monthKeyFromOffset = (baseMonthKey: string, offsetMonths: number): string => {
   let [year, month] = baseMonthKey.split('-').map(Number);
   month += offsetMonths;
   while (month > 12) {

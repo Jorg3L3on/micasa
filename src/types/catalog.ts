@@ -433,8 +433,7 @@ export type LiquidityProjectionObligationSource =
   | 'credit_card_statement'
   | 'unpaid_expense'
   | 'expense_template'
-  | 'loan_payment'
-  | 'scenario';
+  | 'loan_payment';
 
 /** Respuesta de GET /api/wallets/liquidity-projection */
 export type LiquidityProjectionObligationItem = {
@@ -471,15 +470,6 @@ export type LiquidityProjectionObligationItem = {
   payments_applied_to_fortnight?: number;
   remaining_planner_amount?: number;
   planner_status?: PlannerCardPaymentStatusUi;
-  /** Scenario lines only (source `scenario`): which input item, its kind and the charge day. */
-  scenario_index?: number;
-  scenario_kind?: 'purchase' | 'instalment';
-  scenario_charge_date?: string;
-  scenario_instalment_number?: number;
-  scenario_instalment_total?: number;
-  /** Set on a scenario instalment on a card: a cuota, outside fortnight aggregates. */
-  credit_installment_current?: number;
-  credit_installment_total?: number;
 };
 
 export type LiquidityProjectionMilestone = {
@@ -633,26 +623,6 @@ export type LiquidityProjectionResponse = {
   projection_events: LiquidityProjectionEvent[];
   projection_tracks: LiquidityProjectionTrack[];
   card_utilization_summary: LiquidityCardUtilizationSummary;
-  /** Expected incomes by civil day (registered incomes and templates on their payday). */
-  income_dates?: Array<{ date: string; amount: number; title: string }>;
-  /** Present only when the request carried `scenario`. */
-  scenario_delta?: LiquidityScenarioDelta;
-  scenario_assumptions?: string[];
-};
-
-export type LiquidityScenarioOutcome = {
-  first_projected_shortfall_date: string | null;
-  min_projected_headroom: number | null;
-  end_liquidity: number;
-};
-
-/** Baseline vs scenario, computed from the same loaded data. */
-export type LiquidityScenarioDelta = {
-  baseline: LiquidityScenarioOutcome;
-  scenario: LiquidityScenarioOutcome;
-  first_projected_shortfall_changed: boolean;
-  min_projected_headroom_change: number | null;
-  end_liquidity_change: number;
 };
 
 export type CreditCardPaymentListItem = {

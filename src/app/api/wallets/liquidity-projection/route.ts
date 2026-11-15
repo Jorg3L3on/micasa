@@ -1,15 +1,7 @@
 import { parseCalendarDate, formatCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { withOwnerContext } from '@/lib/server/with-owner-context';
-import {
-  getLiquidityProjection,
-  LiquidityScenarioWalletError,
-} from '@/lib/finance/liquidity-projection.service';
-import {
-  parseLiquidityScenarioParam,
-  type LiquidityScenarioError,
-  type LiquidityScenarioItem,
-} from '@/schemas/liquidity-scenario.schema';
+import { getLiquidityProjection } from '@/lib/finance/liquidity-projection.service';
 import { liquidityProjectionToCsv } from '@/lib/finance/liquidity-projection-csv';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 import {
@@ -33,8 +25,7 @@ const parseStressPercent = (value: string | null): number | undefined => {
 
 /**
  * GET …/api/wallets/liquidity-projection
- * Query: until, omitZero, format=json|csv, stressCyclePercent, includeUnpaid, includeTemplates,
- * scenario (JSON array of hypothetical purchase/instalment items; read-only, never stored)
+ * Query: until, omitZero, format=json|csv, stressCyclePercent, includeUnpaid, includeTemplates
  */
 export async function GET(request: NextRequest) {
   const started = Date.now();
@@ -65,19 +56,6 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      let scenario: LiquidityScenarioItem[] | undefined;
-      const scenarioParam = searchParams.get('scenario');
-      if (scenarioParam) {
-        const parsed = parseLiquidityScenarioParam(scenarioParam, {
-          today: asOfYmd,
-          until: formatCalendarDate(until),
-        });
-        if (!parsed.ok) {
-          return NextResponse.json(parsed.error, { status: 400 });
-        }
-        scenario = parsed.items;
-      }
-
       const projection = await getLiquidityProjection({
         ownerFilter: context.ownerFilter,
         asOf,
@@ -87,7 +65,6 @@ export async function GET(request: NextRequest) {
         stressCyclePercent,
         includeUnpaidExpenses: includeUnpaid ?? true,
         includeExpenseTemplates: includeTemplates ?? true,
-        scenario,
       });
 
       const ownerType = context.ownerType;
@@ -105,7 +82,6 @@ export async function GET(request: NextRequest) {
             0,
           ),
           format,
-          scenario_items: scenario?.length ?? 0,
         },
         request,
       );
@@ -125,14 +101,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(projection, { status: 200 });
     });
   } catch (error) {
-    if (error instanceof LiquidityScenarioWalletError) {
-      const body: LiquidityScenarioError = {
-        error: error.message,
-        field: 'wallet_id',
-        index: error.index,
-      };
-      return NextResponse.json(body, { status: 400 });
-    }
     const code = (error as { code?: string }).code;
     if (code === 'INVALID_HORIZON') {
       return NextResponse.json(
