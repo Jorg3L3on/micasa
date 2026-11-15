@@ -96,13 +96,15 @@ describe('Simular compra tab', () => {
     expect(screen.getByText(/2ª de diciembre y la 2ª de enero quedarían en rojo/)).toBeTruthy();
   });
 
-  it('defaults the detail to the tightest quincena and follows the selected row', async () => {
+  it('hides the detail until Ver detalle, then shows the tightest quincena and follows the selected row', async () => {
     render(<PurchaseSimulatorTab />);
     await screen.findByText(PURCHASE_COPY.emptyTitle);
     typeTotal('6000');
     await settle();
     await screen.findByText(/aprieta/);
     const q = screen.getByRole('region', { name: PURCHASE_COPY.quincenaTitle });
+    expect(within(q).queryByRole('heading', { level: 3 })).toBeNull();
+    fireEvent.click(within(q).getByRole('button', { name: PURCHASE_COPY.showDetail }));
     const before = within(q).getByRole('heading', { level: 3 }).textContent;
     expect(before).toMatch(/2ª quincena de diciembre/);
     const table = screen.getByRole('region', { name: PURCHASE_COPY.tableTitle.quincena });

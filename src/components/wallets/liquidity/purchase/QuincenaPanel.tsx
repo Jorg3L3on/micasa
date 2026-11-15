@@ -214,6 +214,7 @@ const QuincenaDetail = ({ row, showBase }: { row: QuincenaRow; showBase: boolean
 
 export const QuincenaPanel = ({ result, selectedKey, onSelect, dimmed }: Props) => {
   const [showBase, setShowBase] = useState(true);
+  const [showDetail, setShowDetail] = useState(false);
   const rows = result.series;
   const g = granularityFor(rows.length);
   const units = useMemo(() => groupUnits(rows, g), [rows, g]);
@@ -260,7 +261,15 @@ export const QuincenaPanel = ({ result, selectedKey, onSelect, dimmed }: Props) 
       </div>
 
       <QuincenaChart units={units} showBase={showBase} selectedKeys={new Set([key])} onSelect={onSelect} />
-      <QuincenaDetail row={row} showBase={showBase} />
+      {showDetail ? <QuincenaDetail row={row} showBase={showBase} /> : null}
+      <button
+        type="button"
+        aria-expanded={showDetail}
+        onClick={() => setShowDetail((v) => !v)}
+        className="min-h-10 w-full rounded-xl border border-border/60 text-sm font-semibold hover:bg-white/[0.03]"
+      >
+        {showDetail ? C.hideDetail : C.showDetail}
+      </button>
     </section>
   );
 };
