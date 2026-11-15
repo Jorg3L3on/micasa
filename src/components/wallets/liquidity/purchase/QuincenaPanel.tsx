@@ -12,6 +12,7 @@ import type { QuincenaRow } from '@/lib/finance/purchase-simulation/series';
 import { formatAxisMoney, formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import { PURCHASE_COPY as C } from '@/components/wallets/liquidity/purchase/copy';
+import { InCardTabs } from '@/components/wallets/liquidity/purchase/InCardTabs';
 import {
   granularityFor,
   groupUnits,
@@ -23,8 +24,9 @@ import {
 import type { HorizonChoice } from '@/components/wallets/liquidity/purchase/use-purchase-simulation';
 
 const CHART_H = 200;
+const DETAIL_LIMIT = 8;
 const HORIZONS: { id: HorizonChoice; label: string }[] = [
-  { id: 'payoff', label: C.horizonPayoff },
+  { id: 'payoff', label: C.horizonPayoffShort },
   { id: 12, label: '1 año' },
   { id: 24, label: '2 años' },
   { id: 60, label: '5 años' },
@@ -79,7 +81,7 @@ export const QuincenaChart = ({
     <div className="flex gap-2">
       <div aria-hidden className="relative w-11 shrink-0 text-caption text-muted-foreground tabular-nums" style={{ height: CHART_H }}>
         <span className="absolute right-0 -translate-y-1/2" style={{ top: 0 }}>{formatAxisMoney(maxP)}</span>
-        {maxN > 0 && maxP > 1 ? <span className="absolute right-0 -translate-y-1/2" style={{ top: y0 }}>$0</span> : null}
+        {maxN > 0 && maxP > 1 && y0 > 14 && CHART_H - y0 > 14 ? <span className="absolute right-0 -translate-y-1/2" style={{ top: y0 }}>$0</span> : null}
         <span className="absolute right-0 -translate-y-1/2" style={{ top: CHART_H }}>{maxN > 0 ? formatAxisMoney(-maxN) : '$0'}</span>
       </div>
       <div className="min-w-0 flex-1 overflow-x-auto pb-1">
@@ -126,9 +128,15 @@ export const QuincenaChart = ({
             })}
           </div>
           <div aria-hidden className="absolute inset-x-0 flex" style={{ top: CHART_H + 6, gap }}>
-            {units.map((u) => (
-              <span key={u.key} className="min-w-0 flex-1 overflow-visible whitespace-nowrap text-caption text-muted-foreground">{u.axisLabel}</span>
-            ))}
+            {units.map((u, i) => {
+              // Phones: every third label so they do not collide.
+              const ordinal = units.slice(0, i).filter((x) => x.axisLabel).length;
+              return (
+                <span key={u.key} className="min-w-0 flex-1 overflow-visible whitespace-nowrap text-caption text-muted-foreground">
+                  <span className={cn(ordinal % 3 !== 0 && 'hidden sm:inline')}>{u.axisLabel}</span>
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -173,6 +181,7 @@ const LineRow = ({ name, meta, amount, tone }: { name: string; meta: string; amo
 );
 
 const QuincenaDetail = ({ row, showBase }: { row: QuincenaRow; showBase: boolean }) => {
+  const [showAllLines, setShowAllLines] = useState(false);
   const status =
     row.queda < 0
       ? row.sinCompra >= 0 ? 'queda en rojo por la compra' : 'ya estaba en rojo sin la compra'
@@ -211,9 +220,14 @@ const QuincenaDetail = ({ row, showBase }: { row: QuincenaRow; showBase: boolean
             </div>
           ))}
           {row.outflows.length === 0 && row.purchase.length === 0 ? <p className="py-2 text-caption text-muted-foreground">Nada que pagar esta quincena.</p> : null}
-          {row.outflows.map((l, i) => <LineRow key={i} name={l.name} meta={l.kind === 'budget' ? 'Presupuesto de la quincena' : `${l.walletName} · ${formatDisplayDate(l.date)}${l.estimated ? ' · estimado' : ''}`} amount={l.amount} tone="expense" />)}
+          {(showAllLines ? row.outflows : row.outflows.slice(0, DETAIL_LIMIT)).map((l, i) => <LineRow key={i} name={l.name} meta={l.kind === 'budget' ? 'Presupuesto de la quincena' : `${l.walletName} · ${formatDisplayDate(l.date)}${l.estimated ? ' · estimado' : ''}`} amount={l.amount} tone="expense" />)}
         </div>
       </div>
+      {row.outflows.length > DETAIL_LIMIT ? (
+        <button type="button" onClick={() => setShowAllLines((v) => !v)} className="mt-2 min-h-10 w-full rounded-xl border border-border/60 text-sm font-semibold hover:bg-white/[0.03]">
+          {showAllLines ? C.seeLess : `Ver ${row.outflows.length - DETAIL_LIMIT} pagos más`}
+        </button>
+      ) : null}
     </div>
   );
 };
@@ -245,21 +259,13 @@ export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelec
           </span>
         }
       />
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div role="group" aria-label={C.horizon} className="flex flex-wrap gap-1.5">
-          {HORIZONS.map((h) => (
-            <button
-              key={String(h.id)}
-              type="button"
-              aria-pressed={horizon === h.id}
-              onClick={() => onHorizon(h.id)}
-              className={cn('min-h-9 rounded-full border px-3 text-xs font-semibold', horizon === h.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border/60 bg-white/[0.03] hover:bg-white/[0.06]')}
-            >
-              {h.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <InCardTabs
+        label={C.horizon}
+        showLabel={false}
+        value={horizon}
+        options={HORIZONS.map((h) => ({ value: h.id, label: h.label }))}
+        onChange={onHorizon}
+      />
 
       {missing ? (
         <div role="status" className={cn(PANEL_INSET_CLASS, 'flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm')}>
@@ -268,6 +274,14 @@ export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelec
             {created ? `Tus quincenas están creadas hasta la ${created}.` : 'Aún no creas quincenas para estas fechas.'} De ahí en adelante calculamos con tus ingresos y gastos programados: los gastos sueltos que aún no registras no aparecen.
           </span>
           <Link href={`/monthly/${missing.year}/${missing.month}`} className="text-xs font-semibold text-primary-text underline underline-offset-4">{C.createFortnights}</Link>
+        </div>
+      ) : null}
+      {result.old_unpaid.count > 0 ? (
+        <div role="status" className={cn(PANEL_INSET_CLASS, 'flex items-start gap-2.5 px-3 py-2.5 text-sm')}>
+          <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <span>
+            Tienes {result.old_unpaid.count} {result.old_unpaid.count === 1 ? 'gasto' : 'gastos'} de quincenas pasadas sin marcar como pagados ({formatMoney(result.old_unpaid.total)}). Como en tu Panel, no los contamos.
+          </span>
         </div>
       ) : null}
       {lastPayment > rows.at(-1)!.endYmd ? (

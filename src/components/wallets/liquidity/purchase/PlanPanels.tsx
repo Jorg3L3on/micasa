@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeftRight, CalendarDays, CreditCard, HandCoins } from 'lucide-react';
+import { ArrowLeftRight, CalendarDays, CreditCard, HandCoins, Info } from 'lucide-react';
 import { MONTHLY_LIQUID_PANEL_CLASS, PANEL_INSET_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { SectionHeader } from '@/components/section-header';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
@@ -9,10 +9,10 @@ import { formatDisplayDate, formatMonthShort } from '@/lib/calendar-dates';
 import type { PurchaseSimulationResult, SimulationAlternative } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { formatMoney } from '@/lib/money';
-import { STATUS_BADGE_CLASS } from '@/lib/status-tone';
 import { cn } from '@/lib/utils';
 import { PURCHASE_COPY as C } from '@/components/wallets/liquidity/purchase/copy';
 import { levelTone, quincenaShort } from '@/components/wallets/liquidity/purchase/format';
+import { StatusChip } from '@/components/wallets/liquidity/purchase/VerdictPanel';
 
 const STRIPES = 'repeating-linear-gradient(135deg, color-mix(in oklch, var(--chart-2) 85%, transparent) 0 3px, color-mix(in oklch, var(--chart-2) 25%, transparent) 3px 6px)';
 const SERIES = ['var(--chart-1)', 'var(--chart-4)', 'var(--chart-3)', 'var(--chart-5)', 'var(--status-info)'];
@@ -25,8 +25,15 @@ const pointLabel = (points: string[], i: number, short = false) => {
 
 const qShort = (ymd: string) => quincenaShort(getCalendarFortnightRefForYmd(ymd));
 
+const DEBT_LIMIT = 4;
+
 export const DebtPanel = ({ result, dimmed }: { result: PurchaseSimulationResult; dimmed?: boolean }) => {
+  const [showAll, setShowAll] = useState(false);
   const { debt } = result;
+  // The wallet with the purchase first, then the largest debts.
+  const ordered = debt.wallets
+    .map((w, wi) => ({ w, wi, peak: Math.max(...w.values) }))
+    .sort((a, b) => Number(b.w.includesPurchase) - Number(a.w.includesPurchase) || b.peak - a.peak);
   const n = debt.points.length;
   if (debt.wallets.length === 0) return null;
   const maxT = Math.max(1, ...debt.totals);
@@ -69,7 +76,7 @@ export const DebtPanel = ({ result, dimmed }: { result: PurchaseSimulationResult
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        {debt.wallets.map((w, wi) => {
+        {ordered.slice(0, showAll ? ordered.length : DEBT_LIMIT).map(({ w, wi }) => {
           const vals = w.values;
           const mx = Math.max(...vals);
           const mxi = vals.indexOf(mx);
@@ -113,6 +120,11 @@ export const DebtPanel = ({ result, dimmed }: { result: PurchaseSimulationResult
           );
         })}
       </div>
+      {ordered.length > DEBT_LIMIT ? (
+        <button type="button" onClick={() => setShowAll((v) => !v)} className="min-h-10 rounded-xl border border-border/60 text-sm font-semibold hover:bg-white/[0.03]">
+          {showAll ? C.seeLess : `Ver las ${ordered.length} billeteras`}
+        </button>
+      ) : null}
     </section>
   );
 };
@@ -225,7 +237,7 @@ export const AlternativesPanel = ({
             </span>
             <span className="whitespace-nowrap text-caption text-muted-foreground">{a.redCount} en rojo</span>
             <span className={cn('whitespace-nowrap text-caption tabular-nums', a.tightestQueda < 0 ? 'text-status-overdue' : 'text-muted-foreground')}>más justa {formatMoney(a.tightestQueda)}</span>
-            <span className={cn('whitespace-nowrap rounded-full px-2 py-0.5 text-caption font-bold', STATUS_BADGE_CLASS[levelTone(a.level)])}>{C.chip[a.level]}</span>
+            <StatusChip tone={levelTone(a.level)}>{C.chip[a.level]}</StatusChip>
           </button>
         ))}
       </div>
@@ -235,7 +247,7 @@ export const AlternativesPanel = ({
 
 export const AssumptionsPanel = ({ result }: { result: PurchaseSimulationResult }) => (
   <section aria-labelledby="sc-how" className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-3 sm:p-4')}>
-    <h2 id="sc-how" className="mb-2 text-section">{C.howTitle}</h2>
+    <SectionHeader id="sc-how" icon={Info} title={C.howTitle} className="mb-3" />
     <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
       <li>Empiezas con {formatMoney(result.starting_liquidity)} en efectivo y débito (lo que cuenta en tu liquidez).</li>
       {result.assumptions.map((a) => <li key={a}>{a}</li>)}

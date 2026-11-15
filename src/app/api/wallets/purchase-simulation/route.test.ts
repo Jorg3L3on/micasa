@@ -117,4 +117,22 @@ describe('POST /api/wallets/purchase-simulation', () => {
     expect(body.verdict.overLimitBy).toBe(3900);
     expect(body.verdict.level).toBe('red');
   });
+
+  it('leaves out unpaid expenses from past quincenas, like Panel, and reports them', async () => {
+    const old = '2026-04-30';
+    getLiquidityProjection.mockResolvedValueOnce({
+      funding_wallets: [{ id: 3, name: 'Débito prueba', type: 'DEBIT_CARD', balance: 45000 }],
+      milestones: [
+        { due_date: old, obligations: [{ source: 'unpaid_expense', wallet_id: 3, wallet_name: 'Débito prueba', next_due_payment: 8950, expense_description: 'Gasto viejo' }] },
+        { due_date: today, obligations: [{ source: 'unpaid_expense', wallet_id: 3, wallet_name: 'Débito prueba', next_due_payment: 300, expense_description: 'Luz' }] },
+      ],
+      income_dates: [],
+    });
+    const res = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
+    const body = await res.json();
+    expect(body.old_unpaid).toEqual({ count: 1, total: 8950 });
+    const names = body.series[0].outflows.map((o: { name: string }) => o.name);
+    expect(names).toContain('Luz');
+    expect(names).not.toContain('Gasto viejo');
+  });
 });

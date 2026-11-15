@@ -77,8 +77,8 @@ describe('Simular compra tab', () => {
     await waitFor(() => expect(posts()).toHaveLength(1));
     expect(JSON.parse(String(posts()[0][1].body))).toMatchObject({ total: 6000, mode: 'msi', wallet_id: 7, months: 12 });
 
-    fireEvent.click(screen.getByRole('button', { name: '6' }));
-    fireEvent.click(screen.getByRole('button', { name: '18' }));
+    fireEvent.mouseDown(screen.getByRole('tab', { name: '18 meses' }));
+    fireEvent.click(screen.getByRole('tab', { name: '18 meses' }));
     await settle();
     await waitFor(() => expect(posts()).toHaveLength(2));
     expect(JSON.parse(String(posts()[1][1].body)).months).toBe(18);
@@ -89,8 +89,8 @@ describe('Simular compra tab', () => {
     await screen.findByText(PURCHASE_COPY.emptyTitle);
     typeTotal('6000');
     await settle();
-    const verdict = await screen.findByRole('heading', { name: /Te alcanza, pero aprieta 2 quincenas/ });
-    expect(verdict).toBeTruthy();
+    expect(await screen.findByText('Te alcanza, pero aprieta 2 quincenas')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: PURCHASE_COPY.verdictEyebrow })).toBeTruthy();
     expect(screen.getByText(PURCHASE_COPY.chip.amber)).toBeTruthy();
     expect(screen.getAllByText(PURCHASE_COPY.disclaimer).length).toBeGreaterThan(0);
     expect(screen.getByText(/2ª de diciembre y la 2ª de enero quedarían en rojo/)).toBeTruthy();
@@ -101,7 +101,7 @@ describe('Simular compra tab', () => {
     await screen.findByText(PURCHASE_COPY.emptyTitle);
     typeTotal('6000');
     await settle();
-    await screen.findByRole('heading', { name: /aprieta/ });
+    await screen.findByText(/aprieta/);
     const q = screen.getByRole('region', { name: PURCHASE_COPY.quincenaTitle });
     const before = within(q).getByRole('heading', { level: 3 }).textContent;
     expect(before).toMatch(/2ª quincena de diciembre/);
@@ -116,7 +116,7 @@ describe('Simular compra tab', () => {
     await screen.findByText(PURCHASE_COPY.emptyTitle);
     typeTotal('6000');
     await settle();
-    await screen.findByRole('heading', { name: /aprieta/ });
+    await screen.findByText(/aprieta/);
     fireEvent.click(screen.getByRole('button', { name: /12 MSI · Tarjeta Dos/ }));
     await settle();
     await waitFor(() => expect(posts().length).toBeGreaterThanOrEqual(2));
@@ -128,7 +128,7 @@ describe('Simular compra tab', () => {
     await screen.findByText(PURCHASE_COPY.emptyTitle);
     typeTotal('6000');
     await settle();
-    await screen.findByRole('heading', { name: /aprieta/ });
+    await screen.findByText(/aprieta/);
     financeContext.current = { type: 'house', id: 9 };
     view.rerender(<PurchaseSimulatorTab />);
     expect(await screen.findByText(PURCHASE_COPY.clearedOnContextSwitch)).toBeTruthy();

@@ -4,6 +4,8 @@
  */
 export const PURCHASE_COPY = {
   tab: 'Simular compra',
+  /** Phones (< sm): the full label does not fit beside Proyección and Deudas. */
+  tabShort: 'Simular',
   formTitle: 'Tu compra',
   formSubtitle: 'Se calcula en tu pantalla. No se guarda nada.',
   examples: 'Ejemplos',
@@ -14,12 +16,15 @@ export const PURCHASE_COPY = {
   how: '¿Cómo lo pagas?',
   modeContado: 'De contado',
   modeMsi: 'Meses sin intereses',
+  modeMsiShort: 'MSI',
   modeCredito: 'Con intereses',
   payWith: 'Pagas con',
   whichCard: 'Con qué tarjeta',
   msiMonths: 'Meses sin intereses',
   lender: 'Te presta',
   lenderNew: 'Crédito nuevo (auto, casa, personal)',
+  lenderNewShort: 'Crédito nuevo',
+  lenderCard: 'Mi tarjeta',
   term: 'Plazo',
   rate: 'Tasa anual',
   rateDown: 'Bajar la tasa',
@@ -66,6 +71,7 @@ export const PURCHASE_COPY = {
   estimated: 'Estimado',
   horizon: 'Periodo',
   horizonPayoff: 'Hasta terminar de pagar',
+  horizonPayoffShort: 'Hasta pagarla',
   accumulated: 'Tu dinero acumulado',
   createFortnights: 'Crear quincenas',
   tableTitle: { quincena: 'Todas las quincenas', mes: 'Todos los meses', año: 'Todos los años' },

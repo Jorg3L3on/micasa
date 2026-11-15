@@ -8,6 +8,7 @@ import {
   MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { SegmentedControl } from '@/components/segmented-control';
+import { InCardTabs } from '@/components/wallets/liquidity/purchase/InCardTabs';
 import {
   AmountRow,
   DateStepper,
@@ -120,31 +121,6 @@ export const WalletSelect = ({
   );
 };
 
-const ChipGroup = <T extends string | number>({
-  label,
-  options,
-  value,
-  onChange,
-  format = (v) => String(v),
-}: {
-  label: string;
-  options: readonly T[];
-  value: T;
-  onChange: (v: T) => void;
-  format?: (v: T) => string;
-}) => (
-  <div>
-    <p className="mb-1.5 px-1 text-xs font-medium text-muted-foreground">{label}</p>
-    <div role="group" aria-label={label} className="flex flex-wrap gap-1.5">
-      {options.map((o) => (
-        <button key={String(o)} type="button" aria-pressed={value === o} onClick={() => onChange(o)} className={cn(chipClass(value === o), 'min-w-12 tabular-nums')}>
-          {format(o)}
-        </button>
-      ))}
-    </div>
-  </div>
-);
-
 const MoneyRow = ({ label, value, onChange, trailing }: { label: string; value: number; onChange: (v: number) => void; trailing?: string }) => {
   const id = useId();
   return (
@@ -193,10 +169,10 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
   const cards = wallets.filter((w) => w.isCard);
   const funding = wallets.filter((w) => !w.isCard);
   const selected = wallets.find((w) => w.id === draft.walletId) ?? null;
-  const modes: { id: PurchaseMode; label: string }[] = [
-    { id: 'contado', label: C.modeContado },
-    { id: 'msi', label: C.modeMsi },
-    { id: 'credito', label: C.modeCredito },
+  const modes: { id: PurchaseMode; label: string; ariaLabel: string }[] = [
+    { id: 'contado', label: C.modeContado, ariaLabel: C.modeContado },
+    { id: 'msi', label: C.modeMsiShort, ariaLabel: C.modeMsi },
+    { id: 'credito', label: C.modeCredito, ariaLabel: C.modeCredito },
   ];
   const hint = payHint(draft, wallets, result);
   const over = result?.verdict.overLimitBy ?? 0;
@@ -246,7 +222,7 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
           triggerClassName="px-1.5 text-xs leading-tight sm:text-sm"
           indicatorClassName={AURA_TAB_INDICATOR_CLASS}
           activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
-          options={modes.map((m) => ({ value: m.id, label: m.label }))}
+          options={modes.map((m) => ({ value: m.id, label: m.label, ariaLabel: m.ariaLabel }))}
         />
       </div>
 
@@ -260,19 +236,43 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
       ) : null}
 
       {draft.mode === 'msi' ? (
-        <ChipGroup label={C.msiMonths} options={MSI_MONTH_OPTIONS} value={draft.months as (typeof MSI_MONTH_OPTIONS)[number]} onChange={(months) => onChange({ months })} />
+        <InCardTabs
+          label={C.msiMonths}
+          value={draft.months}
+          options={MSI_MONTH_OPTIONS.map((m) => ({ value: m as number, label: String(m), ariaLabel: `${m} meses` }))}
+          onChange={(months) => onChange({ months })}
+        />
       ) : null}
 
       {draft.mode === 'credito' ? (
         <div className="flex flex-col gap-3">
-          <ChipGroup<string>
+          <InCardTabs
             label={C.lender}
-            options={['new', ...cards.map((c) => String(c.id))]}
-            value={String(draft.lender)}
-            onChange={(v) => onChange({ lender: v === 'new' ? 'new' : Number(v), creditMonths: v === 'new' ? 48 : 12, rate: v === 'new' ? 13.9 : (cards.find((c) => String(c.id) === v)?.aprAnnualPct ?? 40) })}
-            format={(v) => (v === 'new' ? C.lenderNew : (cards.find((c) => String(c.id) === v)?.name ?? v))}
+            value={isNew ? 'new' : 'card'}
+            options={[
+              { value: 'new', label: C.lenderNewShort, ariaLabel: C.lenderNew },
+              ...(cards.length > 0 ? [{ value: 'card', label: C.lenderCard }] : []),
+            ]}
+            onChange={(v) => {
+              const card = cards[0];
+              if (v === 'new') onChange({ lender: 'new', creditMonths: 48, rate: 13.9 });
+              else if (card) onChange({ lender: card.id, creditMonths: 12, rate: card.aprAnnualPct ?? 40 });
+            }}
           />
-          <ChipGroup label={C.term} options={isNew ? NEW_CREDIT_TERMS : CARD_CREDIT_TERMS} value={draft.creditMonths} onChange={(creditMonths) => onChange({ creditMonths })} format={(v) => `${v} m`} />
+          {!isNew ? (
+            <WalletSelect
+              label={C.whichCard}
+              wallets={cards}
+              value={typeof draft.lender === 'number' ? draft.lender : null}
+              onChange={(id) => onChange({ lender: id, rate: cards.find((c) => c.id === id)?.aprAnnualPct ?? draft.rate })}
+            />
+          ) : null}
+          <InCardTabs
+            label={C.term}
+            value={draft.creditMonths}
+            options={(isNew ? NEW_CREDIT_TERMS : CARD_CREDIT_TERMS).map((m) => ({ value: m, label: `${m}m`, ariaLabel: `${m} meses` }))}
+            onChange={(creditMonths) => onChange({ creditMonths })}
+          />
           <div className={OVERLAY_GROUPED_CARD_CLASS}>
             {draft.knownPayment == null ? (
               <GroupedRow label={C.rate} labelWidth="wide">

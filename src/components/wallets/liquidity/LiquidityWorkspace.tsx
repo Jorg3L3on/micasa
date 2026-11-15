@@ -81,7 +81,8 @@ export const LiquidityWorkspace = () => {
             label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
                 <ShoppingBag className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {PURCHASE_COPY.tab}
+                <span className="sm:hidden">{PURCHASE_COPY.tabShort}</span>
+                <span className="hidden sm:inline">{PURCHASE_COPY.tab}</span>
               </span>
             ),
           },

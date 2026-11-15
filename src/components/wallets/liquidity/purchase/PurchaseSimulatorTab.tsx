@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { ShoppingBag, Wallet } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/error-banner';
+import {
+  MONTHLY_PANEL_CONTENT_GRID_CLASS,
+  MONTHLY_PANEL_MAIN_COLUMN_CLASS,
+  MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS,
+} from '@/components/monthly/MonthlyPanelLayout';
 import { MONTHLY_LIQUID_PANEL_CLASS, PANEL_INSET_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
@@ -90,7 +95,7 @@ export const PurchaseResults = ({ sim }: { sim: PurchaseSimulationController }) 
       />
       <QuincenaTable result={result} selectedKey={selectedKey} onSelect={setSelectedKey} dimmed={dimmed} />
       <DebtPanel result={result} dimmed={dimmed} />
-      <div className="grid items-start gap-5 xl:grid-cols-[1fr_1.3fr]">
+      <div className="grid grid-cols-1 items-start gap-5 2xl:grid-cols-2">
         <PaymentCalendar result={result} dimmed={dimmed} />
         <AlternativesPanel
           result={result}
@@ -146,8 +151,8 @@ export const PurchaseSimulatorTab = () => {
           <button type="button" onClick={sim.dismissNotice} className="text-xs font-semibold text-primary-text underline underline-offset-4">{C.understood}</button>
         </div>
       ) : null}
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(20rem,25rem)_minmax(0,1fr)]">
-        <div className="lg:sticky lg:top-24">
+      <div className={MONTHLY_PANEL_CONTENT_GRID_CLASS}>
+        <aside aria-label={C.formTitle} className={cn(MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS, 'xl:order-2 xl:sticky xl:top-24')}>
           {folded ? (
             <section className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-3')}>
               <SectionHeader
@@ -174,8 +179,10 @@ export const PurchaseSimulatorTab = () => {
               onSeeImpact={isMobile ? () => setFormOpen(false) : undefined}
             />
           )}
+        </aside>
+        <div className={cn(MONTHLY_PANEL_MAIN_COLUMN_CLASS, 'xl:order-1')}>
+          <PurchaseResults sim={sim} />
         </div>
-        <PurchaseResults sim={sim} />
       </div>
     </div>
   );
