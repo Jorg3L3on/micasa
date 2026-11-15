@@ -294,7 +294,7 @@ const loadBaseline = async (
   };
 };
 
-const loadWallets = async (ownerFilter: OwnerFilter): Promise<SimulationWallet[]> => {
+export const loadSimulationWallets = async (ownerFilter: OwnerFilter): Promise<SimulationWallet[]> => {
   const rows = await prisma.wallet.findMany({
     where: { ...ownerFilter, active: true },
     select: {
@@ -425,7 +425,7 @@ export async function simulatePurchase(params: {
     throw new PurchaseSimulationError('Elige un día de hoy en adelante.', 'date');
   }
 
-  const wallets = await loadWallets(params.ownerFilter);
+  const wallets = await loadSimulationWallets(params.ownerFilter);
   const byId = new Map(wallets.map((w) => [w.id, w]));
 
   const plan = (() => {

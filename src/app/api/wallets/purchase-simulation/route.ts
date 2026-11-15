@@ -1,9 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { DomainError } from '@/lib/finance/domain-error';
-import { simulatePurchase } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
+import { loadSimulationWallets, simulatePurchase } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { purchaseSimulationSchema } from '@/schemas/purchase-simulation.schema';
+
+/** GET: the wallets the form offers (cards with corte, pago, límite and disponible). */
+export async function GET(request: NextRequest) {
+  return withOwnerContext(request, async (context) =>
+    NextResponse.json({ wallets: await loadSimulationWallets(context.ownerFilter) }),
+  );
+}
 
 /**
  * POST /api/wallets/purchase-simulation (MIC-I17)

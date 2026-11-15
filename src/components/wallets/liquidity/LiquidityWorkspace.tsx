@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { Landmark, LineChart, Route } from 'lucide-react';
+import { Landmark, LineChart, ShoppingBag } from 'lucide-react';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { TabsContent } from '@/components/motion/tabs';
 import { SegmentedControl } from '@/components/segmented-control';
@@ -12,14 +12,9 @@ import {
 } from '@/components/monthly/monthly-panel-shell';
 import { LiquidityProjectionTab } from '@/components/wallets/liquidity/LiquidityProjectionTab';
 import { LiquidityDebtsTab } from '@/components/wallets/liquidity/LiquidityDebtsTab';
-import { CashPlanTab } from '@/components/wallets/liquidity/plan/CashPlanTab';
-import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
+import { PurchaseSimulatorTab } from '@/components/wallets/liquidity/purchase/PurchaseSimulatorTab';
+import { PURCHASE_COPY } from '@/components/wallets/liquidity/purchase/copy';
 import { useLiquidityProjection } from '@/components/wallets/liquidity/use-liquidity-projection';
-import { useLiquidityScenario } from '@/components/wallets/liquidity/use-liquidity-scenario';
-import {
-  LiquidityScenarioBanner,
-  LiquidityScenarioNotice,
-} from '@/components/wallets/liquidity/scenario/LiquidityScenarioBanner';
 import { cn } from '@/lib/utils';
 
 const WORKSPACE_TAB_LABEL_CLASS = 'inline-flex items-center justify-center gap-1.5';
@@ -34,16 +29,13 @@ export const LiquidityWorkspace = () => {
     setSelectedMonthKey,
   } = useLiquidityProjection();
 
-  const scenario = useLiquidityScenario();
   const [tab, setTab] = useState('liquidez');
   const [refreshToken, setRefreshToken] = useState(0);
 
   const handlePullRefresh = useCallback(async () => {
-    await Promise.all([reload({ silent: true }), scenario.refresh()]);
+    await reload({ silent: true });
     setRefreshToken((token) => token + 1);
-  }, [reload, scenario]);
-
-  const scenarioActive = scenario.item != null && scenario.data != null;
+  }, [reload]);
 
   return (
     <MobilePullToRefresh
@@ -51,23 +43,10 @@ export const LiquidityWorkspace = () => {
       ariaLabel="Análisis"
       errorMessage="No se pudo actualizar tu panorama. Intenta de nuevo."
     >
-      {scenarioActive ? (
-        <div className="mb-4 sm:mb-5">
-          <LiquidityScenarioBanner
-            assumptions={scenario.data?.scenario_assumptions ?? []}
-            onRemove={scenario.clear}
-          />
-        </div>
-      ) : null}
-      {scenario.notice ? (
-        <div className="mb-4 sm:mb-5">
-          <LiquidityScenarioNotice message={scenario.notice} onDismiss={scenario.dismissNotice} />
-        </div>
-      ) : null}
       <SegmentedControl
         value={tab}
         onValueChange={setTab}
-        ariaLabel={PLAN_COPY.tabListLabel}
+        ariaLabel="Análisis"
         className="flex flex-col gap-4 sm:gap-5"
         stretch
         frameClassName={cn(
@@ -84,7 +63,7 @@ export const LiquidityWorkspace = () => {
             label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
                 <LineChart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {PLAN_COPY.tabLiquidity}
+                Proyección
               </span>
             ),
           },
@@ -93,16 +72,16 @@ export const LiquidityWorkspace = () => {
             label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
                 <Landmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {PLAN_COPY.tabDebts}
+                Deudas
               </span>
             ),
           },
           {
-            value: 'plan',
+            value: 'simular',
             label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
-                <Route className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {PLAN_COPY.tabPlan}
+                <ShoppingBag className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                {PURCHASE_COPY.tab}
               </span>
             ),
           },
@@ -116,18 +95,6 @@ export const LiquidityWorkspace = () => {
             onReload={() => void reload()}
             selectedMonthKey={selectedMonthKey}
             onSelectedMonthKeyChange={setSelectedMonthKey}
-            scenario={scenario}
-            onChangeInPlan={() => setTab('plan')}
-          />
-        </TabsContent>
-        <TabsContent value="plan" className="mt-0 outline-none">
-          <CashPlanTab
-            data={data}
-            loading={loading}
-            error={error}
-            onReload={() => void reload()}
-            selectedMonthKey={selectedMonthKey}
-            scenario={scenario}
           />
         </TabsContent>
         <TabsContent value="deudas" className="mt-0 outline-none">
@@ -138,6 +105,9 @@ export const LiquidityWorkspace = () => {
             onReload={() => void reload()}
             refreshToken={refreshToken}
           />
+        </TabsContent>
+        <TabsContent value="simular" className="mt-0 outline-none">
+          <PurchaseSimulatorTab />
         </TabsContent>
       </SegmentedControl>
     </MobilePullToRefresh>
