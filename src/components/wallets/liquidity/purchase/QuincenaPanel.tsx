@@ -276,14 +276,6 @@ export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelec
           <Link href={`/monthly/${missing.year}/${missing.month}`} className="text-xs font-semibold text-primary-text underline underline-offset-4">{C.createFortnights}</Link>
         </div>
       ) : null}
-      {result.old_unpaid.count > 0 ? (
-        <div role="status" className={cn(PANEL_INSET_CLASS, 'flex items-start gap-2.5 px-3 py-2.5 text-sm')}>
-          <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <span>
-            Tienes {result.old_unpaid.count} {result.old_unpaid.count === 1 ? 'gasto' : 'gastos'} de quincenas pasadas sin marcar como pagados ({formatMoney(result.old_unpaid.total)}). Como en tu Panel, no los contamos.
-          </span>
-        </div>
-      ) : null}
       {lastPayment > rows.at(-1)!.endYmd ? (
         <p role="status" className="rounded-xl border border-status-pending-border bg-status-pending-soft px-3 py-2.5 text-sm text-foreground">
           Este periodo termina antes de tu último pago ({formatDisplayDate(lastPayment)}). Elige “{C.horizonPayoff}” para verlo completo.
