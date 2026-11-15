@@ -59,6 +59,5 @@ export function fakeSimulation(body: {
     ],
     assumptions: ['No se guarda nada.'],
     card_consumption: [],
-    old_unpaid: { count: 0, total: 0 },
   };
 }

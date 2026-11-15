@@ -95,8 +95,6 @@ export type PurchaseSimulationResult = {
   alternatives: SimulationAlternative[];
   assumptions: string[];
   card_consumption: { walletId: number; name: string; amount: number }[];
-  /** Unpaid expenses from quincenas before today's, left out like Panel does. */
-  old_unpaid: { count: number; total: number };
 };
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
@@ -112,7 +110,6 @@ type Loaded = {
   cards: CardDebtInput[];
   loans: LoanDebtInput[];
   consumption: { walletId: number; name: string; amount: number }[];
-  oldUnpaid: { count: number; total: number };
 };
 
 /** Days of [start, end] inside [from, to], inclusive. */
@@ -140,7 +137,6 @@ const loadBaseline = async (
   });
 
   const baseline: BaselineFlow[] = [];
-  const oldUnpaid = { count: 0, total: 0 };
   const todayRef = getCalendarFortnightRefForYmd(todayYmd);
   const currentStart = getFortnightYmdBounds(todayRef.year, todayRef.month, todayRef.period).startYmd;
   const statementByCard = new Map<number, { date: string; amount: number }[]>();
@@ -158,12 +154,8 @@ const loadBaseline = async (
       } else if (o.source === 'expense_template') {
         baseline.push({ date, amount, kind: 'template', name: o.template_name ?? 'Gasto programado', walletName: o.wallet_name, estimated: false });
       } else if (o.source === 'unpaid_expense') {
-        // Like Panel: only this quincena's unpaid expenses. Older ones are reported, not counted.
-        if (date < currentStart) {
-          oldUnpaid.count += 1;
-          oldUnpaid.total = cents(oldUnpaid.total + amount);
-          continue;
-        }
+        // Like Panel: only this quincena's unpaid expenses; older ones are left out.
+        if (date < currentStart) continue;
         baseline.push({ date, amount, kind: 'expense', name: o.expense_description ?? 'Gasto', walletName: o.wallet_name, estimated: false });
       }
     }
@@ -303,7 +295,6 @@ const loadBaseline = async (
     cards,
     loans: [...loansById.values()],
     consumption,
-    oldUnpaid,
   };
 };
 
@@ -530,6 +521,5 @@ export async function simulatePurchase(params: {
     alternatives,
     assumptions: [...ASSUMPTIONS_ES],
     card_consumption: loaded.consumption,
-    old_unpaid: loaded.oldUnpaid,
   };
 }
