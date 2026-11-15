@@ -220,7 +220,6 @@ export const QuincenaPanel = ({ result, selectedKey, onSelect, dimmed }: Props) 
   const key = selectedKey && rows.some((r) => r.key === selectedKey) ? selectedKey : result.verdict.tightestKey;
   const row = rows.find((r) => r.key === key)!;
   const missing = firstMissing(rows);
-  const created = lastCreatedLabel(result.last_created_quincena);
   const title = g === 'quincena' ? C.quincenaTitle : g === 'mes' ? C.monthTitle : C.yearTitle;
   const subtitle = g === 'quincena' ? C.quincenaSubtitle : g === 'mes' ? C.monthSubtitle : C.yearSubtitle;
 
@@ -240,12 +239,10 @@ export const QuincenaPanel = ({ result, selectedKey, onSelect, dimmed }: Props) 
       />
 
       {missing ? (
-        <div role="status" className={cn(PANEL_INSET_CLASS, 'flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm')}>
-          <Info className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <span className="min-w-0 flex-[1_1_16rem]">
-            {created ? `Tus quincenas están creadas hasta la ${created}.` : 'Aún no creas quincenas para estas fechas.'} De ahí en adelante calculamos con tus ingresos y gastos programados: los gastos sueltos que aún no registras no aparecen.
-          </span>
-        </div>
+        <p role="status" className="flex items-center gap-1.5 text-caption text-muted-foreground">
+          <Info className="size-3.5 shrink-0" aria-hidden />
+          <span>Estimado desde la {quincenaMid(missing)}: con tus ingresos y gastos programados.</span>
+        </p>
       ) : null}
       {result.plan.purchaseDate > result.as_of ? (
         <p role="status" className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">
