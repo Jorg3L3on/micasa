@@ -144,32 +144,6 @@ export const QuincenaChart = ({
   );
 };
 
-const AccumulatedLine = ({ rows, showBase }: { rows: QuincenaRow[]; showBase: boolean }) => {
-  const values = rows.flatMap((r) => (showBase ? [r.acumulado, r.acumuladoSinCompra] : [r.acumulado]));
-  const mn = Math.min(0, ...values);
-  const mx = Math.max(0, ...values);
-  const span = mx - mn || 1;
-  const py = (v: number) => 4 + ((mx - v) / span) * 48;
-  const px = (i: number) => (rows.length > 1 ? (i / (rows.length - 1)) * 1000 : 0);
-  const pts = (key: 'acumulado' | 'acumuladoSinCompra') => rows.map((r, i) => `${px(i).toFixed(1)},${py(r[key]).toFixed(1)}`).join(' ');
-  const low = rows.reduce((a, b) => (b.acumulado < a.acumulado ? b : a));
-  const last = rows.at(-1)!;
-  const text = `Lo más bajo: ${formatMoney(low.acumulado)} en la ${quincenaMid(low)}${showBase ? ` · al final, ${formatMoney(last.acumulado)} con la compra y ${formatMoney(last.acumuladoSinCompra)} sin ella` : ''}`;
-  return (
-    <div className={cn(PANEL_INSET_CLASS, 'p-3')}>
-      <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-caption">
-        <span className="font-semibold text-foreground">{C.accumulated}</span>
-        <span className="text-muted-foreground">{text}</span>
-      </div>
-      <svg viewBox="0 0 1000 56" preserveAspectRatio="none" role="img" aria-label={text} className="mt-1.5 block h-14 w-full">
-        <line x1="0" x2="1000" y1={py(0)} y2={py(0)} stroke="currentColor" strokeOpacity="0.3" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
-        {showBase ? <polyline points={pts('acumuladoSinCompra')} fill="none" stroke="currentColor" strokeOpacity="0.55" strokeWidth="1.5" strokeDasharray="5 4" vectorEffect="non-scaling-stroke" /> : null}
-        <polyline points={pts('acumulado')} fill="none" stroke="var(--primary)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-      </svg>
-    </div>
-  );
-};
-
 const LineRow = ({ name, meta, amount, tone }: { name: string; meta: string; amount: number; tone: 'income' | 'expense' }) => (
   <div className="flex justify-between gap-3 border-b border-border/40 py-2 last:border-b-0">
     <div className="min-w-0">
@@ -296,7 +270,6 @@ export const QuincenaPanel = ({ result, horizon, onHorizon, selectedKey, onSelec
       </div>
 
       <QuincenaChart units={units} showBase={showBase} selectedKeys={new Set([key])} onSelect={onSelect} />
-      <AccumulatedLine rows={rows} showBase={showBase} />
       <QuincenaDetail row={row} showBase={showBase} />
     </section>
   );

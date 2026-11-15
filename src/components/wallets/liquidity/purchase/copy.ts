@@ -72,7 +72,6 @@ export const PURCHASE_COPY = {
   horizon: 'Periodo',
   horizonPayoff: 'Hasta terminar de pagar',
   horizonPayoffShort: 'Hasta pagarla',
-  accumulated: 'Tu dinero acumulado',
   createFortnights: 'Crear quincenas',
   tableTitle: { quincena: 'Todas las quincenas', mes: 'Todos los meses', año: 'Todos los años' },
   tableHint: 'Toca una fila para ver qué más pagas ahí.',
