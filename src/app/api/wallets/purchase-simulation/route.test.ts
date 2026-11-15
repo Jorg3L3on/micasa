@@ -67,7 +67,6 @@ beforeEach(() => {
   getLiquidityProjection.mockResolvedValue({
     funding_wallets: [{ id: 3, name: 'Débito prueba', type: 'DEBIT_CARD', balance: 45000 }],
     milestones: [],
-    income_dates: [],
   });
 });
 
@@ -155,7 +154,6 @@ describe('GET /api/wallets/purchase-simulation', () => {
     getLiquidityProjection.mockResolvedValueOnce({
       funding_wallets: [{ id: 3, name: 'Débito prueba', type: 'DEBIT_CARD', balance: 45000 }],
       milestones: [{ due_date: today, obligations: [{ source: 'credit_card_statement', wallet_id: 7, wallet_name: 'Tarjeta prueba', next_due_payment: 1200 }] }],
-      income_dates: [{ date: today, amount: 99999, title: 'No se usa' }],
     });
     const body = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
     const row = body.series[0];
