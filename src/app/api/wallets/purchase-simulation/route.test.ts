@@ -26,7 +26,8 @@ vi.mock('@/lib/finance/report-summary.service', () => ({ getReportSummary }));
 vi.mock('@/lib/finance/planning-transactions.service', () => ({ listPlanningTransactions }));
 vi.mock('@/lib/prisma', () => ({ default: prismaMock }));
 
-import { POST } from './route';
+import { GET } from './route';
+import { preparePurchase, simulatePurchase } from '@/lib/finance/purchase-simulation/simulate';
 
 const ownerFilter = { user_id: 1, house_id: null };
 const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
@@ -36,8 +37,18 @@ const wallets = [
   { id: 7, name: 'Tarjeta prueba', type: 'CREDIT_CARD', provider_icon_key: null, amount: 8900, credit_limit: 25000, temporary_credit_limit: null, cutoff_day: 5, due_day: 25, apr_annual: 0.48, include_in_liquidity: true },
 ];
 
-const post = (body: unknown) =>
-  POST(new Request('http://test/api/wallets/purchase-simulation', { method: 'POST', body: JSON.stringify(body) }) as never);
+const get = (until?: string) => {
+  const url = new URL(`http://test/api/wallets/purchase-simulation${until ? `?until=${until}` : ''}`);
+  return GET(Object.assign(new Request(url), { nextUrl: url }) as never);
+};
+
+/** GET, then the purchase computed like the browser does. */
+const post = async (body: unknown) => {
+  const first = await (await get()).json();
+  const prepared = preparePurchase(body, first.wallets, first.baseline.as_of);
+  const loaded = prepared.until > first.baseline.until ? await (await get(prepared.until)).json() : first;
+  return simulatePurchase(prepared, loaded.wallets, loaded.baseline);
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -60,20 +71,21 @@ beforeEach(() => {
   });
 });
 
-describe('POST /api/wallets/purchase-simulation', () => {
-  it('400 on an invalid body', async () => {
-    const res = await post({ total: 0, date: today, mode: 'msi', wallet_id: 7, months: 12 });
+describe('GET /api/wallets/purchase-simulation', () => {
+  it('400 on an invalid until', async () => {
+    const res = await get('mañana');
     expect(res.status).toBe(400);
-    expect((await res.json()).field).toBe('total');
+    expect((await res.json()).field).toBe('until');
   });
 
-  it('404 for a wallet that is not in this owner context', async () => {
-    const res = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 99, months: 12 });
-    expect(res.status).toBe(404);
+  it('a bad price or a wallet of another space is a field error, computed without the server', async () => {
+    const { wallets, baseline } = await (await get()).json();
+    expect(() => preparePurchase({ total: 0, date: today, mode: 'msi', wallet_id: 7, months: 12 }, wallets, baseline.as_of)).toThrow(expect.objectContaining({ field: 'total' }));
+    expect(() => preparePurchase({ total: 6000, date: today, mode: 'msi', wallet_id: 99, months: 12 }, wallets, baseline.as_of)).toThrow(expect.objectContaining({ field: 'wallet_id' }));
   });
 
   it('scopes every read by the owner filter and never writes', async () => {
-    const res = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12, name: 'Carrito' });
+    const res = await get();
     expect(res.status).toBe(200);
     for (const m of Object.values(prismaMock)) {
       for (const call of m.findMany.mock.calls) {
@@ -86,8 +98,7 @@ describe('POST /api/wallets/purchase-simulation', () => {
   });
 
   it('estimates quincenas without a Fortnight row from templates and budgets', async () => {
-    const res = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
-    const body = await res.json();
+    const body = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
     expect(body.series.length).toBeGreaterThan(24);
     const later = body.series[4];
     expect(later.estimated).toBe(true);
@@ -104,17 +115,14 @@ describe('POST /api/wallets/purchase-simulation', () => {
       [{ total: 1800000, date: today, mode: 'credito', lender: 'new', pay_wallet_id: 3, months: 360, annual_rate: 10 }, 717],
     ] as const) {
       const started = Date.now();
-      const res = await post(body);
-      expect(res.status).toBe(200);
-      const json = await res.json();
+      const json = await post(body);
       expect(json.series.length).toBeGreaterThanOrEqual(min);
       expect(Date.now() - started).toBeLessThan(5000);
     }
   });
 
   it('red verdict when the card limit is exceeded', async () => {
-    const res = await post({ total: 20000, date: today, mode: 'contado', wallet_id: 7 });
-    const body = await res.json();
+    const body = await post({ total: 20000, date: today, mode: 'contado', wallet_id: 7 });
     expect(body.verdict.overLimitBy).toBe(3900);
     expect(body.verdict.level).toBe('red');
   });
@@ -149,8 +157,7 @@ describe('POST /api/wallets/purchase-simulation', () => {
       milestones: [{ due_date: today, obligations: [{ source: 'credit_card_statement', wallet_id: 7, wallet_name: 'Tarjeta prueba', next_due_payment: 1200 }] }],
       income_dates: [{ date: today, amount: 99999, title: 'No se usa' }],
     });
-    const res = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
-    const body = await res.json();
+    const body = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
     const row = body.series[0];
     expect(row.estimated).toBe(false);
     expect(row.incomes.map((i: { name: string }) => i.name)).toEqual(['Salario A']);

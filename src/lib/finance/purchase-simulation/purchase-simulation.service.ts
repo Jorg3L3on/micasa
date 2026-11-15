@@ -1,91 +1,32 @@
 import prisma from '@/lib/prisma';
 import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
-import { DomainError } from '@/lib/finance/domain-error';
 import { getLiquidityProjection } from '@/lib/finance/liquidity-projection.service';
-import { cardStatementForCharge } from '@/lib/finance/liquidity-scenario';
+import { cardStatementForCharge } from '@/lib/finance/card-statement-cycle';
 import { isFundingWalletType } from '@/lib/finance/wallet-accounting';
 import { getCalendarFortnightRefForYmd, getFortnightYmdBounds, type CalendarFortnightRef } from '@/lib/fortnight-calendar';
 import { getReportSummary } from '@/lib/finance/report-summary.service';
 import { listPlanningTransactions } from '@/lib/finance/planning-transactions.service';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import { addMonthsYmd } from '@/lib/finance/purchase-simulation/plan';
 import {
-  addMonthsYmd,
-  buildPurchasePlan,
-  PurchasePlanError,
-  type PlanWallet,
-  type PurchasePlan,
-  type PurchasePlanInput,
-} from '@/lib/finance/purchase-simulation/plan';
-import {
-  buildQuincenaSeries,
-  defaultHorizonEnd,
   listQuincenas,
-  purchaseFlows,
   quincenaKey,
-  verdictFacts,
   type BaselineFlow,
   type FlowKind,
-  type QuincenaRow,
-  type VerdictFacts,
 } from '@/lib/finance/purchase-simulation/series';
-import type { PurchaseSimulationInput } from '@/schemas/purchase-simulation.schema';
+import type { SimulationBaseline, SimulationWallet } from '@/lib/finance/purchase-simulation/simulate';
 
 /**
- * POST /api/wallets/purchase-simulation (MIC-I17-2). Read-only: it loads the
- * owner's projection once, adds what the projection leaves out (programmed
- * income and expenses in quincenas not created yet, budgets, habitual card
- * consumption past the projected cycles) and compares the series with and
- * without the purchase. Nothing is written.
+ * GET /api/wallets/purchase-simulation (MIC-I17): the server half of Simular
+ * compra: loads the owner's wallets and, once, everything that already happens
+ * without the purchase: Panel's own figures for created quincenas, the
+ * projection (card statements, loans) and programmed income and expenses for
+ * the rest, budgets and habitual card consumption. The browser adds the
+ * purchase (simulate.ts). Read-only.
  */
-
-export class PurchaseSimulationError extends DomainError {
-  constructor(
-    message: string,
-    readonly field: string,
-    status = 400,
-  ) {
-    super('INVALID_PURCHASE_SIMULATION', message, status);
-  }
-}
-
-export type SimulationWallet = {
-  id: number;
-  name: string;
-  type: string;
-  isCard: boolean;
-  providerIconKey: string | null;
-  balance: number | null;
-  debt: number | null;
-  limit: number | null;
-  available: number | null;
-  cutoffDay: number | null;
-  dueDay: number | null;
-  aprAnnualPct: number | null;
-};
-
-export type PurchaseSimulationResult = {
-  as_of: string;
-  until: string;
-  starting_liquidity: number;
-  wallets: SimulationWallet[];
-  plan: PurchasePlan;
-  series: QuincenaRow[];
-  verdict: VerdictFacts;
-  assumptions: string[];
-  card_consumption: { walletId: number; name: string; amount: number }[];
-};
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
 const cents = (n: number) => Math.round(n * 100) / 100;
-
-type Loaded = {
-  todayYmd: string;
-  untilYmd: string;
-  startingLiquidity: number;
-  baseline: BaselineFlow[];
-  createdKeys: Set<string>;
-  consumption: { walletId: number; name: string; amount: number }[];
-};
 
 /** Days of [start, end] inside [from, to], inclusive. */
 const overlapDays = (start: string, end: string, from: string, to: string): number => {
@@ -163,13 +104,13 @@ const panelQuincenas = async (
   return out;
 };
 
-const loadBaseline = async (
+export const loadSimulationBaseline = async (
   ownerFilter: OwnerFilter,
   wallets: SimulationWallet[],
-  todayYmd: string,
   untilYmd: string,
-  asOf: Date,
-): Promise<Loaded> => {
+  asOf: Date = new Date(),
+): Promise<SimulationBaseline> => {
+  const todayYmd = formatCalendarDate(asOf);
   const projection = await getLiquidityProjection({
     ownerFilter,
     asOf,
@@ -284,7 +225,7 @@ const loadBaseline = async (
 
   // Habitual card consumption: cycles the projection could not resolve get the
   // average of the card's resolved statements (first three), flagged as estimate.
-  const consumption: Loaded['consumption'] = [];
+  const consumption: SimulationBaseline['card_consumption'] = [];
   for (const card of wallets.filter((w) => w.isCard)) {
     const resolved = (statementByCard.get(card.id) ?? []).sort((a, b) => a.date.localeCompare(b.date));
     const sample = resolved.filter((r) => r.amount > 0).slice(0, 3);
@@ -303,12 +244,11 @@ const loadBaseline = async (
   }
 
   return {
-    todayYmd,
-    untilYmd,
-    startingLiquidity: cents(projection.funding_wallets.reduce((s, w) => s + w.balance, 0)),
-    baseline,
-    createdKeys,
-    consumption,
+    as_of: todayYmd,
+    until: untilYmd,
+    flows: baseline,
+    created_keys: [...createdKeys],
+    card_consumption: consumption,
   };
 };
 
@@ -343,107 +283,3 @@ export const loadSimulationWallets = async (ownerFilter: OwnerFilter): Promise<S
       };
     });
 };
-
-const planWallet = (w: SimulationWallet): PlanWallet => ({
-  id: w.id,
-  name: w.name,
-  isCard: w.isCard,
-  cutoff_day: w.cutoffDay,
-  due_day: w.dueDay,
-});
-
-const toPlanInput = (input: PurchaseSimulationInput, wallets: Map<number, SimulationWallet>): PurchasePlanInput => {
-  const need = (id: number | undefined, field: string) => {
-    const w = id != null ? wallets.get(id) : undefined;
-    if (!w) throw new PurchaseSimulationError('Elige una billetera de este espacio.', field, 404);
-    return w;
-  };
-  const lender = input.lender ?? 'new';
-  const main =
-    input.mode === 'credito' && lender === 'new'
-      ? need(input.pay_wallet_id, 'pay_wallet_id')
-      : need(input.wallet_id, 'wallet_id');
-  const down = input.down_wallet_id != null ? need(input.down_wallet_id, 'down_wallet_id') : null;
-  const pay = input.pay_wallet_id != null ? need(input.pay_wallet_id, 'pay_wallet_id') : null;
-  return {
-    total: input.total,
-    date: input.date,
-    mode: input.mode,
-    wallet: planWallet(main),
-    months: input.months,
-    lender,
-    annualRatePct: input.annual_rate ?? (lender === 'card' ? (main.aprAnnualPct ?? undefined) : undefined),
-    monthlyPayment: input.monthly_payment,
-    downPayment: input.down_payment,
-    downWallet: down ? { id: down.id, name: down.name } : null,
-    payWallet: pay ? { id: pay.id, name: pay.name } : null,
-    paymentDay: input.payment_day,
-    extraMonthly: input.extra_monthly,
-  };
-};
-
-const overLimit = (plan: PurchasePlan, wallets: Map<number, SimulationWallet>): number => {
-  if (typeof plan.debtWalletId !== 'number') return 0;
-  const w = wallets.get(plan.debtWalletId);
-  if (!w || w.available == null) return 0;
-  return Math.max(0, cents(plan.principal - w.available));
-};
-
-export const ASSUMPTIONS_ES = [
-  'Cada quincena, como en tu Panel: lo que entra menos lo que tienes que pagar y tus presupuestos. La de hoy cuenta solo lo que falta.',
-  'Tarjetas: pagas el total de cada estado de cuenta; donde no hay estado, tu consumo habitual.',
-  'No incluye cambios de sueldo ni pagos mínimos. No se guarda nada.',
-];
-
-export async function simulatePurchase(params: {
-  ownerFilter: OwnerFilter;
-  input: PurchaseSimulationInput;
-  asOf?: Date;
-}): Promise<PurchaseSimulationResult> {
-  const asOf = params.asOf ?? new Date();
-  const todayYmd = formatCalendarDate(asOf);
-  const { input } = params;
-  if (input.date < todayYmd) {
-    throw new PurchaseSimulationError('Elige un día de hoy en adelante.', 'date');
-  }
-
-  const wallets = await loadSimulationWallets(params.ownerFilter);
-  const byId = new Map(wallets.map((w) => [w.id, w]));
-
-  const plan = (() => {
-    try {
-      return buildPurchasePlan(toPlanInput(input, byId));
-    } catch (error) {
-      if (error instanceof PurchasePlanError) throw new PurchaseSimulationError(error.message, error.field);
-      throw error;
-    }
-  })();
-
-  const name = input.name?.trim() || 'tu compra';
-  // Always until the quincena of the last payment.
-  const untilYmd = defaultHorizonEnd(plan);
-
-  const loaded = await loadBaseline(params.ownerFilter, wallets, todayYmd, untilYmd, asOf);
-
-  const series = buildQuincenaSeries({
-    todayYmd,
-    untilYmd,
-    startingLiquidity: loaded.startingLiquidity,
-    baseline: loaded.baseline,
-    purchase: purchaseFlows(plan, name, untilYmd),
-    createdKeys: loaded.createdKeys,
-  });
-  const verdict = verdictFacts(series, overLimit(plan, byId));
-
-  return {
-    as_of: todayYmd,
-    until: untilYmd,
-    starting_liquidity: loaded.startingLiquidity,
-    wallets,
-    plan,
-    series,
-    verdict,
-    assumptions: [...ASSUMPTIONS_ES],
-    card_consumption: loaded.consumption,
-  };
-}

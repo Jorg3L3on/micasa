@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Landmark, LineChart, ShoppingBag } from 'lucide-react';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { TabsContent } from '@/components/motion/tabs';
@@ -19,6 +20,10 @@ import { cn } from '@/lib/utils';
 
 const WORKSPACE_TAB_LABEL_CLASS = 'inline-flex items-center justify-center gap-1.5';
 
+const TABS = ['liquidez', 'deudas', 'simular'] as const;
+type WorkspaceTab = (typeof TABS)[number];
+const isTab = (value: string | null): value is WorkspaceTab => TABS.includes(value as WorkspaceTab);
+
 export const LiquidityWorkspace = () => {
   const {
     data,
@@ -29,7 +34,20 @@ export const LiquidityWorkspace = () => {
     setSelectedMonthKey,
   } = useLiquidityProjection();
 
-  const [tab, setTab] = useState('liquidez');
+  // The tab lives in the URL (?tab=simular) so a reload or Back keeps you where you were.
+  const searchParams = useSearchParams();
+  const [tab, setTabState] = useState<WorkspaceTab>(() => {
+    const fromUrl = searchParams.get('tab');
+    return isTab(fromUrl) ? fromUrl : 'liquidez';
+  });
+  const setTab = useCallback((next: string) => {
+    if (!isTab(next)) return;
+    setTabState(next);
+    const url = new URL(window.location.href);
+    if (next === 'liquidez') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', next);
+    window.history.replaceState(window.history.state, '', url);
+  }, []);
   const [refreshToken, setRefreshToken] = useState(0);
 
   const handlePullRefresh = useCallback(async () => {

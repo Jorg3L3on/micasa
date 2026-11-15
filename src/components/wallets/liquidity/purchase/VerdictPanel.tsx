@@ -1,13 +1,13 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { CalendarRange, CircleCheck, CircleX, PiggyBank, Scale, TriangleAlert, TrendingDown, Wallet } from 'lucide-react';
+import { CalendarRange, CircleCheck, CircleX, CreditCard, Scale, TriangleAlert, TrendingDown, Wallet } from 'lucide-react';
 import { AccountMetric } from '@/components/monthly/FortnightSummaryHero';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { SectionHeader } from '@/components/section-header';
 import { Badge } from '@/components/ui/badge';
 import { formatDisplayDate } from '@/lib/calendar-dates';
-import type { PurchaseSimulationResult } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
+import type { PurchaseSimulationResult } from '@/lib/finance/purchase-simulation/simulate';
 import { formatMoney } from '@/lib/money';
 import { STATUS_SOFT_CLASS, STATUS_TEXT_CLASS, type StatusTone } from '@/lib/status-tone';
 import { AURA_TONE_HEX, getAuraBloomImage } from '@/lib/ui/aura-palette';
@@ -71,10 +71,9 @@ type Tile = {
 };
 
 export function kpiTiles(result: PurchaseSimulationResult): Tile[] {
-  const { plan, verdict, series } = result;
+  const { plan, verdict, series, wallets } = result;
   const byKey = new Map(series.map((r) => [r.key, r]));
   const tight = byKey.get(verdict.tightestKey)!;
-  const low = byKey.get(verdict.lowestAcumuladoKey)!;
   const red = verdict.redKeys.length;
   const ends = `termina ${formatDisplayDate(plan.lastDueDate)}`;
   const pay: Tile =
@@ -115,15 +114,38 @@ export function kpiTiles(result: PurchaseSimulationResult): Tile[] {
       tone: verdict.tightestQueda < 0 ? 'overdue' : verdict.justaKeys.length > 0 ? 'pending' : 'success',
       badge: verdict.tightestQueda < 0 ? 'Falta' : verdict.justaKeys.length > 0 ? 'Justa' : 'Holgada',
     },
-    {
-      label: 'Tu colchón más bajo',
-      amount: verdict.lowestAcumulado,
-      subtitle: `Dinero acumulado · ${quincenaShort(low)}`,
-      icon: PiggyBank,
-      tone: verdict.lowestAcumulado < 0 ? 'overdue' : 'success',
-      badge: verdict.lowestAcumulado < 0 ? 'No alcanza' : 'Alcanza',
-    },
+    walletTile(plan, wallets, verdict.overLimitBy),
   ];
+}
+
+/** Where the money comes from: the card's disponible, the debit balance, or the credit's total cost. */
+function walletTile(plan: PurchaseSimulationResult['plan'], wallets: PurchaseSimulationResult['wallets'], overLimitBy: number): Tile {
+  const card = typeof plan.debtWalletId === 'number' ? wallets.find((w) => w.id === plan.debtWalletId) : null;
+  if (card && card.available != null) {
+    return {
+      label: `Disponible en ${card.name}`,
+      amount: card.available,
+      subtitle: overLimitBy > 0 ? `Te faltan ${formatMoney(overLimitBy)} para esta compra` : `Después de la compra: ${formatMoney(card.available - plan.principal)}`,
+      icon: CreditCard,
+      tone: overLimitBy > 0 ? 'overdue' : 'success',
+      badge: overLimitBy > 0 ? 'No cabe' : 'Cabe',
+    };
+  }
+  if (plan.debtWalletId === 'new') {
+    const paid = plan.payments.reduce((s, p) => s + p.amount, 0);
+    return { label: 'En total pagas', amount: paid, subtitle: `${formatMoney(plan.interest)} son intereses`, icon: Wallet, tone: null };
+  }
+  const wallet = wallets.find((w) => w.id === plan.payments[0]?.walletId);
+  const balance = wallet?.balance ?? 0;
+  const left = balance - plan.total;
+  return {
+    label: `Saldo en ${wallet?.name ?? 'tu billetera'}`,
+    amount: balance,
+    subtitle: left < 0 ? `Te faltan ${formatMoney(-left)} para esta compra` : `Después de la compra: ${formatMoney(left)}`,
+    icon: Wallet,
+    tone: left < 0 ? 'overdue' : 'success',
+    badge: left < 0 ? 'No alcanza' : 'Alcanza',
+  };
 }
 
 const AURA = { success: 'emerald', overdue: 'destructive', pending: 'amber', income: 'primary', expense: 'violet', info: 'blue' } as const;

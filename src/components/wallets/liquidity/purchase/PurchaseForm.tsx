@@ -1,7 +1,7 @@
 'use client';
 
 import { useId } from 'react';
-import { Info, Minus, Plus, ShoppingBag, TriangleAlert } from 'lucide-react';
+import { Minus, Plus, ShoppingBag } from 'lucide-react';
 import {
   AURA_TAB_INDICATOR_CLASS,
   GLASS_TAB_ACTIVE_LABEL_CLASS,
@@ -30,15 +30,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import { formatDisplayDate } from '@/lib/calendar-dates';
 import { MSI_MONTH_OPTIONS } from '@/lib/finance/purchase-simulation/constants';
-import type { PurchaseSimulationResult, SimulationWallet } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
-import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
+import type { PurchaseSimulationResult, SimulationWallet } from '@/lib/finance/purchase-simulation/simulate';
 import { formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import { PURCHASE_COPY as C } from '@/components/wallets/liquidity/purchase/copy';
-import { quincenaShort } from '@/components/wallets/liquidity/purchase/format';
-import type { PurchaseDraft, PurchaseMode } from '@/components/wallets/liquidity/purchase/use-purchase-simulation';
+import { roomiestCard, type PurchaseDraft, type PurchaseMode } from '@/components/wallets/liquidity/purchase/use-purchase-simulation';
 
 const CHIP = 'min-h-11 rounded-xl border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50';
 const chipClass = (on: boolean) =>
@@ -67,23 +64,29 @@ export const WalletSelect = ({
   value,
   onChange,
   showInfo = true,
+  need = 0,
 }: {
   label: string;
   wallets: SimulationWallet[];
   value: number | null;
   onChange: (id: number) => void;
   showInfo?: boolean;
+  /** Price the card has to hold: cards whose disponible is lower say "No alcanza". */
+  need?: number;
 }) => {
   const id = useId();
   const selected = wallets.find((w) => w.id === value) ?? null;
   const cards = wallets.filter((w) => w.isCard);
   const funding = wallets.filter((w) => !w.isCard);
+  const short = (w: SimulationWallet) => w.isCard && need > 0 && w.available != null && w.available < need;
+  const info = (w: SimulationWallet) =>
+    short(w) ? <span className="text-caption text-status-overdue">No alcanza · {walletInfo(w)}</span> : <span className="text-caption text-muted-foreground">{walletInfo(w)}</span>;
   const item = (w: SimulationWallet) => (
     <SelectItem key={w.id} value={String(w.id)} className="min-h-11 py-2">
       <WalletProviderIcon providerIconKey={w.providerIconKey} className="size-6" showTooltipLabel={false} />
       <span className="flex min-w-0 flex-col items-start">
         <span className="truncate font-medium">{w.name}</span>
-        <span className="text-caption text-muted-foreground">{walletInfo(w)}</span>
+        {info(w)}
       </span>
     </SelectItem>
   );
@@ -116,7 +119,7 @@ export const WalletSelect = ({
           ) : null}
         </SelectContent>
       </Select>
-      {showInfo && selected ? <p className="mt-1.5 px-1 text-caption text-muted-foreground">{walletInfo(selected)}</p> : null}
+      {showInfo && selected ? <p className="mt-1.5 px-1">{info(selected)}</p> : null}
     </div>
   );
 };
@@ -143,27 +146,6 @@ export type PurchaseFormProps = {
   onSeeImpact?: () => void;
 };
 
-export function payHint(draft: PurchaseDraft, wallets: SimulationWallet[], result: PurchaseSimulationResult | null): string | null {
-  const plan = result?.plan;
-  if (!plan || !(draft.total > 0)) return null;
-  const q = (ymd: string) => {
-    const ref = getCalendarFortnightRefForYmd(ymd);
-    return quincenaShort(ref);
-  };
-  const wallet = wallets.find((w) => w.id === draft.walletId);
-  if (plan.mode === 'contado') {
-    return plan.cutoffDate
-      ? `Se carga a tu corte del ${formatDisplayDate(plan.cutoffDate)} y pagas los ${formatMoney(plan.total)} completos el ${formatDisplayDate(plan.firstDueDate)}, en tu ${q(plan.firstDueDate)}. Sin intereses si pagas el total.`
-      : `Los ${formatMoney(plan.total)} salen de ${wallet?.name ?? 'tu billetera'} el ${formatDisplayDate(plan.purchaseDate)}.`;
-  }
-  const payment = formatMoney(plan.regularPayment);
-  if (plan.mode === 'msi') {
-    return `${plan.count} pagos de ${payment} · total ${formatMoney(plan.total)} · sin intereses. El primero llega en tu pago del ${formatDisplayDate(plan.firstDueDate)} (${q(plan.firstDueDate)}).`;
-  }
-  const paid = plan.payments.reduce((s, p) => s + p.amount, 0);
-  return `${plan.debtWalletId === 'new' ? 'Mensualidad de' : `${plan.count} pagos de`} ${payment}${plan.debtWalletId === 'new' ? ` por ${plan.count} meses desde el ${formatDisplayDate(plan.firstDueDate)}` : ''}. Pagas ${formatMoney(plan.interest)} de intereses: en total ${formatMoney(paid)}.`;
-}
-
 export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onSeeImpact }: PurchaseFormProps) => {
   const nameId = useId();
   const cards = wallets.filter((w) => w.isCard);
@@ -174,9 +156,6 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
     { id: 'msi', label: C.modeMsiShort, ariaLabel: C.modeMsi },
     { id: 'credito', label: C.modeCredito, ariaLabel: C.modeCredito },
   ];
-  const hint = payHint(draft, wallets, result);
-  const over = result?.verdict.overLimitBy ?? 0;
-  const debtCard = typeof result?.plan.debtWalletId === 'number' ? wallets.find((w) => w.id === result.plan.debtWalletId) : null;
   const shortBy = draft.mode === 'contado' && selected && !selected.isCard ? Math.max(0, draft.total - (selected.balance ?? 0)) : 0;
   const downValue = draft.down ?? Math.round(draft.total * 0.2);
   const isNew = draft.lender === 'new';
@@ -202,7 +181,7 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
         <GroupedRow label={C.name} htmlFor={nameId}>
           <input id={nameId} value={draft.name} onChange={(e) => onChange({ name: e.target.value })} placeholder={C.namePlaceholder} maxLength={120} className={OVERLAY_ROW_INPUT_CLASS} />
         </GroupedRow>
-        <AmountRow label={C.total} value={draft.total || ''} onChange={(v) => onChange({ total: v })} ariaLabel="Precio total en pesos" />
+        <AmountRow label={C.total} value={draft.total || ''} onChange={(v) => onChange({ total: v })} ariaLabel="Precio total en pesos" grouped />
         <div className="px-3 py-1.5">
           <DateStepper label={C.date} value={draft.date} onChange={(date) => onChange({ date })} />
         </div>
@@ -232,6 +211,7 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
           wallets={draft.mode === 'msi' ? cards : [...cards, ...funding]}
           value={draft.walletId}
           onChange={(walletId) => onChange({ walletId })}
+          need={draft.total}
         />
       ) : null}
 
@@ -254,7 +234,7 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
               ...(cards.length > 0 ? [{ value: 'card', label: C.lenderCard }] : []),
             ]}
             onChange={(v) => {
-              const card = cards[0];
+              const card = roomiestCard(wallets);
               if (v === 'new') onChange({ lender: 'new', creditMonths: 48, rate: 13.9 });
               else if (card) onChange({ lender: card.id, creditMonths: 12, rate: card.aprAnnualPct ?? 40 });
             }}
@@ -265,6 +245,7 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
               wallets={cards}
               value={typeof draft.lender === 'number' ? draft.lender : null}
               onChange={(id) => onChange({ lender: id, rate: cards.find((c) => c.id === id)?.aprAnnualPct ?? draft.rate })}
+              need={draft.total}
             />
           ) : null}
           <InCardTabs
@@ -312,18 +293,6 @@ export const PurchaseForm = ({ wallets, draft, onChange, result, fieldError, onS
         </div>
       ) : null}
 
-      {hint ? (
-        <p role="status" className="flex gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm leading-snug">
-          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>{hint}</span>
-        </p>
-      ) : null}
-      {over > 0 && debtCard ? (
-        <p role="alert" className="flex gap-2 rounded-xl border border-status-overdue-border bg-status-overdue-soft px-3 py-2.5 text-sm text-foreground">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-status-overdue" aria-hidden />
-          <span>Rebasa tu disponible en {debtCard.name} por {formatMoney(over)}. Tu disponible es {formatMoney(debtCard.available ?? 0)}.</span>
-        </p>
-      ) : null}
       {shortBy > 0 && selected ? (
         <OverlayWarning>Tu saldo en {selected.name} es {formatMoney(selected.balance ?? 0)}: tendrías que pasarle {formatMoney(shortBy)} de otra billetera antes de pagar.</OverlayWarning>
       ) : null}

@@ -6,7 +6,7 @@ import { MONTHLY_LIQUID_PANEL_CLASS, PANEL_INSET_CLASS } from '@/components/mont
 import { SectionHeader } from '@/components/section-header';
 import { Toggle } from '@/components/ui/toggle';
 import { formatDisplayDate } from '@/lib/calendar-dates';
-import type { PurchaseSimulationResult } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
+import type { PurchaseSimulationResult } from '@/lib/finance/purchase-simulation/simulate';
 import type { QuincenaRow } from '@/lib/finance/purchase-simulation/series';
 import { formatAxisMoney, formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
@@ -106,7 +106,13 @@ export const QuincenaChart = ({
                   className={cn('relative min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60', sel ? 'bg-foreground/[0.08] ring-1 ring-foreground/30' : 'hover:bg-foreground/[0.04]')}
                 >
                   <span
-                    className={cn('absolute inset-x-[14%] rounded-sm', u.queda < 0 ? 'bg-status-overdue' : 'bg-gradient-to-b from-[color-mix(in_oklch,var(--primary)_70%,white)] to-primary', u.estimated && 'opacity-50')}
+                    className={cn(
+                      'absolute inset-x-[14%] rounded-sm',
+                      // Estimated quincenas are drawn hollow: they miss the expenses you have not registered yet.
+                      u.estimated
+                        ? cn('border border-dashed', u.queda < 0 ? 'border-status-overdue bg-status-overdue/15' : 'border-primary/70 bg-primary/15')
+                        : u.queda < 0 ? 'bg-status-overdue' : 'bg-gradient-to-b from-[color-mix(in_oklch,var(--primary)_70%,white)] to-primary',
+                    )}
                     style={{ top: u.queda >= 0 ? Y(u.queda) : y0, height: Math.max(2, Math.abs(u.queda) * scale) }}
                   />
                   {showBase && u.compra > 0 ? (
@@ -257,7 +263,7 @@ export const QuincenaPanel = ({ result, selectedKey, onSelect, dimmed }: Props) 
         <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm bg-status-overdue" />{C.legendShort}</span>
         {showBase ? <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm" style={{ background: STRIPES }} />{C.legendWeight}</span> : null}
         {showBase ? <span className="inline-flex items-center gap-1.5"><span aria-hidden className="h-0.5 w-3.5 bg-foreground" />{C.legendBaseline}</span> : null}
-        {missing ? <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm border border-dashed border-foreground/50" />{C.estimated}</span> : null}
+        {missing ? <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm border border-dashed border-primary/70 bg-primary/15" />{C.estimated}</span> : null}
       </div>
 
       <QuincenaChart units={units} showBase={showBase} selectedKeys={new Set([key])} onSelect={onSelect} />
@@ -328,7 +334,7 @@ export const QuincenaTable = ({ result, selectedKey, onSelect, dimmed }: Props) 
           >
             <span className="min-w-0">
               <span className="flex items-center gap-1.5 text-sm font-semibold">{u.label}{u.estimated ? <span className="rounded-full border border-dashed border-foreground/35 px-1.5 text-[0.65rem] font-medium">{C.estimated}</span> : null}</span>
-              <span className="block text-caption text-muted-foreground">Compra {u.compra > 0 ? formatMoney(u.compra) : '—'} · sin ella {formatMoney(u.sinCompra)}</span>
+              <span className="block text-caption text-muted-foreground">{u.compra > 0 ? `Esta compra ${formatMoney(u.compra)} · sin ella ${formatMoney(u.sinCompra)}` : C.noPaymentsHere}</span>
             </span>
             <span className={cn('shrink-0 text-base font-bold tabular-nums', u.queda < 0 ? 'text-status-overdue' : 'text-foreground')}>{formatMoney(u.queda)}</span>
           </button>

@@ -5,7 +5,7 @@ import { CalendarDays, ChevronDown, Info } from 'lucide-react';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { SectionHeader } from '@/components/section-header';
 import { formatDisplayDate } from '@/lib/calendar-dates';
-import type { PurchaseSimulationResult } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
+import type { PurchaseSimulationResult } from '@/lib/finance/purchase-simulation/simulate';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
@@ -37,7 +37,6 @@ export const PaymentCalendar = ({ result, dimmed }: { result: PurchaseSimulation
     }
   }
   const all = plan.payments;
-  const list = showAll || all.length <= 6 ? all : [...all.slice(0, 4), null, all[all.length - 1]];
   const paid = all.reduce((s, p) => s + p.amount, 0);
   return (
     <section aria-labelledby="sc-cal" className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'flex flex-col gap-3 p-3 sm:p-4', dimmed && 'opacity-50')}>
@@ -53,21 +52,21 @@ export const PaymentCalendar = ({ result, dimmed }: { result: PurchaseSimulation
           </li>
         ))}
       </ol>
-      <div className="overflow-hidden rounded-xl border border-border/50">
-        {list.map((p, i) =>
-          p ? (
-            <div key={i} className="flex min-h-10 items-center justify-between gap-3 border-b border-border/30 px-3 py-1.5 last:border-b-0">
-              <span className="min-w-0 text-caption">{p.label}</span>
-              <span className="whitespace-nowrap text-caption text-muted-foreground">{formatDisplayDate(p.date)} · {qShort(p.date)}</span>
-              <span className="whitespace-nowrap text-sm font-semibold tabular-nums">{formatMoney(p.amount)}</span>
+      {showAll ? (
+        <div id="sc-cal-list" className="overflow-hidden rounded-xl border border-border/50">
+          {all.map((p, i) => (
+            <div key={i} className="flex min-h-11 items-center justify-between gap-3 border-b border-border/30 px-3 py-1.5 last:border-b-0">
+              <div className="min-w-0">
+                <p className="text-caption font-medium">{p.label}</p>
+                <p className="text-caption text-muted-foreground">{formatDisplayDate(p.date)} · {qShort(p.date)}</p>
+              </div>
+              <span className="shrink-0 text-sm font-semibold tabular-nums">{formatMoney(p.amount)}</span>
             </div>
-          ) : (
-            <div key={i} className="border-b border-border/30 bg-white/[0.02] px-3 py-1.5 text-caption text-muted-foreground">… {all.length - 5} pagos más</div>
-          ),
-        )}
-      </div>
-      {all.length > 6 ? (
-        <button type="button" onClick={() => setShowAll((v) => !v)} className="min-h-10 rounded-xl border border-border/60 text-sm font-semibold hover:bg-white/[0.03]">
+          ))}
+        </div>
+      ) : null}
+      {all.length > 1 ? (
+        <button type="button" aria-expanded={showAll} aria-controls="sc-cal-list" onClick={() => setShowAll((v) => !v)} className="min-h-10 rounded-xl border border-border/60 text-sm font-semibold hover:bg-white/[0.03]">
           {showAll ? C.seeLess : `Ver los ${all.length} pagos`}
         </button>
       ) : null}
@@ -95,7 +94,6 @@ export const AssumptionsPanel = ({ result }: { result: PurchaseSimulationResult 
       </button>
       {open ? (
         <ul id="sc-how-list" className="flex list-disc flex-col gap-0.5 pb-2.5 pl-5 text-caption text-muted-foreground">
-          <li>Empiezas con {formatMoney(result.starting_liquidity)} en efectivo y débito.</li>
           {result.assumptions.map((a) => <li key={a}>{a}</li>)}
           {consumption ? <li>Consumo habitual por estado de cuenta: {consumption}.</li> : null}
         </ul>

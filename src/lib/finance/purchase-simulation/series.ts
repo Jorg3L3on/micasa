@@ -58,8 +58,6 @@ export type QuincenaRow = {
   sinCompra: number;
   /** entra − comprometido − compra. */
   queda: number;
-  acumulado: number;
-  acumuladoSinCompra: number;
   incomes: FlowLine[];
   outflows: FlowLine[];
   purchase: FlowLine[];
@@ -78,15 +76,14 @@ export type VerdictFacts = {
   tightestQueda: number;
   tightestSinCompra: number;
   baselineTightest: number;
-  lowestAcumulado: number;
-  lowestAcumuladoKey: string;
-  firstNegativeAcumuladoKey: string | null;
   /** Quincenas with money left but less than 10% of what comes in, where the purchase pays. */
   justaKeys: string[];
   overLimitBy: number;
 };
 
 export const JUSTA_THRESHOLD = 0.1;
+/** From this many quincenas in rojo the verdict is "Mala idea por ahora". */
+export const RED_QUINCENAS_LIMIT = 3;
 
 const cents = (n: number) => Math.round(n * 100) / 100;
 
@@ -148,7 +145,6 @@ export const purchaseFlows = (plan: PurchasePlan, name: string, untilYmd: string
 export type BuildSeriesInput = {
   todayYmd: string;
   untilYmd: string;
-  startingLiquidity: number;
   baseline: BaselineFlow[];
   purchase: FlowLine[];
   /** Keys (quincenaKey) of quincenas that have a Fortnight row. */
@@ -174,8 +170,6 @@ export function buildQuincenaSeries(input: BuildSeriesInput): QuincenaRow[] {
       compra: 0,
       sinCompra: 0,
       queda: 0,
-      acumulado: 0,
-      acumuladoSinCompra: 0,
       incomes: [],
       outflows: [],
       purchase: [],
@@ -216,8 +210,6 @@ export function buildQuincenaSeries(input: BuildSeriesInput): QuincenaRow[] {
     row.purchase.push(line);
   }
 
-  let acc = input.startingLiquidity;
-  let accBase = input.startingLiquidity;
   const out: QuincenaRow[] = [];
   for (const ref of refs) {
     const row = rows.get(quincenaKey(ref))!;
@@ -226,10 +218,6 @@ export function buildQuincenaSeries(input: BuildSeriesInput): QuincenaRow[] {
     row.compra = cents(row.compra);
     row.sinCompra = cents(row.entra - row.comprometido);
     row.queda = cents(row.sinCompra - row.compra);
-    acc = cents(acc + row.queda);
-    accBase = cents(accBase + row.sinCompra);
-    row.acumulado = acc;
-    row.acumuladoSinCompra = accBase;
     row.outflows.sort((a, b) => b.amount - a.amount);
     row.incomes.sort((a, b) => b.amount - a.amount);
     row.purchase.sort((a, b) => a.date.localeCompare(b.date));
@@ -241,16 +229,13 @@ export function buildQuincenaSeries(input: BuildSeriesInput): QuincenaRow[] {
 export function verdictFacts(rows: QuincenaRow[], overLimitBy: number): VerdictFacts {
   const red = rows.filter((r) => r.queda < 0);
   let tight = rows[0];
-  let low = rows[0];
   let baselineTightest = rows[0].sinCompra;
   for (const r of rows) {
     if (r.queda < tight.queda) tight = r;
-    if (r.acumulado < low.acumulado) low = r;
     if (r.sinCompra < baselineTightest) baselineTightest = r.sinCompra;
   }
-  const firstNeg = rows.find((r) => r.acumulado < 0) ?? null;
   const level: VerdictLevel =
-    overLimitBy > 0 || firstNeg ? 'red' : red.length > 0 ? 'amber' : 'green';
+    overLimitBy > 0 || red.length >= RED_QUINCENAS_LIMIT ? 'red' : red.length > 0 ? 'amber' : 'green';
   return {
     level,
     quincenas: rows.length,
@@ -261,9 +246,6 @@ export function verdictFacts(rows: QuincenaRow[], overLimitBy: number): VerdictF
     tightestQueda: tight.queda,
     tightestSinCompra: tight.sinCompra,
     baselineTightest,
-    lowestAcumulado: low.acumulado,
-    lowestAcumuladoKey: low.key,
-    firstNegativeAcumuladoKey: firstNeg?.key ?? null,
     justaKeys: rows
       .filter((r) => r.compra > 0 && r.queda >= 0 && r.queda < r.entra * JUSTA_THRESHOLD)
       .map((r) => r.key),

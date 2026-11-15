@@ -2,18 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFinanceContext } from '@/context/finance-context';
-import { clientFetchFromApi, getFinanceOwnerKey, type ClientApiError } from '@/lib/api/client-fetch';
+import { clientFetchFromApi, getFinanceOwnerKey } from '@/lib/api/client-fetch';
 import { todayCalendarDate } from '@/lib/calendar-dates';
-import type {
-  PurchaseSimulationResult,
-  SimulationWallet,
-} from '@/lib/finance/purchase-simulation/purchase-simulation.service';
+import {
+  extendedBaselineUntil,
+  preparePurchase,
+  simulatePurchase,
+  SimulationInputError,
+  type PurchaseSimulationResult,
+  type SimulationBaseline,
+  type SimulationWallet,
+} from '@/lib/finance/purchase-simulation/simulate';
 import type { PurchaseSimulationInput } from '@/schemas/purchase-simulation.schema';
 import { PURCHASE_COPY } from '@/components/wallets/liquidity/purchase/copy';
 
 export type PurchaseMode = 'contado' | 'msi' | 'credito';
 
-/** What the form holds. Nothing here is persisted. */
+/** What the form holds. Kept only in this browser tab (sessionStorage), never sent to be stored. */
 export type PurchaseDraft = {
   name: string;
   total: number;
@@ -33,8 +38,6 @@ export type PurchaseDraft = {
   extra: number;
 };
 
-export const DEBOUNCE_MS = 400;
-
 export const emptyDraft = (today = todayCalendarDate()): PurchaseDraft => ({
   name: '',
   total: 0,
@@ -52,28 +55,53 @@ export const emptyDraft = (today = todayCalendarDate()): PurchaseDraft => ({
   extra: 0,
 });
 
+const DRAFT_KEY = 'micasa.simular-compra.draft';
+
+const readDraft = (ownerKey: string): PurchaseDraft => {
+  const today = todayCalendarDate();
+  try {
+    const raw = window.sessionStorage.getItem(`${DRAFT_KEY}:${ownerKey}`);
+    if (!raw) return emptyDraft(today);
+    const saved = { ...emptyDraft(today), ...(JSON.parse(raw) as Partial<PurchaseDraft>) };
+    return saved.date < today ? { ...saved, date: today } : saved;
+  } catch {
+    return emptyDraft(today);
+  }
+};
+
+const writeDraft = (ownerKey: string, draft: PurchaseDraft) => {
+  try {
+    window.sessionStorage.setItem(`${DRAFT_KEY}:${ownerKey}`, JSON.stringify(draft));
+  } catch {
+    // Private mode or storage full: the form still works, it just is not kept.
+  }
+};
+
 const richestFunding = (wallets: SimulationWallet[]) =>
   [...wallets.filter((w) => !w.isCard)].sort((a, b) => (b.balance ?? 0) - (a.balance ?? 0))[0] ?? null;
 
+/** The card with the most disponible (cards without a limit last). */
+export const roomiestCard = (wallets: SimulationWallet[]) =>
+  [...wallets.filter((w) => w.isCard)].sort((a, b) => (b.available ?? -Infinity) - (a.available ?? -Infinity))[0] ?? null;
+
 /** Fills wallets the person has not picked yet with sensible ones for the mode. */
-export function resolveDraft(draft: PurchaseDraft, wallets: SimulationWallet[]): PurchaseDraft {
-  const cards = wallets.filter((w) => w.isCard);
+function resolveDraft(draft: PurchaseDraft, wallets: SimulationWallet[]): PurchaseDraft {
   const funding = wallets.filter((w) => !w.isCard);
   const out = { ...draft };
   const current = wallets.find((w) => w.id === out.walletId) ?? null;
-  if (out.mode === 'msi' && (!current || !current.isCard)) out.walletId = cards[0]?.id ?? null;
-  if (out.mode === 'contado' && !current) out.walletId = cards[0]?.id ?? funding[0]?.id ?? null;
+  const card = roomiestCard(wallets);
+  if (out.mode === 'msi' && (!current || !current.isCard)) out.walletId = card?.id ?? null;
+  if (out.mode === 'contado' && !current) out.walletId = card?.id ?? funding[0]?.id ?? null;
   if (out.mode === 'credito') {
-    if (typeof out.lender === 'number' && !cards.some((c) => c.id === out.lender)) out.lender = 'new';
+    if (typeof out.lender === 'number' && !wallets.some((c) => c.isCard && c.id === out.lender)) out.lender = 'new';
     out.payWalletId = funding.some((w) => w.id === out.payWalletId) ? out.payWalletId : (funding[0]?.id ?? null);
     out.downWalletId = funding.some((w) => w.id === out.downWalletId) ? out.downWalletId : (richestFunding(wallets)?.id ?? null);
   }
   return out;
 }
 
-export function draftToBody(draft: PurchaseDraft): PurchaseSimulationInput | null {
+function draftToBody(draft: PurchaseDraft): PurchaseSimulationInput | null {
   if (!(draft.total > 0)) return null;
-  // Always until the quincena of the last payment: the server's default.
   const base = { name: draft.name.trim() || undefined, total: draft.total, date: draft.date };
   if (draft.mode === 'contado') {
     return draft.walletId == null ? null : { ...base, mode: 'contado', wallet_id: draft.walletId };
@@ -102,103 +130,112 @@ export function draftToBody(draft: PurchaseDraft): PurchaseSimulationInput | nul
   };
 }
 
-type State = {
-  result: PurchaseSimulationResult | null;
-  loading: boolean;
-  error: string | null;
-  fieldError: { field: string; message: string } | null;
-};
+type Loaded = { wallets: SimulationWallet[]; baseline: SimulationBaseline };
 
+type Computed =
+  | { kind: 'result'; result: PurchaseSimulationResult }
+  | { kind: 'field'; field: string; message: string }
+  | { kind: 'extend'; until: string };
+
+/**
+ * Loads the wallets and the quincenas once, then simulates every change in the
+ * browser. A plan that ends after the loaded quincenas loads more, once.
+ */
 export const usePurchaseSimulation = () => {
   const { context } = useFinanceContext();
   const ownerKey = context ? getFinanceOwnerKey(context) : '';
-  const [wallets, setWallets] = useState<SimulationWallet[] | null>(null);
-  const [walletsError, setWalletsError] = useState<string | null>(null);
-  const [draft, setDraft] = useState<PurchaseDraft>(() => emptyDraft());
-  const [state, setState] = useState<State>({ result: null, loading: false, error: null, fieldError: null });
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [extending, setExtending] = useState(false);
+  const [draft, setDraft] = useState<PurchaseDraft>(() => (typeof window === 'undefined' ? emptyDraft() : readDraft(ownerKey)));
   const [notice, setNotice] = useState<string | null>(null);
   const [seenOwnerKey, setSeenOwnerKey] = useState(ownerKey);
+  const [shown, setShown] = useState<PurchaseSimulationResult | null>(null);
   const requestRef = useRef(0);
 
   // Switching user/house drops the simulation: each context has its own wallets.
   if (seenOwnerKey !== ownerKey) {
     setSeenOwnerKey(ownerKey);
-    if (state.result || draft.total > 0) {
-      setNotice(PURCHASE_COPY.clearedOnContextSwitch);
-      setDraft(emptyDraft());
-      setState({ result: null, loading: false, error: null, fieldError: null });
-    }
+    if (shown || draft.total > 0) setNotice(PURCHASE_COPY.clearedOnContextSwitch);
+    setDraft(readDraft(ownerKey));
+    setShown(null);
   }
 
-  useEffect(() => {
-    let cancelled = false;
-    setWallets(null);
-    setWalletsError(null);
-    clientFetchFromApi<{ wallets: SimulationWallet[] }>('/api/wallets/purchase-simulation', undefined, context)
-      .then((res) => !cancelled && setWallets(res.wallets))
-      .catch(() => !cancelled && setWalletsError(PURCHASE_COPY.errorBody));
-    return () => {
-      cancelled = true;
-    };
-  }, [context, ownerKey]);
-
-  const resolved = useMemo(() => (wallets ? resolveDraft(draft, wallets) : draft), [draft, wallets]);
-  const body = useMemo(() => draftToBody(resolved), [resolved]);
-  const bodyKey = body ? JSON.stringify(body) : '';
-
-  const run = useCallback(
-    async (payload: PurchaseSimulationInput) => {
+  const load = useCallback(
+    async (until?: string) => {
       const request = ++requestRef.current;
-      setState((s) => ({ ...s, loading: true, error: null, fieldError: null }));
+      setLoadError(null);
+      if (until) setExtending(true);
       try {
-        const result = await clientFetchFromApi<PurchaseSimulationResult>(
-          '/api/wallets/purchase-simulation',
-          { method: 'POST', body: JSON.stringify(payload) },
-          context,
-        );
-        if (request !== requestRef.current) return;
-        setState({ result, loading: false, error: null, fieldError: null });
-      } catch (error) {
-        if (request !== requestRef.current) return;
-        const apiError = error as ClientApiError;
-        setState((s) => ({
-          ...s,
-          loading: false,
-          error: apiError.status === 400 && apiError.field ? null : PURCHASE_COPY.errorBody,
-          fieldError: apiError.status === 400 && apiError.field ? { field: apiError.field, message: apiError.message } : null,
-        }));
+        const path = `/api/wallets/purchase-simulation${until ? `?until=${until}` : ''}`;
+        const res = await clientFetchFromApi<Loaded>(path, undefined, context);
+        if (request === requestRef.current) setLoaded(res);
+      } catch {
+        if (request === requestRef.current) setLoadError(PURCHASE_COPY.errorBody);
+      } finally {
+        if (request === requestRef.current) setExtending(false);
       }
     },
     [context],
   );
 
   useEffect(() => {
-    if (!body || !wallets) return;
-    const timer = setTimeout(() => void run(body), DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-    // bodyKey carries the body's content; run is stable per context.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bodyKey, wallets, run]);
+    setLoaded(null);
+    void load();
+  }, [load, ownerKey]);
+
+  useEffect(() => {
+    if (ownerKey) writeDraft(ownerKey, draft);
+  }, [draft, ownerKey]);
+
+  const wallets = loaded?.wallets ?? null;
+  const resolved = useMemo(() => (wallets ? resolveDraft(draft, wallets) : draft), [draft, wallets]);
+  const body = useMemo(() => draftToBody(resolved), [resolved]);
+
+  const computed = useMemo<Computed | null>(() => {
+    if (!loaded || !body) return null;
+    try {
+      const prepared = preparePurchase(body, loaded.wallets, loaded.baseline.as_of);
+      if (prepared.until > loaded.baseline.until) return { kind: 'extend', until: extendedBaselineUntil(prepared.until) };
+      return { kind: 'result', result: simulatePurchase(prepared, loaded.wallets, loaded.baseline) };
+    } catch (error) {
+      if (error instanceof SimulationInputError) return { kind: 'field', field: error.field, message: error.message };
+      throw error;
+    }
+  }, [loaded, body]);
+
+  // Keep the last good result on screen (dimmed) while a field is wrong or more quincenas load.
+  if (computed?.kind === 'result' && computed.result !== shown) setShown(computed.result);
+
+  const extendTo = computed?.kind === 'extend' ? computed.until : null;
+  useEffect(() => {
+    if (extendTo && !loadError) void load(extendTo);
+  }, [extendTo, load, loadError]);
 
   const retry = useCallback(() => {
-    if (body) void run(body);
-  }, [body, run]);
+    void load(extendTo ?? loaded?.baseline.until);
+  }, [extendTo, load, loaded]);
 
   const update = useCallback((patch: Partial<PurchaseDraft>) => setDraft((d) => ({ ...d, ...patch })), []);
 
+  const loading = extending || (loaded == null && !loadError);
   return {
     wallets,
-    walletsError,
+    /** Only when nothing loaded yet: the tab cannot show the form. */
+    walletsError: loaded ? null : loadError,
     draft: resolved,
     setDraft,
     update,
     hasBody: body != null,
-    ...state,
+    result: body ? shown : null,
+    loading,
+    error: loaded && loadError ? loadError : null,
+    fieldError: computed?.kind === 'field' ? { field: computed.field, message: computed.message } : null,
     retry,
     notice,
     dismissNotice: () => setNotice(null),
-    /** A finished result for the current inputs (not a previous one). */
-    fresh: state.result != null && !state.loading,
+    /** The result on screen matches the form (not a previous one). */
+    fresh: computed?.kind === 'result',
   };
 };
 

@@ -1,5 +1,5 @@
 import { ymdForDayInMonth } from '@/lib/calendar-dates';
-import { cardStatementForCharge } from '@/lib/finance/liquidity-scenario';
+import { cardStatementForCharge } from '@/lib/finance/card-statement-cycle';
 
 /**
  * Purchase simulation, step 1 (MIC-I17-1): turn a purchase described the way

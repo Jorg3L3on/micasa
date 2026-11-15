@@ -38,7 +38,6 @@ const run = (wallet: PlanWallet, months: number) => {
   const series = buildQuincenaSeries({
     todayYmd: TODAY,
     untilYmd: until,
-    startingLiquidity: 45000,
     baseline: baseline(until),
     purchase: purchaseFlows(plan, 'Carrito', until),
     createdKeys: created,
@@ -62,18 +61,17 @@ describe('buildQuincenaSeries', () => {
     expect(series.find((r) => r.key === '2027-01-1')!.estimated).toBe(true);
   });
 
-  it('accumulates from the starting liquidity, with and without the purchase', () => {
+  it('the purchase lowers queda by its cuota, and sinCompra stays the baseline', () => {
     const { series } = run(ml, 12);
-    const last = series.at(-1)!;
-    expect(last.acumuladoSinCompra - last.acumulado).toBe(6000);
-    expect(series[0].acumulado).toBe(45000 + series[0].queda);
+    const withCuota = series.find((r) => r.compra > 0)!;
+    expect(withCuota.compra).toBe(500);
+    expect(withCuota.sinCompra - withCuota.queda).toBe(500);
   });
 
   it('budgets and other outflows reduce queda like Panel', () => {
     const series = buildQuincenaSeries({
       todayYmd: TODAY,
       untilYmd: '2026-11-29',
-      startingLiquidity: 0,
       baseline: [
         { date: '2026-11-20', amount: 1000, kind: 'income', name: 'Sueldo', walletName: 'D', estimated: false },
         { date: '2026-11-29', amount: 300, kind: 'budget', name: 'Súper', walletName: 'Presupuesto', estimated: false },
@@ -88,7 +86,6 @@ describe('buildQuincenaSeries', () => {
     const series = buildQuincenaSeries({
       todayYmd: TODAY,
       untilYmd: '2026-11-29',
-      startingLiquidity: 0,
       baseline: [{ date: '2026-10-30', amount: 200, kind: 'expense', name: 'Vencido', walletName: 'D', estimated: false }],
       purchase: [],
       createdKeys: new Set(),
@@ -98,7 +95,7 @@ describe('buildQuincenaSeries', () => {
 });
 
 describe('verdictFacts', () => {
-  it('amber: two red quincenas covered by what you saved before', () => {
+  it('amber: one or two quincenas in rojo', () => {
     const { facts } = run(ml, 12);
     expect(facts.level).toBe('amber');
     expect(facts.redKeys).toEqual(['2026-12-2', '2027-01-2']);
@@ -113,19 +110,19 @@ describe('verdictFacts', () => {
     expect(facts.redKeys).toHaveLength(0);
   });
 
-  it('red when the accumulated money goes below zero', () => {
-    const plan = buildPurchasePlan({ total: 90000, date: TODAY, mode: 'contado', wallet: { id: 3, name: 'Débito', isCard: false, cutoff_day: null, due_day: null } });
+  it('red from three quincenas in rojo on', () => {
+    const plan = buildPurchasePlan({ total: 60000, date: TODAY, mode: 'msi', wallet: ml, months: 12 });
+    const until = defaultHorizonEnd(plan);
     const series = buildQuincenaSeries({
       todayYmd: TODAY,
-      untilYmd: '2027-01-31',
-      startingLiquidity: 45000,
-      baseline: baseline('2027-01-31'),
-      purchase: purchaseFlows(plan, 'Auto', '2027-01-31'),
+      untilYmd: until,
+      baseline: baseline(until),
+      purchase: purchaseFlows(plan, 'Sala', until),
       createdKeys: created,
     });
     const facts = verdictFacts(series, 0);
+    expect(facts.redKeys.length).toBeGreaterThanOrEqual(3);
     expect(facts.level).toBe('red');
-    expect(facts.firstNegativeAcumuladoKey).toBe('2026-11-1');
   });
 
   it('red when the purchase is over the card limit even if the money is there', () => {

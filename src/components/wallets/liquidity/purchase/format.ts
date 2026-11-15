@@ -1,7 +1,7 @@
 import { currentCalendarYear, formatDisplayDate, formatMonthPhrase, formatMonthShort, formatMonthTitle } from '@/lib/calendar-dates';
 import { formatMoney } from '@/lib/money';
 import type { PurchasePlan } from '@/lib/finance/purchase-simulation/plan';
-import type { QuincenaRow, VerdictFacts, VerdictLevel } from '@/lib/finance/purchase-simulation/series';
+import { RED_QUINCENAS_LIMIT, type QuincenaRow, type VerdictFacts, type VerdictLevel } from '@/lib/finance/purchase-simulation/series';
 import { PURCHASE_COPY } from '@/components/wallets/liquidity/purchase/copy';
 
 /** Pure text and grouping helpers for the Simular compra tab (MIC-I17). */
@@ -56,22 +56,27 @@ export function verdictCopy(
   const byKey = new Map(rows.map((r) => [r.key, r]));
   const mid = (key: string) => quincenaMid(byKey.get(key)!, now);
   const n = facts.redKeys.length;
-  let headline: string;
+  let headline = '';
   let sentence: string;
   if (facts.level === 'green') {
     headline = 'Sí te alcanza';
     sentence = `Ninguna de tus ${facts.quincenas} quincenas queda en rojo. Lo más justo es la ${mid(facts.tightestKey)}: te quedarían ${formatMoney(facts.tightestQueda)}.`;
   } else if (facts.level === 'amber') {
     headline = `Te alcanza, pero aprieta ${n === 1 ? '1 quincena' : `${n} quincenas`}`;
-    sentence = `${cap(joinNames(facts.redKeys.map(mid)))} ${n === 1 ? 'quedaría' : 'quedarían'} en rojo: te faltarían hasta ${formatMoney(-facts.tightestQueda)}. Las otras ${facts.quincenas - n} quincenas siguen con dinero, y lo que te sobra de antes alcanza para cubrirlo: tu dinero acumulado no baja de ${formatMoney(facts.lowestAcumulado)}.`;
+    sentence = `${cap(joinNames(facts.redKeys.map(mid)))} ${n === 1 ? 'quedaría' : 'quedarían'} en rojo: te faltarían hasta ${formatMoney(-facts.tightestQueda)}. Las otras ${facts.quincenas - n} quincenas siguen con dinero.`;
   } else {
-    headline = 'No te alcanza';
+    const card = cardName ?? 'la tarjeta';
     const parts: string[] = [];
     if (facts.overLimitBy > 0) {
-      parts.push(`Rebasa tu disponible en ${cardName ?? 'la tarjeta'} por ${formatMoney(facts.overLimitBy)}: la tienda podría rechazarla.`);
-    }
-    if (facts.firstNegativeAcumuladoKey) {
-      parts.push(`Desde la ${mid(facts.firstNegativeAcumuladoKey)} ya no tendrías con qué cubrir tus pagos: tu dinero acumulado llegaría a ${formatMoney(facts.lowestAcumulado)}.`);
+      // The card limit and the money are different problems: say which one fails.
+      headline = n >= RED_QUINCENAS_LIMIT ? 'No te alcanza' : `No cabe en ${card}`;
+      parts.push(
+        n === 0
+          ? `Tu dinero sí alcanza: ninguna de tus ${facts.quincenas} quincenas queda en rojo. Lo que no alcanza es tu disponible en ${card}: te faltan ${formatMoney(facts.overLimitBy)} y la tienda podría rechazarla.`
+          : `Tu disponible en ${card} no alcanza: te faltan ${formatMoney(facts.overLimitBy)} y la tienda podría rechazarla.`,
+      );
+    } else {
+      headline = 'No te alcanza';
     }
     if (n > 0) {
       parts.push(`${n} de ${facts.quincenas} quincenas quedarían en rojo; la peor, la ${mid(facts.tightestKey)}, con ${formatMoney(facts.tightestQueda)}.`);

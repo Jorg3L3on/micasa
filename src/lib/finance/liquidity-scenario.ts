@@ -1,7 +1,7 @@
-import { formatDisplayDate, parseCalendarDate, ymdForDayInMonth } from '@/lib/calendar-dates';
-import { resolveCreditCardStatementWindow } from '@/lib/finance/card-statement-obligation';
+import { cardStatementForCharge } from '@/lib/finance/card-statement-cycle';
+import { formatDisplayDate, ymdForDayInMonth } from '@/lib/calendar-dates';
 import { monthKeyFromOffset } from '@/lib/finance/liquidity-projection-events';
-import { compareUtcDateOnly, toUtcDateOnlyString } from '@/lib/finance/liquidity-projection';
+import { compareUtcDateOnly } from '@/lib/finance/liquidity-projection';
 import type { LiquidityObligationItem } from '@/lib/finance/liquidity-projection.service';
 import { isFundingWalletType } from '@/lib/finance/wallet-accounting';
 import { formatMoney } from '@/lib/money';
@@ -45,27 +45,6 @@ const roundCents = (n: number) => Math.round(n * 100) / 100;
 /** Same day of month `offset` months later, clamped to the month's last day. */
 const addMonthsToYmd = (ymd: string, offset: number): string =>
   ymdForDayInMonth(monthKeyFromOffset(ymd.slice(0, 7), offset), Number(ymd.slice(8, 10)))!;
-
-/**
- * Statement a charge on `chargeYmd` is billed on: a charge on the cutoff day
- * closes with that statement, a later one waits for the next cutoff.
- */
-export const cardStatementForCharge = (chargeYmd: string, cutoffDay: number, dueDay: number) => {
-  const window = resolveCreditCardStatementWindow(
-    parseCalendarDate(chargeYmd),
-    cutoffDay,
-    dueDay,
-  );
-  const billed =
-    toUtcDateOnlyString(window.statementEnd) === chargeYmd
-      ? window
-      : resolveCreditCardStatementWindow(window.currentCycleEnd, cutoffDay, dueDay);
-  return {
-    statementStart: toUtcDateOnlyString(billed.statementStart),
-    statementEnd: toUtcDateOnlyString(billed.statementEnd),
-    dueDate: toUtcDateOnlyString(billed.statementDueDate),
-  };
-};
 
 const pushByDate = (
   target: Map<string, LiquidityObligationItem[]>,

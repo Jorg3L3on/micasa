@@ -1,65 +1,50 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { DomainError } from '@/lib/finance/domain-error';
-import { loadSimulationWallets, simulatePurchase } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
+import { formatCalendarDate } from '@/lib/calendar-dates';
+import { CREDIT_MAX_MONTHS } from '@/lib/finance/purchase-simulation/constants';
+import { addMonthsYmd } from '@/lib/finance/purchase-simulation/plan';
+import { loadSimulationBaseline, loadSimulationWallets } from '@/lib/finance/purchase-simulation/purchase-simulation.service';
+import { defaultBaselineUntil } from '@/lib/finance/purchase-simulation/simulate';
 import { logFinanceEvent } from '@/lib/observability/finance-log';
 import { withOwnerContext } from '@/lib/server/with-owner-context';
-import { purchaseSimulationSchema } from '@/schemas/purchase-simulation.schema';
-
-/** GET: the wallets the form offers (cards with corte, pago, límite and disponible). */
-export async function GET(request: NextRequest) {
-  return withOwnerContext(request, async (context) =>
-    NextResponse.json({ wallets: await loadSimulationWallets(context.ownerFilter) }),
-  );
-}
+import { dateStringSchema } from '@/schemas/common.schema';
 
 /**
- * POST /api/wallets/purchase-simulation (MIC-I17)
- * Body: one purchase (total, date, contado | msi | credito…). Read-only: returns
- * the payment plan, the quincena series with and without it,
- * and the verdict facts. Nothing is stored.
+ * GET /api/wallets/purchase-simulation (MIC-I17), read-only.
+ * Returns the wallets the form offers and the quincenas from today through
+ * `until` (YYYY-MM-DD, optional) without any purchase. The browser simulates
+ * each purchase on top of it, so changing the form asks nothing more.
  */
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const started = Date.now();
   try {
     return await withOwnerContext(request, async (context) => {
-      const parsed = purchaseSimulationSchema.safeParse(await request.json().catch(() => null));
-      if (!parsed.success) {
-        const first = parsed.error.issues[0];
-        return NextResponse.json(
-          {
-            error: first?.message ?? 'Simulación inválida.',
-            code: 'INVALID_BODY',
-            field: typeof first?.path[0] === 'string' ? first.path[0] : null,
-            issues: parsed.error.issues,
-          },
-          { status: 400 },
-        );
+      const asOf = new Date();
+      const todayYmd = formatCalendarDate(asOf);
+      const param = request.nextUrl.searchParams.get('until');
+      if (param != null && !dateStringSchema.safeParse(param).success) {
+        return NextResponse.json({ error: 'Fecha inválida.', code: 'INVALID_UNTIL', field: 'until' }, { status: 400 });
       }
-      const result = await simulatePurchase({ ownerFilter: context.ownerFilter, input: parsed.data });
+      const max = addMonthsYmd(todayYmd, CREDIT_MAX_MONTHS + 14, 28);
+      const requested = param ?? defaultBaselineUntil(todayYmd);
+      const until = requested < todayYmd ? todayYmd : requested > max ? max : requested;
+      const wallets = await loadSimulationWallets(context.ownerFilter);
+      const baseline = await loadSimulationBaseline(context.ownerFilter, wallets, until, asOf);
       logFinanceEvent(
         'info',
-        'finance.purchase_simulation.computed',
+        'finance.purchase_simulation.baseline_loaded',
         {
           owner_type: context.ownerType,
           owner_id: context.ownerId,
           duration_ms: Date.now() - started,
-          quincenas: result.series.length,
-          mode: parsed.data.mode,
-          level: result.verdict.level,
+          until,
+          flows: baseline.flows.length,
         },
         request,
       );
-      return NextResponse.json(result);
+      return NextResponse.json({ wallets, baseline });
     });
   } catch (error) {
-    if (error instanceof DomainError) {
-      const field = 'field' in error ? (error as DomainError & { field: string }).field : null;
-      return NextResponse.json({ error: error.message, code: error.code, field }, { status: error.status });
-    }
-    console.error('purchase-simulation failed', error);
-    return NextResponse.json(
-      { error: 'No pudimos simular. No se guardó nada.', code: 'INTERNAL' },
-      { status: 500 },
-    );
+    console.error('purchase-simulation baseline failed', error);
+    return NextResponse.json({ error: 'No pudimos cargar tus quincenas.', code: 'INTERNAL' }, { status: 500 });
   }
 }

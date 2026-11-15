@@ -17,7 +17,7 @@ const series = (outSecond: (month: number) => number, total: number, until = '20
     ];
   });
   const plan = buildPurchasePlan({ total, date: TODAY, mode: 'msi', wallet: card, months: 12 });
-  const rows = buildQuincenaSeries({ todayYmd: TODAY, untilYmd: until, startingLiquidity: 45000, baseline: flows, purchase: purchaseFlows(plan, 'X', until), createdKeys: new Set() });
+  const rows = buildQuincenaSeries({ todayYmd: TODAY, untilYmd: until, baseline: flows, purchase: purchaseFlows(plan, 'X', until), createdKeys: new Set() });
   return { plan, rows };
 };
 
@@ -28,7 +28,7 @@ describe('verdictCopy', () => {
     expect(copy.chip).toBe(PURCHASE_COPY.chip.amber);
     expect(copy.headline).toBe('Te alcanza, pero aprieta 2 quincenas');
     expect(copy.sentence).toMatch(/^La 2ª de diciembre y la 2ª de enero quedarían en rojo: te faltarían hasta \$250\./);
-    expect(copy.sentence).toMatch(/tu dinero acumulado no baja de/);
+    expect(copy.sentence).toMatch(/Las otras \d+ quincenas siguen con dinero\./);
   });
 
   it('green says the tightest quincena', () => {
@@ -38,12 +38,12 @@ describe('verdictCopy', () => {
     expect(copy.chip).toBe('Buena idea');
   });
 
-  it('red explains over-limit', () => {
+  it('over the card limit with the money fine: says it is the card, not the money', () => {
     const { plan, rows } = series(() => 14700, 6000);
     const copy = verdictCopy(verdictFacts(rows, 200), rows, plan, 'Tarjeta Uno', NOW);
-    expect(copy.headline).toBe('No te alcanza');
+    expect(copy.headline).toBe('No cabe en Tarjeta Uno');
     expect(copy.chip).toBe('Mala idea por ahora');
-    expect(copy.sentence).toMatch(/Rebasa tu disponible en Tarjeta Uno por \$200/);
+    expect(copy.sentence).toMatch(/^Tu dinero sí alcanza: ninguna de tus \d+ quincenas queda en rojo\. Lo que no alcanza es tu disponible en Tarjeta Uno: te faltan \$200/);
   });
 
   it('separates what was already red from what the purchase adds', () => {

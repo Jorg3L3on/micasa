@@ -3,7 +3,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { todayCalendarDate } from '@/lib/calendar-dates';
-import { fakeSimulation, TEST_WALLETS } from '@/components/wallets/liquidity/purchase/test-fixtures';
+import { fakeBaseline, TEST_WALLETS } from '@/components/wallets/liquidity/purchase/test-fixtures';
+import { defaultBaselineUntil } from '@/lib/finance/purchase-simulation/simulate';
 
 const { clientFetchFromApi, financeContext, isMobile } = vi.hoisted(() => ({
   clientFetchFromApi: vi.fn(),
@@ -22,10 +23,9 @@ vi.mock('next/image', () => ({ default: () => null }));
 
 import { PurchaseSimulatorTab } from '@/components/wallets/liquidity/purchase/PurchaseSimulatorTab';
 import { PURCHASE_COPY } from '@/components/wallets/liquidity/purchase/copy';
-import { DEBOUNCE_MS } from '@/components/wallets/liquidity/purchase/use-purchase-simulation';
 
 const today = todayCalendarDate();
-const posts = () => clientFetchFromApi.mock.calls.filter((c) => c[1]?.method === 'POST');
+const loads = () => clientFetchFromApi.mock.calls.map((c) => String(c[0]));
 
 beforeAll(() => {
   if (!window.matchMedia) {
@@ -41,10 +41,11 @@ beforeEach(() => {
   financeContext.current = { type: 'user', id: 1 };
   isMobile.current = false;
   clientFetchFromApi.mockReset();
-  clientFetchFromApi.mockImplementation(async (url: string, init?: RequestInit) => {
-    if (!init || init.method !== 'POST') return { wallets: TEST_WALLETS };
-    return fakeSimulation(JSON.parse(String(init.body)), today);
+  clientFetchFromApi.mockImplementation(async (url: string) => {
+    const until = new URL(url, 'http://test').searchParams.get('until') ?? defaultBaselineUntil(today);
+    return { wallets: TEST_WALLETS, baseline: fakeBaseline(today, until) };
   });
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
@@ -58,7 +59,7 @@ const typeTotal = (value: string) => {
 
 const settle = async () => {
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 50);
+    await vi.advanceTimersByTimeAsync(50);
   });
 };
 
@@ -66,22 +67,39 @@ describe('Simular compra tab', () => {
   it('shows the empty state until there is a price', async () => {
     render(<PurchaseSimulatorTab />);
     expect(await screen.findByText(PURCHASE_COPY.emptyTitle)).toBeTruthy();
-    expect(posts()).toHaveLength(0);
+    expect(loads()).toHaveLength(1);
   });
 
-  it('sends one request after the debounce, and one more per change', async () => {
+  it('loads the quincenas once and recalculates every change without asking again', async () => {
     render(<PurchaseSimulatorTab />);
     await screen.findByText(PURCHASE_COPY.emptyTitle);
     typeTotal('6000');
-    await settle();
-    await waitFor(() => expect(posts()).toHaveLength(1));
-    expect(JSON.parse(String(posts()[0][1].body))).toMatchObject({ total: 6000, mode: 'msi', wallet_id: 7, months: 12 });
+    expect(await screen.findByText(/aprieta/)).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: '3 meses' }));
+    fireEvent.click(screen.getByRole('tab', { name: '3 meses' }));
+    expect(await screen.findByText(/Pagas cada mes/i)).toBeTruthy();
+    expect(screen.getAllByText('$2,000.00').length).toBeGreaterThan(0);
+    expect(loads()).toHaveLength(1);
+  });
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: '18 meses' }));
-    fireEvent.click(screen.getByRole('tab', { name: '18 meses' }));
-    await settle();
-    await waitFor(() => expect(posts()).toHaveLength(2));
-    expect(JSON.parse(String(posts()[1][1].body)).months).toBe(18);
+  it('loads more quincenas only when the plan ends after them', async () => {
+    render(<PurchaseSimulatorTab />);
+    await screen.findByText(PURCHASE_COPY.emptyTitle);
+    fireEvent.mouseDown(screen.getByRole('tab', { name: PURCHASE_COPY.modeCredito }));
+    fireEvent.click(screen.getByRole('tab', { name: PURCHASE_COPY.modeCredito }));
+    typeTotal('300000');
+    await waitFor(() => expect(loads()).toHaveLength(2));
+    expect(loads()[1]).toMatch(/until=\d{4}-12-30|until=\d{4}-12-29/);
+  });
+
+  it('keeps the form in this browser tab after a reload', async () => {
+    const first = render(<PurchaseSimulatorTab />);
+    await screen.findByText(PURCHASE_COPY.emptyTitle);
+    typeTotal('6000');
+    await screen.findByText(/aprieta/);
+    first.unmount();
+    render(<PurchaseSimulatorTab />);
+    expect(await screen.findByText(/aprieta/)).toBeTruthy();
   });
 
   it('shows the verdict with its reason and always the disclaimer', async () => {
