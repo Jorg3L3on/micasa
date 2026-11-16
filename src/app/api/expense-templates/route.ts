@@ -5,10 +5,12 @@ import {
   createExpenseTemplateForOwner,
   deleteExpenseTemplateForOwner,
   listExpenseTemplatesForOwner,
+  setExpenseTemplateActiveForOwner,
   updateExpenseTemplateForOwner,
 } from '@/lib/finance/expense-template.service';
 import {
   createExpenseTemplateSchema,
+  setExpenseTemplateActiveSchema,
   updateExpenseTemplateSchema,
 } from '@/schemas/expense-template.schema';
 import { deriveLegacyDueDayForTemplate } from '@/lib/finance/expense-template-due';
@@ -17,6 +19,45 @@ import { deriveLegacyDueDayForTemplate } from '@/lib/finance/expense-template-du
  * Nota producto: las compras en cuotas (pago repartido en varios meses en TC) viven como
  * gastos de tarjeta (import PDF / compra registrada), no como plantillas recurrentes por quincena.
  */
+
+type UpdatedTemplate = Awaited<ReturnType<typeof updateExpenseTemplateForOwner>>;
+
+/** Response body of PUT and PATCH: the list item plus `expenseIds`. */
+const updatedTemplateBody = (template: UpdatedTemplate) => {
+  const totalAmount = template.expenses.reduce(
+    (sum, exp) => sum + Number(exp.amount),
+    0,
+  );
+
+  return {
+    id: template.id,
+    name: template.name,
+    category: template.category?.name ?? null,
+    categoryIcon: template.category?.icon ?? null,
+    categoryId: template.category_id ?? null,
+    suggestedAmount: template.suggested_amount
+      ? Number(template.suggested_amount)
+      : null,
+    paymentMethod: template.wallet?.name || null,
+    paymentMethodId: template.wallet?.id || null,
+    paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
+    paymentMethodType: template.wallet?.type ?? null,
+    paymentMethodCutoffDay: template.wallet?.cutoff_day ?? null,
+    active: template.active,
+    totalEstimatedAmount:
+      totalAmount ||
+      (template.suggested_amount ? Number(template.suggested_amount) : 0),
+    expenseIds: template.expenses.map((e) => e.id),
+    dueDayFirst: template.due_day_first_fortnight,
+    dueDaySecond: template.due_day_second_fortnight,
+    dueDay: deriveLegacyDueDayForTemplate(template),
+    cutoffDay: template.cutoff_day,
+    isRecurring: template.is_recurring,
+    appliesFirstFortnight: template.applies_first_fortnight,
+    appliesSecondFortnight: template.applies_second_fortnight,
+    isSubscription: template.is_subscription,
+  };
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,12 +77,15 @@ export async function GET(request: NextRequest) {
           name: template.name,
           category: template.category?.name ?? null,
           categoryIcon: template.category?.icon ?? null,
+          categoryId: template.category_id ?? null,
           suggestedAmount: template.suggested_amount
             ? Number(template.suggested_amount)
             : null,
           paymentMethod: template.wallet?.name || null,
           paymentMethodId: template.wallet?.id || null,
           paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
+          paymentMethodType: template.wallet?.type ?? null,
+          paymentMethodCutoffDay: template.wallet?.cutoff_day ?? null,
           active: template.active,
           totalEstimatedAmount: totalAmount,
           expenseIds: [], // Will be populated from form selections in UI
@@ -156,39 +200,7 @@ export async function PUT(request: NextRequest) {
         validatedData,
       );
 
-      const totalAmount = template.expenses.reduce(
-        (sum, exp) => sum + Number(exp.amount),
-        0,
-      );
-
-      return NextResponse.json(
-        {
-          id: template.id,
-          name: template.name,
-          category: template.category?.name ?? null,
-          categoryIcon: template.category?.icon ?? null,
-          suggestedAmount: template.suggested_amount
-            ? Number(template.suggested_amount)
-            : null,
-          paymentMethod: template.wallet?.name || null,
-          paymentMethodId: template.wallet?.id || null,
-          paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
-          active: template.active,
-          totalEstimatedAmount:
-            totalAmount ||
-            (template.suggested_amount ? Number(template.suggested_amount) : 0),
-          expenseIds: template.expenses.map((e) => e.id),
-          dueDayFirst: template.due_day_first_fortnight,
-          dueDaySecond: template.due_day_second_fortnight,
-          dueDay: deriveLegacyDueDayForTemplate(template),
-          cutoffDay: template.cutoff_day,
-          isRecurring: template.is_recurring,
-          appliesFirstFortnight: template.applies_first_fortnight,
-          appliesSecondFortnight: template.applies_second_fortnight,
-          isSubscription: template.is_subscription,
-        },
-        { status: 200 },
-      );
+      return NextResponse.json(updatedTemplateBody(template), { status: 200 });
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -211,6 +223,59 @@ export async function PUT(request: NextRequest) {
     }
 
     console.error('Error updating expense template:', error);
+    return NextResponse.json(
+      { error: 'Failed to update expense template' },
+      { status: 500 },
+    );
+  }
+}
+
+/** Activo toggle: changes `active` only (body `{ active }`). */
+export async function PATCH(request: NextRequest) {
+  try {
+    return await withOwnerContext(request, async (context) => {
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
+
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
+
+      const body = await request.json();
+      const { active } = setExpenseTemplateActiveSchema.parse(body);
+
+      const template = await setExpenseTemplateActiveForOwner(
+        Number(id),
+        context.ownerFilter,
+        active,
+      );
+
+      return NextResponse.json(updatedTemplateBody(template), { status: 200 });
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.issues },
+        { status: 400 },
+      );
+    }
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'P2025'
+    ) {
+      return NextResponse.json(
+        { error: 'Expense template not found' },
+        { status: 404 },
+      );
+    }
+
+    console.error('Error updating expense template active flag:', error);
     return NextResponse.json(
       { error: 'Failed to update expense template' },
       { status: 500 },

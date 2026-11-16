@@ -9,6 +9,8 @@ import {
 
 const SRC = resolve(process.cwd(), 'src');
 const TRANSACTION_REGISTRATION = 'src/components/TransactionsDataTable.tsx';
+/** Gastos / Ingresos programados register through one shared list. */
+const SCHEDULED_REGISTRATION = 'src/components/scheduled/ScheduledList.tsx';
 
 type ActionKey = keyof typeof PAGE_CREATE_ACTION;
 
@@ -42,16 +44,6 @@ const PAGE_REGISTRATIONS: {
     key: 'category',
   },
   {
-    file: 'src/app/(app)/settings/expense-templates/page.tsx',
-    route: '/settings/expense-templates',
-    key: 'expenseTemplate',
-  },
-  {
-    file: 'src/app/(app)/settings/income-templates/page.tsx',
-    route: '/settings/income-templates',
-    key: 'incomeTemplate',
-  },
-  {
     file: 'src/app/(app)/credit-cards/[id]/page.tsx',
     route: '/credit-cards/4',
     key: 'cardPurchase',
@@ -75,6 +67,20 @@ const PAGE_REGISTRATIONS: {
     file: 'src/components/monthly/MonthlyPanelLayout.tsx',
     route: '/monthly/2026/9',
     key: 'expenseOrIncome',
+  },
+];
+
+/** Pages that hand their create label to `ScheduledList`. */
+const SCHEDULED_PAGES: { file: string; route: string; key: ActionKey }[] = [
+  {
+    file: 'src/app/(app)/settings/expense-templates/page.tsx',
+    route: '/settings/expense-templates',
+    key: 'expenseTemplate',
+  },
+  {
+    file: 'src/app/(app)/settings/income-templates/page.tsx',
+    route: '/settings/income-templates',
+    key: 'incomeTemplate',
   },
 ];
 
@@ -204,6 +210,7 @@ describe('page create registrations match the map', () => {
     const expected = [
       ...PAGE_REGISTRATIONS.map((item) => item.file),
       TRANSACTION_REGISTRATION,
+      SCHEDULED_REGISTRATION,
     ].sort();
     expect(callers).toEqual(expected);
   });
@@ -214,6 +221,23 @@ describe('page create registrations match the map', () => {
       const call = extractRegistrationCall(source);
       const keys = [
         ...String(call).matchAll(/PAGE_CREATE_ACTION\.(\w+)\.label/g),
+      ].map((match) => match[1]);
+      expect(keys, item.file).toEqual([item.key]);
+      expect(resolvePageCreateAction(item.route), item.file).toEqual(
+        PAGE_CREATE_ACTION[item.key],
+      );
+    }
+  });
+
+  it('registers the programados pages through ScheduledList with their own label', () => {
+    const call = extractRegistrationCall(
+      readFileSync(resolve(process.cwd(), SCHEDULED_REGISTRATION), 'utf8'),
+    );
+    expect(call).toContain('label: createLabel');
+    for (const item of SCHEDULED_PAGES) {
+      const source = readFileSync(resolve(process.cwd(), item.file), 'utf8');
+      const keys = [
+        ...source.matchAll(/createLabel=\{PAGE_CREATE_ACTION\.(\w+)\.label\}/g),
       ].map((match) => match[1]);
       expect(keys, item.file).toEqual([item.key]);
       expect(resolvePageCreateAction(item.route), item.file).toEqual(

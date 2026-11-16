@@ -115,7 +115,7 @@ Every logged-in route is one of four archetypes:
 
 | Archetype | Purpose | Routes | Surface |
 | --- | --- | --- | --- |
-| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Proyección / Deudas / Plan), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
+| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Proyección / Deudas / Simular compra), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
 | **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell. Operaciones below `md` is a row list, not a table |
 | **Detail** | One object, back to its collection | Billetera, estado de cuenta (tarjeta), meta | Same as collection; card faces stay solid |
 | **Settings** | Quiet catalogs and account | Configuración (cuenta, categorías, plantillas, usuarios, conexiones) | Calm `bg-card` cards — **never** glass |
@@ -222,7 +222,6 @@ Utilities: `.motion-fade-in` (`--motion-base`) and `.motion-slide-up` (`--motion
 
 Fix these when touching light parity (do not leave new hardcoded dark-only chrome):
 
-- Settings income/expense template inputs: use `TEMPLATE_FIELD_SHELL_CLASS` (theme-aware); avoid raw `border-white/15 bg-black/35`
 - Glass / monthly shells: light uses `--shadow-card`; dark keeps Orion glass under `dark:`
 - Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`), on the landing and in the app
 - Landing follows the same light and dark theme as the app (`ThemeProvider` on the root layout)
@@ -298,6 +297,7 @@ Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these 
 | Grouped card | `rounded-xl border border-border/60 bg-card divide-y divide-border/60` | `OVERLAY_GROUPED_CARD_CLASS` |
 | Row | `px-3 py-1.5`, `min-h-11`, `gap-3` | `GroupedRow` / `FormGroupedRow` |
 | Row label | `w-[5rem] text-sm font-medium` | `OVERLAY_GROUPED_LABEL_CLASS` |
+| Row label, wide ("1ª quincena") | `w-[6rem]`, same type | `GroupedRow` or `FormGroupedRow` with `labelWidth="wide"` / `OVERLAY_GROUPED_LABEL_WIDE_CLASS` |
 | Select trigger in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_TRIGGER_CLASS` |
 | Text input in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_INPUT_CLASS` |
 | Number input in a row | same + `font-mono tabular-nums` | `OVERLAY_ROW_NUMBER_INPUT_CLASS` |
@@ -365,7 +365,9 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
   - **Steppers** (`formatStepperDate`) always include the year. The control is an input, so the saved day stays unambiguous.
   - Statement parsers keep a month map because they read bank files. Préstamos uses these helpers.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
-- Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
+- **No colored left accents** (Jorge, 2026-11-15, Plania decision 41117366). No `border-l-[3px]` / `border-l-*` status or brand stripe on any card, tile, strip or row, no inline `borderLeftColor`, and no inset left shadow that draws one. Status goes on the value color, a `STATUS_BADGE` chip or a soft tint (`src/lib/status-tone.ts`). A neutral hairline (`border-l border-border/60`) for a nested list is fine. Enforced by `npm run validate:metric-strips`.
+- Metric / KPI strips: `METRIC_STRIP_CLASS` (even calm border, `bg-card`). **No** tinted panel fills (`bg-*-500/5`). Enforced by the same validator.
+  - Gastos programados and Ingresos programados (`src/components/scheduled/ScheduledSummary.tsx`) use one calm `bg-card` card split by hairlines, with a dot before 1ª / 2ª quincena (`bg-primary` / `bg-chart-4`, the same colours as the row chips) and a thin 1ª-vs-2ª bar under Al mes.
 - Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.
 - Brand badges (`WalletProviderIcon`, catalog in `src/lib/wallet-provider-icons.ts`) are a valid exception to that palette. The mark keeps the issuer hue so a billetera stays recognizable. That color is not income, expense, or paid. The short label or fallback glyph must stay at least 4.5:1 against the badge fill in both themes. Do not reuse those classes for status.
   - An expense row uses **expense** for the icon, the amount, and the type badge. A due or paid chip may use **overdue**, **pending**, or **success** — that is the time status, not a second type color.
@@ -384,7 +386,7 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 ## Filters
 
 - `FilterChip` (`src/components/filter-chip.tsx`) is a single on/off filter: Billeteras, Metas, Operaciones, and the Configuración mobile nav. It sets `aria-pressed` (or `aria-current="page"` when it is a link), can show a count, and uses a 44px target on mobile (`min-h-11`, `sm:min-h-9`) with a visible focus ring.
-- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Plan horizon and strategy, Presupuestos, and Análisis (Proyección / Deudas / Plan).
+- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Presupuestos, and Análisis (Proyección / Deudas / Simular compra).
 
 ## Surfaces
 
@@ -402,7 +404,7 @@ Three surfaces. Radius does not change with the theme.
 
 **Onboarding** sits outside the `(app)` layout, so it draws `AppAtmosphere` itself and uses the planner glass shell, the type scale, and one progress bar. Four steps (Billeteras, Ingresos, Gastos, Todo listo), each with one `h1` (the question) and one description line; the header names the next step. The card is capped to the viewport and its body scrolls, so header and footer never clip. Each draft is an `OnboardingItemCard`: the overlay kit's grouped card (`GroupedRow`, `AmountRow`) with a header and the viewport delete rule. Defaults are pre-filled (Efectivo, Cuenta de débito, Sueldo), so the minimum path is one amount. Gastos is optional. Create copy starts with **Agregar**.
 
-Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
+Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card (`KPI_METRIC_CARD_SHELL_CLASS`) with the status on the label and value color: no left accent, no gradient fill. `--shadow-glow` is only the planner progress knob.
 
 ## Empty, error, and loading
 
@@ -429,7 +431,7 @@ Use these names in the UI, in `PageTitle`, and in the browser tab. The document 
 | Ellipsis | **…** | `...` |
 | Analysis section | **Análisis** | Liquidez y análisis, as a nav item |
 
-**Análisis** is the section (nav, document title, header). Its three views are the tabs **Proyección**, **Deudas**, and **Plan**. The tab list is named Análisis.
+**Análisis** is the section (nav, document title, header). Its three views are the tabs **Proyección**, **Deudas**, and **Simular compra**. The tab list is named Análisis. Simular compra (MIC-I17) took the place of Plan: a purchase described as contado, meses sin intereses or con intereses, with a verdict (Buena idea / Con cuidado / Mala idea por ahora, always with its reason and "Qué pasaría, no asesoría financiera"), quincena-by-quincena bars until payoff (by month past 2 years, by year past 10) and the payment calendar. Nothing is stored; Proyección and Deudas never show the simulation.
 
 Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` in Spanish (`Comida`, not `Food`). Existing rows already stored as `Food` are not migrated in code.
 
@@ -452,6 +454,60 @@ Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` i
 
 ---
 
+## Page design rules (Panel as reference)
+
+Jorge's rules for every new or redesigned app page, decided in the Simular compra review (MIC-I17, Nov 2026). They are also kept in Plania (project doc "UI design · how MiCasa pages look"). Panel financiero is the reference: when a page and Panel disagree, the page changes. Where an older rule above says otherwise, this section wins.
+
+### Page frame
+
+- The app header owns the title, the context switcher and the one primary action. No second title inside the page.
+- Planner-style pages use Panel's grid: `MONTHLY_PANEL_CONTENT_GRID_CLASS` (one column, then **main 2/3 + aside 1/3 from `xl`**), `MONTHLY_PANEL_MAIN_COLUMN_CLASS` and `MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS` (`src/components/monthly/MonthlyPanelLayout.tsx`).
+- **Results go in the main column; inputs and controls go in the aside**, sticky from `xl` (`xl:sticky xl:top-24`). On phones the input comes first and the results after (`xl:order-*`).
+- Every grid has an explicit single column below its breakpoint (`grid-cols-1` or Panel's grid) and its children get `min-w-0`. **Nothing scrolls sideways at 375 px**: `document.documentElement.scrollWidth` equals `clientWidth`.
+
+### Tabs
+
+- **Whole-view tabs** (Análisis: Proyección · Deudas · Simular compra): `SegmentedControl` in a glass frame (`MONTHLY_LIQUID_PANEL_CLASS`, `p-1 sm:p-1.5`), `stretch`, `AURA_TAB_INDICATOR_CLASS`, `GLASS_TAB_ACTIVE_LABEL_CLASS`, icon + label. Labels fit at 375 px; when they don't, phones get a short label (`sm:hidden` / `hidden sm:inline`), e.g. "Simular". A choice that changes the whole form right under these tabs (e.g. "¿Cómo lo pagas?") may use the same framed style.
+- **Choices inside a card** (Panel's Gastos / Tarjetas / Préstamos): `SegmentedControl` on `GLASS_TAB_TRACK_CLASS` with `AURA_TAB_INDICATOR_CLASS` and `overflowControls="fade"`, stretched with 4 options or fewer (or 1–3 character labels), sized to content otherwise. Simular compra wraps it as `InCardTabs` (`src/components/wallets/liquidity/purchase/InCardTabs.tsx`); move it to a shared folder when a second page needs it.
+- No groups of blue-filled chips for a single choice. A `bg-primary` fill is only the primary button and the active nav icon.
+
+### Cards and tiles
+
+- Every card is `MONTHLY_LIQUID_PANEL_CLASS` at `p-3 sm:p-4` and starts with `SectionHeader` (icon pill, title, one-line subtitle, actions slot for a chip, toggle or menu). No card without a header.
+- Inside a card, rows and tiles use `PANEL_INSET_CLASS` or a hairline. No glass card inside a glass card, no `bg-card` boxes on glass, no tinted washes. The only wash is Panel's aura bloom (`getAuraBloomImage(AURA_TONE_HEX.*)`) on hero tiles and a verdict-type card, in the status tone.
+- **Never a colored left accent** (a `border-l-[3px]` stripe or an inset left shadow) on a card, tile or row. Status goes on the value's color, a chip or a soft tint.
+- **Hero metrics** use Panel's `AccountMetric` (`src/components/monthly/FortnightSummaryHero.tsx`) with `glassSurface`: icon pill, uppercase eyebrow, status chip, amount, caption. A figure that is not money ("1 de 29", a date) goes in `display`. Grid `grid-cols-1 min-[360px]:grid-cols-2`, four tiles at most.
+- **Status chips** are Panel's soft chip: `Badge variant="outline"` + `STATUS_SOFT_CLASS[tone]`, `h-5 rounded-full border-transparent px-2 text-caption font-semibold`, short words ("Holgado", "En rojo", "Buena idea").
+
+### Picking a wallet
+
+- One `Select`: `WalletProviderIcon` + name in the trigger; the menu grouped **Tarjetas** / **Efectivo y débito**, each item with its line (cards: disponible · corte · pago; debit: saldo); the chosen wallet's line repeats under the trigger. Never a list of every wallet as radio rows (`WalletSelect` in Simular compra).
+
+### Forms
+
+- Use the overlay kit rows outside overlays too: `OVERLAY_GROUPED_CARD_CLASS` + `GroupedRow`, `AmountRow`, `DateStepper`; hints below the card, `OverlayWarning` for warnings, `ErrorBanner` for errors.
+- One primary `Button` (`h-11 rounded-xl`); controls at least 44 px tall.
+- Results recalculate on change (about 400 ms debounce) on desktop; on phones a primary button folds the form into a summary card with "Editar".
+
+### Lists and charts
+
+- Fold long lists with a full-width outline "Ver N más" / "Ver menos": about 8 lines in a detail, 12 rows in a table, 4 cards in a list. Put what the user changed first, then by size.
+- Selected row: soft primary tint. Row in the red: soft overdue tint. Tables become row cards on phones.
+- Charts take colors from `chart-theme.ts` and status tokens and axis money from `formatAxisMoney`; labels never overlap (thin them on phones); estimates are labeled with text ("Estimado"); a bar that opens detail is a real `button` with `aria-label`.
+- Dates show the year when they are in a past month or more than 11 months away ("2ª de abril de 2026").
+
+### States and data notices
+
+- First load: skeletons with the card silhouettes. Recalculation: the last result stays dimmed with a "Calculando…" chip. Empty: `EmptyState` inside the card. Error: `ErrorBanner` with "Reintentar", the previous result dimmed under it.
+- Data the page leaves out or assumes gets a one-line notice, with one action when there is a clear one ("Completar datos").
+
+### Check before a PR
+
+- Look at the page at **1440 and 375 px** in dark theme next to Panel, with sandbox data when the dev server is up: header, card shells, chips, tabs, no sideways scroll, no clipped text, long names truncated with `title`.
+- `npm run ci` green; screenshots in the PR for a new page.
+
+---
+
 ## Applying this to remaining app pages
 
 When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
@@ -459,7 +515,7 @@ When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
 1. Pick the archetype (planner, collection, detail, settings) and keep domain structure (tables vs cards) from `.claude/skills/dashboard-ui/SKILL.md`.
 2. Planner-grade panels use `MONTHLY_PANEL_SHELL_CLASS`; settings stay calm cards; card faces stay solid.
 3. Register the one primary action in the app header; overflow for rare actions.
-4. Metric strips stay calm + left border.
+4. Metric strips stay calm: no colored left accent, no tinted fill.
 5. Verify in **dark and light** at desktop and a narrow viewport.
 
 ---

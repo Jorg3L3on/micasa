@@ -16,7 +16,15 @@ type TemplateOwner = Pick<OwnerContextSuccess, 'ownerType' | 'ownerId'>;
 
 const TEMPLATE_INCLUDE = {
   category: { select: { name: true, icon: true } },
-  wallet: { select: { id: true, name: true, provider_icon_key: true } },
+  wallet: {
+    select: {
+      id: true,
+      name: true,
+      provider_icon_key: true,
+      type: true,
+      cutoff_day: true,
+    },
+  },
 } satisfies Prisma.ExpenseTemplateInclude;
 
 const TEMPLATE_WITH_EXPENSES_INCLUDE = {
@@ -24,7 +32,7 @@ const TEMPLATE_WITH_EXPENSES_INCLUDE = {
   expenses: { select: { id: true, amount: true } },
 } satisfies Prisma.ExpenseTemplateInclude;
 
-const NOT_FOUND_MESSAGE = 'Plantilla de gasto no encontrada';
+const NOT_FOUND_MESSAGE = 'Gasto programado no encontrado';
 
 /** Legacy `due_day` mirrors the first configured fortnight day. */
 const dueFieldsFromPayload = (validated: {
@@ -84,7 +92,7 @@ export function createExpenseTemplateForOwner(
 
 /**
  * Applies a full template payload (the update schema is the create schema):
- * due days and cutoff are always rewritten, optional flags only when sent.
+ * due days are always rewritten; cutoff and optional flags only when sent.
  */
 export async function updateExpenseTemplateForOwner(
   id: number,
@@ -95,12 +103,14 @@ export async function updateExpenseTemplateForOwner(
 
   const updateData: Prisma.ExpenseTemplateUncheckedUpdateInput = {
     ...dueFieldsFromPayload(validated),
-    cutoff_day: validated.cutoffDay ?? null,
   };
+  // The form no longer sends a cutoff (Corte comes from the card): keep the stored one.
+  if (validated.cutoffDay !== undefined) updateData.cutoff_day = validated.cutoffDay;
   if (validated.name !== undefined) updateData.name = validated.name;
   if (validated.categoryId !== undefined) updateData.category_id = validated.categoryId;
   if (validated.suggestedAmount !== undefined) {
-    updateData.suggested_amount = validated.suggestedAmount.toString();
+    updateData.suggested_amount =
+      validated.suggestedAmount === null ? null : validated.suggestedAmount.toString();
   }
   if (validated.active !== undefined) updateData.active = validated.active;
   if (validated.paymentMethodId !== undefined) {
@@ -120,6 +130,21 @@ export async function updateExpenseTemplateForOwner(
   return prisma.expenseTemplate.update({
     where: { id },
     data: updateData,
+    include: TEMPLATE_WITH_EXPENSES_INCLUDE,
+  });
+}
+
+/** Changes `active` only; every other column stays as it is. */
+export async function setExpenseTemplateActiveForOwner(
+  id: number,
+  ownerFilter: OwnerFilter,
+  active: boolean,
+) {
+  await findExpenseTemplateForOwner(id, ownerFilter);
+
+  return prisma.expenseTemplate.update({
+    where: { id },
+    data: { active },
     include: TEMPLATE_WITH_EXPENSES_INCLUDE,
   });
 }

@@ -95,7 +95,7 @@ const formatIncomeTemplate = (template: {
 
 const templateKindSchema = z
   .enum(['expense', 'income'])
-  .describe('expense = plantilla de gasto recurrente; income = plantilla de ingreso.');
+  .describe('expense = gasto programado; income = ingreso programado.');
 
 const EXPENSE_ONLY_FIELDS = [
   'due_day_first',
@@ -117,18 +117,18 @@ const templateFields = {
     .number()
     .int()
     .min(1)
-    .max(15)
+    .max(14)
     .nullable()
     .optional()
-    .describe('Solo expense: día de pago en FIRST.'),
+    .describe('Solo expense: día de pago en FIRST (1-14).'),
   due_day_second: z
     .number()
     .int()
-    .min(16)
-    .max(31)
+    .min(15)
+    .max(30)
     .nullable()
     .optional()
-    .describe('Solo expense: día de pago en SECOND.'),
+    .describe('Solo expense: día de pago en SECOND (15-30).'),
   cutoff_day: z
     .number()
     .int()
@@ -374,7 +374,7 @@ export function registerTemplateTools(server: McpServer) {
     name: 'create_template',
     title: 'Crear plantilla',
     description:
-      'Alta de plantilla de gasto (kind expense: días de pago, corte, suscripción) o de ingreso (kind income: source). La billetera es opcional en ambas (en ingresos, solo efectivo/débito).',
+      'Alta de gasto programado (kind expense: días de pago, corte, suscripción) o de ingreso programado (kind income: source). La billetera es opcional en ambas (en ingresos, solo efectivo/débito).',
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: false },
     input: {
@@ -394,7 +394,7 @@ export function registerTemplateTools(server: McpServer) {
     name: 'update_template',
     title: 'Actualizar plantilla',
     description:
-      'Edita una plantilla de gasto o de ingreso; solo cambian los campos enviados. Para borrarla usa delete con kind expense_template o income_template.',
+      'Edita un gasto o ingreso programado; solo cambian los campos enviados. Para borrarla usa delete con kind expense_template o income_template.',
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: true },
     input: {

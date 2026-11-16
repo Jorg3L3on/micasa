@@ -15,6 +15,8 @@ type CurrencyInputProps = Omit<
   hideSymbol?: boolean;
   /** Trailing clear control (Apple HIG text fields). */
   clearable?: boolean;
+  /** Show thousands separators (12,000) while the field is not being edited. */
+  grouped?: boolean;
 };
 
 /** Normalize locale decimal comma and strip invalid chars; keep at most one `.`. */
@@ -71,6 +73,13 @@ export const formatCurrencyDraft = (value: unknown): string => {
   return String(fixed);
 };
 
+/** Like formatCurrencyDraft, with thousands separators: for display only, never while typing. */
+export const formatGroupedDraft = (value: unknown): string => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num === 0) return '';
+  return num.toLocaleString('es-MX', { maximumFractionDigits: 2 });
+};
+
 export const CurrencyInput = React.forwardRef<
   HTMLInputElement,
   CurrencyInputProps
@@ -85,18 +94,20 @@ export const CurrencyInput = React.forwardRef<
     onBlur,
     hideSymbol = false,
     clearable = false,
+    grouped = false,
     ...props
   },
   ref,
 ) {
+  const display = grouped ? formatGroupedDraft : formatCurrencyDraft;
   const [focused, setFocused] = React.useState(false);
-  const [text, setText] = React.useState(() => formatCurrencyDraft(value));
+  const [text, setText] = React.useState(() => display(value));
 
   React.useEffect(() => {
     if (!focused) {
-      setText(formatCurrencyDraft(value));
+      setText(display(value));
     }
-  }, [value, focused]);
+  }, [value, focused, display]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const draft = sanitizeCurrencyDraft(e.target.value);
@@ -106,13 +117,15 @@ export const CurrencyInput = React.forwardRef<
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     setFocused(true);
+    // A comma means decimals while typing, so edit the plain number.
+    if (grouped) setText(formatCurrencyDraft(value));
     onFocus?.(e);
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const committed = commitCurrencyDraft(text);
     onChange(committed);
-    setText(formatCurrencyDraft(committed));
+    setText(display(committed));
     setFocused(false);
     onBlur?.(e);
   };

@@ -1,11 +1,13 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import {
   getFortnightRemainderCopy,
   type DueToPayCompositionRow,
 } from '@/components/monthly/fortnight-summary-header';
 import { CommitmentMeter } from '@/components/monthly/CommitmentMeter';
-import { kpiMetricCardShellClass, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
+import { KPI_METRIC_CARD_SHELL_CLASS, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { AuraSurface } from '@/components/aura/aura-surface';
@@ -162,6 +164,8 @@ type AccountMetricProps = {
   amountClassName: string;
   /** Health chip at the end of the eyebrow row (glass tiles). */
   badge?: { label: string; tone: StatusTone };
+  /** Shown instead of the animated amount when the figure is not money ("1 de 29", a date). */
+  display?: ReactNode;
 };
 
 /**
@@ -182,6 +186,7 @@ const AccountMetricBody = ({
   icon: Icon,
   amountClassName,
   badge,
+  display,
 }: AccountMetricProps) => (
   <>
     <div className="mb-1.5 flex items-center justify-between gap-1.5">
@@ -211,6 +216,9 @@ const AccountMetricBody = ({
       ) : null}
     </div>
     <p className="min-w-0 whitespace-nowrap">
+      {display != null ? (
+        <span className={cn(badge ? 'text-2xl font-semibold tabular-nums' : 'text-lg font-bold sm:text-xl', amountClassName)}>{display}</span>
+      ) : (
       <CurrencyTicker
         value={amount}
         className={cn(
@@ -223,6 +231,7 @@ const AccountMetricBody = ({
           amountClassName,
         )}
       />
+      )}
     </p>
     <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
       {subtitle}
@@ -234,7 +243,7 @@ const AccountMetricBody = ({
 export const AccountMetric = (props: AccountMetricProps) => {
   if (props.kpiTone) {
     return (
-      <div className={kpiMetricCardShellClass(props.kpiTone)} role="region" aria-label={props.label}>
+      <div className={KPI_METRIC_CARD_SHELL_CLASS} role="region" aria-label={props.label}>
         <AccountMetricBody {...props} />
       </div>
     );

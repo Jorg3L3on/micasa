@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching income templates:', error);
     return NextResponse.json(
-      { error: 'Error al obtener las plantillas de ingresos' },
+      { error: 'Error al obtener los ingresos programados' },
       { status: 500 },
     );
   }
@@ -105,14 +105,14 @@ export async function POST(request: NextRequest) {
       error.code === 'P2002'
     ) {
       return NextResponse.json(
-        { error: 'Ya existe una plantilla de ingresos con este nombre' },
+        { error: 'Ya existe un ingreso programado con este nombre' },
         { status: 409 },
       );
     }
 
     console.error('Error creating income template:', error);
     return NextResponse.json(
-      { error: 'Error al crear la plantilla de ingresos' },
+      { error: 'Error al crear el ingreso programado' },
       { status: 500 },
     );
   }
@@ -182,14 +182,14 @@ export async function PUT(request: NextRequest) {
       error.code === 'P2025'
     ) {
       return NextResponse.json(
-        { error: 'Plantilla de ingresos no encontrada' },
+        { error: 'Ingreso programado no encontrado' },
         { status: 404 },
       );
     }
 
     console.error('Error updating income template:', error);
     return NextResponse.json(
-      { error: 'Error al actualizar la plantilla de ingresos' },
+      { error: 'Error al actualizar el ingreso programado' },
       { status: 500 },
     );
   }
@@ -213,7 +213,7 @@ export async function DELETE(request: NextRequest) {
       await deleteIncomeTemplateForOwner(Number(id), ownerFilter);
 
       return NextResponse.json(
-        { message: 'Plantilla de ingresos eliminada correctamente' },
+        { message: 'Ingreso programado eliminado correctamente' },
         { status: 200 },
       );
     });
@@ -228,14 +228,14 @@ export async function DELETE(request: NextRequest) {
       error.code === 'P2025'
     ) {
       return NextResponse.json(
-        { error: 'Plantilla de ingresos no encontrada' },
+        { error: 'Ingreso programado no encontrado' },
         { status: 404 },
       );
     }
 
     console.error('Error deleting income template:', error);
     return NextResponse.json(
-      { error: 'Error al eliminar la plantilla de ingresos' },
+      { error: 'Error al eliminar el ingreso programado' },
       { status: 500 },
     );
   }

@@ -87,17 +87,17 @@ Two flavors. Pick by purpose, not page.
 
 Use `<Money size="hero">` (`src/components/money.tsx`) for the amount that anchors a page (balance, totals, period income/expense). Tone is `neutral`, `positive`, or `negative` via status tokens. Do not wrap it in a gradient icon.
 
-KPI tiles are calm cards: `kpiMetricCardShellClass` (`src/components/finance/kpi-metric-card-styles.ts`) or `METRIC_STRIP_CLASS` plus a status left border. No gradient fill.
+KPI tiles are calm cards: `KPI_METRIC_CARD_SHELL_CLASS` (`src/components/finance/kpi-metric-card-styles.ts`) or `METRIC_STRIP_CLASS`, with status on the value color or a `STATUS_BADGE` chip. No colored left accent, no gradient fill (DESIGN.md).
 
 ### Metric strip (compact non-currency)
 
-Use for **counts, dates, or non-currency** values with a calm shell and colored left border. Prefer `METRIC_STRIP_CLASS` from `src/components/ui/metric-strip.ts` plus a `border-l-*` accent (see fintech / UI consistency rules).
+Use for **counts, dates, or non-currency** values with a calm shell. Use `METRIC_STRIP_CLASS` from `src/components/ui/metric-strip.ts` as is: no `border-l-*` accent (colored left accents are never used; see DESIGN.md).
 
 ```tsx
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { cn } from '@/lib/utils';
 
-<div className={cn(METRIC_STRIP_CLASS, 'border-l-sky-500/50')}>
+<div className={METRIC_STRIP_CLASS}>
   <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
     Préstamos activos
   </span>

@@ -211,7 +211,7 @@ export async function assertCategoryDeletable(
   });
   if (relatedTemplate) {
     throw new CategoryServiceError(
-      'La categoría tiene plantillas de gasto asociadas y no puede eliminarse',
+      'La categoría tiene gastos programados asociados y no puede eliminarse',
       409,
     );
   }
@@ -234,7 +234,7 @@ export async function assertCategoryDeletable(
   });
   if (relatedIncomeTemplate) {
     throw new CategoryServiceError(
-      'La categoría tiene plantillas de ingreso asociadas y no puede eliminarse',
+      'La categoría tiene ingresos programados asociados y no puede eliminarse',
       409,
     );
   }

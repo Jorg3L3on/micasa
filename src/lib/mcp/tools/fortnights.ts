@@ -13,7 +13,7 @@ export function registerFortnightTools(server: McpServer) {
     name: 'create_month',
     title: 'Crear mes de planeación',
     description:
-      'Crea las dos quincenas del mes (si faltan) y expande las plantillas de gastos e ingresos, como el botón Crear mes en Panel financiero. Seguro de repetir.',
+      'Crea las dos quincenas del mes (si faltan) y expande los gastos e ingresos programados, como el botón Crear mes en Panel financiero. Seguro de repetir.',
     scope: 'write',
     annotations: { destructiveHint: false, idempotentHint: true },
     input: {

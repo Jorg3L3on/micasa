@@ -189,7 +189,7 @@ export const LoanEditOverlay = ({
             <OverlayHint>El ingreso relacionado solo aplica a deducción de nómina.</OverlayHint>
           ) : (
             <OverlayHint>
-              Vincular una plantilla de ingreso mejora las etiquetas del inicio.
+              Vincular un ingreso programado mejora las etiquetas del inicio.
             </OverlayHint>
           )}
           <Button

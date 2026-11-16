@@ -85,7 +85,7 @@ export default async function AdminUserDetailPage({
       </div>
 
       <section
-        className="rounded-lg border border-border/60 border-l-[3px] border-l-blue-500/50 bg-card px-4 py-3"
+        className="rounded-lg border border-border/60 bg-card px-4 py-3"
         aria-label="Casas"
       >
         <div className="mb-2 flex items-center gap-2">
@@ -112,7 +112,7 @@ export default async function AdminUserDetailPage({
       </section>
 
       <section
-        className="rounded-lg border border-border/60 border-l-[3px] border-l-emerald-500/50 bg-card px-4 py-3"
+        className="rounded-lg border border-border/60 bg-card px-4 py-3"
         aria-label="Billeteras"
       >
         <div className="mb-2 flex items-center gap-2">
@@ -149,7 +149,7 @@ export default async function AdminUserDetailPage({
       </section>
 
       <section
-        className="rounded-lg border border-border/60 border-l-[3px] border-l-violet-500/50 bg-card px-4 py-3"
+        className="rounded-lg border border-border/60 bg-card px-4 py-3"
         aria-label="Quincenas"
       >
         <div className="mb-2 flex items-center gap-2">
@@ -187,7 +187,7 @@ export default async function AdminUserDetailPage({
       </section>
 
       <section
-        className="rounded-lg border border-border/60 border-l-[3px] border-l-amber-500/50 bg-card px-4 py-3"
+        className="rounded-lg border border-border/60 bg-card px-4 py-3"
         aria-label="Préstamos"
       >
         <div className="mb-2 flex items-center gap-2">
@@ -223,7 +223,7 @@ export default async function AdminUserDetailPage({
       </section>
 
       <section
-        className="rounded-lg border border-border/60 border-l-[3px] border-l-slate-500/50 bg-card px-4 py-3"
+        className="rounded-lg border border-border/60 bg-card px-4 py-3"
         aria-label="Actividad reciente"
       >
         <div className="mb-2 flex items-center gap-2">

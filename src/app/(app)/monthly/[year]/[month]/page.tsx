@@ -268,7 +268,7 @@ export default async function MonthlyPage({
                 Falta crear la planeación de {viewedMonthLabel}
               </p>
               <p className="max-w-sm text-body text-muted-foreground">
-                Se generan las dos quincenas con tus plantillas de gastos e ingresos. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta.
+                Se generan las dos quincenas con tus gastos e ingresos programados. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta.
               </p>
               <CreatePlanningMonthButton
                 year={year}

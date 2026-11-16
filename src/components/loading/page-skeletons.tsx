@@ -67,7 +67,7 @@ export const CollectionCardsSkeleton = () => (
   </div>
 );
 
-/** Collection table (operaciones, plantillas). */
+/** Collection table (operaciones). */
 export const CollectionTableSkeleton = () => (
   <div className="space-y-4" aria-busy="true" aria-label="Cargando tabla">
     <Skeleton className="h-10 w-64 rounded-full" />
@@ -95,6 +95,51 @@ export const SettingsPageSkeleton = () => (
     <div className="space-y-2 rounded-xl border border-border/60 bg-card p-4">
       {Array.from({ length: 5 }).map((_, index) => (
         <Row key={index} className="h-14 w-full rounded-xl" />
+      ))}
+    </div>
+  </div>
+);
+
+/**
+ * Gastos / Ingresos programados: summary card (cells from md, two columns
+ * below), the quincena control and rows shaped like `ScheduledRow`.
+ */
+export const ScheduledListSkeleton = ({ label }: { label: string }) => (
+  <div className="flex flex-col gap-4 md:gap-5" aria-busy="true" aria-label={label}>
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
+      <div className="grid grid-cols-2 divide-x divide-border/60 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className={cn('space-y-2 px-3.5 py-3 md:px-5 md:py-4', index > 1 && 'hidden md:block')}
+          >
+            <Skeleton className="h-2.5 w-20 rounded-full" />
+            <Skeleton className="h-6 w-28 rounded-md" />
+            <Skeleton className="h-2.5 w-24 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+    <Skeleton className="h-11 w-full rounded-full md:h-10 md:w-80" />
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
+      {[
+        ['62%', '44%'],
+        ['48%', '56%'],
+        ['70%', '38%'],
+        ['54%', '50%'],
+        ['40%', '46%'],
+      ].map(([name, line], index) => (
+        <div
+          key={index}
+          className="flex min-h-16 items-center gap-3 border-t border-border/60 px-3.5 first:border-t-0 md:min-h-[60px] md:px-5"
+        >
+          <Skeleton className="size-10 shrink-0 rounded-xl md:size-9" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-3 rounded-full" style={{ width: name }} />
+            <Skeleton className="h-2.5 rounded-full" style={{ width: line }} />
+          </div>
+          <Skeleton className="h-3 w-16 shrink-0 rounded-full" />
+        </div>
       ))}
     </div>
   </div>
