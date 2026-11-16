@@ -273,7 +273,7 @@ function OnboardingWizardContent({ userName }: { userName: string }) {
                 <Button
                   type="button"
                   onClick={handleNext}
-                  className="h-11 min-w-32 shrink-0 rounded-xl min-[400px]:min-w-36"
+                  className="h-11 min-w-24 shrink-0 rounded-xl px-3 min-[360px]:min-w-32 min-[360px]:px-4 min-[400px]:min-w-36"
                   disabled={isStepLoading || !canProceed || !isDraftReady}
                 >
                   {primaryLabel}

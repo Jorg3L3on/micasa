@@ -23,7 +23,9 @@ export function OnboardingSkipAction({ disabled }: { disabled?: boolean }) {
       }}
       className="h-11 rounded-xl px-2.5 font-medium text-muted-foreground hover:text-foreground min-[400px]:px-3"
     >
-      Omitir<span className="hidden min-[400px]:inline">&nbsp;por ahora</span>
+      <span>
+        Omitir<span className="hidden min-[400px]:inline"> por ahora</span>
+      </span>
     </Button>
   );
 }
