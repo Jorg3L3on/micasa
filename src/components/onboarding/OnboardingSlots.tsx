@@ -11,6 +11,8 @@ import {
   type OnboardingPreview,
   type QuincenaPreview,
 } from '@/components/onboarding/onboarding-preview';
+import { ONBOARDING_STEP } from '@/components/onboarding/onboarding-navigation';
+import { QuincenaDiagram } from '@/components/onboarding/steps/QuincenaDiagram';
 import { cn, formatCurrency } from '@/lib/utils';
 
 /**
@@ -76,6 +78,9 @@ export const OnboardingAsidePreviewSlot = () => {
   const { currentStep } = useOnboarding();
   const preview = useOnboardingPreview();
 
+  // Resumen already leads with the free amounts; the aside explains the quincenas.
+  if (currentStep === ONBOARDING_STEP.summary) return <QuincenaDiagram />;
+
   if (!preview.hasIncome) {
     return (
       <section
@@ -140,7 +145,13 @@ export const OnboardingPhoneStripSlot = () => {
   const { currentStep } = useOnboarding();
   const preview = useOnboardingPreview();
 
-  if (currentStep < INCOME_STEP_INDEX || !preview.hasIncome) return null;
+  if (
+    currentStep < INCOME_STEP_INDEX ||
+    currentStep === ONBOARDING_STEP.summary ||
+    !preview.hasIncome
+  ) {
+    return null;
+  }
 
   return (
     <div
