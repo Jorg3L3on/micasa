@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
@@ -11,20 +11,22 @@ import { cn } from '@/lib/utils';
 import { ErrorBanner } from '@/components/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PasswordInput } from '@/components/ui/password-input';
+import { Check } from 'lucide-react';
 import {
   AUTH_INPUT_CLASS,
   AUTH_LABEL_CLASS,
   AUTH_TAP_TARGET_CLASS,
+  AuthConsentLine,
   AuthFieldHint,
   AuthFormHeader,
-  AuthLegalLinks,
+  AuthPasswordInput,
   AuthPrimaryButton,
+  AuthStepBar,
   AuthSwitchPrompt,
 } from '@/components/auth/auth-form-kit';
+import { getPasswordHint } from '@/components/auth/password-hint';
 import {
   GENERIC_REGISTER_ERROR_MESSAGE,
-  PASSWORD_MIN_LENGTH,
   registerSchema,
   type RegisterValues,
 } from '@/schemas/auth.schema';
@@ -53,6 +55,14 @@ export function RegisterForm({
     defaultValues: { name: '', email: '', password: '' },
   });
   const { errors, isSubmitting } = form.formState;
+  const passwordHint = getPasswordHint(
+    useWatch({ control: form.control, name: 'password' })?.length ?? 0,
+  );
+  const existingAccount = apiError?.kind === 'existing-account';
+  const emailDescribedBy =
+    [errors.email && 'register-email-error', existingAccount && 'register-email-existing']
+      .filter(Boolean)
+      .join(' ') || undefined;
 
   const handleSubmit = async (data: RegisterValues) => {
     setApiError(null);
@@ -104,11 +114,25 @@ export function RegisterForm({
 
   return (
     <div className={cn('flex h-full flex-col', className)} {...props}>
-      <AuthFormHeader eyebrow="Gratis, en menos de un minuto" title="Crear cuenta" />
+      <AuthStepBar className="mb-2 min-[781px]:hidden" />
+      <AuthFormHeader
+        title="Crear cuenta"
+        eyebrow={
+          <>
+            <span className="min-[781px]:hidden">Paso 1 de 5 · Sigue: Billeteras</span>
+            <span className="max-[780px]:hidden">Paso 1 de 5</span>
+          </>
+        }
+        eyebrowClassName="text-caption max-[780px]:mb-3.5"
+      >
+        <p className="mt-1.5 text-sm leading-[1.45] text-muted-foreground min-[781px]:hidden">
+          En unos 2 minutos sabrás cuánto te queda libre en cada quincena.
+        </p>
+      </AuthFormHeader>
 
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
-        className="flex flex-col gap-[18px]"
+        className="flex flex-col gap-3.5 sm:gap-[18px]"
         noValidate
       >
         <div>
@@ -141,15 +165,37 @@ export function RegisterForm({
             inputMode="email"
             placeholder="nombre@ejemplo.com"
             autoComplete="email"
-            aria-invalid={errors.email ? true : undefined}
-            aria-describedby={errors.email ? 'register-email-error' : undefined}
+            aria-invalid={errors.email || existingAccount ? true : undefined}
+            aria-describedby={emailDescribedBy}
             className={AUTH_INPUT_CLASS}
-            {...form.register('email')}
+            {...form.register('email', {
+              onChange: () => {
+                if (existingAccount) setApiError(null);
+              },
+            })}
           />
           {errors.email ? (
             <AuthFieldHint id="register-email-error" tone="error">
               {errors.email.message}
             </AuthFieldHint>
+          ) : null}
+          {existingAccount ? (
+            <p
+              id="register-email-existing"
+              role="alert"
+              className="mt-2 text-[13px] leading-[1.45] text-status-expense"
+            >
+              {GENERIC_REGISTER_ERROR_MESSAGE}{' '}
+              <Link
+                href={loginHref}
+                className={cn(
+                  AUTH_TAP_TARGET_CLASS,
+                  'font-semibold text-foreground underline underline-offset-[3px]',
+                )}
+              >
+                Iniciar sesión
+              </Link>
+            </p>
           ) : null}
         </div>
 
@@ -157,33 +203,25 @@ export function RegisterForm({
           <Label htmlFor="register-password" className={AUTH_LABEL_CLASS}>
             Contraseña
           </Label>
-          <PasswordInput
+          <AuthPasswordInput
             id="register-password"
             autoComplete="new-password"
             aria-invalid={errors.password ? true : undefined}
             aria-describedby="register-password-hint"
-            className={AUTH_INPUT_CLASS}
             {...form.register('password')}
           />
           <AuthFieldHint
             id="register-password-hint"
-            tone={errors.password ? 'error' : 'muted'}
+            tone={passwordHint.met ? 'success' : errors.password ? 'error' : 'muted'}
           >
-            {errors.password?.message ?? `Mínimo ${PASSWORD_MIN_LENGTH} caracteres.`}
+            {passwordHint.met ? <Check aria-hidden className="size-3.5" strokeWidth={2.5} /> : null}
+            <span aria-live="polite">{passwordHint.text}</span>
           </AuthFieldHint>
         </div>
 
-        {apiError ? (
+        {apiError && !existingAccount ? (
           <ErrorBanner>
             {apiError.kind === 'message' ? apiError.text : null}
-            {apiError.kind === 'existing-account' ? (
-              <>
-                {GENERIC_REGISTER_ERROR_MESSAGE}{' '}
-                <Link href={loginHref} className={cn(AUTH_TAP_TARGET_CLASS, 'font-medium underline underline-offset-2')}>
-                  Iniciar sesión
-                </Link>
-              </>
-            ) : null}
             {apiError.kind === 'sign-in-failed' ? (
               <>
                 Tu cuenta está creada, pero no pudimos entrar automáticamente.{' '}
@@ -196,16 +234,22 @@ export function RegisterForm({
         ) : null}
 
         <AuthPrimaryButton type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creando cuenta…' : 'Crear cuenta'}
+          {isSubmitting ? 'Creando cuenta…' : 'Crear cuenta y continuar'}
         </AuthPrimaryButton>
+        <AuthConsentLine />
       </form>
 
-      <AuthSwitchPrompt
-        question="¿Ya tienes cuenta?"
-        href={loginHref}
-        linkLabel="Iniciar sesión"
-      />
-      <AuthLegalLinks />
+      {/* Phones get the login link in the header above the panel. */}
+      <div className="max-[780px]:hidden">
+        <AuthSwitchPrompt
+          question="¿Ya tienes cuenta?"
+          href={loginHref}
+          linkLabel="Iniciar sesión"
+        />
+      </div>
+      <p className="mt-auto pt-6 text-center text-caption text-muted-foreground min-[781px]:hidden">
+        Gratis. Sin tarjeta y sin conectar tu banco.
+      </p>
     </div>
   );
 }
