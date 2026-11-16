@@ -20,6 +20,13 @@ import {
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
+import { FirstStepsCard } from '@/components/monthly/FirstStepsCard';
+import {
+  buildFirstStepsItems,
+  isFirstStepsEligible,
+  PANEL_EXPENSES_ANCHOR_ID,
+} from '@/components/monthly/first-steps';
+import { loadFirstStepsFacts } from '@/features/monthly/server/first-steps.queries';
 import CreatePlanningMonthButton from '@/components/CreatePlanningMonthButton';
 import { formatMonthHeading, formatMonthTitle, todayCalendarDate } from '@/lib/calendar-dates';
 import { PLANNING_MONTH_MAX_YEAR } from '@/lib/finance/planning-month';
@@ -98,6 +105,12 @@ export default async function MonthlyPage({
   const isCurrentMonth = year === currentYear && month === currentMonth;
   const currentMonthHref = `${getCurrentMonthlyPanelHref()}${ownerQuery}`;
 
+  // Started before the shell so both reads overlap; a failure only hides the card.
+  const firstStepsFactsPromise = loadFirstStepsFacts(ownerContext.userId).catch((error) => {
+    console.error('Error loading Primeros pasos:', error);
+    return null;
+  });
+
   let shell;
   try {
     shell = await withPageActor(ownerContext, '/monthly', () =>
@@ -125,6 +138,19 @@ export default async function MonthlyPage({
       </div>
     );
   }
+
+  const firstStepsFacts = await firstStepsFactsPromise;
+  const firstStepsItems = firstStepsFacts
+    ? buildFirstStepsItems(firstStepsFacts, ownerQuery)
+    : [];
+  const firstStepsCard =
+    firstStepsFacts && isFirstStepsEligible(firstStepsFacts, firstStepsItems, new Date()) ? (
+      <FirstStepsCard
+        userId={firstStepsFacts.userId}
+        firstName={firstStepsFacts.firstName}
+        items={firstStepsItems}
+      />
+    ) : null;
 
   const pickNav = (index: number) =>
     shell.fortnightMap.get(fortnightCalendarKey(shell.navKeys[index])) ?? null;
@@ -322,24 +348,27 @@ export default async function MonthlyPage({
       nextNavControl={nextNavControl}
       createNextControl={createNextControl}
     >
-      <MonthlyPanelContentSuspense
-        ownerFilter={ownerContext.ownerFilter}
-        pageOwner={ownerContext}
-        ownerKey={ownerKey}
-        year={year}
-        month={month}
-        yearParam={yearParam}
-        monthParam={monthParam}
-        activePeriod={suggestedPeriod}
-        shell={shell}
-        ownerQuery={ownerQuery}
-        firstLabel={firstLabel}
-        secondLabel={secondLabel}
-        firstFortnightId={firstFortnightId}
-        secondFortnightId={secondFortnightId}
-        monthIsMissing={monthIsMissing}
-        todayYmd={todayYmd}
-      />
+      {firstStepsCard}
+      <div id={PANEL_EXPENSES_ANCHOR_ID} className="scroll-mt-24">
+        <MonthlyPanelContentSuspense
+          ownerFilter={ownerContext.ownerFilter}
+          pageOwner={ownerContext}
+          ownerKey={ownerKey}
+          year={year}
+          month={month}
+          yearParam={yearParam}
+          monthParam={monthParam}
+          activePeriod={suggestedPeriod}
+          shell={shell}
+          ownerQuery={ownerQuery}
+          firstLabel={firstLabel}
+          secondLabel={secondLabel}
+          firstFortnightId={firstFortnightId}
+          secondFortnightId={secondFortnightId}
+          monthIsMissing={monthIsMissing}
+          todayYmd={todayYmd}
+        />
+      </div>
     </MonthlyPanelLayout>
   );
 }

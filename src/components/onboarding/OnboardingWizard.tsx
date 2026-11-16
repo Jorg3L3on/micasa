@@ -145,7 +145,7 @@ function OnboardingWizardContent({ userName }: { userName: string }) {
 
       if (response.ok) {
         clearDraft();
-        router.push(getAppHomeHref('welcome=1'));
+        router.push(getAppHomeHref());
         return;
       }
 
