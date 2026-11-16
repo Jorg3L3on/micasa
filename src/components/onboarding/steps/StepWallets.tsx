@@ -1,15 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Banknote, CreditCard, Landmark, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Banknote, ChevronDown, CreditCard, Landmark, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,15 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { OverlayHint } from '@/components/overlay/overlay-form';
 import {
-  AmountRow,
-  GroupedRow,
-  OVERLAY_ROW_INPUT_CLASS,
-  OVERLAY_ROW_NUMBER_INPUT_CLASS,
-  OVERLAY_ROW_TRIGGER_CLASS,
-  OVERLAY_SECONDARY_BUTTON_CLASS,
-  OverlayHint,
-} from '@/components/overlay/overlay-form';
+  MONTHLY_ICON_PILL_CLASS,
+  PANEL_INSET_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
 import {
   WALLET_TYPE_LABEL,
   createWalletDraft,
@@ -33,9 +23,11 @@ import {
   type WalletDraft,
   type WalletDraftType,
 } from '@/components/onboarding/OnboardingContext';
-import { OnboardingItemCard } from '@/components/onboarding/OnboardingItemCard';
+import { OnboardingDeletableRow } from '@/components/onboarding/OnboardingDeletableRow';
+import { OnboardingChip, OnboardingFieldCaption } from '@/components/onboarding/OnboardingChip';
+import { BANK_CHIP_GROUPS, isMoreBankKey } from '@/components/onboarding/steps/onboarding-rows';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import { WALLET_PROVIDER_ICON_OPTIONS } from '@/lib/wallet-provider-icons';
+import { cn } from '@/lib/utils';
 
 const TYPE_ICONS = {
   CASH: Banknote,
@@ -43,7 +35,8 @@ const TYPE_ICONS = {
   CREDIT: CreditCard,
 } as const;
 
-const ADD_OPTIONS: WalletDraftType[] = ['CASH', 'BANK', 'CREDIT'];
+/** "Otra cuenta o efectivo" offers the two funding types. */
+const OTHER_ACCOUNT_OPTIONS: WalletDraftType[] = ['BANK', 'CASH'];
 
 const NAME_PLACEHOLDER: Record<WalletDraftType, string> = {
   CASH: 'Ej. Efectivo',
@@ -51,11 +44,13 @@ const NAME_PLACEHOLDER: Record<WalletDraftType, string> = {
   CREDIT: 'Ej. Tarjeta Oro',
 };
 
-const BANK_OPTIONS = WALLET_PROVIDER_ICON_OPTIONS.filter(
-  (option) => option.key !== 'CASH_GENERIC',
-);
+/** Inset field inside a wallet row: 44px tall, faint glass. */
+const ROW_FIELD_CLASS =
+  'h-11 rounded-[10px] border-border/60 bg-white/[0.05] font-semibold tabular-nums dark:border-white/10 dark:bg-white/[0.05]';
 
-const NO_BANK = '__none__';
+/** Dashed secondary action under the rows (canvas `.btn-s`). */
+const ADD_BUTTON_CLASS =
+  'min-h-11 flex-1 basis-48 rounded-xl border border-dashed border-border/70 bg-white/[0.04] font-medium text-foreground hover:bg-white/[0.08] dark:border-white/20';
 
 /** A wallet type must keep at least one named wallet (CASH and BANK). */
 const isRequiredType = (type: WalletDraftType) => type !== 'CREDIT';
@@ -87,24 +82,198 @@ export const walletsAreValid = (wallets: WalletDraft[]): boolean =>
   wallets.some((wallet) => wallet.type === 'CASH') &&
   wallets.some((wallet) => wallet.type === 'BANK');
 
-function WalletLeading({ wallet }: { wallet: WalletDraft }) {
-  if (wallet.providerIconKey) {
+function WalletPill({ wallet }: { wallet: WalletDraft }) {
+  if (wallet.type !== 'CASH' && wallet.providerIconKey) {
     return (
       <WalletProviderIcon
         providerIconKey={wallet.providerIconKey}
-        className="size-8"
+        className="size-9 rounded-xl"
         showTooltipLabel={false}
       />
     );
   }
   const Icon = TYPE_ICONS[wallet.type];
   return (
-    <span
-      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"
-      aria-hidden
-    >
-      <Icon className="size-4" />
+    <span className={cn(MONTHLY_ICON_PILL_CLASS, 'size-9')} aria-hidden>
+      <Icon className="size-[18px]" />
     </span>
+  );
+}
+
+function BankChips({
+  wallet,
+  onPick,
+}: {
+  wallet: WalletDraft;
+  onPick: (providerIconKey: string | null) => void;
+}) {
+  const [showMore, setShowMore] = useState(() => isMoreBankKey(wallet.providerIconKey));
+  const groupId = `wallet-bank-${wallet.id}`;
+  const banks = showMore
+    ? [...BANK_CHIP_GROUPS.common, ...BANK_CHIP_GROUPS.more]
+    : BANK_CHIP_GROUPS.common;
+  const isOther =
+    wallet.providerIconKey == null || wallet.providerIconKey === 'GENERIC_BANK';
+
+  return (
+    <div className="flex flex-col gap-2">
+      <OnboardingFieldCaption id={groupId}>Banco</OnboardingFieldCaption>
+      <div role="group" aria-labelledby={groupId} className="flex flex-wrap gap-2">
+        {banks.map((bank) => (
+          <OnboardingChip
+            key={bank.key}
+            selected={wallet.providerIconKey === bank.key}
+            onClick={() => onPick(bank.key)}
+          >
+            <WalletProviderIcon
+              providerIconKey={bank.key}
+              className="size-5 border-0"
+              showTooltipLabel={false}
+            />
+            {bank.label}
+          </OnboardingChip>
+        ))}
+        <OnboardingChip selected={isOther} onClick={() => onPick(null)}>
+          Otro
+        </OnboardingChip>
+        {!showMore ? (
+          <OnboardingChip
+            aria-pressed={undefined}
+            aria-expanded={false}
+            onClick={() => setShowMore(true)}
+            className="text-muted-foreground"
+          >
+            Más bancos
+            <ChevronDown className="size-4" aria-hidden />
+          </OnboardingChip>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function CreditFields({
+  wallet,
+  onChange,
+}: {
+  wallet: WalletDraft;
+  onChange: (patch: Partial<WalletDraft>) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {(
+        [
+          ['cutoffDay', 'Día de corte'],
+          ['dueDay', 'Día de pago'],
+        ] as const
+      ).map(([field, label]) => {
+        const inputId = `wallet-${field}-${wallet.id}`;
+        return (
+          <div key={field} className="flex flex-col gap-1.5">
+            <OnboardingFieldCaption htmlFor={inputId}>{label}</OnboardingFieldCaption>
+            <Input
+              id={inputId}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={31}
+              step={1}
+              placeholder="1–31"
+              value={wallet[field] ?? ''}
+              onChange={(event) => {
+                const raw = event.target.value;
+                const day = raw === '' ? null : Math.trunc(Number(raw));
+                onChange({
+                  [field]: day != null && day >= 1 && day <= 31 ? day : null,
+                });
+              }}
+              className={ROW_FIELD_CLASS}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WalletRow({
+  wallet,
+  canDelete,
+  onChange,
+  onDelete,
+}: {
+  wallet: WalletDraft;
+  canDelete: boolean;
+  onChange: (patch: Partial<WalletDraft>) => void;
+  onDelete: () => void;
+}) {
+  const nameMissing = wallet.name.trim() === '';
+  const missingHint = walletMissingHint(wallet);
+  const isCredit = wallet.type === 'CREDIT';
+  const amountId = `wallet-${isCredit ? 'limit' : 'balance'}-${wallet.id}`;
+
+  return (
+    <li className="flex flex-col gap-1.5">
+      <OnboardingDeletableRow
+        name={wallet.name}
+        canDelete={canDelete}
+        itemNoun="billetera"
+        onDelete={onDelete}
+      >
+        {(deleteButton) => (
+          <div className={cn(PANEL_INSET_CLASS, 'flex flex-col gap-3 px-3.5 py-2.5')}>
+            <div className="flex flex-wrap items-center gap-3">
+              <WalletPill wallet={wallet} />
+              <div className="min-w-0 flex-1 basis-40">
+                <input
+                  type="text"
+                  value={wallet.name}
+                  onChange={(event) => onChange({ name: event.target.value })}
+                  placeholder={NAME_PLACEHOLDER[wallet.type]}
+                  autoComplete="off"
+                  aria-label="Nombre de la billetera"
+                  aria-invalid={nameMissing || undefined}
+                  className="h-11 w-full min-w-0 border-0 bg-transparent p-0 text-[15px] font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground"
+                />
+                <p className="-mt-1.5 truncate text-xs text-muted-foreground">
+                  {WALLET_TYPE_LABEL[wallet.type]}
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <label htmlFor={amountId} className="text-xs text-muted-foreground">
+                  {isCredit ? 'Línea de crédito' : 'Saldo hoy'}
+                </label>
+                <div className="flex w-[8.5rem]">
+                  <CurrencyInput
+                    id={amountId}
+                    grouped
+                    value={(isCredit ? wallet.creditLimit : wallet.initialBalance) || ''}
+                    onChange={(value) => {
+                      const amount = Number.isFinite(value) && value > 0 ? value : 0;
+                      onChange(isCredit ? { creditLimit: amount } : { initialBalance: amount });
+                    }}
+                    placeholder="0.00"
+                    aria-label={isCredit ? 'Línea de crédito' : 'Saldo hoy'}
+                    className={cn(ROW_FIELD_CLASS, 'text-right text-[15px]')}
+                  />
+                </div>
+              </div>
+              {deleteButton}
+            </div>
+
+            {wallet.type !== 'CASH' ? (
+              <BankChips
+                wallet={wallet}
+                onPick={(providerIconKey) => onChange({ providerIconKey })}
+              />
+            ) : null}
+
+            {isCredit ? <CreditFields wallet={wallet} onChange={onChange} /> : null}
+          </div>
+        )}
+      </OnboardingDeletableRow>
+      {missingHint ? <OverlayHint role="status">{missingHint}</OverlayHint> : null}
+    </li>
   );
 }
 
@@ -156,162 +325,56 @@ export default function StepWallets() {
   return (
     <div className="flex flex-col gap-3">
       <ul className="flex flex-col gap-3" role="list">
-        {wallets.map((wallet) => {
-          const nameId = `wallet-name-${wallet.id}`;
-          const bankId = `wallet-bank-${wallet.id}`;
-          const nameMissing = wallet.name.trim() === '';
-          const missingHint = walletMissingHint(wallet);
-
-          return (
-            <li key={wallet.id} className="flex flex-col gap-1.5">
-              <OnboardingItemCard
-                leading={<WalletLeading wallet={wallet} />}
-                title={wallet.name}
-                subtitle={WALLET_TYPE_LABEL[wallet.type]}
-                canDelete={canDelete(wallet)}
-                itemNoun="billetera"
-                onDelete={() => handleRemove(wallet.id)}
-              >
-                <GroupedRow label="Nombre" htmlFor={nameId}>
-                  <Input
-                    id={nameId}
-                    value={wallet.name}
-                    onChange={(event) =>
-                      updateWallet(wallet.id, { name: event.target.value })
-                    }
-                    placeholder={NAME_PLACEHOLDER[wallet.type]}
-                    autoComplete="off"
-                    aria-invalid={nameMissing || undefined}
-                    className={OVERLAY_ROW_INPUT_CLASS}
-                  />
-                </GroupedRow>
-
-                {wallet.type !== 'CASH' ? (
-                  <GroupedRow label="Banco" htmlFor={bankId}>
-                    <Select
-                      value={wallet.providerIconKey ?? ''}
-                      onValueChange={(value) =>
-                        updateWallet(wallet.id, {
-                          providerIconKey: value === NO_BANK ? null : value,
-                        })
-                      }
-                    >
-                      <SelectTrigger id={bankId} className={OVERLAY_ROW_TRIGGER_CLASS}>
-                        <SelectValue placeholder="Elige tu banco (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NO_BANK}>Otro o no aparece</SelectItem>
-                        {BANK_OPTIONS.map((provider) => (
-                          <SelectItem key={provider.key} value={provider.key}>
-                            <span className="flex items-center gap-2">
-                              <WalletProviderIcon
-                                providerIconKey={provider.key}
-                                className="size-5 rounded-md border-0"
-                                showTooltipLabel={false}
-                              />
-                              {provider.label}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </GroupedRow>
-                ) : null}
-
-                {wallet.type === 'CREDIT' ? (
-                  <>
-                    <AmountRow
-                      id={`wallet-limit-${wallet.id}`}
-                      label="Línea de crédito"
-                      value={wallet.creditLimit || ''}
-                      onChange={(value) =>
-                        updateWallet(wallet.id, {
-                          creditLimit: Number.isFinite(value) && value > 0 ? value : 0,
-                        })
-                      }
-                    />
-                    {(
-                      [
-                        ['cutoffDay', 'Día corte', 'Día de corte'],
-                        ['dueDay', 'Día pago', 'Día de pago'],
-                      ] as const
-                    ).map(([field, label, ariaLabel]) => {
-                      const inputId = `wallet-${field}-${wallet.id}`;
-                      return (
-                        <GroupedRow key={field} label={label} htmlFor={inputId}>
-                          <Input
-                            id={inputId}
-                            type="number"
-                            inputMode="numeric"
-                            min={1}
-                            max={31}
-                            step={1}
-                            placeholder="1–31"
-                            aria-label={ariaLabel}
-                            value={wallet[field] ?? ''}
-                            onChange={(event) => {
-                              const raw = event.target.value;
-                              const day = raw === '' ? null : Math.trunc(Number(raw));
-                              updateWallet(wallet.id, {
-                                [field]:
-                                  day != null && day >= 1 && day <= 31 ? day : null,
-                              });
-                            }}
-                            className={OVERLAY_ROW_NUMBER_INPUT_CLASS}
-                          />
-                        </GroupedRow>
-                      );
-                    })}
-                  </>
-                ) : (
-                  <AmountRow
-                    id={`wallet-balance-${wallet.id}`}
-                    label="Saldo hoy (opcional)"
-                    value={wallet.initialBalance || ''}
-                    onChange={(value) =>
-                      updateWallet(wallet.id, {
-                        initialBalance: Number.isFinite(value) && value > 0 ? value : 0,
-                      })
-                    }
-                  />
-                )}
-              </OnboardingItemCard>
-              {missingHint ? (
-                <OverlayHint role="status">{missingHint}</OverlayHint>
-              ) : null}
-            </li>
-          );
-        })}
+        {wallets.map((wallet) => (
+          <WalletRow
+            key={wallet.id}
+            wallet={wallet}
+            canDelete={canDelete(wallet)}
+            onChange={(patch) => updateWallet(wallet.id, patch)}
+            onDelete={() => handleRemove(wallet.id)}
+          />
+        ))}
       </ul>
 
-      <OverlayHint>
-        El saldo es opcional. Con él tu panel muestra tu liquidez real desde el
-        primer día.
-      </OverlayHint>
+      <div className="flex flex-wrap gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => handleAdd('CREDIT')}
+          className={ADD_BUTTON_CLASS}
+        >
+          <Plus className="size-4" aria-hidden />
+          Tarjeta de crédito
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" className={ADD_BUTTON_CLASS}>
+              <Plus className="size-4" aria-hidden />
+              Otra cuenta o efectivo
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-56">
+            {OTHER_ACCOUNT_OPTIONS.map((type) => {
+              const Icon = TYPE_ICONS[type];
+              return (
+                <DropdownMenuItem
+                  key={type}
+                  onSelect={() => handleAdd(type)}
+                  className="min-h-11 md:min-h-9"
+                >
+                  <Icon className="size-4 text-muted-foreground" aria-hidden />
+                  {WALLET_TYPE_LABEL[type]}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            className={`${OVERLAY_SECONDARY_BUTTON_CLASS} text-primary-text`}
-          >
-            <Plus className="size-4" aria-hidden />
-            Agregar billetera
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center" className="w-56">
-          {ADD_OPTIONS.map((type) => {
-            const Icon = TYPE_ICONS[type];
-            return (
-              <DropdownMenuItem key={type} onSelect={() => handleAdd(type)}>
-                <Icon className="size-4 text-muted-foreground" aria-hidden />
-                {WALLET_TYPE_LABEL[type]}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <OverlayHint>
+        Las tarjetas de crédito piden línea, día de corte y día de pago. Si no los
+        tienes a la mano, agrégalas después desde Billeteras.
+      </OverlayHint>
     </div>
   );
 }
