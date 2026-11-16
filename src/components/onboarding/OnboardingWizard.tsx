@@ -190,7 +190,7 @@ function OnboardingWizardContent({ userName }: { userName: string }) {
         )}
       >
         <aside
-          className="hidden w-[300px] shrink-0 flex-col gap-6 border-r border-white/[0.08] bg-primary/[0.05] p-8 min-[781px]:flex"
+          className="hidden w-[300px] shrink-0 flex-col gap-6 border-r border-border/60 bg-primary/[0.05] dark:border-white/[0.08] p-8 min-[781px]:flex"
           aria-label="Primeros pasos"
         >
           <div className="flex items-center gap-2.5">

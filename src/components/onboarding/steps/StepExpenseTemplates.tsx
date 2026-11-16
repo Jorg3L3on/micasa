@@ -42,10 +42,13 @@ export default function StepExpenseTemplates() {
     setExpenseTemplates,
     wallets,
     defaultWalletId,
+    categories: loadedCategories,
+    setCategories,
   } = useOnboarding();
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const categories = useMemo(() => loadedCategories ?? [], [loadedCategories]);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  // Already loaded on an earlier visit to this step: show the rows at once.
+  const [categoriesLoading, setCategoriesLoading] = useState(loadedCategories === null);
   // `n` changes on every request, so tapping the same pressed chip refocuses.
   const [focusRequest, setFocusRequest] = useState<{ id: string; n: number } | null>(null);
 
@@ -74,15 +77,16 @@ export default function StepExpenseTemplates() {
     } finally {
       if (!signal?.cancelled) setCategoriesLoading(false);
     }
-  }, []);
+  }, [setCategories]);
 
   useEffect(() => {
+    if (loadedCategories !== null) return;
     const signal = { cancelled: false };
     void loadCategories(signal);
     return () => {
       signal.cancelled = true;
     };
-  }, [loadCategories]);
+  }, [loadCategories, loadedCategories]);
 
   const selectableCategories = useMemo(() => {
     const rows = categories.map((c) => ({
@@ -223,7 +227,7 @@ export default function StepExpenseTemplates() {
       ) : (
         <>
           <ul
-            className={cn(PANEL_INSET_CLASS, 'divide-y divide-white/[0.08] overflow-hidden')}
+            className={cn(PANEL_INSET_CLASS, 'divide-y divide-border/50 overflow-hidden dark:divide-white/[0.08]')}
             role="list"
             aria-label="Tus gastos fijos"
           >

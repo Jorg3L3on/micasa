@@ -24,7 +24,7 @@ export function OnboardingChip({
         'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
         selected
           ? 'border-primary/70 bg-primary/25 font-semibold'
-          : 'border-border/60 bg-white/[0.04] hover:bg-white/[0.08] dark:border-white/10',
+          : 'border-border/60 bg-white/[0.04] hover:bg-foreground/[0.04] dark:border-white/10 dark:hover:bg-white/[0.08]',
         className,
       )}
       {...props}

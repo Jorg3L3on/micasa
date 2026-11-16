@@ -96,7 +96,7 @@ export const OnboardingAsidePreviewSlot = () => {
             className="text-xl font-bold"
           />
         </div>
-        <div className="h-px bg-white/[0.08]" aria-hidden />
+        <div className="h-px bg-border/60 dark:bg-white/[0.08]" aria-hidden />
         <div className="flex items-baseline justify-between gap-3 text-[13px] text-muted-foreground">
           <span>Te queda libre</span>
           <span>Falta tu ingreso</span>

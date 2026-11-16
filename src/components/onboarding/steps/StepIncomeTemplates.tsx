@@ -255,7 +255,7 @@ export default function StepIncomeTemplates() {
         type="button"
         variant="ghost"
         onClick={handleAdd}
-        className="min-h-11 w-full rounded-xl border border-dashed border-border/70 bg-white/[0.04] font-medium text-foreground hover:bg-white/[0.08] dark:border-white/20"
+        className="min-h-11 w-full rounded-xl border border-dashed border-border/70 bg-white/[0.04] font-medium text-foreground hover:bg-foreground/[0.04] dark:border-white/20 dark:hover:bg-white/[0.08]"
       >
         <Plus className="size-4" aria-hidden />
         Agregar otro ingreso

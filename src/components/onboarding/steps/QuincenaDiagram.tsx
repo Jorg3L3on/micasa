@@ -20,7 +20,7 @@ export function QuincenaDiagram({ className }: { className?: string }) {
         Tus quincenas
       </p>
       <div className="flex gap-1" aria-hidden>
-        <div className="h-2 flex-1 rounded-full bg-white/[0.22]" />
+        <div className="h-2 flex-1 rounded-full bg-foreground/20 dark:bg-white/[0.22]" />
         <div className="h-2 flex-1 rounded-full bg-gradient-to-r from-primary to-[#911efe]" />
       </div>
       <div className="flex gap-1">

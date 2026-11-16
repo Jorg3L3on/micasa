@@ -50,7 +50,7 @@ const ROW_FIELD_CLASS =
 
 /** Dashed secondary action under the rows (canvas `.btn-s`). */
 const ADD_BUTTON_CLASS =
-  'min-h-11 flex-1 basis-48 rounded-xl border border-dashed border-border/70 bg-white/[0.04] font-medium text-foreground hover:bg-white/[0.08] dark:border-white/20';
+  'min-h-11 flex-1 basis-48 rounded-xl border border-dashed border-border/70 bg-white/[0.04] font-medium text-foreground hover:bg-foreground/[0.04] dark:border-white/20 dark:hover:bg-white/[0.08]';
 
 /** A wallet type must keep at least one named wallet (CASH and BANK). */
 const isRequiredType = (type: WalletDraftType) => type !== 'CREDIT';

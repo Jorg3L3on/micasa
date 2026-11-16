@@ -29,10 +29,10 @@ const StepDot = ({ state, number }: StepDotProps) => (
     className={cn(
       'flex size-7 shrink-0 items-center justify-center rounded-full border text-caption font-semibold tabular-nums',
       state === 'done' &&
-        'border-emerald-400/45 bg-emerald-400/15 text-emerald-300',
+        'border-emerald-500/45 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
       state === 'current' &&
         'border-primary bg-primary text-primary-foreground shadow-[0_0_12px_-1px_rgb(58_55_252_/_0.8)]',
-      state === 'upcoming' && 'border-white/[0.16] text-muted-foreground',
+      state === 'upcoming' && 'border-foreground/25 text-muted-foreground dark:border-white/[0.16]',
     )}
     aria-hidden="true"
   >
@@ -123,7 +123,7 @@ export const OnboardingProgressBar = ({
               'h-1 flex-1 rounded-full transition-colors duration-(--motion-base) motion-reduce:transition-none',
               index < displayStep
                 ? 'bg-linear-to-r from-primary to-[#911efe] shadow-[0_0_10px_-1px_rgb(58_55_252_/_0.8)]'
-                : 'bg-white/[0.12]',
+                : 'bg-foreground/10 dark:bg-white/[0.12]',
             )}
           />
         ))}

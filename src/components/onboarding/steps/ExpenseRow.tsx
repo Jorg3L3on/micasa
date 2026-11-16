@@ -34,6 +34,7 @@ import {
   type ExpensePresetIcon,
 } from '@/components/onboarding/steps/expense-rows';
 import type { CategoryOption } from '@/types/catalog';
+import { MONTHLY_ICON_PILL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { cn } from '@/lib/utils';
 
 const PRESET_ICONS: Record<ExpensePresetIcon, LucideIcon> = {
@@ -44,8 +45,7 @@ const PRESET_ICONS: Record<ExpensePresetIcon, LucideIcon> = {
   bus: Bus,
 };
 
-const ICON_PILL_CLASS =
-  'hidden size-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.07] text-foreground shadow-[inset_0_1px_0_rgb(255_255_255_/_0.18)] md:flex';
+const ICON_PILL_CLASS = cn(MONTHLY_ICON_PILL_CLASS, 'hidden size-9 md:flex');
 
 const AMOUNT_INPUT_CLASS =
   'h-11 rounded-[10px] border-border/60 bg-white/[0.05] pr-3 text-right text-[15px] font-semibold tabular-nums dark:border-white/10 dark:bg-white/[0.05]';
@@ -75,6 +75,8 @@ export function ExpenseRow({
   onDelete,
 }: ExpenseRowProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // The amount turns red only after the field was left empty, not while typing.
+  const [amountLeft, setAmountLeft] = useState(false);
   const detailsForced = expenseNeedsDetails(expense, categoriesReady);
   const showDetails = detailsOpen || detailsForced;
 
@@ -131,7 +133,7 @@ export function ExpenseRow({
             <div
               role="group"
               aria-label={`Quincena en que se paga ${displayName}`}
-              className="inline-flex shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.04] p-0.5"
+              className="inline-flex shrink-0 rounded-xl border border-border/50 bg-foreground/[0.04] p-0.5 dark:border-white/[0.08] dark:bg-white/[0.04]"
             >
               {EXPENSE_WHEN_SEGMENTS.map((segment) => {
                 const on = frequency === segment.value;
@@ -146,7 +148,7 @@ export function ExpenseRow({
                     className={cn(
                       'min-h-10 min-w-12 rounded-[10px] px-2.5 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
                       on
-                        ? 'bg-white/[0.12] font-semibold text-foreground shadow-[inset_0_1px_0_rgb(255_255_255_/_0.2)]'
+                        ? 'bg-card font-semibold text-foreground shadow-sm dark:bg-white/[0.12] dark:shadow-[inset_0_1px_0_rgb(255_255_255_/_0.2)]'
                         : 'font-medium text-muted-foreground hover:text-foreground',
                     )}
                   >
@@ -164,7 +166,8 @@ export function ExpenseRow({
                 onChange={(value) => onChange({ amount: Number.isFinite(value) ? value : 0 })}
                 placeholder="0.00"
                 aria-label={`Monto de ${displayName}`}
-                aria-invalid={!(expense.amount > 0) || undefined}
+                onBlur={() => setAmountLeft(true)}
+                aria-invalid={(amountLeft && !(expense.amount > 0)) || undefined}
                 className={AMOUNT_INPUT_CLASS}
               />
             </div>

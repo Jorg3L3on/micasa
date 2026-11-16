@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createClientId } from '@/lib/polyfills';
+import type { CategoryOption } from '@/types/catalog';
 import { todayCalendarDate } from '@/lib/calendar-dates';
 import {
   clearOnboardingDraft,
@@ -88,6 +89,9 @@ type OnboardingContextValue = {
   setExpenseTemplates: React.Dispatch<
     React.SetStateAction<ExpenseTemplateDraft[]>
   >;
+  /** Categories for Gastos fijos; `null` until loaded once, then kept between steps. */
+  categories: CategoryOption[] | null;
+  setCategories: (categories: CategoryOption[]) => void;
   startDate: string;
   /** Wallet that new incomes and expenses default to (first debit wallet). */
   defaultWalletId: string;
@@ -219,6 +223,7 @@ const OnboardingStateProvider = ({
   const currentStep = nav.step;
   const returnStep = nav.returnStep;
   const [isStepLoading, setStepLoading] = useState(false);
+  const [categories, setCategories] = useState<CategoryOption[] | null>(null);
   const [canProceed, setCanProceed] = useState(true);
   const [wallets, setWallets] = useState<WalletDraft[]>(initial.wallets);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateDraft[]>(
@@ -294,6 +299,8 @@ const OnboardingStateProvider = ({
       setIncomeTemplates,
       expenseTemplates,
       setExpenseTemplates,
+      categories,
+      setCategories,
       startDate,
       defaultWalletId,
       isDraftReady,
@@ -310,6 +317,7 @@ const OnboardingStateProvider = ({
       wallets,
       incomeTemplates,
       expenseTemplates,
+      categories,
       startDate,
       defaultWalletId,
       isDraftReady,

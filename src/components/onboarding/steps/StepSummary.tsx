@@ -4,7 +4,10 @@ import { useEffect, useMemo } from 'react';
 import { Receipt, TrendingUp, Wallet, type LucideIcon } from 'lucide-react';
 import { Money } from '@/components/money';
 import { FortnightProgressTrack } from '@/components/monthly/MonthlyChromeHeader';
-import { PANEL_INSET_CLASS } from '@/components/monthly/monthly-panel-shell';
+import {
+  MONTHLY_ICON_PILL_CLASS,
+  PANEL_INSET_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
 import { useOnboarding } from '@/components/onboarding/OnboardingContext';
 import { ONBOARDING_STEP } from '@/components/onboarding/onboarding-navigation';
 import { QuincenaDiagram } from '@/components/onboarding/steps/QuincenaDiagram';
@@ -28,8 +31,7 @@ const GROUP_META: Record<
 const EYEBROW_CLASS =
   'text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground';
 
-const ICON_PILL_CLASS =
-  'flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.07] text-foreground shadow-[inset_0_1px_0_rgb(255_255_255_/_0.18)]';
+const ICON_PILL_CLASS = cn(MONTHLY_ICON_PILL_CLASS, 'size-9');
 
 export default function StepSummary() {
   const {
@@ -87,7 +89,7 @@ export default function StepSummary() {
         ))}
       </div>
 
-      <ul className={cn(PANEL_INSET_CLASS, 'divide-y divide-white/[0.08] overflow-hidden')}>
+      <ul className={cn(PANEL_INSET_CLASS, 'divide-y divide-border/50 overflow-hidden dark:divide-white/[0.08]')}>
         {groups.map((group) => {
           const meta = GROUP_META[group.key];
           const Icon = meta.icon;

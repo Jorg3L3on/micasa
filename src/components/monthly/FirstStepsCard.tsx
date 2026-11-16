@@ -32,7 +32,7 @@ const ROW_CLASS = cn(
 const DoneRing = () => (
   <span
     aria-hidden
-    className="flex size-6 shrink-0 items-center justify-center rounded-full border-[1.5px] border-emerald-500/45 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
+    className="flex size-6 shrink-0 items-center justify-center rounded-full border-[1.5px] border-emerald-500/45 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
   >
     <Check className="size-3" strokeWidth={3} />
   </span>
@@ -113,7 +113,7 @@ export const FirstStepsCard = ({
                 href={item.href}
                 className={cn(
                   ROW_CLASS,
-                  'font-medium text-foreground transition-colors hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'font-medium text-foreground transition-colors hover:bg-foreground/[0.04] dark:hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 )}
               >
                 <TodoRing />
