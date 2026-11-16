@@ -27,5 +27,5 @@ export default async function OnboardingPage() {
     }
   }
 
-  return <OnboardingWizard userId={session.user.id} />;
+  return <OnboardingWizard userId={session.user.id} userName={session.user.name} />;
 }

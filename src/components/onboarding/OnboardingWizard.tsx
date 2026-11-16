@@ -20,6 +20,8 @@ import {
 } from '@/components/onboarding/OnboardingSlots';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/error-banner';
+import { OnboardingSkipAction } from '@/components/onboarding/OnboardingSkipAction';
+import { summaryTitle } from '@/components/onboarding/steps/onboarding-summary';
 import { cn } from '@/lib/utils';
 import StepWallets from '@/components/onboarding/steps/StepWallets';
 import StepIncomeTemplates from '@/components/onboarding/steps/StepIncomeTemplates';
@@ -32,7 +34,8 @@ type StepMeta = {
   Component: () => React.ReactNode;
   /** Short name for the stepper and "Sigue: …". */
   name: string;
-  title: string;
+  /** A function receives the account name (Resumen greets by first name). */
+  title: string | ((userName: string) => string);
   description: string;
 };
 
@@ -54,14 +57,13 @@ const STEPS: StepMeta[] = [
     Component: StepExpenseTemplates,
     name: 'Gastos fijos',
     title: '¿Qué pagas cada quincena?',
-    description:
-      'Toca un gasto para agregarlo y escribe cuánto pagas. Puedes omitir este paso.',
+    description: 'Toca lo que pagas y escribe cuánto. Puedes omitir este paso.',
   },
   {
     Component: StepSummary,
     name: 'Resumen',
-    title: 'Todo listo',
-    description: 'Revisa lo que vamos a crear. Puedes cambiar todo después.',
+    title: summaryTitle,
+    description: 'Después de tus gastos fijos. Puedes cambiar todo desde tu panel.',
   },
 ];
 
@@ -75,7 +77,7 @@ const stepContentVariants = {
 
 const SOFT_EASE = [0.22, 1, 0.36, 1] as const;
 
-function OnboardingWizardContent() {
+function OnboardingWizardContent({ userName }: { userName: string }) {
   const onboarding = useOnboarding();
   const {
     currentStep,
@@ -88,9 +90,12 @@ function OnboardingWizardContent() {
     canProceed,
     isDraftReady,
     clearDraft,
+    returnStep,
   } = onboarding;
   const step = STEPS[currentStep];
-  const nextStep = STEPS[currentStep + 1];
+  // After Editar on Resumen, Continuar goes straight back there.
+  const nextStep = STEPS[returnStep ?? currentStep + 1];
+  const stepTitle = typeof step.title === 'function' ? step.title(userName) : step.title;
   const StepComponent = step.Component;
 
   const router = useRouter();
@@ -209,7 +214,7 @@ function OnboardingWizardContent() {
               className="min-[781px]:hidden"
             />
             <div className="space-y-1.5">
-              <h1 className="text-title text-foreground">{step.title}</h1>
+              <h1 className="text-title text-foreground">{stepTitle}</h1>
               <p className="text-body text-muted-foreground">
                 {step.description}
               </p>
@@ -263,14 +268,17 @@ function OnboardingWizardContent() {
                   Atrás
                 </Button>
               )}
-              <Button
-                type="button"
-                onClick={handleNext}
-                className="ml-auto h-11 min-w-36 shrink-0 rounded-xl"
-                disabled={isStepLoading || !canProceed || !isDraftReady}
-              >
-                {primaryLabel}
-              </Button>
+              <div className="ml-auto flex items-center gap-2 min-[400px]:gap-3">
+                <OnboardingSkipAction disabled={isStepLoading || !isDraftReady} />
+                <Button
+                  type="button"
+                  onClick={handleNext}
+                  className="h-11 min-w-32 shrink-0 rounded-xl min-[400px]:min-w-36"
+                  disabled={isStepLoading || !canProceed || !isDraftReady}
+                >
+                  {primaryLabel}
+                </Button>
+              </div>
             </footer>
           </div>
         </main>
@@ -282,12 +290,14 @@ function OnboardingWizardContent() {
 type OnboardingWizardProps = {
   /** Session user id; the saved draft is stored per user. */
   userId: string;
+  /** Account name; Resumen says "Esto te queda libre, {nombre}". */
+  userName?: string | null;
 };
 
-export default function OnboardingWizard({ userId }: OnboardingWizardProps) {
+export default function OnboardingWizard({ userId, userName }: OnboardingWizardProps) {
   return (
     <OnboardingProvider userId={userId}>
-      <OnboardingWizardContent />
+      <OnboardingWizardContent userName={userName ?? ''} />
     </OnboardingProvider>
   );
 }

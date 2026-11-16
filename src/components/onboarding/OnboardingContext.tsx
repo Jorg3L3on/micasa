@@ -19,6 +19,12 @@ import {
   loadOnboardingDraft,
   saveOnboardingDraft,
 } from '@/components/onboarding/onboarding-draft-storage';
+import {
+  navBack,
+  navGoTo,
+  navNext,
+  type OnboardingNavState,
+} from '@/components/onboarding/onboarding-navigation';
 
 export type WalletDraftType = 'CASH' | 'BANK' | 'CREDIT';
 
@@ -62,6 +68,10 @@ type OnboardingContextValue = {
   totalSteps: number;
   goNext: () => void;
   goBack: () => void;
+  /** Jump to a step; `returnHere` makes its Continuar come back to the current step. */
+  goToStep: (step: number, options?: { returnHere?: boolean }) => void;
+  /** Step that Continuar returns to after an Editar jump; `null` otherwise. */
+  returnStep: number | null;
   isFirstStep: boolean;
   isLastStep: boolean;
   isStepLoading: boolean;
@@ -202,7 +212,12 @@ const OnboardingStateProvider = ({
   children,
 }: OnboardingProviderProps & { isDraftReady: boolean }) => {
   const [initial] = useState(() => readStartingState(userId, isDraftReady));
-  const [currentStep, setCurrentStep] = useState(initial.step);
+  const [nav, setNav] = useState<OnboardingNavState>({
+    step: initial.step,
+    returnStep: null,
+  });
+  const currentStep = nav.step;
+  const returnStep = nav.returnStep;
   const [isStepLoading, setStepLoading] = useState(false);
   const [canProceed, setCanProceed] = useState(true);
   const [wallets, setWallets] = useState<WalletDraft[]>(initial.wallets);
@@ -245,12 +260,19 @@ const OnboardingStateProvider = ({
     '';
 
   const goNext = useCallback(() => {
-    setCurrentStep((prev) => Math.min(prev + 1, ONBOARDING_TOTAL_STEPS - 1));
+    setNav((prev) => navNext(prev, ONBOARDING_TOTAL_STEPS));
   }, []);
 
   const goBack = useCallback(() => {
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
+    setNav(navBack);
   }, []);
+
+  const goToStep = useCallback(
+    (step: number, options?: { returnHere?: boolean }) => {
+      setNav((prev) => navGoTo(prev, step, ONBOARDING_TOTAL_STEPS, options));
+    },
+    [],
+  );
 
   const value = useMemo<OnboardingContextValue>(
     () => ({
@@ -258,6 +280,8 @@ const OnboardingStateProvider = ({
       totalSteps: ONBOARDING_TOTAL_STEPS,
       goNext,
       goBack,
+      goToStep,
+      returnStep,
       isFirstStep: currentStep === 0,
       isLastStep: currentStep === ONBOARDING_TOTAL_STEPS - 1,
       isStepLoading,
@@ -279,6 +303,8 @@ const OnboardingStateProvider = ({
       currentStep,
       goNext,
       goBack,
+      goToStep,
+      returnStep,
       isStepLoading,
       canProceed,
       wallets,
