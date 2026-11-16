@@ -65,13 +65,18 @@ export const isOwnerContextPending = (
 /**
  * Panel financiero guard: also pending when the URL named no owner, because
  * the server then rendered the personal default and FinanceProviderSync is
- * about to replace the URL with the persisted owner (often a house).
+ * about to replace the URL with the persisted owner (often a house). Once the
+ * client has synced and its owner is the one the server rendered, the page is
+ * already right: the sync only rewrites the URL, with no second server render,
+ * so waiting for `ownerInUrl` would hold the skeleton forever.
  */
 export const isPanelOwnerPending = (
   context: Pick<FinanceContextType, 'type' | 'id'>,
   serverOwnerKey: string,
   ownerInUrl: boolean,
-): boolean => !ownerInUrl || isOwnerContextPending(context, serverOwnerKey);
+): boolean =>
+  (!ownerInUrl && context.id <= 0) ||
+  isOwnerContextPending(context, serverOwnerKey);
 
 /**
  * Inverse of `buildOwnerQuery` for `?ownerType=&ownerId=` (or without `?`).
