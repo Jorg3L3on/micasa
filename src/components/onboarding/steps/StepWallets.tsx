@@ -239,11 +239,15 @@ function WalletRow({
                   {WALLET_TYPE_LABEL[wallet.type]}
                 </p>
               </div>
-              <div className="flex items-center gap-2.5">
-                <label htmlFor={amountId} className="text-xs text-muted-foreground">
+              {/* Below `sm` the amount takes its own full-width line under the name. */}
+              <div className="flex items-center gap-2.5 max-sm:basis-full">
+                <label
+                  htmlFor={amountId}
+                  className="shrink-0 text-xs text-muted-foreground"
+                >
                   {isCredit ? 'Línea de crédito' : 'Saldo hoy'}
                 </label>
-                <div className="flex w-[8.5rem]">
+                <div className="flex min-w-0 max-sm:flex-1 sm:w-[8.5rem]">
                   <CurrencyInput
                     id={amountId}
                     grouped

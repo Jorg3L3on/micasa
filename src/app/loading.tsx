@@ -12,10 +12,14 @@ import { BrandLoader } from '@/components/brand/BrandLoader';
  *
  * `/` is the public landing. The proxy marks that request so this fallback
  * stays empty and the page is the first paint. App routes keep the splash.
+ * A new account in onboarding has no panel yet, so its line says so.
  */
 export default async function RootLoading() {
   const pathname = (await headers()).get('x-micasa-pathname');
   if (pathname === '/') return null;
+  const message = pathname === '/onboarding'
+    ? 'Preparando tus primeros pasos…'
+    : 'Cargando tu panel…';
 
   return (
     <ViewTransition exit="fade-out">
@@ -26,7 +30,7 @@ export default async function RootLoading() {
             MiCasa
           </span>
           <span className="brand-loader-breathe text-xs text-white/55">
-            Cargando tu panel…
+            {message}
           </span>
         </div>
       </div>
