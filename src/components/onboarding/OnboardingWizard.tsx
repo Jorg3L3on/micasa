@@ -9,6 +9,15 @@ import {
   useOnboarding,
 } from '@/components/onboarding/OnboardingContext';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import { MicasaMark } from '@/components/brand/micasa-mark';
+import {
+  OnboardingProgressBar,
+  OnboardingStepper,
+} from '@/components/onboarding/OnboardingStepper';
+import {
+  OnboardingAsidePreviewSlot,
+  OnboardingPhoneStripSlot,
+} from '@/components/onboarding/OnboardingSlots';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/error-banner';
 import { cn } from '@/lib/utils';
@@ -21,7 +30,7 @@ import type { OnboardingCompletePayload } from '@/schemas/onboarding.schema';
 
 type StepMeta = {
   Component: () => React.ReactNode;
-  /** Short name used for "Siguiente: …". */
+  /** Short name for the stepper and "Sigue: …". */
   name: string;
   title: string;
   description: string;
@@ -43,7 +52,7 @@ const STEPS: StepMeta[] = [
   },
   {
     Component: StepExpenseTemplates,
-    name: 'Gastos',
+    name: 'Gastos fijos',
     title: '¿Qué pagas cada quincena?',
     description:
       'Toca un gasto para agregarlo y escribe cuánto pagas. Puedes omitir este paso.',
@@ -55,6 +64,8 @@ const STEPS: StepMeta[] = [
     description: 'Revisa lo que vamos a crear. Puedes cambiar todo después.',
   },
 ];
+
+const STEP_NAMES = STEPS.map((step) => step.name);
 
 const stepContentVariants = {
   enter: { opacity: 0, x: 16 },
@@ -68,7 +79,6 @@ function OnboardingWizardContent() {
   const onboarding = useOnboarding();
   const {
     currentStep,
-    totalSteps,
     goNext,
     goBack,
     isFirstStep,
@@ -76,11 +86,12 @@ function OnboardingWizardContent() {
     isStepLoading,
     setStepLoading,
     canProceed,
+    isDraftReady,
+    clearDraft,
   } = onboarding;
   const step = STEPS[currentStep];
   const nextStep = STEPS[currentStep + 1];
   const StepComponent = step.Component;
-  const progress = (currentStep + 1) / totalSteps;
 
   const router = useRouter();
   const [finishError, setFinishError] = useState<string | null>(null);
@@ -128,6 +139,7 @@ function OnboardingWizardContent() {
       });
 
       if (response.ok) {
+        clearDraft();
         router.push(getAppHomeHref('welcome=1'));
         return;
       }
@@ -169,92 +181,112 @@ function OnboardingWizardContent() {
       <div
         className={cn(
           MONTHLY_PANEL_SHELL_CLASS,
-          'relative z-10 flex max-h-full min-h-0 w-full max-w-xl flex-col motion-slide-up',
+          'relative z-10 flex max-h-full min-h-0 w-full max-w-[1000px] overflow-hidden motion-slide-up min-[781px]:h-[min(820px,100%)]',
         )}
       >
-        <header className="shrink-0 space-y-4 px-5 pt-5 pb-4 sm:px-8 sm:pt-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3 text-caption text-muted-foreground">
-              <span>
-                Paso {currentStep + 1} de {totalSteps}
-              </span>
-              {nextStep ? <span>Siguiente: {nextStep.name}</span> : null}
-            </div>
-            <div
-              className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
-              role="progressbar"
-              aria-valuenow={Math.round(progress * 100)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Paso ${currentStep + 1} de ${totalSteps}`}
-            >
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-(--motion-base) ease-(--ease-out-soft) motion-reduce:transition-none"
-                style={{ width: `${progress * 100}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <h1 className="text-title text-foreground">{step.title}</h1>
-            <p className="text-body text-muted-foreground">{step.description}</p>
-          </div>
-        </header>
-
-        <div
-          ref={bodyRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1 pb-6 sm:px-8"
+        <aside
+          className="hidden w-[300px] shrink-0 flex-col gap-6 border-r border-white/[0.08] bg-primary/[0.05] p-8 min-[781px]:flex"
+          aria-label="Primeros pasos"
         >
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={currentStep}
-              variants={stepContentVariants}
-              initial="enter"
-              animate="animate"
-              exit="exit"
-              transition={stepContentTransition}
-              className="w-full"
-            >
-              <StepComponent />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {finishError ? (
-          <div className="shrink-0 px-5 pb-3 sm:px-8">
-            <ErrorBanner>{finishError}</ErrorBanner>
+          <div className="flex items-center gap-2.5">
+            <MicasaMark className="size-7" priority />
+            <span className="text-section font-bold">MiCasa</span>
           </div>
-        ) : null}
+          <OnboardingStepper
+            stepNames={STEP_NAMES}
+            currentStep={currentStep}
+          />
+          <div className="mt-auto empty:hidden">
+            <OnboardingAsidePreviewSlot />
+          </div>
+        </aside>
 
-        <footer className="flex shrink-0 items-center gap-3 border-t border-border/60 px-5 py-4 sm:px-8">
-          {!isFirstStep ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={handleBack}
-              disabled={isStepLoading}
-              className="h-11 rounded-xl px-3 text-primary-text"
-            >
-              Atrás
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            onClick={handleNext}
-            className="ml-auto h-11 min-w-36 rounded-xl"
-            disabled={isStepLoading || !canProceed}
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <header className="shrink-0 space-y-4 px-5 pt-5 pb-4 min-[781px]:px-9 min-[781px]:pt-8">
+            <OnboardingProgressBar
+              currentStep={currentStep}
+              nextStepName={nextStep?.name}
+              className="min-[781px]:hidden"
+            />
+            <div className="space-y-1.5">
+              <h1 className="text-title text-foreground">{step.title}</h1>
+              <p className="text-body text-muted-foreground">
+                {step.description}
+              </p>
+            </div>
+          </header>
+
+          <div
+            ref={bodyRef}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1 pb-6 min-[781px]:px-9"
           >
-            {primaryLabel}
-          </Button>
-        </footer>
+            {isDraftReady ? (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={currentStep}
+                  variants={stepContentVariants}
+                  initial="enter"
+                  animate="animate"
+                  exit="exit"
+                  transition={stepContentTransition}
+                  className="w-full"
+                >
+                  <StepComponent />
+                </motion.div>
+              </AnimatePresence>
+            ) : null}
+          </div>
+
+          {finishError ? (
+            <div className="shrink-0 px-5 pb-3 min-[781px]:px-9">
+              <ErrorBanner>{finishError}</ErrorBanner>
+            </div>
+          ) : null}
+
+          <div className="shrink-0 border-t border-border/60 px-5 py-4 min-[781px]:px-9">
+            <div className="mb-3 empty:hidden min-[781px]:hidden">
+              <OnboardingPhoneStripSlot />
+            </div>
+            <footer className="flex items-center gap-3">
+              {isFirstStep ? (
+                <p className="text-caption text-muted-foreground">
+                  Se guarda solo. Puedes cerrar y seguir después.
+                </p>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleBack}
+                  disabled={isStepLoading}
+                  className="h-11 rounded-xl px-3 text-primary-text"
+                >
+                  Atrás
+                </Button>
+              )}
+              <Button
+                type="button"
+                onClick={handleNext}
+                className="ml-auto h-11 min-w-36 shrink-0 rounded-xl"
+                disabled={isStepLoading || !canProceed || !isDraftReady}
+              >
+                {primaryLabel}
+              </Button>
+            </footer>
+          </div>
+        </main>
       </div>
     </div>
   );
 }
 
-export default function OnboardingWizard() {
+type OnboardingWizardProps = {
+  /** Session user id; the saved draft is stored per user. */
+  userId: string;
+};
+
+export default function OnboardingWizard({ userId }: OnboardingWizardProps) {
   return (
-    <OnboardingProvider>
+    <OnboardingProvider userId={userId}>
       <OnboardingWizardContent />
     </OnboardingProvider>
   );
