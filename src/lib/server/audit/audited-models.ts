@@ -46,6 +46,12 @@ export const AUDITED_MODELS: readonly AuditedModel[] = [
   { model: 'Budget', owner: self, labelColumn: 'name' },
   { model: 'BudgetPeriod', owner: { kind: 'parent', model: 'Budget', fk: 'budget_id' }, labelColumn: null },
   { model: 'BudgetAllocation', owner: { kind: 'parent', model: 'Budget', fk: 'budget_id' }, labelColumn: null },
+  { model: 'BudgetFortnightAdjustment', owner: self, labelColumn: 'note' },
+  {
+    model: 'BudgetFortnightAdjustmentAllocation',
+    owner: { kind: 'parent', model: 'BudgetFortnightAdjustment', fk: 'adjustment_id' },
+    labelColumn: null,
+  },
   { model: 'CreditCardPayment', owner: self, labelColumn: 'note' },
   { model: 'CreditCardPaymentPlan', owner: self, labelColumn: null },
   { model: 'CreditCardScheduledPayment', owner: self, labelColumn: 'label' },

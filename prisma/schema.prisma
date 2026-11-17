@@ -119,6 +119,7 @@ model User {
   creditCardScheduledPayments   CreditCardScheduledPayment[]
   creditCardInstallmentPlans    CreditCardInstallmentPlan[]
   budgets                       Budget[]
+  budget_fortnight_adjustments  BudgetFortnightAdjustment[]
   loans              Loan[]
   lenders            Lender[]
   lenderPayments     LenderPayment[]
@@ -665,6 +666,7 @@ model House {
   creditCardScheduledPayments   CreditCardScheduledPayment[]
   creditCardInstallmentPlans    CreditCardInstallmentPlan[]
   budgets                       Budget[]
+  budget_fortnight_adjustments  BudgetFortnightAdjustment[]
   credit_card_statement_imports CreditCardStatementImport[] @relation("CreditCardStatementImportHouseOwner")
   walletTransfers               WalletTransfer[]
 }
@@ -905,6 +907,7 @@ model Budget {
   house       House?             @relation(fields: [house_id], references: [id])
   allocations BudgetAllocation[]
   periods     BudgetPeriod[]
+  adjustments BudgetFortnightAdjustment[]
 
   @@index([user_id])
   @@index([house_id])
@@ -953,6 +956,54 @@ model BudgetPeriodSnapshotAllocation {
   @@index([snapshot_id])
   @@index([wallet_id])
   @@index([category_id])
+}
+
+/// PAUSE: $0 for every category in that quincena. AMOUNTS: per-category amounts.
+enum BudgetAdjustmentKind {
+  PAUSE
+  AMOUNTS
+}
+
+/// One-quincena exception to a budget template (MIC-I19). Keyed by the
+/// quincena, not by BudgetPeriod.id, so period rebuilds cannot erase it.
+model BudgetFortnightAdjustment {
+  id        Int                  @id @default(autoincrement())
+  budget_id Int
+  year      Int
+  month     Int
+  period    FortnightPeriod
+  kind      BudgetAdjustmentKind
+  note      String?              @db.VarChar(120)
+
+  user_id  Int?
+  house_id Int?
+
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  budget      Budget                                @relation(fields: [budget_id], references: [id], onDelete: Cascade)
+  user        User?                                 @relation(fields: [user_id], references: [id])
+  house       House?                                @relation(fields: [house_id], references: [id])
+  allocations BudgetFortnightAdjustmentAllocation[]
+
+  @@unique([budget_id, year, month, period])
+  @@index([year, month, period])
+  @@index([user_id])
+  @@index([house_id])
+}
+
+model BudgetFortnightAdjustmentAllocation {
+  id            Int     @id @default(autoincrement())
+  adjustment_id Int
+  /// Null means the allocation matches any wallet (Cualquier cartera).
+  wallet_id     Int?
+  category_id   Int
+  amount        Decimal @db.Decimal(10, 2)
+
+  created_at DateTime @default(dbgenerated("timezone('America/Mexico_City'::text, now())")) @db.Timestamp(3)
+
+  adjustment BudgetFortnightAdjustment @relation(fields: [adjustment_id], references: [id], onDelete: Cascade)
+
+  @@index([adjustment_id])
 }
 
 model BudgetAllocation {

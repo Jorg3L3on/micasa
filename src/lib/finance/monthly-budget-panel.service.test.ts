@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   budgetPeriodFindMany: vi.fn(),
   fortnightCount: vi.fn(),
   computePeriodSpendByAllocations: vi.fn(),
+  adjustmentFindMany: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -18,6 +19,9 @@ vi.mock('@/lib/prisma', () => ({
     },
     budget: {
       count: vi.fn().mockResolvedValue(0),
+    },
+    budgetFortnightAdjustment: {
+      findMany: mocks.adjustmentFindMany,
     },
   },
 }));
@@ -109,6 +113,8 @@ describe('getMonthlyBudgetPanel', () => {
     mocks.fortnightCount.mockReset();
     mocks.computePeriodSpendByAllocations.mockReset();
     mocks.fortnightCount.mockResolvedValue(0);
+    mocks.adjustmentFindMany.mockReset();
+    mocks.adjustmentFindMany.mockResolvedValue([]);
     mocks.computePeriodSpendByAllocations.mockResolvedValue({
       total_spent: 0,
       by_allocation: [{ spent_amount: 0 }],
@@ -381,5 +387,129 @@ describe('getMonthlyBudgetPanel', () => {
       expect.anything(),
       ownerFilter,
     );
+  });
+});
+
+describe('getMonthlyBudgetPanel · one-quincena adjustments (MIC-I19)', () => {
+  const spendOnce = (...amounts: number[]) => {
+    for (const amount of amounts) {
+      mocks.computePeriodSpendByAllocations.mockResolvedValueOnce({
+        total_spent: amount,
+        by_allocation: [{ spent_amount: amount }],
+      });
+    }
+  };
+  const adjustmentRow = (overrides: {
+    budgetId: number;
+    period: 'FIRST' | 'SECOND';
+    kind: 'PAUSE' | 'AMOUNTS';
+    allocations?: Array<{ wallet_id: number | null; category_id: number; amount: number }>;
+  }) => ({
+    id: 1,
+    budget_id: overrides.budgetId,
+    year: 2026,
+    month: 6,
+    period: overrides.period,
+    kind: overrides.kind,
+    note: null,
+    allocations: overrides.allocations ?? [],
+  });
+
+  beforeEach(() => {
+    mocks.budgetPeriodFindMany.mockReset();
+    mocks.fortnightCount.mockReset();
+    mocks.computePeriodSpendByAllocations.mockReset();
+    mocks.adjustmentFindMany.mockReset();
+    mocks.fortnightCount.mockResolvedValue(0);
+    mocks.adjustmentFindMany.mockResolvedValue([]);
+    mocks.computePeriodSpendByAllocations.mockResolvedValue({
+      total_spent: 0,
+      by_allocation: [{ spent_amount: 0 }],
+    });
+  });
+
+  it('reserves per category: overspend in one budget does not shrink another', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      periodFixture({ id: 1, budgetId: 10, start: '2026-05-31', end: '2026-06-14', total: 500, frequency: 'BIWEEKLY', categoryId: 5, walletId: null }),
+      periodFixture({ id: 2, budgetId: 11, start: '2026-05-31', end: '2026-06-14', total: 1000, frequency: 'BIWEEKLY', categoryId: 6, categoryName: 'Restaurantes', walletId: null }),
+    ]);
+    spendOnce(800, 0);
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 6);
+
+    expect(panel.first.totalBudget).toBe(1500);
+    expect(panel.first.spent).toBe(800);
+    expect(panel.first.available).toBe(1000);
+  });
+
+  it('pauses one quincena and leaves the other on the template', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      periodFixture({ id: 1, budgetId: 10, start: '2026-05-31', end: '2026-06-14', total: 2600, frequency: 'BIWEEKLY', walletId: null }),
+      periodFixture({ id: 2, budgetId: 10, start: '2026-06-15', end: '2026-06-29', total: 2600, frequency: 'BIWEEKLY', walletId: null }),
+    ]);
+    mocks.adjustmentFindMany.mockResolvedValue([
+      adjustmentRow({ budgetId: 10, period: 'FIRST', kind: 'PAUSE' }),
+    ]);
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 6);
+
+    expect(mocks.adjustmentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { ...ownerFilter, year: 2026, month: 6 } }),
+    );
+    expect(panel.first.totalBudget).toBe(0);
+    expect(panel.first.available).toBe(0);
+    expect(panel.first.allocations[0]).toMatchObject({ budgeted: 0, templateBudgeted: 2600 });
+    expect(panel.first.budgets[0]).toMatchObject({
+      budgetId: 10,
+      templateTotal: 2600,
+      total: 0,
+      adjustment: { kind: 'PAUSE', note: null },
+    });
+    expect(panel.second.totalBudget).toBe(2600);
+    expect(panel.second.available).toBe(2600);
+    expect(panel.second.budgets[0].adjustment).toBeNull();
+  });
+
+  it('keeps spend when the new amount is below it; nothing stays reserved', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      periodFixture({ id: 1, budgetId: 10, start: '2026-05-31', end: '2026-06-14', total: 2600, frequency: 'BIWEEKLY', walletId: null }),
+    ]);
+    mocks.adjustmentFindMany.mockResolvedValue([
+      adjustmentRow({
+        budgetId: 10,
+        period: 'FIRST',
+        kind: 'AMOUNTS',
+        allocations: [{ wallet_id: null, category_id: 5, amount: 1000 }],
+      }),
+    ]);
+    spendOnce(1200);
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 6);
+
+    expect(panel.first.totalBudget).toBe(1000);
+    expect(panel.first.spent).toBe(1200);
+    expect(panel.first.available).toBe(0);
+    expect(panel.first.allocations[0].remaining).toBe(-200);
+  });
+
+  it('changes only this quincena share of a weekly budget that spans two quincenas', async () => {
+    // Week Sun 14 – Sat 20 June, $700: 1 day in the 1st quincena, 6 in the 2nd.
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      periodFixture({ id: 1, budgetId: 10, start: '2026-06-14', end: '2026-06-20', total: 700 }),
+    ]);
+    mocks.adjustmentFindMany.mockResolvedValue([
+      adjustmentRow({
+        budgetId: 10,
+        period: 'SECOND',
+        kind: 'AMOUNTS',
+        allocations: [{ wallet_id: 2, category_id: 5, amount: 300 }],
+      }),
+    ]);
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 6);
+
+    expect(panel.first.totalBudget).toBeCloseTo(100, 2);
+    expect(panel.second.totalBudget).toBe(300);
+    expect(panel.second.budgets[0].templateTotal).toBeCloseTo(600, 2);
   });
 });

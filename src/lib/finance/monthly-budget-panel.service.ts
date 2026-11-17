@@ -24,6 +24,11 @@ import {
   todayCalendarDate,
 } from '@/lib/calendar-dates';
 import { ANY_WALLET_LABEL } from '@/schemas/budget.schema';
+import {
+  applyFortnightAdjustment,
+  remainingReserve,
+  type FortnightAdjustmentInput,
+} from '@/lib/finance/budget-fortnight-effective';
 
 export type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 
@@ -167,11 +172,13 @@ async function getMonthlyBudgetPanelImpl(
     requests.length > 0
       ? await computePeriodSpendsByAllocations(prisma, requests, ownerFilter)
       : [];
+  const adjustments = await loadMonthAdjustments(ownerFilter, year, month);
   const [first, second] = scopes.map((_, scopeIndex) =>
     buildBudgetScope(
       periods,
       overlapsByScope[scopeIndex],
       requestIndex[scopeIndex].map((i) => (i == null ? null : results[i])),
+      adjustments.get(scopeIndex === 0 ? 'FIRST' : 'SECOND') ?? new Map(),
     ),
   );
 
@@ -240,101 +247,197 @@ function emptyScope(): MonthlyBudgetScope {
     available: 0,
     allocations: [],
     sources: [],
+    budgets: [],
   };
 }
+
+type AdjustmentsByBudget = Map<number, FortnightAdjustmentInput>;
+
+/**
+ * One-quincena adjustments for the month, by quincena and budget. Keyed by
+ * quincena (not period id), so period rebuilds cannot erase them.
+ */
+export async function loadMonthAdjustments(
+  ownerFilter: OwnerFilter,
+  year: number,
+  month: number,
+): Promise<Map<'FIRST' | 'SECOND', AdjustmentsByBudget>> {
+  const out = new Map<'FIRST' | 'SECOND', AdjustmentsByBudget>();
+  const model = (prisma as { budgetFortnightAdjustment?: { findMany?: unknown } })
+    .budgetFortnightAdjustment;
+  if (!model || typeof model.findMany !== 'function') return out;
+  const rows = await prisma.budgetFortnightAdjustment.findMany({
+    where: { ...ownerFilter, year, month },
+    include: { allocations: true },
+  });
+  for (const row of rows) {
+    const byBudget = out.get(row.period) ?? new Map();
+    byBudget.set(row.budget_id, {
+      kind: row.kind,
+      note: row.note,
+      allocations: row.allocations.map((a) => ({
+        wallet_id: a.wallet_id,
+        category_id: a.category_id,
+        amount: Number(a.amount),
+      })),
+    });
+    out.set(row.period, byBudget);
+  }
+  return out;
+}
+
+type BudgetAgg = {
+  budgetId: number;
+  name: string;
+  frequency: MonthlyBudgetScope['sources'][number]['frequency'];
+  templateTotal: number;
+  rows: Array<
+    Omit<AllocationAgg, 'budgeted' | 'spent'> & {
+      templateBudgeted: number;
+      spent: number;
+    }
+  >;
+};
 
 function buildBudgetScope(
   periods: BudgetPanelPeriod[],
   overlaps: (DateRange | null)[],
   spends: (PeriodSpendResult | null)[],
+  adjustments: AdjustmentsByBudget = new Map(),
 ): MonthlyBudgetScope {
-  let totalBudget = 0;
-  let totalSpent = 0;
-  const sourceTotals = new Map<
-    MonthlyBudgetScope['sources'][number]['frequency'],
-    number
-  >();
-  const allocationTotals = new Map<string, AllocationAgg>();
-
-  // Merge stays in period order so totals accumulate exactly as before.
-  const upsertAllocation = (
-    key: string,
-    seed: Omit<AllocationAgg, 'budgeted' | 'spent'> & {
-      budgeted?: number;
-      spent?: number;
-    },
-  ) => {
-    const prev = allocationTotals.get(key);
-    if (prev) {
-      prev.budgeted += seed.budgeted ?? 0;
-      prev.spent += seed.spent ?? 0;
-      return;
-    }
-    allocationTotals.set(key, {
-      categoryId: seed.categoryId,
-      categoryName: seed.categoryName,
-      categoryIcon: seed.categoryIcon,
-      walletId: seed.walletId,
-      walletName: seed.walletName,
-      walletProviderIconKey: seed.walletProviderIconKey,
-      walletAssignee: seed.walletAssignee,
-      budgeted: seed.budgeted ?? 0,
-      spent: seed.spent ?? 0,
-    });
-  };
-
+  // 1. Prorate each budget's template into this quincena (periods in order),
+  //    and add up its spend per category.
+  const byBudget = new Map<number, BudgetAgg>();
   for (const [index, period] of periods.entries()) {
     const overlap = overlaps[index];
     if (!overlap) continue;
-
     const { budget } = period;
-    const allocatedAmount = computeEffectiveAllocated(
+    let agg = byBudget.get(budget.id);
+    if (!agg) {
+      agg = {
+        budgetId: budget.id,
+        name: budget.name,
+        frequency:
+          budget.frequency as MonthlyBudgetScope['sources'][number]['frequency'],
+        templateTotal: 0,
+        rows: budget.allocations.map((allocation) => ({
+          categoryId: allocation.category_id,
+          categoryName: allocation.category.name,
+          categoryIcon: allocation.category.icon ?? null,
+          ...walletDisplay(allocation.wallet_id, allocation.wallet),
+          templateBudgeted: 0,
+          spent: 0,
+        })),
+      };
+      byBudget.set(budget.id, agg);
+    }
+    agg.templateTotal += computeEffectiveAllocated(
       Number(budget.total_amount),
       period,
       overlap,
     );
-    totalBudget += allocatedAmount;
-    const frequency =
-      budget.frequency as MonthlyBudgetScope['sources'][number]['frequency'];
-    sourceTotals.set(
-      frequency,
-      (sourceTotals.get(frequency) ?? 0) + allocatedAmount,
-    );
-
-    for (const allocation of budget.allocations) {
-      const budgeted = computeEffectiveAllocated(
+    for (const [allocIndex, allocation] of budget.allocations.entries()) {
+      const row = agg.rows[allocIndex];
+      if (!row) continue;
+      row.templateBudgeted += computeEffectiveAllocated(
         Number(allocation.amount),
         period,
         overlap,
       );
-      upsertAllocation(allocationKey(allocation.wallet_id, allocation.category_id), {
-        categoryId: allocation.category_id,
-        categoryName: allocation.category.name,
-        categoryIcon: allocation.category.icon ?? null,
-        ...walletDisplay(allocation.wallet_id, allocation.wallet),
-        budgeted,
-      });
     }
-
     const spend = spends[index];
     if (spend == null) continue;
-
-    totalSpent += spend.total_spent;
-
-    for (const [allocIndex, allocation] of budget.allocations.entries()) {
-      const amount = spend.by_allocation[allocIndex]?.spent_amount ?? 0;
-      if (amount <= 0) continue;
-      upsertAllocation(allocationKey(allocation.wallet_id, allocation.category_id), {
-        categoryId: allocation.category_id,
-        categoryName: allocation.category.name,
-        categoryIcon: allocation.category.icon ?? null,
-        ...walletDisplay(allocation.wallet_id, allocation.wallet),
-        spent: amount,
-      });
+    for (const [allocIndex] of budget.allocations.entries()) {
+      const row = agg.rows[allocIndex];
+      if (!row) continue;
+      row.spent += spend.by_allocation[allocIndex]?.spent_amount ?? 0;
     }
   }
 
-  const available = Math.max(0, totalBudget - totalSpent);
+  // 2. Apply this quincena's adjustment per budget, then merge.
+  let totalBudget = 0;
+  let totalSpent = 0;
+  let available = 0;
+  const sourceTotals = new Map<
+    MonthlyBudgetScope['sources'][number]['frequency'],
+    number
+  >();
+  const allocationTotals = new Map<
+    string,
+    AllocationAgg & { templateBudgeted: number }
+  >();
+  const budgets: MonthlyBudgetScope['budgets'] = [];
+
+  for (const agg of byBudget.values()) {
+    const adjustment = adjustments.get(agg.budgetId) ?? null;
+    const effective = applyFortnightAdjustment(
+      agg.rows.map((row) => ({
+        wallet_id: row.walletId,
+        category_id: row.categoryId,
+        budgeted: row.templateBudgeted,
+      })),
+      adjustment,
+    );
+    const total = adjustment
+      ? effective.reduce((sum, amount) => sum + amount, 0)
+      : agg.templateTotal;
+    const spent = agg.rows.reduce((sum, row) => sum + row.spent, 0);
+    const reserve =
+      agg.rows.length > 0
+        ? remainingReserve(
+            agg.rows.map((row, i) => ({ budgeted: effective[i] ?? 0, spent: row.spent })),
+          )
+        : Math.max(0, total);
+
+    totalBudget += total;
+    totalSpent += spent;
+    available += reserve;
+    sourceTotals.set(agg.frequency, (sourceTotals.get(agg.frequency) ?? 0) + total);
+
+    budgets.push({
+      budgetId: agg.budgetId,
+      name: agg.name,
+      frequency: agg.frequency,
+      templateTotal: agg.templateTotal,
+      total,
+      spent,
+      remaining: reserve,
+      adjustment: adjustment
+        ? { kind: adjustment.kind, note: adjustment.note ?? null }
+        : null,
+      categories: agg.rows.map((row, i) => ({
+        categoryId: row.categoryId,
+        categoryName: row.categoryName,
+        walletId: row.walletId,
+        templateBudgeted: row.templateBudgeted,
+        budgeted: effective[i] ?? 0,
+        spent: row.spent,
+      })),
+    });
+
+    for (const [i, row] of agg.rows.entries()) {
+      const key = allocationKey(row.walletId, row.categoryId);
+      const prev = allocationTotals.get(key);
+      if (prev) {
+        prev.budgeted += effective[i] ?? 0;
+        prev.templateBudgeted += row.templateBudgeted;
+        prev.spent += row.spent;
+        continue;
+      }
+      allocationTotals.set(key, {
+        categoryId: row.categoryId,
+        categoryName: row.categoryName,
+        categoryIcon: row.categoryIcon,
+        walletId: row.walletId,
+        walletName: row.walletName,
+        walletProviderIconKey: row.walletProviderIconKey,
+        walletAssignee: row.walletAssignee,
+        budgeted: effective[i] ?? 0,
+        templateBudgeted: row.templateBudgeted,
+        spent: row.spent,
+      });
+    }
+  }
 
   const allocations: MonthlyBudgetAllocationRow[] = Array.from(
     allocationTotals.values(),
@@ -350,6 +453,7 @@ function buildBudgetScope(
         walletProviderIconKey: row.walletProviderIconKey,
         walletAssignee: row.walletAssignee,
         budgeted: row.budgeted,
+        templateBudgeted: row.templateBudgeted,
         spent: row.spent,
         remaining,
         percentUsed:
@@ -358,7 +462,7 @@ function buildBudgetScope(
     })
     .sort(
       (a, b) =>
-        b.budgeted - a.budgeted ||
+        b.templateBudgeted - a.templateBudgeted ||
         a.categoryName.localeCompare(b.categoryName, 'es') ||
         a.walletName.localeCompare(b.walletName, 'es'),
     );
@@ -374,5 +478,6 @@ function buildBudgetScope(
         totalBudget: sourceTotal,
       }))
       .sort((a, b) => b.totalBudget - a.totalBudget),
+    budgets,
   };
 }
