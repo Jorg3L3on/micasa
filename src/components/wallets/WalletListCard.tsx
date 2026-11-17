@@ -735,7 +735,9 @@ export const WalletListCard = ({
                 */}
                 <div className="space-y-3">
                   <div>
-                    <p className="eyebrow opacity-70">Saldo disponible</p>
+                    <p className="eyebrow opacity-70">
+                      Saldo disponible
+                    </p>
                     <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
                       {formatCurrency(amountNumber)}
                     </p>
