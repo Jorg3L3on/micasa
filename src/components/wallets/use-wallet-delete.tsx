@@ -26,13 +26,15 @@ const isInUseError = (err: unknown): boolean => {
 };
 
 /**
- * Delete flow for a wallet or card detail page: `requestDelete` opens the
+ * Delete flow for a wallet or card (detail page or long-press preview): `requestDelete` opens the
  * confirm dialog, `dialog` is rendered once by the page, and a successful
  * delete returns to the Billeteras list.
  */
 export const useWalletDelete = (
   wallet: DeletableWallet | null,
   context: FinanceContextType,
+  /** Runs after a successful delete instead of returning to the list (for the list itself). */
+  onDeleted?: () => void | Promise<void>,
 ): { requestDelete: () => void; dialog: ReactNode } => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -52,7 +54,8 @@ export const useWalletDelete = (
       else await deleteWallet(wallet.id, context);
       toast.success('Eliminada');
       setOpen(false);
-      router.push('/wallets');
+      if (onDeleted) await onDeleted();
+      else router.push('/wallets');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al eliminar';
       setError(

@@ -3,39 +3,43 @@
 import type { ReactNode } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeftRight, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { ExternalLink, Trash2, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+export type WalletPreviewAction = {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+  onClick: () => void;
+  busy?: boolean;
+};
 
 type WalletCardPreviewProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   walletName: string;
-  /** Shared-layout id of the pressed card, so the face morphs into place. */
-  layoutId: string;
   /** The enlarged card face. */
   children: ReactNode;
   onOpenDetail: () => void;
-  onTransfer?: () => void;
-  onEdit: () => void;
+  /** The same quick actions shown under the card. */
+  actions: WalletPreviewAction[];
   onDelete: () => void;
 };
 
 const DISMISS_DRAG_PX = 90;
 
 /**
- * Long-press view of a wallet card: the same face, enlarged and centered,
- * with Abrir detalle / Transferir / Editar / Eliminar. Stays open until the
- * user taps outside, swipes down or taps Cerrar.
+ * Long-press view of the front wallet in the mobile cover flow: the face,
+ * enlarged and centered, with Abrir detalle, the card's quick actions and
+ * Eliminar. Closes on a tap outside, a swipe down or Cerrar.
  */
 export const WalletCardPreview = ({
   open,
   onOpenChange,
   walletName,
-  layoutId,
   children,
   onOpenDetail,
-  onTransfer,
-  onEdit,
+  actions,
   onDelete,
 }: WalletCardPreviewProps) => {
   const reduceMotion = useReducedMotion();
@@ -56,71 +60,53 @@ export const WalletCardPreview = ({
             if (event.target === event.currentTarget) close();
           }}
         >
-          <DialogPrimitive.Title className="sr-only">
-            {walletName}
-          </DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">{walletName}</DialogPrimitive.Title>
           <motion.div
-            className="flex w-full max-w-sm touch-pan-x flex-col gap-4"
+            className="flex w-full max-w-sm flex-col gap-4"
             drag="y"
             dragSnapToOrigin
             dragElastic={0.35}
             dragConstraints={{ top: 0, bottom: 0 }}
             onDragEnd={(_, info) => {
-              if (info.offset.y > DISMISS_DRAG_PX || info.velocity.y > 600) {
-                close();
-              }
+              if (info.offset.y > DISMISS_DRAG_PX || info.velocity.y > 600) close();
             }}
-            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', stiffness: 320, damping: 30 }}
             onClick={(event) => {
               // Taps in the gaps around the card dismiss like a backdrop tap.
               if (event.target === event.currentTarget) close();
             }}
           >
-            <motion.div
-              layoutId={reduceMotion ? undefined : layoutId}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="origin-center scale-[1.04] rounded-face"
-            >
-              {children}
-            </motion.div>
+            {children}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 type="button"
-                className="col-span-2 h-11 rounded-xl"
+                className="col-span-3 h-11 rounded-xl"
                 onClick={run(onOpenDetail)}
               >
                 <ExternalLink data-icon="inline-start" />
                 Abrir detalle
               </Button>
-              {onTransfer ? (
+              {actions.map(({ key, label, icon: Icon, onClick, busy }) => (
                 <Button
+                  key={key}
                   type="button"
                   variant="secondary"
-                  className="h-11 rounded-xl"
-                  onClick={run(onTransfer)}
+                  className="h-auto min-w-0 flex-col gap-1 rounded-xl px-1 py-2.5 text-xs leading-tight"
+                  disabled={busy}
+                  aria-busy={busy || undefined}
+                  onClick={run(onClick)}
                 >
-                  <ArrowLeftRight data-icon="inline-start" />
-                  Transferir
+                  <Icon className="h-5 w-5" aria-hidden />
+                  {label}
                 </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="secondary"
-                className={
-                  onTransfer ? 'h-11 rounded-xl' : 'col-span-2 h-11 rounded-xl'
-                }
-                onClick={run(onEdit)}
-              >
-                <Pencil data-icon="inline-start" />
-                Editar
-              </Button>
+              ))}
               <Button
                 type="button"
                 variant="outline"
-                className="col-span-2 h-11 rounded-xl text-status-expense hover:text-status-expense"
+                className="col-span-3 h-11 rounded-xl text-status-expense hover:text-status-expense"
                 onClick={run(onDelete)}
               >
                 <Trash2 data-icon="inline-start" />
@@ -130,7 +116,7 @@ export const WalletCardPreview = ({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="col-span-2 h-10 rounded-xl text-muted-foreground"
+                  className="col-span-3 h-10 rounded-xl text-muted-foreground"
                 >
                   Cerrar
                 </Button>

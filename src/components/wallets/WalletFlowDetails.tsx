@@ -31,23 +31,19 @@ type WalletFlowDetailsProps = WalletFlowActions & {
   detailHref: string;
 };
 
-const ACTION_BUTTON_CLASS =
-  'h-auto min-w-0 flex-col gap-1 rounded-2xl px-1 py-2.5 text-xs leading-tight';
-
-/** Quick actions for the wallet centered in the cover flow. */
-export const WalletFlowDetails = ({
-  wallet,
-  detailHref,
-  onMovement,
-  onTransfer,
-  onPurchase,
-  onPay,
-  payPendingId,
-  onAdjustBalance,
-}: WalletFlowDetailsProps) => {
-  const isCard = isCreditOrStoreCardWalletType(wallet.type);
-
-  const actions = isCard
+/** Quick actions for one wallet; shared by the row under the card and the long-press preview. */
+export const walletQuickActions = (
+  wallet: WalletListItem,
+  {
+    onMovement,
+    onTransfer,
+    onPurchase,
+    onPay,
+    payPendingId,
+    onAdjustBalance,
+  }: WalletFlowActions,
+) =>
+  isCreditOrStoreCardWalletType(wallet.type)
     ? [
         { key: 'purchase', label: 'Compra', icon: ShoppingCart, onClick: () => onPurchase(wallet), busy: false },
         { key: 'pay', label: 'Pagar', icon: Banknote, onClick: () => onPay(wallet), busy: payPendingId === wallet.id },
@@ -58,6 +54,17 @@ export const WalletFlowDetails = ({
         { key: 'transfer', label: 'Transferir', icon: ArrowLeftRight, onClick: () => onTransfer(wallet), busy: false },
         { key: 'adjust', label: 'Ajustar saldo', icon: SlidersHorizontal, onClick: () => onAdjustBalance(wallet), busy: false },
       ];
+
+const ACTION_BUTTON_CLASS =
+  'h-auto min-w-0 flex-col gap-1 rounded-2xl px-1 py-2.5 text-xs leading-tight';
+
+/** Quick actions for the wallet centered in the cover flow. */
+export const WalletFlowDetails = ({
+  wallet,
+  detailHref,
+  ...flowActions
+}: WalletFlowDetailsProps) => {
+  const actions = walletQuickActions(wallet, flowActions);
 
   return (
     <div className="w-full">

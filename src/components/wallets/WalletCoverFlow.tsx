@@ -31,6 +31,7 @@ import type { WalletListItem } from '@/types/catalog';
 import { ViewTransition } from 'react';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 import { WalletFlowFace } from '@/components/wallets/WalletFlowFace';
+import { useLongPress } from '@/hooks/use-long-press';
 
 const TAP_SLOP_PX = 8;
 const WHEEL_STEP_COOLDOWN_MS = 280;
@@ -54,6 +55,8 @@ type FlowCardProps = {
   viewTransitionId: number | null;
   attention?: WalletAttentionItem;
   onClick: () => void;
+  /** Touch hold on the front card. */
+  onLongPress?: () => void;
 };
 
 const FlowCard = ({
@@ -67,7 +70,13 @@ const FlowCard = ({
   viewTransitionId,
   attention,
   onClick,
+  onLongPress,
 }: FlowCardProps) => {
+  // A hold that moves more than the tap slop turns into a drag and cancels.
+  const longPress = useLongPress({
+    onLongPress: () => onLongPress?.(),
+    enabled: isFront && onLongPress != null,
+  });
   const offset = useTransform(position, (p) => index - p);
   const transform = useTransform(offset, (d) => {
     const slot = coverFlowSlot(d, undefined, dimming);
@@ -96,8 +105,9 @@ const FlowCard = ({
       aria-roledescription="diapositiva"
       aria-label={`${index + 1} de ${count}: ${wallet.name}`}
       aria-hidden={isFront ? undefined : true}
+      {...longPress}
       onClick={onClick}
-      className="absolute left-1/2 top-2 w-[var(--flow-w)] will-change-transform"
+      className="absolute left-1/2 top-2 w-[var(--flow-w)] will-change-transform [-webkit-touch-callout:none]"
       style={{ transform, opacity, zIndex, visibility, pointerEvents }}
     >
       <motion.div
@@ -146,6 +156,8 @@ type WalletCoverFlowProps = {
   viewTransitionId?: number | null;
   /** Wallets that show a reason tag on their face. */
   attention?: WalletAttentionItem[];
+  /** Touch hold on the front card (mobile preview). */
+  onLongPress?: (wallet: WalletListItem) => void;
 };
 
 /**
@@ -153,7 +165,8 @@ type WalletCoverFlowProps = {
  * the rest turn and recede, and the art drifts inside each frame. Drag or
  * throw (momentum, at least one card per flick, rubber-banded ends), sideways
  * trackpad scroll, arrow keys, Home/End, a click on a side card or the ticks
- * move the rail; activating the front card opens the wallet.
+ * move the rail; activating the front card opens the wallet, and holding it
+ * (touch) calls `onLongPress`.
  */
 export const WalletCoverFlow = ({
   wallets,
@@ -163,6 +176,7 @@ export const WalletCoverFlow = ({
   ariaLabel,
   viewTransitionId = null,
   attention = [],
+  onLongPress,
 }: WalletCoverFlowProps) => {
   const attentionById = new Map(attention.map((item) => [item.wallet.id, item]));
   const count = wallets.length;
@@ -390,6 +404,7 @@ export const WalletCoverFlow = ({
             viewTransitionId={viewTransitionId}
             attention={attentionById.get(wallet.id)}
             onClick={() => handleCardClick(index)}
+            onLongPress={onLongPress ? () => onLongPress(wallet) : undefined}
           />
         ))}
       </div>
