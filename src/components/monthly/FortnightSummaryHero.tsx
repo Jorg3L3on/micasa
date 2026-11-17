@@ -1,24 +1,31 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import {
   getFortnightRemainderCopy,
   type DueToPayCompositionRow,
 } from '@/components/monthly/fortnight-summary-header';
 import { CommitmentMeter } from '@/components/monthly/CommitmentMeter';
-import { kpiMetricCardShellClass, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
+import { KPI_METRIC_CARD_SHELL_CLASS, type KpiMetricTone } from '@/components/finance/kpi-metric-card-styles';
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { AuraSurface } from '@/components/aura/aura-surface';
-import { AURA_TONE_HEX, type AuraTone } from '@/lib/ui/aura-palette';
+import { AURA_TONE_HEX, getAuraBloomImage, type AuraTone } from '@/lib/ui/aura-palette';
+import { Badge } from '@/components/ui/badge';
+import { STATUS_SOFT_CLASS, type StatusTone } from '@/lib/status-tone';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Money } from '@/components/money';
 import { CurrencyTicker } from '@/components/motion/number-ticker';
 import { cn, formatCurrency } from '@/lib/utils';
+import { pickAmountSizeClass } from '@/lib/ui/amount-size';
 import { Banknote, Info, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { ResponsiveOverlay } from '@/components/overlay/responsive-overlay';
+import { OVERLAY_GROUPED_CARD_CLASS } from '@/components/overlay/overlay-form';
 
 type FortnightSummaryHeroProps = {
   periodIncome: number;
@@ -57,52 +64,89 @@ const remainderToneClass: Record<
   gap: 'text-status-pending',
 };
 
-type DueToPayLabelProps = {
+type CompositionInfoProps = {
   compositionRows: DueToPayCompositionRow[];
 };
 
-const DueToPayLabel = ({ compositionRows }: DueToPayLabelProps) => {
-  if (compositionRows.length === 0) {
-    return <span>Toca pagar</span>;
-  }
-
+/**
+ * What the pending commitment includes. A real button (44px hit area) that
+ * opens the list in a sheet on phones / dialog on desktop, since touch has no
+ * hover; the hover tooltip stays for pointers. Rendered beside the legend
+ * tile's own button, never inside it.
+ */
+const CompositionInfo = ({ compositionRows }: CompositionInfoProps) => {
+  const [open, setOpen] = useState(false);
   return (
-    <span className="inline-flex items-center gap-1">
-      <span>Toca pagar</span>
+    <>
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:text-muted-foreground"
-            aria-label="Qué incluye toca pagar"
+            aria-label="Qué incluye pendiente"
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            className="group flex size-11 items-center justify-center rounded-full focus-visible:outline-none"
           >
-            <Info className="h-3 w-3" aria-hidden data-icon="inline-start" />
+            <span className="flex size-[22px] items-center justify-center rounded-full text-muted-foreground/70 transition-colors group-hover:text-muted-foreground group-focus-visible:ring-2 group-focus-visible:ring-ring/50">
+              <Info className="size-3.5" aria-hidden data-icon="inline-start" />
+            </span>
           </button>
         </TooltipTrigger>
         <TooltipContent
           side="top"
-          sideOffset={6}
-          className="max-w-[16rem] space-y-1.5 px-3 py-2 text-left"
+          className="hidden max-w-[16rem] space-y-1.5 px-3 py-2 text-left sm:block"
         >
           <p className="eyebrow text-background/70">
             Qué incluye
           </p>
           <ul className="space-y-1">
             {compositionRows.map((row) => (
-              <li
-                key={row.label}
-                className="flex items-baseline justify-between gap-3 text-xs"
-              >
-                <span className="text-background/85">{row.label}</span>
-                <span className="font-sans tabular-nums">
-                  {formatCurrency(row.amount)}
-                </span>
+              <li key={row.key ?? row.label} className="text-xs">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-background/85">{row.label}</span>
+                  <span className="font-sans tabular-nums">
+                    {formatCurrency(row.amount)}
+                  </span>
+                </div>
+                {row.note ? (
+                  <p className="mt-0.5 text-caption leading-snug text-background/70">
+                    {row.note}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>
         </TooltipContent>
       </Tooltip>
-    </span>
+      <ResponsiveOverlay
+        open={open}
+        onOpenChange={setOpen}
+        title="Qué incluye pendiente"
+        description="Lo que suma el pendiente de la quincena y de dónde sale."
+        dismissLabel="Cerrar"
+      >
+        <ul className={OVERLAY_GROUPED_CARD_CLASS}>
+          {compositionRows.map((row) => (
+            <li key={row.key ?? row.label} className="px-3 py-2.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 text-sm text-foreground">
+                  {row.label}
+                </span>
+                <span className="shrink-0 whitespace-nowrap font-sans text-sm font-semibold tabular-nums">
+                  {formatCurrency(row.amount)}
+                </span>
+              </div>
+              {row.note ? (
+                <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
+                  {row.note}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </ResponsiveOverlay>
+    </>
   );
 };
 
@@ -118,7 +162,21 @@ type AccountMetricProps = {
   pillClassName: string;
   icon: typeof Banknote;
   amountClassName: string;
+  /** Health chip at the end of the eyebrow row (glass tiles). */
+  badge?: { label: string; tone: StatusTone };
+  /** Shown instead of the animated amount when the figure is not money ("1 de 29", a date). */
+  display?: ReactNode;
 };
+
+/**
+ * Half-width phone tiles: long amounts step down until `sm`. Below 360px the
+ * tiles stack (FortnightAccountMetrics), so full width keeps text-2xl.
+ */
+const BADGE_AMOUNT_SIZES = [
+  'text-2xl',
+  'text-2xl min-[360px]:text-xl sm:text-2xl',
+  'text-2xl min-[360px]:text-lg sm:text-2xl',
+] as const;
 
 const AccountMetricBody = ({
   label,
@@ -127,26 +185,53 @@ const AccountMetricBody = ({
   pillClassName,
   icon: Icon,
   amountClassName,
+  badge,
+  display,
 }: AccountMetricProps) => (
   <>
-    <div className="mb-1.5 flex items-center gap-1.5">
-      <span
-        className={cn(
-          'flex h-5 w-5 shrink-0 items-center justify-center rounded-md',
-          pillClassName,
-        )}
-      >
-        <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
+    <div className="mb-1.5 flex items-center justify-between gap-1.5">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          className={cn(
+            'flex h-5 w-5 shrink-0 items-center justify-center rounded-md',
+            pillClassName,
+          )}
+        >
+          <Icon className="h-3 w-3" aria-hidden data-icon="inline-start" />
+        </span>
+        <span className="eyebrow min-w-0 leading-tight text-muted-foreground">
+          {label}
+        </span>
       </span>
-      <span className="eyebrow text-muted-foreground">
-        {label}
-      </span>
+      {badge ? (
+        <Badge
+          variant="outline"
+          className={cn(
+            'hidden h-5 shrink-0 rounded-full border-transparent px-2 text-caption font-semibold sm:inline-flex',
+            STATUS_SOFT_CLASS[badge.tone],
+          )}
+        >
+          {badge.label}
+        </Badge>
+      ) : null}
     </div>
-    <p className="whitespace-nowrap">
+    <p className="min-w-0 whitespace-nowrap">
+      {display != null ? (
+        <span className={cn(badge ? 'text-2xl font-semibold tabular-nums' : 'text-lg font-bold sm:text-xl', amountClassName)}>{display}</span>
+      ) : (
       <CurrencyTicker
         value={amount}
-        className={cn('text-lg font-bold sm:text-xl', amountClassName)}
+        className={cn(
+          badge
+            ? cn(
+                'font-semibold tabular-nums',
+                pickAmountSizeClass(amount, BADGE_AMOUNT_SIZES),
+              )
+            : 'text-lg font-bold sm:text-xl',
+          amountClassName,
+        )}
       />
+      )}
     </p>
     <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
       {subtitle}
@@ -158,7 +243,24 @@ const AccountMetricBody = ({
 export const AccountMetric = (props: AccountMetricProps) => {
   if (props.kpiTone) {
     return (
-      <div className={kpiMetricCardShellClass(props.kpiTone)} role="region" aria-label={props.label}>
+      <div className={KPI_METRIC_CARD_SHELL_CLASS} role="region" aria-label={props.label}>
+        <AccountMetricBody {...props} />
+      </div>
+    );
+  }
+
+  if (props.glassSurface) {
+    return (
+      <div
+        className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-3 sm:p-4')}
+        style={{
+          backgroundImage: getAuraBloomImage(
+            AURA_TONE_HEX[props.auraTone ?? 'primary'],
+          ),
+        }}
+        role="region"
+        aria-label={props.label}
+      >
         <AccountMetricBody {...props} />
       </div>
     );
@@ -168,12 +270,7 @@ export const AccountMetric = (props: AccountMetricProps) => {
     <AuraSurface
       color={AURA_TONE_HEX[props.auraTone ?? 'primary']}
       animated
-      grid={!props.glassSurface}
-      style={props.glassSurface ? { backgroundImage: 'none' } : undefined}
-      className={cn(
-        props.glassSurface ? MONTHLY_LIQUID_PANEL_CLASS : METRIC_STRIP_CLASS,
-        'rounded-xl px-3 py-2.5',
-      )}
+      className={cn(METRIC_STRIP_CLASS, 'rounded-xl px-3 py-2.5')}
     >
       <AccountMetricBody {...props} />
     </AuraSurface>
@@ -195,7 +292,7 @@ export const FortnightAccountMetrics = ({
   const liquidityNegative = fundingLiquidity < 0;
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4">
       <AccountMetric
         label="Balance actual"
         amount={fundingInAccounts}
@@ -209,6 +306,11 @@ export const FortnightAccountMetrics = ({
         }
         icon={Banknote}
         amountClassName="text-foreground"
+        badge={
+          fundingInAccounts < 0
+            ? { label: 'Negativo', tone: 'expense' }
+            : { label: 'Saludable', tone: 'success' }
+        }
       />
       <AccountMetric
         label="Liquidez actual"
@@ -225,6 +327,11 @@ export const FortnightAccountMetrics = ({
         amountClassName={
           liquidityNegative ? 'text-foreground' : 'text-status-income'
         }
+        badge={
+          liquidityNegative
+            ? { label: 'Déficit', tone: 'expense' }
+            : { label: 'Saludable', tone: 'success' }
+        }
       />
     </div>
   );
@@ -233,7 +340,6 @@ export const FortnightAccountMetrics = ({
 export const FortnightSummaryHero = ({
   periodIncome,
   incomeRemainder,
-  dueToPay,
   showIncomeRemainderBreakdown = true,
   paidAmount,
   pendingAmount,
@@ -248,9 +354,7 @@ export const FortnightSummaryHero = ({
 }: FortnightSummaryHeroProps) => {
   const copy = getFortnightRemainderCopy(incomeRemainder, { obligationGapCount });
   const remainderAbs = Math.abs(incomeRemainder);
-  const showLeftover = leftoverAmount > 0;
   const remainderClass = remainderToneClass[copy.tone];
-  const dueToPayCash = dueToPay - leftoverAmount;
   const paidSubtitle =
     expenseCount > 0
       ? `${paidExpenseCount} de ${expenseCount} gastos`
@@ -268,106 +372,35 @@ export const FortnightSummaryHero = ({
 
   return (
     <div className="@container min-w-0">
-      <div className="flex min-w-0 flex-col gap-4 @3xl:flex-row @3xl:items-start @3xl:gap-6">
-      <div className="min-w-0 flex-1">
-        <CommitmentMeter
-          periodIncome={periodIncome}
-          paidAmount={paidAmount}
-          pendingAmount={pendingAmount}
-          cashCommittedAmount={cashCommittedAmount}
-          leftoverAmount={leftoverAmount}
-          paidSubtitle={paidSubtitle}
-          pendingSubtitle={pendingSubtitle}
-          showFree={!showIncomeRemainderBreakdown}
-        />
-      </div>
-
-      {showIncomeRemainderBreakdown ? (
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <dl className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-body text-muted-foreground">Entra</dt>
-              <dd>
-                <CurrencyTicker
-                  value={periodIncome}
-                  className="text-body font-medium text-foreground"
-                />
-              </dd>
-            </div>
-
-            <div className="flex items-baseline justify-between gap-4">
-              <dt className="flex min-w-0 items-center gap-1 text-body text-muted-foreground">
-                <span
-                  className="font-medium text-muted-foreground/80"
-                  aria-hidden
-                >
-                  −
-                </span>
-                <DueToPayLabel compositionRows={compositionRows} />
-              </dt>
-              <dd>
-                <CurrencyTicker
-                  value={dueToPayCash}
-                  className="text-body font-medium text-foreground"
-                />
-              </dd>
-            </div>
-
-            {showLeftover ? (
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="flex min-w-0 items-center gap-1 text-body text-muted-foreground">
-                  <span
-                    className="shrink-0 font-medium text-muted-foreground/80"
-                    aria-hidden
-                  >
-                    −
-                  </span>
-                  <span className="min-w-0 truncate">Presupuesto</span>
-                </dt>
-                <dd className="shrink-0">
-                  <Money value={leftoverAmount} size="row" tone="neutral" />
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-
-          <AuraSurface
-            color={
-              AURA_TONE_HEX[
-                copy.tone === 'shortfall'
-                  ? 'destructive'
-                  : copy.gapNote
-                    ? 'amber'
-                    : 'emerald'
-              ]
-            }
-            grid={false}
-            style={{ backgroundImage: 'none' }}
-            className="rounded-xl border bg-transparent px-3 py-2.5"
-          >
-            <div className="flex items-baseline justify-between gap-3">
-              <span
-                className={cn(
-                  'eyebrow',
-                  remainderClass,
-                )}
-              >
-                {copy.rowLabel}
-              </span>
-              <CurrencyTicker
-                value={remainderAbs}
-                className={cn('text-lg font-bold', remainderClass)}
-              />
-            </div>
-            {copy.gapNote ? (
-              <p className="mt-1 text-caption font-medium text-status-pending">
-                {copy.gapNote}
-              </p>
-            ) : null}
-          </AuraSurface>
-        </div>
-      ) : null}
-    </div>
+      <CommitmentMeter
+        periodIncome={periodIncome}
+        paidAmount={paidAmount}
+        pendingAmount={pendingAmount}
+        cashCommittedAmount={cashCommittedAmount}
+        leftoverAmount={leftoverAmount}
+        paidSubtitle={paidSubtitle}
+        pendingSubtitle={pendingSubtitle}
+        showFree={!showIncomeRemainderBreakdown}
+        showHeader={false}
+        remainderEntry={
+          showIncomeRemainderBreakdown
+            ? {
+                label: copy.rowLabel,
+                amount: remainderAbs,
+                amountClassName: cn(
+                  copy.tone === 'shortfall' && 'text-destructive',
+                  copy.tone === 'surplus' && remainderClass,
+                ),
+                subtitle: copy.gapNote ?? 'Del ingreso',
+              }
+            : undefined
+        }
+        pendingAdornment={
+          compositionRows.length > 0 ? (
+            <CompositionInfo compositionRows={compositionRows} />
+          ) : undefined
+        }
+      />
     </div>
   );
 };

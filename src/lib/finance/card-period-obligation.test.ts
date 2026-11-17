@@ -6,6 +6,9 @@ import {
 } from '@/lib/finance/card-statement-obligation';
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import {
+  BANK_CHARGES_ESTIMATE_KEY,
+  BANK_CHARGES_ESTIMATE_LABEL,
+  describePlannedOverDebt,
   dueItemToPeriodObligation,
   exposedAnnualRate,
   exposedMinimumDue,
@@ -13,6 +16,7 @@ import {
   minimumPaymentForPeriod,
   periodObligationPrefillAmount,
   resolveCardPeriodObligation,
+  statementOverRecordedMessage,
 } from '@/lib/finance/card-period-obligation';
 
 const debtWithDue = {
@@ -300,6 +304,147 @@ describe('resolveCardPeriodObligation', () => {
       gaps: [],
     });
   });
+
+  it('keeps a planned overpayment and explains the extra when there is no import', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 150,
+        dueInPeriod: true,
+        statementPayoff: 150,
+        plannedOverride: 1_000,
+      }),
+    ).toEqual({
+      amount: 1_000,
+      basis: 'planned_override',
+      confidence: 'exact',
+      gaps: [],
+      breakdown: [
+        {
+          key: BANK_CHARGES_ESTIMATE_KEY,
+          label: BANK_CHARGES_ESTIMATE_LABEL,
+          amount: 850,
+        },
+      ],
+      overRecordedMessage: statementOverRecordedMessage(850),
+    });
+    expect(statementOverRecordedMessage(850)).toBe(
+      'El estado de cuenta pide más que lo registrado: +$850.00',
+    );
+  });
+
+  it('keeps the plan at the recorded debt without a bank-charge row', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 150,
+        dueInPeriod: true,
+        statementPayoff: 150,
+        plannedOverride: 150,
+      }),
+    ).toEqual({
+      amount: 150,
+      basis: 'planned_override',
+      confidence: 'exact',
+      gaps: [],
+    });
+  });
+
+  it('keeps a plan below the recorded debt without a bank-charge row', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 150,
+        dueInPeriod: true,
+        statementPayoff: 150,
+        plannedOverride: 100,
+      }),
+    ).toEqual({
+      amount: 100,
+      basis: 'planned_override',
+      confidence: 'exact',
+      gaps: [],
+    });
+  });
+
+  it('keeps the extra when a statement import exists and omits the sentence', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 150,
+        dueInPeriod: true,
+        statementPayoff: 150,
+        plannedOverride: 1_000,
+        hasStatementImport: true,
+      }),
+    ).toEqual({
+      amount: 1_000,
+      basis: 'planned_override',
+      confidence: 'exact',
+      gaps: [],
+      breakdown: [
+        {
+          key: BANK_CHARGES_ESTIMATE_KEY,
+          label: BANK_CHARGES_ESTIMATE_LABEL,
+          amount: 850,
+        },
+      ],
+      overRecordedMessage: null,
+    });
+  });
+
+  it('keeps a plan when recorded debt is zero', () => {
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 0,
+        dueInPeriod: true,
+        plannedOverride: 400,
+      }),
+    ).toEqual({
+      amount: 400,
+      basis: 'planned_override',
+      confidence: 'exact',
+      gaps: [],
+      breakdown: [
+        {
+          key: BANK_CHARGES_ESTIMATE_KEY,
+          label: BANK_CHARGES_ESTIMATE_LABEL,
+          amount: 400,
+        },
+      ],
+      overRecordedMessage: statementOverRecordedMessage(400),
+    });
+  });
+
+  it('reduces the recorded-debt portion before the extra', () => {
+    expect(
+      describePlannedOverDebt({
+        planned: 1_000,
+        outstandingBalance: 150,
+        paymentsApplied: 0,
+      }).breakdown[0]?.amount,
+    ).toBe(850);
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 150,
+        dueInPeriod: true,
+        plannedOverride: 1_000,
+        paymentsApplied: 200,
+      }),
+    ).toMatchObject({
+      amount: 800,
+      breakdown: [{ amount: 800 }],
+    });
+    expect(
+      resolveCardPeriodObligation({
+        outstandingBalance: 150,
+        dueInPeriod: true,
+        plannedOverride: 1_000,
+        paymentsApplied: 1_000,
+      }),
+    ).toEqual({
+      amount: 0,
+      basis: 'planned_override',
+      confidence: 'exact',
+      gaps: [],
+    });
+  });
 });
 
 describe('planner last write', () => {
@@ -344,6 +489,30 @@ describe('planner last write', () => {
 
     expect(first.remainingPlannerAmount).toBe(400);
     expect(last.remainingPlannerAmount).toBe(1_200);
+
+    const overDebt = buildCardStatementObligation({
+      walletId: 7,
+      walletName: 'Visa',
+      walletType: 'CREDIT_CARD',
+      cutoffDay: 15,
+      dueDay: 20,
+      window: resolveCreditCardStatementWindow(parseCalendarDate('2026-03-10'), 15, 20),
+      lastStatementBalance: 150,
+      paymentsAppliedToStatement: 0,
+      importedTotalDue: null,
+      outstandingBalance: 150,
+      asOfYmd: '2026-03-10',
+      todayYmd: '2026-03-10',
+    });
+    expect(
+      buildCardPlannerObligation({
+        fortnightId: 1,
+        statement: overDebt,
+        plannedGrossAmount: 1_000,
+        paymentsAppliedToFortnight: 0,
+        todayYmd: '2026-03-10',
+      }).remainingPlannerAmount,
+    ).toBe(1_000);
     expect(last.plannerStatus).toBe('por_pagar');
     expect(otherPeriod.plannerStatus).toBe('falta_dato');
     expect(otherPeriod.remainingPlannerAmount).toBe(0);

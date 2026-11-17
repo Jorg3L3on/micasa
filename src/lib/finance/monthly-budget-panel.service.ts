@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { ownerMonthKey, requestMemo } from '@/lib/server/request-memo';
 import prisma from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
@@ -9,9 +10,11 @@ import type {
 } from '@/types/monthly-budget-panel';
 import {
   computeEffectiveAllocated,
-  computePeriodSpendByAllocations,
+  computePeriodSpendsByAllocations,
   getPeriodOverlap,
   type DateRange,
+  type PeriodSpendRequest,
+  type PeriodSpendResult,
 } from '@/lib/finance/budget-period-spend';
 import { getCalendarFortnightBoundsForMonth } from '@/lib/finance/budget-period-windows';
 import { ensureBudgetPeriodsForMonth } from '@/lib/finance/budget-period.service';
@@ -138,10 +141,39 @@ async function getMonthlyBudgetPanelImpl(
     return { first: emptyScope(), second: emptyScope() };
   }
 
-  const [first, second] = await Promise.all([
-    buildBudgetScope(periods, firstFortnight, ownerFilter),
-    buildBudgetScope(periods, secondFortnight, ownerFilter),
-  ]);
+  // Spend for every period overlapping either quincena in one batch (two
+  // queries), then each scope merges its share in period order.
+  const scopes = [firstFortnight, secondFortnight];
+  const overlapsByScope = scopes.map((scope) =>
+    periods.map((period) => getPeriodOverlap(period, scope)),
+  );
+  const requests: PeriodSpendRequest[] = [];
+  const requestIndex = overlapsByScope.map((overlaps) =>
+    overlaps.map((overlap, index) => {
+      const allocations = periods[index].budget.allocations;
+      if (!overlap || allocations.length === 0) return null;
+      requests.push({
+        allocations: allocations.map((a) => ({
+          wallet_id: a.wallet_id,
+          category_id: a.category_id,
+          amount: Number(a.amount),
+        })),
+        window: overlap,
+      });
+      return requests.length - 1;
+    }),
+  );
+  const results =
+    requests.length > 0
+      ? await computePeriodSpendsByAllocations(prisma, requests, ownerFilter)
+      : [];
+  const [first, second] = scopes.map((_, scopeIndex) =>
+    buildBudgetScope(
+      periods,
+      overlapsByScope[scopeIndex],
+      requestIndex[scopeIndex].map((i) => (i == null ? null : results[i])),
+    ),
+  );
 
   return { first, second };
 }
@@ -149,7 +181,7 @@ async function getMonthlyBudgetPanelImpl(
 /**
  * Request-scoped memo of the monthly budget panel. Report summaries and the
  * panel sidebar invoke this several times per render; `cache` dedupes within
- * one RSC/route request.
+ * one RSC render and `requestMemo` within one GET route request.
  */
 const getMonthlyBudgetPanelCached = cache(
   (
@@ -158,12 +190,14 @@ const getMonthlyBudgetPanelCached = cache(
     year: number,
     month: number,
   ) =>
-    getMonthlyBudgetPanelImpl(
-      userId != null
-        ? { user_id: userId, house_id: null }
-        : { user_id: null, house_id: houseId as number },
-      year,
-      month,
+    requestMemo(ownerMonthKey('monthly-budget-panel', userId, houseId, year, month), () =>
+      getMonthlyBudgetPanelImpl(
+        userId != null
+          ? { user_id: userId, house_id: null }
+          : { user_id: null, house_id: houseId as number },
+        year,
+        month,
+      ),
     ),
 );
 
@@ -209,11 +243,11 @@ function emptyScope(): MonthlyBudgetScope {
   };
 }
 
-async function buildBudgetScope(
+function buildBudgetScope(
   periods: BudgetPanelPeriod[],
-  scope: DateRange,
-  ownerFilter: OwnerFilter,
-): Promise<MonthlyBudgetScope> {
+  overlaps: (DateRange | null)[],
+  spends: (PeriodSpendResult | null)[],
+): MonthlyBudgetScope {
   let totalBudget = 0;
   let totalSpent = 0;
   const sourceTotals = new Map<
@@ -222,26 +256,7 @@ async function buildBudgetScope(
   >();
   const allocationTotals = new Map<string, AllocationAgg>();
 
-  // Prefetch spend queries concurrently; merge below stays in period order so
-  // totals accumulate exactly as before.
-  const overlaps = periods.map((period) => getPeriodOverlap(period, scope));
-  const spends = await Promise.all(
-    periods.map((period, index) => {
-      const overlap = overlaps[index];
-      if (!overlap || period.budget.allocations.length === 0) return null;
-      return computePeriodSpendByAllocations(
-        prisma,
-        period.budget.allocations.map((a) => ({
-          wallet_id: a.wallet_id,
-          category_id: a.category_id,
-          amount: Number(a.amount),
-        })),
-        overlap,
-        ownerFilter,
-      );
-    }),
-  );
-
+  // Merge stays in period order so totals accumulate exactly as before.
   const upsertAllocation = (
     key: string,
     seed: Omit<AllocationAgg, 'budgeted' | 'spent'> & {

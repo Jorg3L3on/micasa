@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAuthorizationServerMetadata,
   buildProtectedResourceMetadata,
-  buildWwwAuthenticateChallenge,
 } from '@/lib/server/mcp-oauth/metadata';
 
 describe('MCP OAuth metadata', () => {
@@ -28,10 +27,21 @@ describe('MCP OAuth metadata', () => {
     expect(metadata.grant_types_supported).toContain('authorization_code');
   });
 
-  it('genera WWW-Authenticate con resource_metadata', () => {
-    const challenge = buildWwwAuthenticateChallenge(request);
-    expect(challenge).toContain('resource_metadata=');
-    expect(challenge).toContain('/.well-known/oauth-protected-resource');
-    expect(challenge).toContain('scope="read"');
+  it('apunta service_documentation a la doc pública del conector (no a una ruta 404 de la app)', () => {
+    const metadata = buildAuthorizationServerMetadata(request);
+    expect(metadata.service_documentation).toBe(
+      'https://github.com/Jorg3L3on/micasa/blob/main/docs/mcp-connector.md',
+    );
+  });
+
+  it('anuncia exactamente los métodos de autenticación que acepta el token endpoint', () => {
+    const metadata = buildAuthorizationServerMetadata(request);
+    expect(metadata.token_endpoint_auth_methods_supported).toEqual([
+      'none',
+      'client_secret_post',
+    ]);
+    expect(metadata).not.toHaveProperty(
+      'token_endpoint_auth_signing_alg_values_supported',
+    );
   });
 });

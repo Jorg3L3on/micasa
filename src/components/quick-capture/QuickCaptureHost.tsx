@@ -11,11 +11,11 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useOpenedOnce } from '@/hooks/use-opened-once';
 import { toast } from 'sonner';
 import { QuickCaptureChooser } from '@/components/quick-capture/QuickCaptureChooser';
-import { QuickExpenseSheet } from '@/components/quick-capture/QuickExpenseSheet';
-import { QuickIncomeSheet } from '@/components/quick-capture/QuickIncomeSheet';
 import { createPlannedIncome } from '@/lib/api/incomes';
 import type {
   QuickExpenseFormValues,
@@ -27,6 +27,16 @@ import {
 } from '@/components/monthly/monthly-panel-refresh';
 import { useFinanceContext } from '@/context/finance-context';
 import { clientFetchFromApi } from '@/lib/api/client-fetch';
+
+// The capture sheets (zod, react-hook-form, schemas) load on first open, not with the app shell.
+const QuickExpenseSheet = dynamic(
+  () => import('@/components/quick-capture/QuickExpenseSheet').then((m) => m.QuickExpenseSheet),
+  { ssr: false },
+);
+const QuickIncomeSheet = dynamic(
+  () => import('@/components/quick-capture/QuickIncomeSheet').then((m) => m.QuickIncomeSheet),
+  { ssr: false },
+);
 
 type QuickCaptureContextValue = {
   open: () => void;
@@ -93,6 +103,8 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
   const [chooserOpen, setChooserOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
+  const expenseSheetMounted = useOpenedOnce(expenseOpen);
+  const incomeSheetMounted = useOpenedOnce(incomeOpen);
   const [expenseError, setExpenseError] = useState<string | null>(null);
   const [incomeError, setIncomeError] = useState<string | null>(null);
   const router = useRouter();
@@ -228,7 +240,7 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
         onChooseExpense={openExpense}
         onChooseIncome={openIncome}
       />
-      <QuickExpenseSheet
+      {expenseSheetMounted ? <QuickExpenseSheet
         open={expenseOpen}
         onOpenChange={(next) => {
           setExpenseOpen(next);
@@ -236,8 +248,8 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
         }}
         onSave={handleSaveExpense}
         error={expenseError}
-      />
-      <QuickIncomeSheet
+      /> : null}
+      {incomeSheetMounted ? <QuickIncomeSheet
         open={incomeOpen}
         onOpenChange={(next) => {
           setIncomeOpen(next);
@@ -245,7 +257,7 @@ export function QuickCaptureHost({ children }: QuickCaptureHostProps) {
         }}
         onSave={handleSaveIncome}
         error={incomeError}
-      />
+      /> : null}
     </QuickCaptureContext.Provider>
   );
 }

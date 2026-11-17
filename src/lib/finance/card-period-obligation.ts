@@ -2,6 +2,24 @@ import type {
   CardObligationAmountSource,
   PlannerCardPaymentStatusUi,
 } from '@/lib/finance/card-statement-obligation';
+import { formatCurrency } from '@/lib/utils';
+
+export const BANK_CHARGES_ESTIMATE_KEY = 'bank_charges_estimate' as const;
+
+export const BANK_CHARGES_ESTIMATE_LABEL = 'Cargos del banco (estimado)';
+
+/**
+ * Shown when a planned payment sits above the recorded debt and this cycle
+ * has no statement import.
+ */
+export const statementOverRecordedMessage = (excess: number): string =>
+  `El estado de cuenta pide más que lo registrado: +${formatCurrency(excess)}`;
+
+export type CardObligationBreakdownRow = {
+  key: typeof BANK_CHARGES_ESTIMATE_KEY;
+  label: string;
+  amount: number;
+};
 
 /**
  * Single period obligation for a card.
@@ -24,6 +42,13 @@ export type CardPeriodObligation = {
   basis: CardPeriodObligationBasis;
   confidence: CardPeriodObligationConfidence;
   gaps: CardPeriodObligationGap[];
+  /** Part of `amount` that sits above the recorded debt. Omitted when there is none. */
+  breakdown?: CardObligationBreakdownRow[];
+  /**
+   * Set with the breakdown when this cycle has no statement import.
+   * Null when an import exists and the extra is still estimated bank charges.
+   */
+  overRecordedMessage?: string | null;
 };
 
 export type ResolveCardPeriodObligationInput = {
@@ -46,6 +71,8 @@ export type ResolveCardPeriodObligationInput = {
   scheduledAmount?: number | null;
   /** User override for this period. Positive amounts win over every other basis. */
   plannedOverride?: number | null;
+  /** True when this cycle's figure comes from a statement import. */
+  hasStatementImport?: boolean;
   /** User declared this cycle is $0. Distinct from a missing figure and from clearing a plan. */
   explicitZero?: boolean;
   /**
@@ -113,9 +140,65 @@ const paidZero = (
   gaps: [],
 });
 
+export type PlannedOverDebtDetail = {
+  breakdown: CardObligationBreakdownRow[];
+  overRecordedMessage: string | null;
+};
+
 /**
- * $0 outstanding debt is obligation 0 (none_declared, exact) on every surface,
- * including leftover calendar or MSI rows.
+ * Extra of a planned payment above recorded debt.
+ * Payments reduce the recorded-debt portion first, then the extra.
+ * The extra is not discarded: callers keep `planned − payments` as the amount.
+ */
+export const describePlannedOverDebt = (input: {
+  planned: number;
+  outstandingBalance: number;
+  paymentsApplied?: number;
+  hasStatementImport?: boolean;
+}): PlannedOverDebtDetail => {
+  const planned = roundMoney(Math.max(0, input.planned));
+  const debt = roundMoney(Math.max(0, input.outstandingBalance));
+  const paid = roundMoney(Math.max(0, input.paymentsApplied ?? 0));
+  const extraGross = roundMoney(Math.max(planned - debt, 0));
+  if (extraGross <= 0) {
+    return { breakdown: [], overRecordedMessage: null };
+  }
+  const debtPortion = roundMoney(planned - extraGross);
+  const paidTowardExtra = roundMoney(Math.max(paid - debtPortion, 0));
+  const extraRemaining = roundMoney(Math.max(extraGross - paidTowardExtra, 0));
+  if (extraRemaining <= 0) {
+    return { breakdown: [], overRecordedMessage: null };
+  }
+  return {
+    breakdown: [
+      {
+        key: BANK_CHARGES_ESTIMATE_KEY,
+        label: BANK_CHARGES_ESTIMATE_LABEL,
+        amount: extraRemaining,
+      },
+    ],
+    overRecordedMessage: input.hasStatementImport
+      ? null
+      : statementOverRecordedMessage(extraRemaining),
+  };
+};
+
+const withPlannedOverDebt = (
+  obligation: CardPeriodObligation,
+  detail: PlannedOverDebtDetail,
+): CardPeriodObligation => {
+  if (detail.breakdown.length === 0) return obligation;
+  return {
+    ...obligation,
+    breakdown: detail.breakdown,
+    overRecordedMessage: detail.overRecordedMessage,
+  };
+};
+
+/**
+ * $0 outstanding debt is obligation 0 for every basis except a planned
+ * override. A plan above the recorded debt — including a $0 balance — is kept
+ * in full. It is not reduced with min(planned, debt).
  * Otherwise: planned override → declared $0 → statement → minimum →
  * MSI / calendar → paid zero → missing (debt + due date, no figure) → explicit zero.
  */
@@ -124,16 +207,6 @@ export const resolveCardPeriodObligation = (
 ): CardPeriodObligation => {
   const paymentsApplied = roundMoney(Math.max(0, input.paymentsApplied ?? 0));
   const outstandingBalance = roundMoney(Math.max(0, input.outstandingBalance));
-
-  if (outstandingBalance <= 0) {
-    return {
-      amount: 0,
-      basis: 'none_declared',
-      confidence: 'exact',
-      gaps: [],
-    };
-  }
-
   const planned =
     input.plannedOverride != null && input.plannedOverride > 0
       ? roundMoney(input.plannedOverride)
@@ -144,9 +217,26 @@ export const resolveCardPeriodObligation = (
     if (remaining <= 0 && paymentsApplied > 0) {
       return paidZero('planned_override');
     }
+    return withPlannedOverDebt(
+      {
+        amount: remaining,
+        basis: 'planned_override',
+        confidence: 'exact',
+        gaps: [],
+      },
+      describePlannedOverDebt({
+        planned,
+        outstandingBalance,
+        paymentsApplied,
+        hasStatementImport: input.hasStatementImport === true,
+      }),
+    );
+  }
+
+  if (outstandingBalance <= 0) {
     return {
-      amount: remaining,
-      basis: 'planned_override',
+      amount: 0,
+      basis: 'none_declared',
       confidence: 'exact',
       gaps: [],
     };
@@ -317,6 +407,8 @@ export type DueItemObligationSource = {
   isEstimate?: boolean;
   plannedPayment?: number | null;
   declaredZero?: boolean;
+  /** True when this cycle has a statement import. Defaults from `obligationAmountSource`. */
+  hasStatementImport?: boolean;
   paymentsAppliedToStatement?: number;
   paymentsAppliedToFortnight?: number;
   minimumPayment?: number | null;
@@ -363,6 +455,8 @@ export const dueItemToPeriodObligation = (
       source === 'scheduled_calendar' ? (item.nextDuePayment ?? 0) : null,
     plannedOverride: item.plannedPayment ?? null,
     explicitZero: item.declaredZero === true,
+    hasStatementImport:
+      item.hasStatementImport ?? item.obligationAmountSource === 'import',
     paymentsNotInPayoff: Math.max(0, fortnightPaid - statementPaid),
     paymentsApplied,
   });

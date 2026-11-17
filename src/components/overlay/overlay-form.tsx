@@ -38,6 +38,10 @@ export const OVERLAY_ROW_TEXTAREA_CLASS =
 export const OVERLAY_GROUPED_LABEL_CLASS =
   'w-[5rem] shrink-0 text-sm font-medium leading-none text-foreground';
 
+/** Wide label column (6rem) for labels like "1ª quincena" that do not fit 5rem. */
+export const OVERLAY_GROUPED_LABEL_WIDE_CLASS =
+  'w-[6rem] shrink-0 text-sm font-medium leading-none text-foreground';
+
 export const OVERLAY_GROUPED_CARD_CLASS =
   'divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card';
 
@@ -85,6 +89,8 @@ type AmountRowProps = {
   ariaLabel?: string;
   disabled?: boolean;
   enterKeyHint?: 'next' | 'done';
+  /** Thousands separators while not editing. */
+  grouped?: boolean;
 };
 
 /** Presentational amount row (no react-hook-form). */
@@ -96,6 +102,7 @@ export const AmountRow = ({
   ariaLabel,
   disabled,
   enterKeyHint = 'next',
+  grouped,
 }: AmountRowProps) => (
   <div className="space-y-1 px-3 py-2">
     <span className="text-sm font-medium text-foreground">{label}</span>
@@ -111,6 +118,7 @@ export const AmountRow = ({
         disabled={disabled}
         className={OVERLAY_AMOUNT_INPUT_CLASS}
         enterKeyHint={enterKeyHint}
+        grouped={grouped}
         aria-label={ariaLabel ?? label}
       />
     </div>
@@ -146,6 +154,56 @@ export const FormAmountRow = ({
       </FormControl>
     </div>
     <FormMessage />
+  </FormItem>
+);
+
+export const OVERLAY_AMOUNT_HERO_CLASS =
+  'h-14 border-0 bg-transparent px-16 text-center font-sans text-4xl font-bold tabular-nums text-slate-900 caret-slate-900 shadow-none placeholder:text-slate-500 focus:placeholder:text-transparent focus-visible:ring-0 md:h-16 md:text-5xl';
+
+/**
+ * Hero amount for create overlays: a white panel with the MXN prefix and a large
+ * centered figure that steps down for long amounts, so a phone never clips it.
+ * Inside a `<Form>` (FormItem + FormMessage).
+ */
+const amountHeroSizeClass = (value: unknown) => {
+  const digits = String(Math.trunc(Math.abs(Number(value) || 0))).length;
+  if (digits >= 7) return 'text-xl sm:text-2xl md:text-4xl';
+  if (digits >= 5) return 'text-3xl md:text-4xl';
+  return undefined;
+};
+
+export const FormAmountHero = ({
+  value,
+  onChange,
+  label = 'Monto',
+  enterKeyHint = 'next',
+}: {
+  value: unknown;
+  onChange: (val: number) => void;
+  label?: string;
+  enterKeyHint?: 'next' | 'done';
+}) => (
+  <FormItem className="space-y-1">
+    <FormLabel className="sr-only">{label}</FormLabel>
+    <div className="relative flex items-center justify-center rounded-2xl border border-primary/30 bg-white px-4 py-4 shadow-sm">
+      <span
+        className="absolute left-4 top-1/2 -translate-y-1/2 font-sans text-lg font-semibold text-slate-500"
+        aria-hidden
+      >
+        MXN
+      </span>
+      <FormControl>
+        <CurrencyInput
+          hideSymbol
+          value={value}
+          onChange={onChange}
+          placeholder="0"
+          enterKeyHint={enterKeyHint}
+          className={cn(OVERLAY_AMOUNT_HERO_CLASS, amountHeroSizeClass(value))}
+        />
+      </FormControl>
+    </div>
+    <FormMessage className="px-1" />
   </FormItem>
 );
 
@@ -206,29 +264,46 @@ export const OverlayListRow = ({
 export const GroupedRow = ({
   label,
   htmlFor,
+  labelWidth = 'default',
   children,
 }: {
   label: string;
   htmlFor?: string;
+  /** `wide` (6rem) when a label in the card does not fit 5rem. */
+  labelWidth?: 'default' | 'wide';
   children: ReactNode;
-}) => (
-  <div className="space-y-1 px-3 py-1.5">
-    <div className="flex min-h-11 items-center gap-3">
-      {htmlFor ? (
-        <Label htmlFor={htmlFor} className={OVERLAY_GROUPED_LABEL_CLASS}>
-          {label}
-        </Label>
-      ) : (
-        <span className={OVERLAY_GROUPED_LABEL_CLASS}>{label}</span>
-      )}
-      <div className="min-w-0 flex-1">{children}</div>
+}) => {
+  const labelClass =
+    labelWidth === 'wide' ? OVERLAY_GROUPED_LABEL_WIDE_CLASS : OVERLAY_GROUPED_LABEL_CLASS;
+  return (
+    <div className="space-y-1 px-3 py-1.5">
+      <div className="flex min-h-11 items-center gap-3">
+        {htmlFor ? (
+          <Label htmlFor={htmlFor} className={labelClass}>
+            {label}
+          </Label>
+        ) : (
+          <span className={labelClass}>{label}</span>
+        )}
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /** The only error style inside an overlay body. */
 export const OverlayErrorBanner = ({ children }: { children: ReactNode }) => (
   <ErrorBanner>{children}</ErrorBanner>
+);
+
+/** Amber notice under a card when a value needs attention before saving. */
+export const OverlayWarning = ({ children }: { children: ReactNode }) => (
+  <p
+    role="status"
+    className="rounded-lg border border-status-pending/30 bg-status-pending/10 px-3 py-2 text-xs leading-snug text-status-pending"
+  >
+    {children}
+  </p>
 );
 
 /** Helper or context copy above/below a grouped card. */
@@ -257,14 +332,32 @@ export const OverlaySectionLabel = ({ children }: { children: ReactNode }) => (
 /** Label + control row inside a `<Form>` (FormItem + FormMessage). */
 export const FormGroupedRow = ({
   label,
+  icon,
+  labelWidth = 'default',
   children,
 }: {
   label: string;
+  /** Leading line icon (same 16px muted style across the card). */
+  icon?: ReactNode;
+  /** `wide` (6rem) when a label in the card does not fit 5rem, e.g. "1ª quincena". */
+  labelWidth?: 'default' | 'wide';
   children: ReactNode;
 }) => (
   <FormItem className="space-y-1 px-3 py-1.5">
     <div className="flex min-h-11 items-center gap-3">
-      <FormLabel className={OVERLAY_GROUPED_LABEL_CLASS}>{label}</FormLabel>
+      <FormLabel
+        className={cn(
+          labelWidth === 'wide' ? OVERLAY_GROUPED_LABEL_WIDE_CLASS : OVERLAY_GROUPED_LABEL_CLASS,
+          icon && 'flex w-[6.75rem] items-center gap-2',
+        )}
+      >
+        {icon ? (
+          <span className="shrink-0 text-muted-foreground [&>svg]:h-4 [&>svg]:w-4" aria-hidden>
+            {icon}
+          </span>
+        ) : null}
+        {label}
+      </FormLabel>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
     <FormMessage />
@@ -282,6 +375,24 @@ type DateStepperFrameProps = {
   onStep: (days: number) => void;
   onPick: (next: string) => void;
   trailing?: ReactNode;
+  /** Off when the row around it already shows a calendar icon. */
+  showIcon?: boolean;
+};
+
+/** "Viernes, 06/11/2026": short weekday on phones, date alone on the smallest. */
+const StepperDateText = ({ text }: { text: string }) => {
+  const [weekday, date] = text.split(', ');
+  if (!date) return text;
+  return (
+    <>
+      <span className="max-[359px]:hidden">
+        <span className="md:hidden">{weekday.slice(0, 3)}</span>
+        <span className="hidden md:inline">{weekday}</span>
+        ,&nbsp;
+      </span>
+      {date}
+    </>
+  );
 };
 
 const DateStepperFrame = ({
@@ -292,14 +403,17 @@ const DateStepperFrame = ({
   onStep,
   onPick,
   trailing,
+  showIcon = true,
 }: DateStepperFrameProps) => {
   const display = value ? formatStepperDate(value) : placeholder;
   return (
     <div className="flex items-center gap-2">
-      <CalendarDays
-        className="h-4 w-4 shrink-0 text-muted-foreground"
-        aria-hidden
-      />
+      {showIcon ? (
+        <CalendarDays
+          className="h-4 w-4 shrink-0 text-muted-foreground"
+          aria-hidden
+        />
+      ) : null}
       <Button
         type="button"
         variant="ghost"
@@ -319,7 +433,7 @@ const DateStepperFrame = ({
           )}
           aria-hidden
         >
-          {display}
+          {value ? <StepperDateText text={display} /> : display}
         </span>
         <input
           type="date"
@@ -354,17 +468,20 @@ export const DateStepper = ({
   onChange,
   label = 'Fecha',
   disabled,
+  showIcon,
 }: {
   value: string;
   onChange: (next: string) => void;
   label?: string;
   disabled?: boolean;
+  showIcon?: boolean;
 }) => (
   <DateStepperFrame
     value={value}
     label={label}
     placeholder={value}
     disabled={disabled}
+    showIcon={showIcon}
     onStep={(days) => onChange(addCalendarDays(value, days))}
     onPick={onChange}
   />

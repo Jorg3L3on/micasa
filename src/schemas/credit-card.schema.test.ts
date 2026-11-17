@@ -48,6 +48,31 @@ describe('createCreditCardPaymentSchema', () => {
     });
   });
 
+  it('accepts a declared bank charge reason', () => {
+    const parsed = createCreditCardPaymentSchema.parse({
+      mode: 'wallet',
+      source_wallet_id: 1,
+      amount: 200,
+      paid_at: '2026-10-05',
+      bank_charge: { reason: 'INTEREST' },
+    });
+
+    expect(parsed).toMatchObject({
+      bank_charge: { reason: 'INTEREST' },
+    });
+  });
+
+  it('rejects an unknown bank charge reason', () => {
+    expect(() =>
+      createCreditCardPaymentSchema.parse({
+        mode: 'external',
+        amount: 200,
+        paid_at: '2026-10-05',
+        bank_charge: { reason: 'TIP' },
+      }),
+    ).toThrow();
+  });
+
   it('rejects display-formatted dates', () => {
     expect(() =>
       createCreditCardPaymentSchema.parse({

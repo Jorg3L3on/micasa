@@ -1,5 +1,6 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { PaymentMethodType } from '@/generated/prisma/client';
+import { loadLoanOutstandingByWallet } from '@/lib/finance/wallet-loan-outstanding';
 import prisma from '@/lib/prisma';
 import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import type {
@@ -54,6 +55,7 @@ const resolveGoalFields = (
 import { resolveWalletAssignee } from '@/lib/server/wallets/resolve-wallet-assignee';
 import { parseWalletProviderIconKey } from '@/lib/wallet-provider-icons';
 import type { WalletListItem } from '@/types/catalog';
+import { DomainError } from '@/lib/finance/domain-error';
 
 const ASSIGNEE_INCLUDE = {
   assignee: { select: { id: true, name: true } },
@@ -83,6 +85,7 @@ const mapWalletRowToListDto = (
     assignee: { id: number; name: string } | null;
   },
   spent: number,
+  loanOutstanding = 0,
 ) => {
   const amountNum = Number(w.amount);
   return {
@@ -112,12 +115,11 @@ const mapWalletRowToListDto = (
     created_at: w.created_at ? w.created_at.toISOString() : null,
     spent_amount: spent,
     remaining_amount: amountNum - spent,
+    loan_outstanding: loanOutstanding,
     assignee_user_id: w.assignee_user_id ?? null,
     assignee: w.assignee ? { id: w.assignee.id, name: w.assignee.name } : null,
   };
 };
-
-type WalletServiceError = Error & { code?: string };
 
 export async function listWallets(userId: number) {
   const memberships = await prisma.houseMember.findMany({
@@ -185,9 +187,19 @@ export async function listWalletsByOwner(
     expenseSums.map((e) => [e.wallet_id, Number(e._sum.amount ?? 0)]),
   );
 
+  const hasCreditWallet = wallets.some((w) =>
+    isCreditWalletType(w.type as PaymentMethodType),
+  );
+  const loanMap = hasCreditWallet
+    ? await loadLoanOutstandingByWallet(ownerFilter)
+    : new Map<number, number>();
+
   return wallets.map((w) => {
     const spent = spentMap.get(w.id) ?? 0;
-    return mapWalletRowToListDto(w, spent);
+    const loans = isCreditWalletType(w.type as PaymentMethodType)
+      ? (loanMap.get(w.id) ?? 0)
+      : 0;
+    return mapWalletRowToListDto(w, spent, loans);
   });
 }
 
@@ -198,9 +210,7 @@ export async function createWalletForDefaultUser(data: CreateWalletInput) {
   });
 
   if (!defaultUser) {
-    const error = new Error('No active user found to own wallet') as WalletServiceError;
-    error.code = 'NO_DEFAULT_USER';
-    throw error;
+    throw new DomainError('NO_DEFAULT_USER', 'No active user found to own wallet');
   }
 
   const assignee_user_id = await resolveWalletAssignee(
@@ -341,9 +351,7 @@ export async function updateWalletMetadataForOwner(
     where: { id, ...ownerFilter },
   });
   if (!existing) {
-    const error = new Error('Wallet not found') as WalletServiceError;
-    error.code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Wallet not found');
   }
 
   const {
@@ -356,9 +364,7 @@ export async function updateWalletMetadataForOwner(
   const ownerType = existing.house_id != null ? 'house' : 'user';
   const ownerId = existing.house_id ?? existing.user_id;
   if (ownerId == null) {
-    const error = new Error('Wallet has no owner') as WalletServiceError;
-    error.code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Wallet has no owner');
   }
 
   let assignee_user_id: number | null | undefined;
@@ -469,9 +475,7 @@ export async function deleteWalletIfUnusedForOwner(
     where: { id, ...ownerFilter },
   });
   if (!existing) {
-    const error = new Error('Wallet not found') as WalletServiceError;
-    error.code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Wallet not found');
   }
   const relatedExpense = await prisma.expense.findFirst({
     where: { wallet_id: id },
@@ -481,13 +485,21 @@ export async function deleteWalletIfUnusedForOwner(
   });
 
   if (relatedExpense || relatedExpenseTemplate) {
-    const error = new Error(
-      'La billetera tiene gastos o plantillas asociadas y no puede eliminarse',
-    ) as WalletServiceError;
-    error.code = 'WALLET_IN_USE';
-    throw error;
+    throw new DomainError('WALLET_IN_USE', 'La billetera tiene gastos o plantillas asociadas y no puede eliminarse');
   }
 
   await prisma.wallet.delete({ where: { id } });
 }
 
+
+/** Current balance (funding/goal) or debt (cards) of an owned wallet; null when not found. */
+export async function getWalletAmountForOwner(
+  id: number,
+  ownerFilter: OwnerFilter,
+): Promise<number | null> {
+  const wallet = await prisma.wallet.findFirst({
+    where: { id, ...ownerFilter },
+    select: { amount: true },
+  });
+  return wallet ? Number(wallet.amount) : null;
+}

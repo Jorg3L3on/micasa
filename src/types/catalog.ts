@@ -102,6 +102,10 @@ export type PlannerCardStatementDueSummary = {
   cardCount: number;
   /** Tarjetas con deuda y vencimiento sin pago del corte. No cuentan como $0. */
   obligationGapCount?: number;
+  /** Slice of `total` above recorded debt. Not added again to Toca pagar. */
+  bankChargesEstimate?: number;
+  /** That slice when there is no statement import. */
+  overRecordedEstimate?: number;
 };
 
 /** Cuotas de préstamo pendientes pagadas desde billetera. */
@@ -141,10 +145,15 @@ export type ExpenseTemplateListItem = {
   name: string;
   category: string;
   categoryIcon?: string | null;
+  categoryId: number | null;
   suggestedAmount: number | null;
   paymentMethod: string | null;
   paymentMethodId: number | null;
   paymentMethodProviderIconKey?: string | null;
+  /** Wallet type; null with no wallet. */
+  paymentMethodType: ExpenseWalletType | null;
+  /** The wallet's statement cutoff day (`Wallet.cutoff_day`, set on cards); null when unset or with no wallet. */
+  paymentMethodCutoffDay: number | null;
   active: boolean;
   totalEstimatedAmount?: number;
   dueDayFirst: number | null;
@@ -258,6 +267,8 @@ export type WalletListItem = {
   created_at?: string | null;
   spent_amount: number;
   remaining_amount: number;
+  /** Credit and store cards: what active loans linked to or paid from the card still owe. */
+  loan_outstanding?: number;
   /** Solo billeteras de casa: miembro atribuido; null = compartida. */
   assignee_user_id: number | null;
   assignee: { id: number; name: string } | null;
@@ -326,6 +337,8 @@ export type DuePaymentItem = {
   walletId: number;
   walletName: string;
   walletType: string;
+  /** `Wallet.provider_icon_key`; null when the card has no provider logo. */
+  providerIconKey: string | null;
   dueDay: number;
   cutoff_day: number;
   nextDuePayment: number;
@@ -354,6 +367,8 @@ export type DuePaymentItem = {
   /** Plan guardado ya cubierto por pagos al corte; no inflar pendientes. */
   isStaleFullyCoveredPlan?: boolean;
   obligationAmountSource?: CardObligationAmountSource;
+  /** True when this cycle's figure comes from a statement import. */
+  hasStatementImport?: boolean;
   isEstimate?: boolean;
   /** Null = corte desconocido. 0 = el corte dice que no queda nada. */
   statementPayoff?: number | null;
@@ -365,6 +380,8 @@ export type DuePaymentItem = {
   planScope?: 'this_cycle' | 'n_cycles' | 'until_date' | null;
   planCycleCount?: number | null;
   planValidUntil?: string | null;
+  /** Motivo guardado cuando el plan supera la deuda. Null si no aplica. */
+  overDebtReason?: 'INTEREST' | 'LATE_FEE' | 'OTHER' | null;
   /** Obligación del periodo. `amount: null` es dato faltante, no $0. */
   periodObligation?: import('@/lib/finance/card-period-obligation').CardPeriodObligation;
   /** @deprecated Use remainingPlannerAmount */
@@ -397,6 +414,8 @@ export type CreditCardPaymentPlanView = {
   planScope?: 'this_cycle' | 'n_cycles' | 'until_date' | null;
   planCycleCount?: number | null;
   planValidUntil?: string | null;
+  /** Motivo guardado cuando el plan supera la deuda. Null si no aplica. */
+  overDebtReason?: 'INTEREST' | 'LATE_FEE' | 'OTHER' | null;
 };
 
 /** GET /api/credit-cards/:id/payment-plan */
@@ -656,6 +675,8 @@ export type CreditCardStatementResponse = {
   credit_limit: number | null;
   temporary_credit_limit: number | null;
   available_credit: number | null;
+  /** Already subtracted from `available_credit`. */
+  loan_outstanding?: number;
   cutoff_day: number;
   due_day: number;
   statement_start: string;

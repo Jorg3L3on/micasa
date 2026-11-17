@@ -68,7 +68,7 @@ describe('MCP tool auth: ApiKey vs OAuth', () => {
 
     expect(result.isError).toBeUndefined();
     expect(JSON.parse(result.content[0].text)).toEqual({
-      userId: 2,
+      user_id: 2,
       source: 'api_key',
     });
   });
@@ -90,7 +90,7 @@ describe('MCP tool auth: ApiKey vs OAuth', () => {
 
     expect(result.isError).toBeUndefined();
     expect(JSON.parse(result.content[0].text)).toEqual({
-      userId: 5,
+      user_id: 5,
       source: 'oauth',
     });
     expect(findUniqueApiKey).not.toHaveBeenCalled();

@@ -87,17 +87,17 @@ Two flavors. Pick by purpose, not page.
 
 Use `<Money size="hero">` (`src/components/money.tsx`) for the amount that anchors a page (balance, totals, period income/expense). Tone is `neutral`, `positive`, or `negative` via status tokens. Do not wrap it in a gradient icon.
 
-KPI tiles are calm cards: `kpiMetricCardShellClass` (`src/components/finance/kpi-metric-card-styles.ts`) or `METRIC_STRIP_CLASS` plus a status left border. No gradient fill.
+KPI tiles are calm cards: `KPI_METRIC_CARD_SHELL_CLASS` (`src/components/finance/kpi-metric-card-styles.ts`) or `METRIC_STRIP_CLASS`, with status on the value color or a `STATUS_BADGE` chip. No colored left accent, no gradient fill (DESIGN.md).
 
 ### Metric strip (compact non-currency)
 
-Use for **counts, dates, or non-currency** values with a calm shell and colored left border. Prefer `METRIC_STRIP_CLASS` from `src/components/ui/metric-strip.ts` plus a `border-l-*` accent (see fintech / UI consistency rules).
+Use for **counts, dates, or non-currency** values with a calm shell. Use `METRIC_STRIP_CLASS` from `src/components/ui/metric-strip.ts` as is: no `border-l-*` accent (colored left accents are never used; see DESIGN.md).
 
 ```tsx
 import { METRIC_STRIP_CLASS } from '@/components/ui/metric-strip';
 import { cn } from '@/lib/utils';
 
-<div className={cn(METRIC_STRIP_CLASS, 'border-l-sky-500/50')}>
+<div className={METRIC_STRIP_CLASS}>
   <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
     Préstamos activos
   </span>
@@ -121,6 +121,30 @@ Stable semantic mapping — re-use these gradients across pages so users learn t
 | Sky | `135deg, #0ea5e9 → #38bdf8` | Planning |
 | Slate | `135deg, #64748b → #94a3b8` | Neutral / archived |
 | Rose | `135deg, #f43f5e → #fb7185` | Destructive / canceled |
+
+---
+
+## Panel financiero card kit
+
+Every card on the planner (`/monthly/{year}/{month}`) uses one anatomy. Full contract: `DESIGN.md` → "Panel financiero card kit".
+
+```tsx
+import { SectionHeader } from '@/components/section-header';
+import { MONTHLY_LIQUID_PANEL_CLASS, PANEL_INSET_CLASS } from '@/components/monthly/monthly-panel-shell';
+
+<section className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'space-y-4 p-3 sm:p-4')}>
+  <SectionHeader icon={Receipt} title="Gastos de la quincena" subtitle="4 pendientes" actions={<SortMenu />} />
+  <div className={cn(PANEL_INSET_CLASS, 'p-3')}>…</div>
+</section>
+```
+
+- **Shell:** `MONTHLY_LIQUID_PANEL_CLASS` at `p-3 sm:p-4`, header is always `SectionHeader` (glass icon pill, title, caption subtitle, actions slot).
+- **Inside a card:** `PANEL_INSET_CLASS` for tiles and grouped rows, or `border-t` hairlines for lists. Never `METRIC_STRIP_CLASS`, `bg-card/40`, or a glass card per row.
+- **Lists:** one card holds the tabs and the list (`ExpenseTable variant="list" foldPaid`, `FortnightCardPaymentsPanel` / `FortnightLoanPaymentsPanel variant="list"`).
+- **Money:** hero `text-2xl font-semibold`, stat `text-lg font-bold`, row `text-sm font-semibold`. **Bars:** `h-2` totals, `h-1.5` sub-bars.
+- **States:** `EmptyState` inside the card for empty and error (error gets a "Reintentar" action); `PanelCardSkeleton` (`src/components/loading/page-skeletons.tsx`) while loading.
+- **Aside:** Billeteras → Presupuesto → Calendario flow after the main column below `xl`. Render each card once, in the same order at every width.
+- **Unchanged by the kit:** the period bar, the header toolbar, the mobile dock, the tab pill, the row check button, the wallet · date line with its "en Nd" badge, and the wallet faces.
 
 ---
 
@@ -260,7 +284,7 @@ Use `STATUS_*_CLASS` from `src/lib/status-tone.ts` (`success`, `pending`, `overd
 ## Loading and error states
 
 - **Loading (whole page)**: the archetype skeleton in `src/components/loading/page-skeletons.tsx` (collection table, collection cards, planner, detail, settings). Do not center a `Loader2`.
-- **Loading (in-card)**: `<Skeleton/>` rows matching the eventual content.
+- **Loading (in-card)**: `<Skeleton/>` rows matching the eventual content. On Panel financiero, use `PanelCardSkeleton` (the card silhouette).
 - **Error**: `<Alert variant="destructive">` with `<AlertTitle>` + `<AlertDescription>`. For a top-of-page banner: `mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive`.
 - **Toasts** (`sonner`): for transient success/failure of mutations. Don't use toasts to communicate persistent state.
 
@@ -282,12 +306,12 @@ Read these files — they are the source of truth this skill summarizes:
 - Visual contract: `DESIGN.md`
 - Tokens: `src/app/globals.css` (`.dark`, `.landing-root`)
 - Layout shell: `src/app/(app)/layout.tsx`
-- Glass panel: `src/components/monthly/monthly-panel-shell.ts`
+- Glass panel + inset: `src/components/monthly/monthly-panel-shell.ts` (`MONTHLY_LIQUID_PANEL_CLASS`, `PANEL_INSET_CLASS`)
 - Hero money: `src/components/money.tsx`
 - Metric strip constant: `src/components/ui/metric-strip.ts`
 - Empty state: `src/components/EmptyState.tsx`
 - Toolbar registration: `src/context/toolbar-actions-context.tsx` (reference page: `src/app/(app)/wallets/page.tsx`)
 - Responsive overlay: `src/components/overlay/responsive-overlay.tsx`
-- Metric-strip reference: `src/app/(app)/monthly/[year]/[month]/page.tsx`
+- Planner card kit reference: `src/components/FortnightColumn.tsx` (Gastos de la quincena) and `src/components/monthly/MonthlyBudgetSidebar.tsx`
 - Card-grid list reference: `src/app/(app)/loans/page.tsx`
 - Currency util: `formatCurrency` in `src/lib/utils.ts`

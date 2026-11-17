@@ -64,6 +64,18 @@ export async function updateExpenseTemplate(
   }, context);
 }
 
+/** Activo toggle: PATCH `{ active }` only, so no other field is rewritten. */
+export async function setExpenseTemplateActive(
+  id: number,
+  active: boolean,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(`/api/expense-templates?id=${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ active }),
+  }, context);
+}
+
 export async function deleteExpenseTemplate(
   id: number,
   context?: FinanceContextType,

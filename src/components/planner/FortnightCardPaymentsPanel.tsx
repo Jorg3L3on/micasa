@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/tooltip';
 import type { DuePaymentItem, PlannerCardPaymentStatusUi } from '@/types/catalog';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { STATUS_BADGE_CLASS } from '@/lib/status-tone';
 import {
   isCalendarFortnightCurrent,
   isCalendarFortnightNext,
@@ -31,8 +32,11 @@ import {
   upsertFortnightCardPaymentPlan,
 } from '@/lib/api/card-payment-plans';
 import { useFinanceContext } from '@/context/finance-context';
-import { EditCardPaymentPlanDialog } from '@/components/planner/EditCardPaymentPlanDialog';
+import dynamic from 'next/dynamic';
+import { cardChargeErrorMessage } from '@/components/credit-cards/over-debt-reason';
 import { AuraRowBloom } from '@/components/aura/aura-surface';
+import { DueRowProviderLogo } from '@/components/planner/DueRowProviderLogo';
+import { getWalletProviderLogoOption } from '@/lib/wallet-provider-icons';
 import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import {
   AURA_TONE_HEX,
@@ -40,6 +44,12 @@ import {
   type DueRowStatus,
 } from '@/lib/ui/aura-palette';
 import type { CardPaymentPlanFormValues } from '@/schemas/credit-card-payment-plan.schema';
+
+// The plan dialog (zod, react-hook-form) loads when a row is edited.
+const EditCardPaymentPlanDialog = dynamic(
+  () => import('@/components/planner/EditCardPaymentPlanDialog').then((m) => m.EditCardPaymentPlanDialog),
+  { ssr: false },
+);
 
 /** Calendar-day difference between the statement due date and today (UTC). */
 const getDaysLeft = (statementDueDateYmd: string, todayYmd: string): number => {
@@ -110,6 +120,8 @@ type FortnightCardPaymentsPanelProps = {
   plannerMonth: number;
   plannerPeriod: 'FIRST' | 'SECOND';
   isCompact?: boolean;
+  /** `list`: rows inside a parent card, separated by hairlines. */
+  variant?: 'cards' | 'list';
   sortMode?: PlannerListSortMode;
   sortDir?: PlannerListSortDir;
   onPayCard?: (item: DuePaymentItem) => void;
@@ -132,7 +144,9 @@ const FortnightCardPaymentsPanel = ({
   onPayCard,
   payingWalletId = null,
   onPlanUpdated,
+  variant = 'cards',
 }: FortnightCardPaymentsPanelProps) => {
+  const isList = variant === 'list';
   const { context } = useFinanceContext();
   const todayYmd = useHydrationSafeTodayYmd();
   const showRelativeDueTiming =
@@ -165,15 +179,16 @@ const FortnightCardPaymentsPanel = ({
           scope: data.scope,
           cycleCount: data.cycleCount,
           validUntil: data.validUntil,
+          ...(data.over_debt_reason
+            ? { over_debt_reason: data.over_debt_reason }
+            : {}),
         },
         context,
       );
       toast.success('Pago planeado guardado');
       await onPlanUpdated?.();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'No se pudo guardar el plan';
-      setPlanError(message);
+      setPlanError(cardChargeErrorMessage(error, 'No se pudo guardar el plan'));
       throw error;
     }
   };
@@ -224,7 +239,9 @@ const FortnightCardPaymentsPanel = ({
   if (rows.length === 0) {
     return (
       <EmptyState
-        message="No hay tarjetas con fecha de pago en esta quincena."
+        icon={CreditCard}
+        message="Sin pagos de tarjeta en esta quincena"
+        description="Las tarjetas con fecha de pago dentro de la quincena aparecen aquí."
         className="py-8"
       />
     );
@@ -235,17 +252,19 @@ const FortnightCardPaymentsPanel = ({
       <div
         role="region"
         aria-label={`Pagos de tarjeta: ${fortnightLabel}`}
-        className="px-1 pb-1"
+        className={isList ? undefined : 'px-1 pb-1'}
       >
-        <ul role="list" className="flex flex-col gap-1.5">
-          {rows.map((item) => {
+        <ul role="list" className={cn('flex flex-col', isList ? 'gap-0' : 'gap-1.5')}>
+          {rows.map((item, index) => {
             const status = getPlannerCardPaymentStatus(item);
             const effectiveAmount =
               item.effectiveAmount ?? getEffectiveCardPaymentAmount(item);
             const fortnightPaid = item.paymentsAppliedToFortnight ?? 0;
             const paidDisplayAmount = displayPaidAmount(item, fortnightPaid);
             const isMissingPayment = status === 'falta_dato';
+            const showCapture = Boolean(onPlanUpdated) && isMissingPayment;
             const Icon = WALLET_TYPE_ICON[item.walletType] ?? CreditCard;
+            const providerLogo = getWalletProviderLogoOption(item.providerIconKey);
             const href = `/credit-cards/${item.walletId}${ownerQueryString}`;
             const displayDueDateStr =
               item.visibleDueDate ?? item.statementDueDate;
@@ -277,13 +296,21 @@ const FortnightCardPaymentsPanel = ({
               <li
                 key={item.walletId}
                 className={cn(
-                  MONTHLY_PANEL_SHELL_CLASS,
-                  'group/row flex items-center gap-2.5 overflow-hidden rounded-xl px-3',
+                  isList
+                    ? cn(
+                        'group/row flex items-center gap-2.5 px-1',
+                        index > 0 &&
+                          'border-t border-border/60 dark:border-white/[0.06]',
+                      )
+                    : cn(
+                        MONTHLY_PANEL_SHELL_CLASS,
+                        'group/row flex items-center gap-2.5 overflow-hidden rounded-xl px-3',
+                      ),
                   isCompact ? 'py-2.5' : 'py-3',
                   status === 'sin_cargo' && 'opacity-80',
                 )}
               >
-                {rowTone ? (
+                {rowTone && !isList ? (
                   <AuraRowBloom
                     color={AURA_TONE_HEX[rowTone]}
                     subdued={status === 'pagado'}
@@ -305,28 +332,35 @@ const FortnightCardPaymentsPanel = ({
                             : 'bg-gradient-to-br from-status-info/25 to-status-info/10 ring-status-info/30 dark:from-status-info/25 dark:to-status-info/10',
                   )}
                 >
-                  <Icon
-                    className={cn(
-                      'h-4 w-4',
-                      status === 'pagado'
-                        ? 'text-status-income'
-                        : status === 'vencido'
-                          ? 'text-destructive'
-                          : status === 'sin_cargo'
-                            ? 'text-muted-foreground'
-                            : isMissingPayment || isDueSoon
-                              ? 'text-status-pending'
-                              : 'text-status-info',
-                    )}
-                    aria-hidden
-                  />
+                  {providerLogo ? (
+                    <DueRowProviderLogo provider={providerLogo} />
+                  ) : (
+                    <Icon
+                      className={cn(
+                        'h-4 w-4',
+                        status === 'pagado'
+                          ? 'text-status-income'
+                          : status === 'vencido'
+                            ? 'text-destructive'
+                            : status === 'sin_cargo'
+                              ? 'text-muted-foreground'
+                              : isMissingPayment || isDueSoon
+                                ? 'text-status-pending'
+                                : 'text-status-info',
+                      )}
+                      aria-hidden
+                    />
+                  )}
                 </span>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  {/* Two lines, never one truncated line: "Liverpool Carmen" vs "Liverpool Jorge". */}
                   <Link
                     href={href}
+                    title={item.walletName}
                     className={cn(
-                      'min-w-0 truncate font-semibold hover:underline',
+                      // -my/py: 44px tall hit area on phones without moving the row.
+                      'min-w-0 line-clamp-2 break-words font-semibold leading-snug hover:underline -my-3 py-3 sm:my-0 sm:py-0',
                       isCompact ? 'text-xs' : 'text-sm',
                       status === 'pagado' || status === 'sin_cargo'
                         ? 'text-muted-foreground'
@@ -373,149 +407,166 @@ const FortnightCardPaymentsPanel = ({
                       </>
                     ) : null}
                   </div>
+                  {item.periodObligation?.overRecordedMessage ? (
+                    <p className="text-caption text-muted-foreground">
+                      {item.periodObligation.overRecordedMessage}
+                    </p>
+                  ) : null}
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <div
-                    className={cn(
-                      'flex items-end gap-2',
-                      status === 'pagado'
-                        ? 'flex-col items-end gap-0.5'
-                        : 'flex-row',
-                    )}
-                  >
-                    <span
+                {/* Below sm the amount sits over the actions so the name keeps its width. */}
+                <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-1.5">
+                  {/* Missing corte with a capture flow: the pill replaces the "—" amount. */}
+                  {showCapture ? null : (
+                    <div
                       className={cn(
-                        'font-sans font-bold tabular-nums',
-                        isCompact ? 'text-xs' : 'text-sm',
+                        'flex items-end gap-2',
                         status === 'pagado'
-                          ? 'text-status-income'
-                          : status === 'sin_cargo'
-                            ? 'text-muted-foreground'
-                            : isMissingPayment
-                              ? 'text-status-pending'
-                              : 'text-foreground',
+                          ? 'flex-col items-end gap-0.5'
+                          : 'flex-row',
                       )}
-                      aria-label={
-                        status === 'pagado'
-                          ? `${item.walletName}: pagado ${formatCurrency(paidDisplayAmount)}`
+                    >
+                      <span
+                        className={cn(
+                          'whitespace-nowrap font-sans font-bold tabular-nums',
+                          isCompact ? 'text-xs' : 'text-sm',
+                          status === 'pagado'
+                            ? 'text-status-income'
+                            : status === 'sin_cargo'
+                              ? 'text-muted-foreground'
+                              : isMissingPayment
+                                ? 'text-status-pending'
+                                : 'text-foreground',
+                        )}
+                        aria-label={
+                          status === 'pagado'
+                            ? `${item.walletName}: pagado ${formatCurrency(paidDisplayAmount)}`
+                            : status === 'sin_cargo'
+                              ? `${item.walletName}: sin cargo`
+                              : isMissingPayment
+                                ? `${item.walletName}: falta el pago del corte`
+                                : `${item.walletName}: planeado ${formatCurrency(effectiveAmount)}`
+                        }
+                      >
+                        {status === 'pagado'
+                          ? formatCurrency(paidDisplayAmount)
                           : status === 'sin_cargo'
-                            ? `${item.walletName}: sin cargo`
+                            ? formatCurrency(0)
                             : isMissingPayment
-                              ? `${item.walletName}: falta el pago del corte`
-                              : `${item.walletName}: planeado ${formatCurrency(effectiveAmount)}`
-                      }
-                    >
-                      {status === 'pagado'
-                        ? formatCurrency(paidDisplayAmount)
-                        : status === 'sin_cargo'
-                          ? formatCurrency(0)
-                          : isMissingPayment
-                            ? '—'
-                            : formatCurrency(effectiveAmount)}
-                    </span>
-                    {status === 'pagado' && fortnightPaid > 0 ? (
-                      <span
-                        className="eyebrow text-muted-foreground/80"
-                        aria-hidden
-                      >
-                        Pagado esta quincena
+                              ? '—'
+                              : formatCurrency(effectiveAmount)}
                       </span>
-                    ) : null}
-                    {status === 'pagado' &&
-                    fortnightPaid <= 0 &&
-                    (item.paymentsAppliedToStatement ?? 0) > 0 ? (
-                      <span
-                        className="eyebrow text-muted-foreground/80"
-                        aria-hidden
-                      >
-                        Cubierto al corte
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {onPlanUpdated && isMissingPayment ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-8 shrink-0 px-2 text-xs font-medium text-status-pending hover:text-status-pending"
-                      onClick={() => handleOpenPlanDialog(item)}
-                      aria-label={`Capturar pago del corte: ${item.walletName}`}
-                    >
-                      Capturar
-                    </Button>
-                  ) : null}
-
-                  {onPlanUpdated &&
-                  !isMissingPayment &&
-                  (status !== 'sin_cargo' || item.outstandingBalance > 0) ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleOpenPlanDialog(item)}
-                          aria-label={`Editar pago planeado: ${item.walletName}`}
+                      {status === 'pagado' && fortnightPaid > 0 ? (
+                        <span
+                          className="eyebrow max-w-24 text-right text-muted-foreground/80 sm:max-w-none"
+                          aria-hidden
                         >
-                          <Pencil className="size-3.5" aria-hidden />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" sideOffset={6}>
-                        Monto a pagar esta quincena
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : null}
+                          Pagado esta quincena
+                        </span>
+                      ) : null}
+                      {status === 'pagado' &&
+                      fortnightPaid <= 0 &&
+                      (item.paymentsAppliedToStatement ?? 0) > 0 ? (
+                        <span
+                          className="eyebrow max-w-24 text-right text-muted-foreground/80 sm:max-w-none"
+                          aria-hidden
+                        >
+                          Cubierto al corte
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
 
-                  {onPayCard && isPendingPlannerCardPayment(status, effectiveAmount) ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-flex">
+                  {/* Below sm the pill and the icon actions stack, so the
+                      column is only as wide as the pill. */}
+                  <div className="flex flex-col items-end gap-1 empty:hidden sm:flex-row sm:items-center sm:gap-1.5">
+                    {showCapture ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className={cn(
+                          'h-11 shrink-0 rounded-full px-3 text-xs font-semibold sm:h-10 sm:px-4',
+                          STATUS_BADGE_CLASS.pending,
+                          'hover:bg-status-pending/15 hover:text-status-pending dark:hover:bg-status-pending/20',
+                        )}
+                        onClick={() => handleOpenPlanDialog(item)}
+                        aria-label={`Capturar pago del corte: ${item.walletName}`}
+                      >
+                        Capturar
+                      </Button>
+                    ) : null}
+
+                    {onPlanUpdated &&
+                    !isMissingPayment &&
+                    (status !== 'sin_cargo' || item.outstandingBalance > 0) ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
-                            className={cn(
-                              'h-8 w-8 rounded-full border-dashed border-status-income/40 bg-transparent shadow-none',
-                              'transition-colors hover:border-status-income/70 hover:bg-status-income/10 dark:hover:bg-status-income/15',
-                              'disabled:pointer-events-none disabled:opacity-40',
-                              '[&_svg]:text-status-income dark:[&_svg]:text-status-income',
-                            )}
-                            disabled={
-                              item.outstandingBalance <= 0 ||
-                              payingWalletId === item.walletId
-                            }
-                            onClick={() => onPayCard(item)}
-                            aria-busy={payingWalletId === item.walletId}
-                            aria-label={
-                              payingWalletId === item.walletId
-                                ? `Guardando pago: ${item.walletName}`
-                                : `Registrar pago: ${item.walletName}`
-                            }
+                            className="size-11 shrink-0 text-muted-foreground hover:text-foreground sm:size-8"
+                            onClick={() => handleOpenPlanDialog(item)}
+                            aria-label={`Editar pago planeado: ${item.walletName}`}
                           >
-                            <Banknote className="size-3.5" aria-hidden />
+                            <Pencil className="size-3.5" aria-hidden />
                           </Button>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="left"
-                        sideOffset={6}
-                        className="max-w-[220px]"
-                      >
-                        {item.outstandingBalance <= 0 ? (
-                          'Sin saldo pendiente en esta tarjeta.'
-                        ) : (
-                          <>
-                            <span className="font-medium">Pagar</span>
-                            <span className="mt-0.5 block text-caption font-normal opacity-90">
-                              Desde efectivo o débito (igual que en Billeteras).
-                            </span>
-                          </>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : null}
+                        </TooltipTrigger>
+                        <TooltipContent side="left" sideOffset={6}>
+                          Monto a pagar esta quincena
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : null}
+
+                    {onPayCard && isPendingPlannerCardPayment(status, effectiveAmount) ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className={cn(
+                                'size-11 rounded-full border-dashed border-status-income/40 bg-transparent shadow-none sm:size-8',
+                                'transition-colors hover:border-status-income/70 hover:bg-status-income/10 dark:hover:bg-status-income/15',
+                                'disabled:pointer-events-none disabled:opacity-40',
+                                '[&_svg]:text-status-income dark:[&_svg]:text-status-income',
+                              )}
+                              disabled={
+                                item.outstandingBalance <= 0 ||
+                                payingWalletId === item.walletId
+                              }
+                              onClick={() => onPayCard(item)}
+                              aria-busy={payingWalletId === item.walletId}
+                              aria-label={
+                                payingWalletId === item.walletId
+                                  ? `Guardando pago: ${item.walletName}`
+                                  : `Registrar pago: ${item.walletName}`
+                              }
+                            >
+                              <Banknote className="size-3.5" aria-hidden />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="left"
+                          sideOffset={6}
+                          className="max-w-[220px]"
+                        >
+                          {item.outstandingBalance <= 0 ? (
+                            'Sin saldo pendiente en esta tarjeta.'
+                          ) : (
+                            <>
+                              <span className="font-medium">Pagar</span>
+                              <span className="mt-0.5 block text-caption font-normal opacity-90">
+                                Desde efectivo o débito (igual que en Billeteras).
+                              </span>
+                            </>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                  </div>
                 </div>
               </li>
             );
@@ -562,6 +613,7 @@ const FortnightCardPaymentsPanel = ({
           initialScope={editingItem.planScope ?? 'this_cycle'}
           initialCycleCount={editingItem.planCycleCount}
           initialValidUntil={editingItem.planValidUntil}
+          initialOverDebtReason={editingItem.overDebtReason ?? null}
           hasCustomPlan={
             editingItem.plannedPayment != null &&
             editingItem.plannedPayment > 0

@@ -9,18 +9,12 @@ import {
 } from '@/lib/finance/wallet-accounting';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
 import type { CreateWalletTransferInput } from '@/schemas/wallet-transfer.schema';
+import { DomainError } from '@/lib/finance/domain-error';
 
-export type WalletTransferCodedError = Error & { code?: string; status?: number };
+export type WalletTransferCodedError = DomainError;
 
-function codedError(
-  message: string,
-  code: string,
-  status = 400,
-): WalletTransferCodedError {
-  const error = new Error(message) as WalletTransferCodedError;
-  error.code = code;
-  error.status = status;
-  return error;
+function codedError(message: string, code: string, status = 400): DomainError {
+  return new DomainError(code, message, status);
 }
 
 function matchesOwner(

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PanelCardSkeleton } from '@/components/loading/page-skeletons';
 import MonthlyFortnightView from '@/components/MonthlyFortnightView';
 import {
   MONTHLY_PANEL_CONTENT_GRID_CLASS,
@@ -13,13 +13,16 @@ import {
 import { getMonthlyFortnightContentData } from '@/features/monthly/server/monthly.service';
 import type { MonthlyPanelShellData } from '@/features/monthly/server/monthly.types';
 import type { MonthlyFortnightPeriod } from '@/features/monthly/server/monthly.types';
-import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import type { OwnerContextSuccess, OwnerFilter } from '@/lib/server/get-owner-context';
+import { withPageActor } from '@/lib/server/with-owner-context';
 import type { ReportSummaryResult } from '@/lib/finance/report-summary.service';
 import type { DuePaymentItem, TransactionRow, WalletListItem } from '@/types/catalog';
 import type { LoanDuePaymentItem } from '@/types/loans';
 
 type MonthlyPanelContentSectionProps = {
   ownerFilter: OwnerFilter;
+  /** Session owner; its audit scope covers writes made while loading. */
+  pageOwner: OwnerContextSuccess;
   ownerKey: string;
   year: number;
   month: number;
@@ -55,6 +58,7 @@ const buildFortnightBundle = (params: {
 
 export const MonthlyPanelContentSection = async ({
   ownerFilter,
+  pageOwner,
   ownerKey,
   year,
   month,
@@ -74,15 +78,17 @@ export const MonthlyPanelContentSection = async ({
     return null;
   }
 
-  const content = await getMonthlyFortnightContentData({
-    ownerFilter,
-    year,
-    month,
-    yearParam,
-    monthParam,
-    activePeriod,
-    shell,
-  });
+  const content = await withPageActor(pageOwner, '/monthly', () =>
+    getMonthlyFortnightContentData({
+      ownerFilter,
+      year,
+      month,
+      yearParam,
+      monthParam,
+      activePeriod,
+      shell,
+    }),
+  );
 
   const cardDueFirst = shell.plannerDue.first;
   const cardDueSecond = shell.plannerDue.second;
@@ -151,10 +157,9 @@ export const MonthlyPanelContentFallback = ({
         />
       </div>
       <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
-        <div className="space-y-4">
-          <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
-          <Skeleton className="h-72 w-full rounded-xl border border-border/60" />
-        </div>
+        <PanelCardSkeleton bodyClassName="h-56" />
+        <PanelCardSkeleton bodyClassName="h-40" />
+        <PanelCardSkeleton bodyClassName="h-36" />
       </div>
     </div>
   </SkeletonExit>

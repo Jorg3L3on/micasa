@@ -1,3 +1,9 @@
+import {
+  BANK_CHARGES_ESTIMATE_KEY,
+  BANK_CHARGES_ESTIMATE_LABEL,
+  statementOverRecordedMessage,
+} from '@/lib/finance/card-period-obligation';
+
 export const getFortnightSummaryHeader = (
   period: 'FIRST' | 'SECOND',
 ): { title: string } => {
@@ -71,12 +77,20 @@ export const getFortnightStatusPill = (
 export type DueToPayCompositionRow = {
   label: string;
   amount: number;
+  /** Stable id for the bank-charge slice. Other rows key off the label. */
+  key?: string;
+  /** Shown under the row when a plan sits above recorded debt and there is no import. */
+  note?: string;
 };
 
 export type DueToPayCompositionInput = {
   pagado: number;
   pendiente: number;
   statementDue?: number;
+  /** Planned amount above recorded debt. A slice of the card due already inside pendiente. */
+  bankChargesEstimate?: number;
+  /** That slice when the cycle has no statement import. Drives the sentence, not a second addend. */
+  overRecordedEstimate?: number;
   walletLoanDue?: number;
   payrollDeduction?: number;
 };
@@ -101,6 +115,18 @@ export const getDueToPayComposition = (
     rows.push({
       label: 'De eso, estado de cuenta',
       amount: input.statementDue ?? 0,
+    });
+  }
+  const bankChargesEstimate = input.bankChargesEstimate ?? 0;
+  if (bankChargesEstimate > 0) {
+    const overRecordedEstimate = input.overRecordedEstimate ?? 0;
+    rows.push({
+      key: BANK_CHARGES_ESTIMATE_KEY,
+      label: BANK_CHARGES_ESTIMATE_LABEL,
+      amount: bankChargesEstimate,
+      ...(overRecordedEstimate > 0
+        ? { note: statementOverRecordedMessage(overRecordedEstimate) }
+        : {}),
     });
   }
   if ((input.walletLoanDue ?? 0) > 0) {

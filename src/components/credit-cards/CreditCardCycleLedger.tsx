@@ -22,6 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
+import { RevealGroup, RevealItem } from '@/components/motion/reveal';
 import { CreditCardFeedEmpty } from '@/components/credit-cards/CreditCardTransactionFeed';
 import {
   buildCreditCardCycleLedger,
@@ -40,7 +41,7 @@ import {
   yesterdayCalendarDate,
 } from '@/lib/calendar-dates';
 import { Money } from '@/components/money';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 const getDateGroupLabel = (dateStr: string): string => {
   const day = dateStr.slice(0, 10);
@@ -213,9 +214,11 @@ export const CreditCardCycleLedger = ({
           description="No hay entradas para mostrar en este ciclo."
         />
       ) : (
-        <div className="divide-y divide-border/40">
-          {grouped.map(([dateKey, rows]) => (
-            <section key={dateKey} aria-label={getDateGroupLabel(dateKey)}>
+        // Keyed on the filter, not the search, so typing does not replay it.
+        <RevealGroup key={filter} className="divide-y divide-border/40">
+          {grouped.map(([dateKey, rows], groupIndex) => (
+            <RevealItem key={dateKey} index={groupIndex}>
+            <section aria-label={getDateGroupLabel(dateKey)}>
               <p className="sticky top-0 z-[1] bg-card/95 px-4 py-2 eyebrow text-muted-foreground backdrop-blur-sm">
                 {getDateGroupLabel(dateKey)}
               </p>
@@ -335,8 +338,9 @@ export const CreditCardCycleLedger = ({
                 )}
               </ul>
             </section>
+            </RevealItem>
           ))}
-        </div>
+        </RevealGroup>
       )}
     </div>
   );

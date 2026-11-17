@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   createTransactionSchema,
   updateTransactionSchema,
@@ -34,43 +34,43 @@ const decimalToNumber = (value: unknown): number => {
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { searchParams } = new URL(request.url);
-    const month = searchParams.get('month');
-    const year = searchParams.get('year');
-    const periodRaw = searchParams.get('period');
-    const periodError = fortnightPeriodParamError(periodRaw);
-    if (periodError) {
-      return NextResponse.json({ error: periodError }, { status: 400 });
-    }
-    const period = parseFortnightPeriod(periodRaw);
-    const type = searchParams.get('type');
-    const isPaidParam = searchParams.get('is_paid');
-    const excludeCreditInstallment =
-      searchParams.get('exclude_credit_installment') === 'true' ||
-      searchParams.get('exclude_credit_msi') === 'true';
+      const { searchParams } = new URL(request.url);
+      const month = searchParams.get('month');
+      const year = searchParams.get('year');
+      const periodRaw = searchParams.get('period');
+      const periodError = fortnightPeriodParamError(periodRaw);
+      if (periodError) {
+        return NextResponse.json({ error: periodError }, { status: 400 });
+      }
+      const period = parseFortnightPeriod(periodRaw);
+      const type = searchParams.get('type');
+      const isPaidParam = searchParams.get('is_paid');
+      const excludeCreditInstallment =
+        searchParams.get('exclude_credit_installment') === 'true' ||
+        searchParams.get('exclude_credit_msi') === 'true';
 
-    const isPaid =
-      isPaidParam === 'true'
-        ? true
-        : isPaidParam === 'false'
-          ? false
-          : undefined;
+      const isPaid =
+        isPaidParam === 'true'
+          ? true
+          : isPaidParam === 'false'
+            ? false
+            : undefined;
 
-    const combined = await listPlanningTransactions({
-      ownerFilter,
-      month,
-      year,
-      period,
-      type,
-      isPaid,
-      excludeCreditInstallment,
+      const combined = await listPlanningTransactions({
+        ownerFilter,
+        month,
+        year,
+        period,
+        type,
+        isPaid,
+        excludeCreditInstallment,
+      });
+
+      return NextResponse.json(combined, { status: 200 });
     });
-
-    return NextResponse.json(combined, { status: 200 });
   } catch (error) {
     console.error('Error fetching transactions:', error);
     return NextResponse.json(
@@ -81,96 +81,98 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  let transactionCreateLog: {
+  // Assigned inside the withOwnerContext callback; `as` keeps the catch block
+  // from narrowing it to null.
+  let transactionCreateLog = null as {
     owner_type: string;
     owner_id: number;
     wallet_id: number | null;
     amount: number;
-  } | null = null;
+  } | null;
 
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const body = await request.json();
-    const validatedData = createTransactionSchema.parse(body);
+      const body = await request.json();
+      const validatedData = createTransactionSchema.parse(body);
 
-    if (validatedData.amount <= 0) {
-      return NextResponse.json(
-        { error: 'Amount must be greater than 0' },
-        { status: 400 },
-      );
-    }
-
-    const category = await prisma.category.findFirst({
-      where: { id: validatedData.category_id, kind: 'EXPENSE', ...ownerFilter },
-    });
-    if (!category) {
-      return NextResponse.json(
-        { error: 'Category not found' },
-        { status: 404 },
-      );
-    }
-
-    const fortnight = await prisma.fortnight.findFirst({
-      where: { id: validatedData.fortnight_id, ...ownerFilter },
-      select: { id: true },
-    });
-    if (!fortnight) {
-      return NextResponse.json(
-        { error: 'Fortnight not found' },
-        { status: 404 },
-      );
-    }
-
-    const walletId =
-      (validatedData as { wallet_id?: number | null }).wallet_id ??
-      validatedData.payment_method_id ??
-      validatedData.card_id ??
-      null;
-
-    if (walletId != null) {
-      const wallet = await prisma.wallet.findFirst({
-        where: { id: walletId, ...ownerFilter },
-        select: { id: true },
-      });
-      if (!wallet) {
+      if (validatedData.amount <= 0) {
         return NextResponse.json(
-          { error: 'Wallet not found' },
+          { error: 'Amount must be greater than 0' },
+          { status: 400 },
+        );
+      }
+
+      const category = await prisma.category.findFirst({
+        where: { id: validatedData.category_id, kind: 'EXPENSE', ...ownerFilter },
+      });
+      if (!category) {
+        return NextResponse.json(
+          { error: 'Category not found' },
           { status: 404 },
         );
       }
-    }
 
-    transactionCreateLog = {
-      owner_type: context.ownerType,
-      owner_id: context.ownerId,
-      wallet_id: walletId,
-      amount: validatedData.amount,
-    };
+      const fortnight = await prisma.fortnight.findFirst({
+        where: { id: validatedData.fortnight_id, ...ownerFilter },
+        select: { id: true },
+      });
+      if (!fortnight) {
+        return NextResponse.json(
+          { error: 'Fortnight not found' },
+          { status: 404 },
+        );
+      }
 
-    const created = await createExpense({
-      fortnightId: validatedData.fortnight_id,
-      categoryId: validatedData.category_id,
-      description: validatedData.description,
-      amount: validatedData.amount,
-      isPaid: validatedData.is_paid ?? false,
-      paymentDate: validatedData.payment_date ?? null,
-      expenseTemplateId: validatedData.expense_template_id ?? null,
-      walletId,
-      creditInstallmentCurrent: validatedData.credit_installment_current ?? null,
-      creditInstallmentTotal: validatedData.credit_installment_total ?? null,
-      applyWalletDelta: validatedData.apply_wallet_delta,
+      const walletId =
+        (validatedData as { wallet_id?: number | null }).wallet_id ??
+        validatedData.payment_method_id ??
+        validatedData.card_id ??
+        null;
+
+      if (walletId != null) {
+        const wallet = await prisma.wallet.findFirst({
+          where: { id: walletId, ...ownerFilter },
+          select: { id: true },
+        });
+        if (!wallet) {
+          return NextResponse.json(
+            { error: 'Wallet not found' },
+            { status: 404 },
+          );
+        }
+      }
+
+      transactionCreateLog = {
+        owner_type: context.ownerType,
+        owner_id: context.ownerId,
+        wallet_id: walletId,
+        amount: validatedData.amount,
+      };
+
+      const created = await createExpense({
+        fortnightId: validatedData.fortnight_id,
+        categoryId: validatedData.category_id,
+        description: validatedData.description,
+        amount: validatedData.amount,
+        isPaid: validatedData.is_paid ?? false,
+        paymentDate: validatedData.payment_date ?? null,
+        expenseTemplateId: validatedData.expense_template_id ?? null,
+        walletId,
+        creditInstallmentCurrent: validatedData.credit_installment_current ?? null,
+        creditInstallmentTotal: validatedData.credit_installment_total ?? null,
+        applyWalletDelta: validatedData.apply_wallet_delta,
+      });
+
+      return NextResponse.json(
+        {
+          ...created,
+          amount: decimalToNumber(created.amount),
+        },
+        { status: 201 },
+      );
     });
-
-    return NextResponse.json(
-      {
-        ...created,
-        amount: decimalToNumber(created.amount),
-      },
-      { status: 201 },
-    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -226,120 +228,122 @@ const UPDATE_LOCKED_MESSAGES: Record<string, string> = {
 };
 
 export async function PUT(request: NextRequest) {
-  let transactionUpdateLog: {
+  // Assigned inside the withOwnerContext callback; `as` keeps the catch block
+  // from narrowing it to null.
+  let transactionUpdateLog = null as {
     owner_type: string;
     owner_id: number;
     expense_id: number;
     wallet_id: number | null | undefined;
     amount: number | undefined;
-  } | null = null;
+  } | null;
 
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    if (!id || isNaN(Number(id))) {
-      return NextResponse.json(
-        { error: 'Valid id parameter is required' },
-        { status: 400 },
-      );
-    }
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
 
-    const body = await request.json();
-    const validatedData = updateTransactionSchema.parse(body);
+      const body = await request.json();
+      const validatedData = updateTransactionSchema.parse(body);
 
-    if (validatedData.amount !== undefined && validatedData.amount <= 0) {
-      return NextResponse.json(
-        { error: 'Amount must be greater than 0' },
-        { status: 400 },
-      );
-    }
+      if (validatedData.amount !== undefined && validatedData.amount <= 0) {
+        return NextResponse.json(
+          { error: 'Amount must be greater than 0' },
+          { status: 400 },
+        );
+      }
 
-    // Ownership gate only; transfer / loan / card-payment locks are enforced by updateExpense.
-    const existing = await prisma.expense.findFirst({
-      where: { id: Number(id), ...ownerFilter },
-      select: { id: true, wallet_id: true },
-    });
-
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 },
-      );
-    }
-
-    const walletId =
-      (validatedData as { wallet_id?: number | null }).wallet_id ??
-      validatedData.card_id;
-
-    if (validatedData.fortnight_id !== undefined) {
-      const fortnight = await prisma.fortnight.findFirst({
-        where: { id: validatedData.fortnight_id, ...ownerFilter },
-        select: { id: true },
+      // Ownership gate only; transfer / loan / card-payment locks are enforced by updateExpense.
+      const existing = await prisma.expense.findFirst({
+        where: { id: Number(id), ...ownerFilter },
+        select: { id: true, wallet_id: true },
       });
 
-      if (!fortnight) {
-        return NextResponse.json({ error: 'Fortnight not found' }, { status: 404 });
+      if (!existing) {
+        return NextResponse.json(
+          { error: 'Transaction not found' },
+          { status: 404 },
+        );
       }
-    }
 
-    if (validatedData.category_id !== undefined) {
-      const category = await prisma.category.findFirst({
-        where: {
-          id: validatedData.category_id,
-          kind: 'EXPENSE',
-          ...ownerFilter,
+      const walletId =
+        (validatedData as { wallet_id?: number | null }).wallet_id ??
+        validatedData.card_id;
+
+      if (validatedData.fortnight_id !== undefined) {
+        const fortnight = await prisma.fortnight.findFirst({
+          where: { id: validatedData.fortnight_id, ...ownerFilter },
+          select: { id: true },
+        });
+
+        if (!fortnight) {
+          return NextResponse.json({ error: 'Fortnight not found' }, { status: 404 });
+        }
+      }
+
+      if (validatedData.category_id !== undefined) {
+        const category = await prisma.category.findFirst({
+          where: {
+            id: validatedData.category_id,
+            kind: 'EXPENSE',
+            ...ownerFilter,
+          },
+          select: { id: true },
+        });
+
+        if (!category) {
+          return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+        }
+      }
+
+      if (walletId != null && walletId !== existing.wallet_id) {
+        const wallet = await prisma.wallet.findFirst({
+          where: { id: walletId, ...ownerFilter },
+          select: { id: true },
+        });
+
+        if (!wallet) {
+          return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
+        }
+      }
+
+      transactionUpdateLog = {
+        owner_type: context.ownerType,
+        owner_id: context.ownerId,
+        expense_id: Number(id),
+        wallet_id: walletId,
+        amount: validatedData.amount,
+      };
+
+      const transaction = await updateExpense({
+        id: Number(id),
+        ownerFilter,
+        fortnightId: validatedData.fortnight_id,
+        categoryId: validatedData.category_id,
+        description: validatedData.description,
+        amount: validatedData.amount,
+        isPaid: validatedData.is_paid,
+        paymentDate: validatedData.payment_date,
+        walletId,
+      });
+
+      return NextResponse.json(
+        {
+          ...transaction,
+          amount: decimalToNumber(transaction.amount),
         },
-        select: { id: true },
-      });
-
-      if (!category) {
-        return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-      }
-    }
-
-    if (walletId != null && walletId !== existing.wallet_id) {
-      const wallet = await prisma.wallet.findFirst({
-        where: { id: walletId, ...ownerFilter },
-        select: { id: true },
-      });
-
-      if (!wallet) {
-        return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
-      }
-    }
-
-    transactionUpdateLog = {
-      owner_type: context.ownerType,
-      owner_id: context.ownerId,
-      expense_id: Number(id),
-      wallet_id: walletId,
-      amount: validatedData.amount,
-    };
-
-    const transaction = await updateExpense({
-      id: Number(id),
-      ownerFilter,
-      fortnightId: validatedData.fortnight_id,
-      categoryId: validatedData.category_id,
-      description: validatedData.description,
-      amount: validatedData.amount,
-      isPaid: validatedData.is_paid,
-      paymentDate: validatedData.payment_date,
-      walletId,
+        { status: 200 },
+      );
     });
-
-    return NextResponse.json(
-      {
-        ...transaction,
-        amount: decimalToNumber(transaction.amount),
-      },
-      { status: 200 },
-    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -403,81 +407,81 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    if (!id || isNaN(Number(id))) {
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
+
+      const expenseId = Number(id);
+
+      const existing = await prisma.expense.findFirst({
+        where: { id: expenseId, ...ownerFilter },
+        select: {
+          id: true,
+          wallet_id: true,
+          amount: true,
+          is_paid: true,
+          transferAsUser: { select: { id: true } },
+          loan_payment: { select: { id: true } },
+        },
+      });
+
+      if (!existing) {
+        return NextResponse.json(
+          { error: 'Transaction not found' },
+          { status: 404 },
+        );
+      }
+
+      if (existing.transferAsUser != null) {
+        return NextResponse.json(
+          {
+            error:
+              'No se pueden eliminar gastos generados automáticamente por transferencias',
+          },
+          { status: 400 },
+        );
+      }
+
+      if (existing.loan_payment != null) {
+        return NextResponse.json(
+          {
+            error:
+              'No se pueden eliminar gastos generados automáticamente por pagos de préstamos',
+          },
+          { status: 400 },
+        );
+      }
+
+      const cardPaymentExpense = await prisma.creditCardPayment.findFirst({
+        where: { expense_id: expenseId },
+        select: { id: true },
+      });
+      if (cardPaymentExpense != null) {
+        return NextResponse.json(
+          {
+            error:
+              'No se pueden eliminar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
+          },
+          { status: 400 },
+        );
+      }
+
+      await deleteExpense({ id: expenseId, ownerFilter });
+
       return NextResponse.json(
-        { error: 'Valid id parameter is required' },
-        { status: 400 },
+        { message: 'Transaction deleted successfully' },
+        { status: 200 },
       );
-    }
-
-    const expenseId = Number(id);
-
-    const existing = await prisma.expense.findFirst({
-      where: { id: expenseId, ...ownerFilter },
-      select: {
-        id: true,
-        wallet_id: true,
-        amount: true,
-        is_paid: true,
-        transferAsUser: { select: { id: true } },
-        loan_payment: { select: { id: true } },
-      },
     });
-
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 },
-      );
-    }
-
-    if (existing.transferAsUser != null) {
-      return NextResponse.json(
-        {
-          error:
-            'No se pueden eliminar gastos generados automáticamente por transferencias',
-        },
-        { status: 400 },
-      );
-    }
-
-    if (existing.loan_payment != null) {
-      return NextResponse.json(
-        {
-          error:
-            'No se pueden eliminar gastos generados automáticamente por pagos de préstamos',
-        },
-        { status: 400 },
-      );
-    }
-
-    const cardPaymentExpense = await prisma.creditCardPayment.findFirst({
-      where: { expense_id: expenseId },
-      select: { id: true },
-    });
-    if (cardPaymentExpense != null) {
-      return NextResponse.json(
-        {
-          error:
-            'No se pueden eliminar gastos generados automáticamente por pagos de tarjeta; revierte el pago desde la tarjeta',
-        },
-        { status: 400 },
-      );
-    }
-
-    await deleteExpense({ id: expenseId, ownerFilter });
-
-    return NextResponse.json(
-      { message: 'Transaction deleted successfully' },
-      { status: 200 },
-    );
   } catch (error) {
     if (
       error &&

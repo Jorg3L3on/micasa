@@ -1,17 +1,12 @@
 import prisma from '@/lib/prisma';
-import {
-  addCalendarDays,
-  endOfCalendarDay,
-  formatCalendarDate,
-  startOfCalendarDay,
-  todayCalendarDate,
-} from '@/lib/calendar-dates';
+import { addCalendarDays, todayCalendarDate } from '@/lib/calendar-dates';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
+import { FortnightPeriod } from '@/generated/prisma/client';
+import { findFortnightByCalendarPeriod } from '@/features/monthly/server/monthly.queries';
 import type { AgentContext } from '@/lib/server/resolve-agent-context';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
-
-export const dateYmdSchemaRegex = /^\d{4}-\d{2}-\d{2}$/;
+import { McpToolError } from '@/lib/mcp/errors';
 
 export type ResolvedDateRange = {
   from: string;
@@ -29,13 +24,15 @@ export async function resolveWalletRef(
       select: { id: true, name: true, type: true },
     });
     if (!wallet) {
-      throw new Error('Billetera no encontrada en este contexto');
+      throw new McpToolError('NOT_FOUND', 'Billetera no encontrada en este contexto', {
+        hint: 'Usa list_wallets para ver los ids válidos.',
+      });
     }
     return wallet;
   }
 
   if (!walletName?.trim()) {
-    throw new Error('Indica wallet_id o wallet_name');
+    throw new McpToolError('VALIDATION', 'Indica wallet_id o wallet_name');
   }
 
   const matches = await prisma.wallet.findMany({
@@ -48,13 +45,17 @@ export async function resolveWalletRef(
   });
 
   if (matches.length === 0) {
-    throw new Error(`Billetera "${walletName}" no encontrada en este contexto`);
+    throw new McpToolError(
+      'NOT_FOUND',
+      `Billetera "${walletName}" no encontrada en este contexto`,
+      { hint: 'Usa list_wallets para ver los nombres válidos.' },
+    );
   }
   if (matches.length > 1) {
-    throw new Error(
-      `Nombre de billetera ambiguo ("${walletName}"). Especifica wallet_id. Coincidencias: ${matches
-        .map((w) => `${w.name} (id ${w.id})`)
-        .join(', ')}`,
+    throw new McpToolError(
+      'AMBIGUOUS_REF',
+      `Nombre de billetera ambiguo ("${walletName}"). Especifica wallet_id.`,
+      { candidates: matches.map((w) => ({ id: w.id, name: w.name })) },
     );
   }
 
@@ -75,14 +76,16 @@ export async function resolveCategoryRef(
       select: { id: true },
     });
     if (!category) {
-      throw new Error('Categoría no encontrada en este contexto');
+      throw new McpToolError('NOT_FOUND', 'Categoría no encontrada en este contexto', {
+        hint: 'Usa list_categories para ver los ids válidos.',
+      });
     }
     return category.id;
   }
 
   if (!categoryName?.trim()) {
     if (required) {
-      throw new Error('Indica category_id o category_name');
+      throw new McpToolError('VALIDATION', 'Indica category_id o category_name');
     }
     return null;
   }
@@ -98,15 +101,17 @@ export async function resolveCategoryRef(
 
   const available = await prisma.category.findMany({
     where: { ...ownerFilter, active: true },
-    select: { name: true },
+    select: { id: true, name: true },
     orderBy: { name: 'asc' },
     take: 20,
   });
-  throw new Error(
-    `Categoría "${categoryName}" no encontrada. Disponibles: ${available
-      .map((c) => c.name)
-      .join(', ')}${available.length >= 20 ? '…' : ''}`,
-  );
+  throw new McpToolError('NOT_FOUND', `Categoría "${categoryName}" no encontrada.`, {
+    hint:
+      available.length >= 20
+        ? 'Candidatas: las primeras 20 activas; usa list_categories para el resto.'
+        : 'Candidatas: categorías activas del contexto.',
+    candidates: available,
+  });
 }
 
 export function resolveDateRange(input: {
@@ -150,13 +155,6 @@ export function resolveDateRange(input: {
   return { from: addCalendarDays(today, -29), to: today };
 }
 
-export function calendarRangeBounds(range: ResolvedDateRange) {
-  return {
-    fromDate: startOfCalendarDay(range.from),
-    toDate: endOfCalendarDay(range.to),
-  };
-}
-
 export async function resolveFortnightIdForDate(
   agent: AgentContext,
   ymd: string,
@@ -172,18 +170,33 @@ export async function resolveFortnightIdForDate(
   return fortnight.id;
 }
 
-export function currentCalendarMonth(): { year: number; month: number } {
-  const today = todayCalendarDate();
-  return {
-    year: Number(today.slice(0, 4)),
-    month: Number(today.slice(5, 7)),
-  };
-}
-
-export function formatYmdFromDate(value: Date | string | null | undefined): string | null {
-  if (value == null) return null;
-  if (typeof value === 'string') {
-    return value.slice(0, 10);
+/**
+ * Fortnight from `fortnight_id` or `year` + `month` + `period` (it must
+ * exist; `create_month` creates them).
+ */
+export async function resolveFortnightRef(
+  agent: Pick<AgentContext, 'ownerFilter'>,
+  input: {
+    fortnight_id?: number;
+    year?: number;
+    month?: number;
+    period?: 'FIRST' | 'SECOND';
+  },
+): Promise<number> {
+  if (input.fortnight_id != null) return input.fortnight_id;
+  if (input.year == null || input.month == null || input.period == null) {
+    throw new McpToolError('VALIDATION', 'Indica fortnight_id o year + month + period');
   }
-  return formatCalendarDate(value);
+  const fortnight = await findFortnightByCalendarPeriod(
+    agent.ownerFilter,
+    input.year,
+    input.month,
+    input.period === 'SECOND' ? FortnightPeriod.SECOND : FortnightPeriod.FIRST,
+  );
+  if (!fortnight) {
+    throw new McpToolError('NOT_FOUND', 'Quincena no encontrada', {
+      hint: 'Usa create_month para crear las quincenas del mes.',
+    });
+  }
+  return fortnight.id;
 }

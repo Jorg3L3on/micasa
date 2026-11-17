@@ -11,18 +11,20 @@ import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PanelCardSkeleton } from '@/components/loading/page-skeletons';
 import { useOptionalQuickCapture } from '@/components/quick-capture/QuickCaptureHost';
 import { PAGE_CREATE_ACTION } from '@/lib/ui/page-create-action';
 import { useFinanceContext } from '@/context/finance-context';
 import { useRegisterToolbarActions } from '@/context/toolbar-actions-context';
-import { isOwnerContextPending } from '@/lib/api/client-fetch';
+import { isPanelOwnerPending } from '@/lib/api/client-fetch';
 import { cn } from '@/lib/utils';
 
 type FortnightPeriod = 'FIRST' | 'SECOND';
 
 type MonthlyPanelLayoutProps = {
   ownerKey: string;
+  /** True when the request URL named the owner (`?ownerType=&ownerId=`). */
+  ownerInUrl: boolean;
   year: number;
   month: number;
   monthName: string;
@@ -41,6 +43,7 @@ type MonthlyPanelLayoutProps = {
 
 export const MonthlyPanelLayout = ({
   ownerKey,
+  ownerInUrl,
   year,
   month,
   monthName,
@@ -56,8 +59,7 @@ export const MonthlyPanelLayout = ({
   createNextControl = null,
   children,
 }: MonthlyPanelLayoutProps) => {
-  const { context } = useFinanceContext();
-  const ownerPending = isOwnerContextPending(context, ownerKey);
+  const ownerPending = useMonthlyOwnerPending(ownerKey, ownerInUrl);
   const refreshPanel = useMonthlyPanelRefresh();
   const handlePullRefresh = useCallback(async () => {
     try {
@@ -121,7 +123,7 @@ export const MonthlyPanelLayout = ({
           secondLabel={secondLabel}
           prevControl={prevControl}
           nextNavControl={nextNavControl}
-          createNextControl={createNextControl}
+          createNextControl={ownerPending ? null : createNextControl}
         />
       </div>
 
@@ -131,7 +133,36 @@ export const MonthlyPanelLayout = ({
   );
 };
 
-const MonthlyOwnerSwitchFallback = () => (
+/**
+ * True while the server page may belong to another owner (see
+ * `isPanelOwnerPending`). Nothing owner-specific (empty month, Crear mes) may
+ * render or fetch in that window.
+ */
+export const useMonthlyOwnerPending = (
+  ownerKey: string,
+  ownerInUrl: boolean,
+): boolean => {
+  const { context } = useFinanceContext();
+  return isPanelOwnerPending(context, ownerKey, ownerInUrl);
+};
+
+type MonthlyOwnerGateProps = {
+  ownerKey: string;
+  ownerInUrl: boolean;
+  fallback: ReactNode;
+  children: ReactNode;
+};
+
+/** Renders `fallback` instead of `children` while the owner is pending. */
+export const MonthlyOwnerGate = ({
+  ownerKey,
+  ownerInUrl,
+  fallback,
+  children,
+}: MonthlyOwnerGateProps) =>
+  useMonthlyOwnerPending(ownerKey, ownerInUrl) ? fallback : children;
+
+export const MonthlyOwnerSwitchFallback = () => (
   <div
     className={MONTHLY_PANEL_CONTENT_GRID_CLASS}
     role="status"
@@ -140,13 +171,20 @@ const MonthlyOwnerSwitchFallback = () => (
   >
     <div className={MONTHLY_PANEL_MAIN_COLUMN_CLASS}>
       <div className="space-y-4">
-        <Skeleton className="h-24 w-full rounded-lg border border-border/60" />
-        <Skeleton className="h-36 w-full rounded-lg border border-border/60" />
-        <Skeleton className="h-52 w-full rounded-lg border border-border/60" />
+        {/* Heights match the real Balance/Liquidez tiles, Compromiso and
+            Gastos cards at 375px so nothing jumps when the owner resolves. */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <PanelCardSkeleton bodyClassName="h-11" className="overflow-hidden" />
+          <PanelCardSkeleton bodyClassName="h-11" className="overflow-hidden" />
+        </div>
+        <PanelCardSkeleton bodyClassName="h-16" />
+        <PanelCardSkeleton bodyClassName="h-72" />
       </div>
     </div>
     <div className={MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS}>
-      <Skeleton className="h-64 w-full rounded-xl border border-border/60" />
+      <PanelCardSkeleton bodyClassName="h-56" />
+      <PanelCardSkeleton bodyClassName="h-40" />
+      <PanelCardSkeleton bodyClassName="h-36" />
     </div>
   </div>
 );
@@ -158,4 +196,11 @@ export const MONTHLY_PANEL_MAIN_COLUMN_CLASS =
   'mx-auto min-w-0 w-full max-w-4xl xl:max-w-none';
 
 export const MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS =
-  'hidden min-w-0 flex-col gap-5 xl:flex';
+  'flex min-w-0 flex-col gap-5';
+
+/**
+ * Hides main-column content that the sidebar repeats (e.g. the wallet strip vs
+ * the Billeteras card). Same breakpoint as MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS:
+ * change both together.
+ */
+export const MONTHLY_PANEL_SIDEBAR_DUPLICATE_CLASS = 'xl:hidden';

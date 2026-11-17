@@ -5,6 +5,8 @@ import {
   getPaidExpenseWalletDelta,
 } from '@/lib/finance/wallet-accounting';
 import type { OwnerFilter } from '@/lib/server/get-owner-context';
+import { setAuditLabel } from '@/lib/server/audit/audit-context';
+import { PROVIDER_LABELS } from './statement-import.service';
 
 export type RollbackStatementImportResult = {
   expensesRemoved: number;
@@ -38,6 +40,7 @@ export async function rollbackCreditCardStatementImport(input: {
     throw err;
   }
 
+  setAuditLabel(`Reversión de importación de estado de cuenta: ${PROVIDER_LABELS[importRow.provider]}`);
   return prisma.$transaction(async (tx) => {
     const previousImport = await tx.creditCardStatementImport.findFirst({
       where: {

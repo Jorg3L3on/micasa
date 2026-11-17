@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WalletFaceArt } from '@/components/wallets/WalletFaceArt';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import {
   getCachedWalletCardVtSnapshot,
@@ -54,7 +55,7 @@ export function WalletCardVtPlaceholder({
         <Skeleton
           className={cn(
             'w-full rounded-face border border-border/60',
-            'min-h-[12rem] sm:min-h-[13.5rem]',
+            'aspect-[1.586]',
           )}
         />
       )}
@@ -72,7 +73,8 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
         )}
         style={snapshot.style}
       >
-        <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
+        <WalletFaceArt />
+        <div className="relative flex min-h-0 flex-1 flex-col justify-between gap-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {snapshot.providerIconKey ? (
@@ -99,9 +101,6 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
                 </p>
               </div>
             </div>
-            <span className="font-mono text-caption tracking-[0.2em] opacity-50">
-              •••• ••••
-            </span>
           </div>
 
           <div className="space-y-3">
@@ -109,7 +108,7 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
               <p className="eyebrow opacity-70">
                 Deuda total
               </p>
-              <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
+              <p className="font-sans text-[clamp(1.5rem,9cqw,2.25rem)] font-bold tabular-nums leading-snug tracking-tight">
                 {formatCurrency(snapshot.amount)}
               </p>
             </div>
@@ -171,7 +170,8 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
       )}
       style={snapshot.style}
     >
-      <div className="relative flex min-h-[12rem] flex-col justify-between gap-4 sm:min-h-[13.5rem]">
+      <WalletFaceArt />
+      <div className="relative flex min-h-0 flex-1 flex-col justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           {snapshot.providerIconKey ? (
             <WalletProviderIcon
@@ -203,35 +203,9 @@ function StashedCardFace({ snapshot }: { snapshot: WalletCardVtSnapshot }) {
             <p className="eyebrow opacity-70">
               Saldo disponible
             </p>
-            <p className="font-sans text-3xl font-bold tabular-nums leading-snug tracking-tight sm:text-4xl">
+            <p className="font-sans text-[clamp(1.5rem,9cqw,2.25rem)] font-bold tabular-nums leading-snug tracking-tight">
               {formatCurrency(snapshot.amount)}
             </p>
-          </div>
-
-          <div
-            className="invisible grid grid-cols-2 gap-3 text-xs"
-            aria-hidden
-          >
-            <div>
-              <p className="eyebrow">Disponible</p>
-              <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
-                $0.00
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="eyebrow">Límite</p>
-              <p className="font-sans text-sm font-semibold tabular-nums leading-snug">
-                $0.00
-              </p>
-            </div>
-          </div>
-
-          <div className="invisible space-y-1" aria-hidden>
-            <div className="flex items-baseline justify-between gap-x-2 text-caption leading-snug">
-              <span className="shrink-0 whitespace-normal">Utilización</span>
-              <span className="font-sans tabular-nums">0%</span>
-            </div>
-            <div className="h-1.5 w-full rounded-full" />
           </div>
         </div>
       </div>

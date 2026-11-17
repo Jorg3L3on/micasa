@@ -5,6 +5,7 @@ import { ViewTransition } from 'react';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CreditCardDetailBodySkeleton } from '@/components/wallets/DetailBodySkeletons';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 
 /**
@@ -28,14 +29,9 @@ export default function CreditCardDetailLoading() {
               <WalletCardVtPlaceholder walletId={cardId} variant="credit" />
             </ViewTransition>
           ) : (
-            <Skeleton className="mx-auto h-[12rem] w-full max-w-md rounded-face sm:h-[13.5rem]" />
+            <Skeleton className="mx-auto aspect-[1.586] w-full max-w-md rounded-face lg:max-w-lg" />
           )}
-          <Skeleton className="h-14 w-full rounded-2xl" />
-          <Skeleton className="h-20 w-full rounded-2xl" />
-        </div>
-        <div className="rounded-t-[1.75rem] border border-border/60 bg-card px-4 pt-3 pb-4">
-          <Skeleton className="mb-3 h-10 w-full rounded-xl" />
-          <Skeleton className="mt-4 h-48 w-full rounded-2xl" />
+          <CreditCardDetailBodySkeleton />
         </div>
       </div>
     </DirectionalTransition>

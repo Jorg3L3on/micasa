@@ -18,6 +18,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { formatStoredDateOnly, parseDateOnly } from '@/lib/calendar-dates'
 import { formatLoanDueYmd, loanDueDateForStorage } from '@/lib/finance/loan-schedule'
 import prisma from '@/lib/prisma'
+import { runWithAuditActor } from '@/lib/server/audit/audit-context'
 
 /** Cold Neon compute can exceed Vitest's 5s default on the first full-suite run. */
 const INTEGRATION_TIMEOUT_MS = 30_000
@@ -190,9 +191,11 @@ describe(
       'keeps the civil day under UTC and America/Mexico_City',
       async () => {
         expect(await canReachDatabase()).toBe(true)
-        await roundTripDateColumns('UTC')
-        await roundTripDateColumns('America/Mexico_City')
-        await roundTripLoanDueDate()
+        await runWithAuditActor({ source: 'SYSTEM', label: 'database-timestamps test' }, async () => {
+          await roundTripDateColumns('UTC')
+          await roundTripDateColumns('America/Mexico_City')
+          await roundTripLoanDueDate()
+        })
       },
       INTEGRATION_TIMEOUT_MS,
     )

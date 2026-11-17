@@ -1,3 +1,5 @@
+import { DomainError } from '@/lib/finance/domain-error';
+import { ownerMonthKey, requestMemo } from '@/lib/server/request-memo';
 import { cache } from 'react';
 import { formatCalendarDate, parseCalendarDate } from '@/lib/calendar-dates';
 import prisma from '@/lib/prisma';
@@ -8,7 +10,10 @@ import {
   isStalePastDueGap,
   plannerAsOfForCardMonth,
 } from '@/lib/finance/card-obligation-cycle';
-import { applyPeriodObligation } from '@/lib/finance/card-period-obligation';
+import {
+  applyPeriodObligation,
+  BANK_CHARGES_ESTIMATE_KEY,
+} from '@/lib/finance/card-period-obligation';
 import {
   getCardPeriodObligation,
   panelSnapshotFromDueItem,
@@ -48,6 +53,7 @@ import {
   isCalendarFortnightNext,
 } from '@/lib/fortnight-calendar';
 import type { DuePaymentItem } from '@/types/catalog';
+import { loadLoanOutstandingByWallet } from '@/lib/finance/wallet-loan-outstanding';
 
 export {
   buildCardStatementObligation,
@@ -114,9 +120,7 @@ export async function getCreditCardStatementByOwner(
   });
 
   if (!card) {
-    const error = new Error('Tarjeta no encontrada');
-    (error as { code?: string }).code = 'P2025';
-    throw error;
+    throw new DomainError('P2025', 'Tarjeta no encontrada');
   }
 
   if (
@@ -124,11 +128,7 @@ export async function getCreditCardStatementByOwner(
     card.cutoff_day == null ||
     card.due_day == null
   ) {
-    const error = new Error(
-      'La billetera no está configurada como tarjeta de crédito',
-    );
-    (error as { code?: string }).code = 'INVALID_CREDIT_CARD';
-    throw error;
+    throw new DomainError('INVALID_CREDIT_CARD', 'La billetera no está configurada como tarjeta de crédito');
   }
 
   const normalizedAsOf = asOf ?? new Date();
@@ -411,6 +411,8 @@ export async function getCreditCardStatementByOwner(
     cutoffDay: card.cutoff_day,
     dueDay: card.due_day,
   });
+  const loanOutstanding =
+    (await loadLoanOutstandingByWallet(ownerFilter)).get(card.id) ?? 0;
   const nextDuePayment =
     periodObligation.confidence === 'missing'
       ? 0
@@ -424,11 +426,16 @@ export async function getCreditCardStatementByOwner(
     current_balance: currentBalance,
     credit_limit: creditLimit,
     temporary_credit_limit: temporaryCreditLimit,
-    available_credit: getWalletAvailableCredit({
-      amount: currentBalance,
-      credit_limit: creditLimit,
-      temporary_credit_limit: temporaryCreditLimit,
-    }),
+    // Free credit: limit − card balance − what linked or card-paid loans still owe.
+    available_credit: (() => {
+      const free = getWalletAvailableCredit({
+        amount: currentBalance,
+        credit_limit: creditLimit,
+        temporary_credit_limit: temporaryCreditLimit,
+      });
+      return free == null ? null : free - loanOutstanding;
+    })(),
+    loan_outstanding: loanOutstanding,
     cutoff_day: card.cutoff_day,
     due_day: card.due_day,
     statement_start: toDateOnlyString(window.statementStart),
@@ -1190,6 +1197,7 @@ const sumScheduledByWallet = (
       dueDate: string;
       walletName: string;
       walletType: string;
+      providerIconKey: string | null;
     }
   >();
 
@@ -1206,6 +1214,7 @@ const sumScheduledByWallet = (
         dueDate: row.dueDate,
         walletName: row.walletName,
         walletType: row.walletType,
+        providerIconKey: row.providerIconKey,
       });
     }
   }
@@ -1234,6 +1243,7 @@ const applyScheduledCalendarToDueItems = (
         dueDate: row.dueDate,
         walletName: row.walletName,
         walletType: 'CREDIT_CARD',
+        providerIconKey: row.providerIconKey,
       });
     }
   }
@@ -1274,6 +1284,7 @@ const applyScheduledCalendarToDueItems = (
       walletId,
       walletName: scheduled.walletName,
       walletType: scheduled.walletType,
+      providerIconKey: scheduled.providerIconKey,
       dueDay: Number(scheduled.dueDate.slice(8, 10)),
       cutoff_day: 0,
       nextDuePayment: scheduled.amount,
@@ -1317,6 +1328,7 @@ async function getDuePaymentsWithAsOf(
       id: true,
       name: true,
       type: true,
+      provider_icon_key: true,
       amount: true,
       cutoff_day: true,
       due_day: true,
@@ -1519,6 +1531,7 @@ async function getDuePaymentsWithAsOf(
       walletId: card.id,
       walletName: card.name,
       walletType: card.type,
+      providerIconKey: card.provider_icon_key ?? null,
       dueDay: card.due_day!,
       cutoff_day: card.cutoff_day!,
       ...fields,
@@ -1668,9 +1681,9 @@ async function getDuePaymentsForPlannerMonthImpl(
 /**
  * Request-scoped memo of the planner-month computation. The monthly panel invokes
  * this (directly plus via report summaries) several times per render; `cache`
- * dedupes those calls within one RSC/route request and is a passthrough outside
- * React (tests, scripts). Keys are primitives because `cache` compares object
- * arguments by reference.
+ * dedupes those calls within one RSC render and `requestMemo` within one GET
+ * route request; both are passthroughs elsewhere (tests, scripts). Keys are
+ * primitives because `cache` compares object arguments by reference.
  */
 const getDuePaymentsForPlannerMonthCached = cache(
   (
@@ -1679,13 +1692,15 @@ const getDuePaymentsForPlannerMonthCached = cache(
     year: number,
     month: number,
   ) =>
-    getDuePaymentsForPlannerMonthImpl(
-      userId != null
-        ? { user_id: userId, house_id: null }
-        : // OwnerFilter guarantees house_id is set when user_id is null.
-          { user_id: null, house_id: houseId as number },
-      year,
-      month,
+    requestMemo(ownerMonthKey('planner-card-dues', userId, houseId, year, month), () =>
+      getDuePaymentsForPlannerMonthImpl(
+        userId != null
+          ? { user_id: userId, house_id: null }
+          : // OwnerFilter guarantees house_id is set when user_id is null.
+            { user_id: null, house_id: houseId as number },
+        year,
+        month,
+      ),
     ),
 );
 
@@ -1703,14 +1718,24 @@ export function getDuePaymentsForPlannerMonth(
   );
 }
 
-const sumCardDueItems = (
-  items: DuePaymentItem[],
-): {
+type PlannerCardDueSum = {
   total: number;
   cardCount: number;
   knownPendingCount: number;
   obligationGapCount: number;
-} => {
+  /** Planned slice above recorded debt. Already inside `total`. */
+  bankChargesEstimate: number;
+  /** That slice on cycles with no statement import. */
+  overRecordedEstimate: number;
+};
+
+const bankChargeAmount = (
+  snapshot: ReturnType<typeof panelSnapshotFromDueItem>,
+): number =>
+  snapshot.breakdown.find((row) => row.key === BANK_CHARGES_ESTIMATE_KEY)
+    ?.amount ?? 0;
+
+const sumCardDueItems = (items: DuePaymentItem[]): PlannerCardDueSum => {
   const snapshots = items.map((item) => panelSnapshotFromDueItem(item));
   const total = snapshots.reduce(
     (sum, snapshot) =>
@@ -1722,7 +1747,23 @@ const sumCardDueItems = (
   const knownPendingCount = snapshots.filter(
     (snapshot) => snapshot.countsInKnownTotal && (snapshot.knownCashAmount ?? 0) > 0,
   ).length;
-  return { total, cardCount, knownPendingCount, obligationGapCount };
+  const bankChargesEstimate = snapshots.reduce(
+    (sum, snapshot) => sum + bankChargeAmount(snapshot),
+    0,
+  );
+  const overRecordedEstimate = snapshots.reduce(
+    (sum, snapshot) =>
+      sum + (snapshot.overRecordedMessage ? bankChargeAmount(snapshot) : 0),
+    0,
+  );
+  return {
+    total,
+    cardCount,
+    knownPendingCount,
+    obligationGapCount,
+    bankChargesEstimate,
+    overRecordedEstimate,
+  };
 };
 
 /** Suma el pago conocido de tarjetas con corte en la quincena. Los huecos no entran como $0. */
@@ -1731,12 +1772,7 @@ export async function sumPlannerCardDueForFortnight(
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{
-  total: number;
-  cardCount: number;
-  knownPendingCount: number;
-  obligationGapCount: number;
-}> {
+): Promise<PlannerCardDueSum> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
@@ -1751,12 +1787,7 @@ export async function sumPlannerCardDueForMonth(
   ownerFilter: OwnerFilter,
   year: number,
   month: number,
-): Promise<{
-  total: number;
-  cardCount: number;
-  knownPendingCount: number;
-  obligationGapCount: number;
-}> {
+): Promise<PlannerCardDueSum> {
   const { first, second } = await getDuePaymentsForPlannerMonth(
     ownerFilter,
     year,
@@ -1771,12 +1802,7 @@ export async function sumPlannerCardDueForPeriodScope(
   year: number,
   month: number,
   period: 'FIRST' | 'SECOND',
-): Promise<{
-  total: number;
-  cardCount: number;
-  knownPendingCount: number;
-  obligationGapCount: number;
-}> {
+): Promise<PlannerCardDueSum> {
   if (view === 'month') {
     return sumPlannerCardDueForMonth(ownerFilter, year, month);
   }

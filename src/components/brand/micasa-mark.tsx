@@ -11,8 +11,8 @@ type MicasaMarkProps = {
 };
 
 /**
- * Brand isotipo. Display asset is the 160px `public/brand/mark-160.png`.
- * Icon generation still reads the source `public/brand/mark.png`.
+ * Brand isotipo (roof over an "M", #2563EB → #8B3FD9). Displays the exported
+ * `public/brand/mark.svg`; `scripts/import-brand-assets.mjs` keeps it in sync.
  */
 export const MicasaMark = ({ className, title, priority = false }: MicasaMarkProps) => {
   const isDecorative = !title;
@@ -23,10 +23,10 @@ export const MicasaMark = ({ className, title, priority = false }: MicasaMarkPro
       aria-hidden={isDecorative ? true : undefined}
     >
       <Image
-        src="/brand/mark-160.png"
+        src="/brand/mark.svg"
         alt={isDecorative ? '' : title}
         fill
-        sizes="48px"
+        unoptimized
         priority={priority}
         className="object-contain"
       />

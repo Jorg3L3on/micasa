@@ -12,6 +12,7 @@ import {
   OverlayHint,
 } from '@/components/overlay/overlay-form';
 import { Button } from '@/components/ui/button';
+import { SegmentedControl } from '@/components/segmented-control';
 import {
   Select,
   SelectContent,
@@ -21,7 +22,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { WalletIdentity } from '@/components/wallets/WalletIdentity';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
+import { formatDayMonth } from '@/lib/calendar-dates';
 import type { PaymentMethodOption } from '@/types/catalog';
 import type {
   LoanListItem,
@@ -53,6 +55,28 @@ type LoanCalendarPaymentOverlayProps = {
     value: LoanCalendarPaymentDraft[K],
   ) => void;
   onSubmit: () => void;
+  /** Actions offered for this installment; two or more show a picker. */
+  availableActions?: LoanPaymentActionValue[];
+  onActionChange?: (action: LoanPaymentActionValue) => void;
+};
+
+const ACTION_SHORT_LABEL: Record<LoanPaymentActionValue, string> = {
+  MARK_PAID: 'Pagar',
+  MARK_PAID_EXTERNAL: 'Ya pagado',
+  SKIP: 'Omitir',
+  CANCEL: 'Cancelar',
+  MARK_SCHEDULED: 'Deshacer',
+};
+
+/** What a calendar row can do: por pagar → pagar, ya pagado, omitir, cancelar; pagada → deshacer. */
+export const loanPaymentActionsFor = (
+  payment: Pick<LoanPaymentListItem, 'status'>,
+): LoanPaymentActionValue[] => {
+  if (payment.status === 'SCHEDULED') {
+    return ['MARK_PAID', 'MARK_PAID_EXTERNAL', 'SKIP', 'CANCEL'];
+  }
+  if (payment.status === 'PAID') return ['MARK_SCHEDULED'];
+  return [];
 };
 
 const paymentActionLabel = (action: LoanPaymentActionValue) => {
@@ -103,6 +127,8 @@ export const LoanCalendarPaymentOverlay = ({
   fundingWallets,
   onFieldChange,
   onSubmit,
+  availableActions = [],
+  onActionChange,
 }: LoanCalendarPaymentOverlayProps) => {
   const isPayrollDeduction = loan?.paymentSource === 'PAYROLL_DEDUCTION';
   const walletOptions = (() => {
@@ -165,15 +191,35 @@ export const LoanCalendarPaymentOverlay = ({
             className="flex flex-col gap-3"
             aria-busy={submitting}
           >
+            {availableActions.length > 1 && onActionChange ? (
+              <SegmentedControl
+                value={draft.action}
+                onValueChange={(value) =>
+                  onActionChange(value as LoanPaymentActionValue)
+                }
+                ariaLabel="Acción para esta cuota"
+                className="w-full min-w-0"
+                stretch
+                frameClassName="flex min-w-0 items-center"
+                wrapperClassName="min-w-0 w-full flex-1"
+                listClassName="min-w-full"
+                triggerClassName="px-2 sm:px-3"
+                overflowControls="fade"
+                options={availableActions.map((action) => ({
+                  value: action,
+                  label: ACTION_SHORT_LABEL[action],
+                }))}
+              />
+            ) : null}
             <div className="rounded-xl border border-border/60 bg-card px-3 py-3">
               <p className="eyebrow text-muted-foreground">
-                Pago #{payment.sequence}
+                Cuota {payment.sequence} de {loan.paymentCount}
               </p>
               <p className="mt-1 font-sans text-2xl font-bold tabular-nums">
                 {formatCurrency(payment.amount)}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {loan.name} · {formatDate(payment.dueDate)}
+                {loan.name} · {formatDayMonth(payment.dueDate)}
                 {isPayrollDeduction
                   ? ` · Nómina${loan.incomeTemplateName ? `: ${loan.incomeTemplateName}` : ''}`
                   : payment.sourceWalletName || loan.sourceWalletName

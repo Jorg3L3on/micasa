@@ -28,7 +28,7 @@ export default function MonthlyHeader({
       <Tooltip>
         <TooltipTrigger asChild>
           {hasPrevMonth ? (
-            <Button variant="ghost" size="icon-lg" asChild>
+            <Button variant="ghost" size="icon-lg" className="size-11 sm:size-10" asChild>
               <Link
                 href={prevHref}
                 aria-label={`Ir al mes anterior: ${prevMonthLabel}`}
@@ -45,6 +45,7 @@ export default function MonthlyHeader({
               <Button
                 variant="ghost"
                 size="icon-lg"
+                className="size-11 sm:size-10"
                 disabled
                 aria-label={`Mes anterior: ${prevMonthLabel} (no disponible)`}
               >

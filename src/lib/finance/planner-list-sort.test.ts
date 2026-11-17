@@ -82,6 +82,7 @@ describe('sortCardDuePaymentRows', () => {
   const base = {
     walletName: 'Card',
     walletType: 'CREDIT_CARD',
+    providerIconKey: null,
     dueDay: 10,
     cutoff_day: 5,
     paymentsAppliedToStatement: 0,
@@ -156,6 +157,7 @@ describe('sortLoanDuePaymentRows', () => {
     loanName: 'Loan',
     lender: 'Bank',
     lenderId: 1,
+    lenderProviderIconKey: null,
     loanType: 'PERSONAL' as const,
     paymentSource: 'WALLET' as const,
     linkedWalletId: null,

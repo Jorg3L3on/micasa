@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence } from "framer-motion";
 import { TooltipPositioner } from "./tooltip/positioner";
 import { useTooltipPointer } from "./tooltip/use-position";
 import {

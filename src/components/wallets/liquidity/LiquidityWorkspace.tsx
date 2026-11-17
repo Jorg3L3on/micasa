@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { Landmark, LineChart, Route } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Landmark, LineChart, ShoppingBag } from 'lucide-react';
 import { MobilePullToRefresh } from '@/components/motion/mobile-pull-to-refresh';
 import { TabsContent } from '@/components/motion/tabs';
 import { SegmentedControl } from '@/components/segmented-control';
@@ -12,12 +13,16 @@ import {
 } from '@/components/monthly/monthly-panel-shell';
 import { LiquidityProjectionTab } from '@/components/wallets/liquidity/LiquidityProjectionTab';
 import { LiquidityDebtsTab } from '@/components/wallets/liquidity/LiquidityDebtsTab';
-import { CashPlanTab } from '@/components/wallets/liquidity/plan/CashPlanTab';
-import { PLAN_COPY } from '@/components/wallets/liquidity/plan/copy';
+import { PurchaseSimulatorTab } from '@/components/wallets/liquidity/purchase/PurchaseSimulatorTab';
+import { PURCHASE_COPY } from '@/components/wallets/liquidity/purchase/copy';
 import { useLiquidityProjection } from '@/components/wallets/liquidity/use-liquidity-projection';
 import { cn } from '@/lib/utils';
 
 const WORKSPACE_TAB_LABEL_CLASS = 'inline-flex items-center justify-center gap-1.5';
+
+const TABS = ['liquidez', 'deudas', 'simular'] as const;
+type WorkspaceTab = (typeof TABS)[number];
+const isTab = (value: string | null): value is WorkspaceTab => TABS.includes(value as WorkspaceTab);
 
 export const LiquidityWorkspace = () => {
   const {
@@ -29,6 +34,20 @@ export const LiquidityWorkspace = () => {
     setSelectedMonthKey,
   } = useLiquidityProjection();
 
+  // The tab lives in the URL (?tab=simular) so a reload or Back keeps you where you were.
+  const searchParams = useSearchParams();
+  const [tab, setTabState] = useState<WorkspaceTab>(() => {
+    const fromUrl = searchParams.get('tab');
+    return isTab(fromUrl) ? fromUrl : 'liquidez';
+  });
+  const setTab = useCallback((next: string) => {
+    if (!isTab(next)) return;
+    setTabState(next);
+    const url = new URL(window.location.href);
+    if (next === 'liquidez') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', next);
+    window.history.replaceState(window.history.state, '', url);
+  }, []);
   const [refreshToken, setRefreshToken] = useState(0);
 
   const handlePullRefresh = useCallback(async () => {
@@ -43,8 +62,9 @@ export const LiquidityWorkspace = () => {
       errorMessage="No se pudo actualizar tu panorama. Intenta de nuevo."
     >
       <SegmentedControl
-        defaultValue="liquidez"
-        ariaLabel={PLAN_COPY.tabListLabel}
+        value={tab}
+        onValueChange={setTab}
+        ariaLabel="Análisis"
         className="flex flex-col gap-4 sm:gap-5"
         stretch
         frameClassName={cn(
@@ -61,7 +81,7 @@ export const LiquidityWorkspace = () => {
             label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
                 <LineChart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {PLAN_COPY.tabLiquidity}
+                Proyección
               </span>
             ),
           },
@@ -70,16 +90,17 @@ export const LiquidityWorkspace = () => {
             label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
                 <Landmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {PLAN_COPY.tabDebts}
+                Deudas
               </span>
             ),
           },
           {
-            value: 'plan',
+            value: 'simular',
             label: (
               <span className={WORKSPACE_TAB_LABEL_CLASS}>
-                <Route className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {PLAN_COPY.tabPlan}
+                <ShoppingBag className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="sm:hidden">{PURCHASE_COPY.tabShort}</span>
+                <span className="hidden sm:inline">{PURCHASE_COPY.tab}</span>
               </span>
             ),
           },
@@ -95,15 +116,6 @@ export const LiquidityWorkspace = () => {
             onSelectedMonthKeyChange={setSelectedMonthKey}
           />
         </TabsContent>
-        <TabsContent value="plan" className="mt-0 outline-none">
-          <CashPlanTab
-            data={data}
-            loading={loading}
-            error={error}
-            onReload={() => void reload()}
-            selectedMonthKey={selectedMonthKey}
-          />
-        </TabsContent>
         <TabsContent value="deudas" className="mt-0 outline-none">
           <LiquidityDebtsTab
             data={data}
@@ -112,6 +124,9 @@ export const LiquidityWorkspace = () => {
             onReload={() => void reload()}
             refreshToken={refreshToken}
           />
+        </TabsContent>
+        <TabsContent value="simular" className="mt-0 outline-none">
+          <PurchaseSimulatorTab />
         </TabsContent>
       </SegmentedControl>
     </MobilePullToRefresh>

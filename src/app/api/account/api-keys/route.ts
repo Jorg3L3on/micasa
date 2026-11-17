@@ -11,6 +11,8 @@ import {
 } from '@/lib/server/agent-allowed-contexts';
 import { AgentAuthError } from '@/lib/server/agent-auth-error';
 import type { AgentContextEntry } from '@/schemas/agent-context.schema';
+import { withSessionActor } from '@/lib/server/with-session-actor';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 const API_KEY_LIST_SELECT = {
   id: true,
@@ -90,69 +92,77 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const userId = await requireSessionUserId();
-    if (userId instanceof NextResponse) return userId;
+  return withSessionActor(request, async () => {
+    try {
+      const userId = await requireSessionUserId();
+      if (userId instanceof NextResponse) return userId;
 
-    const limited = await enforceRateLimit(
-      request,
-      'mutation:api-key-create',
-      userId,
-    );
-    if (limited) return limited;
+      const limited = await enforceRateLimit(
+        request,
+        'mutation:api-key-create',
+        userId,
+      );
+      if (limited) return limited;
 
-    const body = await request.json();
-    const input = createApiKeySchema.parse(body);
-    const allowedContexts = await validateSelectableContexts(
-      userId,
-      input.allowed_contexts,
-    );
+      const body = await request.json();
+      const input = createApiKeySchema.parse(body);
+      const allowedContexts = await validateSelectableContexts(
+        userId,
+        input.allowed_contexts,
+      );
 
-    const { token, keyPrefix } = generateAgentToken();
+      const { token, keyPrefix } = generateAgentToken();
 
-    const expiresAt =
-      input.expires_in_days != null
-        ? new Date(Date.now() + input.expires_in_days * 24 * 60 * 60 * 1000)
-        : null;
+      const expiresAt =
+        input.expires_in_days != null
+          ? new Date(Date.now() + input.expires_in_days * 24 * 60 * 60 * 1000)
+          : null;
 
-    const created = await prisma.apiKey.create({
-      data: {
-        user_id: userId,
-        name: input.name,
-        key_hash: hashAgentToken(token),
-        key_prefix: keyPrefix,
-        scopes: input.scopes,
-        expires_at: expiresAt,
-      },
-      select: API_KEY_LIST_SELECT,
-    });
+      const created = await prisma.apiKey.create({
+        data: {
+          user_id: userId,
+          name: input.name,
+          key_hash: hashAgentToken(token),
+          key_prefix: keyPrefix,
+          scopes: input.scopes,
+          expires_at: expiresAt,
+        },
+        select: API_KEY_LIST_SELECT,
+      });
 
-    await replaceApiKeyAllowedContexts(created.id, allowedContexts);
+      await replaceApiKeyAllowedContexts(created.id, allowedContexts);
+      await recordAuthEvent('API_KEY_CREATED', {
+        userId,
+        apiKeyId: created.id,
+        request,
+        metadata: { name: input.name },
+      });
 
-    const withContexts = await prisma.apiKey.findUniqueOrThrow({
-      where: { id: created.id },
-      select: API_KEY_LIST_SELECT,
-    });
+      const withContexts = await prisma.apiKey.findUniqueOrThrow({
+        where: { id: created.id },
+        select: API_KEY_LIST_SELECT,
+      });
 
-    // The plaintext token travels ONLY in this response; never persisted.
-    return NextResponse.json(
-      { ...toApiKeyDto(withContexts), token },
-      { status: 201 },
-    );
-  } catch (error) {
-    if (error instanceof AgentAuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-    if (error instanceof z.ZodError) {
+      // The plaintext token travels ONLY in this response; never persisted.
       return NextResponse.json(
-        { error: 'Error de validación', details: error.issues },
-        { status: 400 },
+        { ...toApiKeyDto(withContexts), token },
+        { status: 201 },
+      );
+    } catch (error) {
+      if (error instanceof AgentAuthError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          { error: 'Error de validación', details: error.issues },
+          { status: 400 },
+        );
+      }
+      console.error('Error creating api key:', error);
+      return NextResponse.json(
+        { error: 'No se pudo crear la conexión' },
+        { status: 500 },
       );
     }
-    console.error('Error creating api key:', error);
-    return NextResponse.json(
-      { error: 'No se pudo crear la conexión' },
-      { status: 500 },
-    );
-  }
+  });
 }

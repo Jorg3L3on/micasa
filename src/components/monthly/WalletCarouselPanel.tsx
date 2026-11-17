@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
@@ -8,70 +16,82 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
-  History,
   Plus,
+  ReceiptText,
   Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import WalletForm from '@/components/WalletForm';
-import AddTransactionDialog from '@/components/transactions/AddTransactionDialog';
-import CreditCardPaymentDialog, {
-  type CreditCardPaymentSubmitPayload,
-} from '@/components/credit-cards/CreditCardPaymentDialog';
-import CreditCardQuickPurchaseDialog from '@/components/credit-cards/CreditCardQuickPurchaseDialog';
-import WalletBalanceDialog from '@/components/wallets/WalletBalanceDialog';
+import dynamic from 'next/dynamic';
+import type { CreditCardPaymentSubmitPayload } from '@/components/credit-cards/CreditCardPaymentDialog';
 import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
 import { SegmentedControl } from '@/components/segmented-control';
 import {
   AURA_TAB_INDICATOR_CLASS,
-  GLASS_TAB_ACTIVE_LABEL_CLASS,
-  MONTHLY_LIQUID_PANEL_CLASS,
+  GLASS_TAB_ACTIVE_LABEL_CLASS, MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 import { Button } from '@/components/ui/button';
-import { RippleButton } from '@/components/ui/ripple-button';
-import { WalletCardDecor } from '@/components/wallets/WalletCardDecor';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { InteractiveGridPattern } from '@/components/ui/interactive-grid-pattern';
+import { ShineBorder } from '@/components/ui/shine-border';
 import { getAuraBarStyle, getAuraWalletColor } from '@/lib/ui/aura-palette';
 import { SectionHeader } from '@/components/section-header';
+import EmptyState from '@/components/EmptyState';
 import { useFinanceContext } from '@/context/finance-context';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useProviderCardScheme } from '@/hooks/use-provider-card-scheme';
 import {
   PAYMENT_METHOD_SHORT_LABELS,
   type PaymentMethodType,
 } from '@/domain/payment-method';
-import {
-  createCreditCard,
-  createCreditCardPayment,
-} from '@/lib/api/credit-cards';
-import { clientFetchFromApi } from '@/lib/api/client-fetch';
+import { createCreditCardPayment } from '@/lib/api/credit-cards';
+import { cardChargeErrorMessage } from '@/components/credit-cards/over-debt-reason';
+import { buildOwnerQuery, clientFetchFromApi } from '@/lib/api/client-fetch';
 import { createWalletIncome } from '@/lib/api/incomes';
-import { createWallet } from '@/lib/api/wallets';
 import {
   getProviderCardStyle,
+  getWalletAuraColors,
   isProviderCardDarkSurface,
 } from '@/lib/provider-card-style';
 import {
+  carouselIndexFromScroll,
+  carouselTypeRange,
   clampCarouselIndex,
-  firstCarouselTypeWithWallets,
+  firstCarouselIndexOfType,
   getWalletCarouselActionPlan,
   getWalletCreditSummary,
   groupWalletsByCarouselType,
   isCreditCarouselType,
-  parseWalletCarouselTab,
-  resolveCarouselSwipe,
+  isWalletCarouselType,
+  orderWalletsForCarousel,
+  resolveStoredCarouselIndex,
   WALLET_CAROUSEL_TAB_LABELS,
   WALLET_CAROUSEL_TYPES,
-  walletCarouselTabStorageKey,
+  walletCarouselActiveStorageKey,
   type WalletCarouselQuickAction,
   type WalletCarouselType,
 } from '@/lib/ui/wallet-carousel';
+import { isWalletCardTap, type WalletCardPress } from '@/lib/ui/wallet-card-tap';
+import {
+  applyWalletStripOrder,
+  defaultWalletStripOrder,
+  parseWalletStripOrder,
+  walletStripOrderStorageKey,
+} from '@/lib/ui/wallet-strip-order';
 import { cn, formatCurrency } from '@/lib/utils';
-import type { WalletFormValues } from '@/schemas/wallet.schema';
 import type {
   AddExpenseFormValues,
   AddIncomeFormValues,
 } from '@/schemas/transaction.schema';
 import type { PaymentMethodOption, WalletListItem } from '@/types/catalog';
+
+// Wallet action dialogs (zod, react-hook-form, schemas) load when one opens.
+const AddTransactionDialog = dynamic(() => import('@/components/transactions/AddTransactionDialog'), { ssr: false });
+const CreditCardPaymentDialog = dynamic(() => import('@/components/credit-cards/CreditCardPaymentDialog'), { ssr: false });
+const CreditCardQuickPurchaseDialog = dynamic(() => import('@/components/credit-cards/CreditCardQuickPurchaseDialog'), { ssr: false });
+const WalletBalanceDialog = dynamic(() => import('@/components/wallets/WalletBalanceDialog'), { ssr: false });
 
 type WalletCarouselPanelProps = {
   wallets: WalletListItem[];
@@ -82,21 +102,44 @@ type WalletCarouselPanelProps = {
   className?: string;
 };
 
-type ActiveDialog = WalletCarouselQuickAction | 'create' | null;
+type ActiveDialog = WalletCarouselQuickAction | null;
 
 /** Card sizing follows a physical card (taller than wide-screen strips), capped so it stays narrow. */
 const CARD_WIDTH_RATIO = 0.62;
 const CARD_MAX_WIDTH_PX = 272;
+/** Below `sm` the side cards must peek, so the face caps lower. */
+const CARD_MAX_WIDTH_PX_MOBILE = 240;
 const CARD_ASPECT_RATIO = 1.45;
 const CARD_GAP_PX = 12;
 
-const WalletFace = ({
+/**
+ * Quick-action pills share the row evenly. Below `sm` they are 44px tall
+ * touch targets with a 13px label and tight padding so all three fit at
+ * 320px (Button's `has-[>svg]` padding is overridden too); from `sm` up they
+ * keep the regular small button.
+ */
+const ACTION_PILL_CLASS =
+  'h-11 min-w-0 flex-1 cursor-pointer gap-1 px-1 text-[13px] whitespace-nowrap has-[>svg]:px-1 sm:h-8 sm:px-2 sm:text-sm sm:has-[>svg]:px-2.5';
+
+/**
+ * Static stand-in for InteractiveGridPattern on side cards: same 14px lines,
+ * painted once by CSS instead of 280 SVG rects per card.
+ */
+const STATIC_GRID_CLASS =
+  'pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] bg-[size:14px_14px] [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]';
+
+/**
+ * Only the centered card gets the interactive grid and the animated shine
+ * border: on every card they kept the track re-rastering, so fast trackpad
+ * flicks outran painting and showed blank cards.
+ */
+const WalletFace = memo(function WalletFace({
   wallet,
   isActive,
 }: {
   wallet: WalletListItem;
   isActive: boolean;
-}) => {
+}) {
   const scheme = useProviderCardScheme();
   const credit = isCreditCarouselType(wallet.type);
   const summary = credit ? getWalletCreditSummary(wallet) : null;
@@ -118,16 +161,20 @@ const WalletFace = ({
     'aura',
     scheme,
   );
+  const auraColors = getWalletAuraColors(wallet.provider_icon_key, wallet.type);
   const dark = Boolean(style) && isProviderCardDarkSurface('aura', scheme);
 
   return (
     <div
       className={cn(
-        'relative isolate flex h-full flex-col justify-between overflow-hidden rounded-2xl border p-4 backdrop-blur-sm',
+        // p-3 below sm: the 320px face keeps room for a whole wallet name.
+        'relative isolate flex h-full flex-col justify-between overflow-hidden rounded-2xl border p-3 @container sm:p-4',
         'ring-1 ring-inset',
         dark ? 'ring-white/5' : 'ring-black/5',
-        !style &&
-          'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
+        // The active slide is the Ajustar saldo control: press and focus show on the face.
+        isActive &&
+          'transition-transform duration-150 group-active/slide:scale-[0.98] group-focus-visible/slide:ring-2 group-focus-visible/slide:ring-primary/70 motion-reduce:transition-none',
+        !style && 'border-border/80 bg-card dark:border-border/60 dark:bg-card/80',
         style && 'shadow-face',
         style && (dark ? 'border-white/25' : 'border-border/70'),
         dark ? 'text-white' : 'text-foreground',
@@ -135,34 +182,88 @@ const WalletFace = ({
       )}
       style={style}
     >
-      <WalletCardDecor
-        walletId={wallet.id}
-        providerIconKey={wallet.provider_icon_key}
-        walletType={wallet.type}
-        dark={dark}
-        glows={Boolean(style)}
-      />
-      <div className="pointer-events-none flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <WalletProviderIcon
-            providerIconKey={wallet.provider_icon_key}
-            showTooltipLabel={false}
+      {style ? (
+        <>
+          <span
+            aria-hidden
+            className={cn(
+              'pointer-events-none absolute -left-8 -top-10 h-20 w-20 rounded-full blur-2xl',
+              dark ? 'bg-white/8' : 'bg-white/70',
+            )}
           />
-          <span className="truncate text-sm font-semibold" title={wallet.name}>
-            {wallet.name}
+          <span
+            aria-hidden
+            className={cn(
+              'pointer-events-none absolute -right-8 -bottom-10 h-20 w-20 rounded-full blur-2xl',
+              dark ? 'bg-black/20' : 'bg-black/5',
+            )}
+          />
+        </>
+      ) : null}
+      {isActive ? (
+        <InteractiveGridPattern
+          width={14}
+          height={14}
+          squares={[20, 14]}
+          className="-z-10 border-0 [mask-image:linear-gradient(115deg,white_10%,transparent_85%)]"
+          squaresClassName={
+            dark ? 'stroke-white/[0.08]' : 'stroke-foreground/[0.08]'
+          }
+        />
+      ) : (
+        <span
+          aria-hidden
+          className={cn(
+            STATIC_GRID_CLASS,
+            dark ? 'text-white/[0.08]' : 'text-foreground/[0.08]',
+          )}
+        />
+      )}
+      {isActive && auraColors ? (
+        <ShineBorder
+          shineColor={auraColors.shine}
+          borderWidth={1.5}
+          duration={11}
+          style={{ animationDelay: `-${(wallet.id % 7) * 1.6}s` }}
+        />
+      ) : null}
+      {/* The type tabs above already say the type, so the name gets the whole
+          row (two lines before it clamps); screen readers still hear the type. */}
+      <div className="pointer-events-none flex min-w-0 items-center gap-1.5 sm:gap-2">
+        <WalletProviderIcon
+          providerIconKey={wallet.provider_icon_key}
+          showTooltipLabel={false}
+        />
+        <span
+          className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-tight"
+          title={wallet.name}
+        >
+          {wallet.name}
+          <span className="sr-only">
+            {`, ${PAYMENT_METHOD_SHORT_LABELS[wallet.type as PaymentMethodType] ?? wallet.type}`}
           </span>
-        </div>
-        <span className="shrink-0 text-xs opacity-70">
-          {PAYMENT_METHOD_SHORT_LABELS[wallet.type as PaymentMethodType] ??
-            wallet.type}
         </span>
       </div>
 
       <div className="pointer-events-none">
-        <p className="text-xs opacity-70">
-          {credit ? 'Saldo utilizado' : 'Saldo'}
-        </p>
-        <p className="text-2xl font-semibold tabular-nums">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-xs opacity-70">
+            {credit ? 'Saldo utilizado' : 'Saldo'}
+          </p>
+          {/* Tapping the active face opens Ajustar saldo. On a narrow credit
+              face "Saldo utilizado" leaves room for the chevron only. */}
+          {isActive ? (
+            <span aria-hidden className="shrink-0 text-caption font-medium opacity-70">
+              <span className={cn(credit && 'hidden @[10rem]:inline')}>
+                Ajustar{' '}
+              </span>
+              ›
+            </span>
+          ) : null}
+        </div>
+        {/* Container units: full size for usual amounts, smaller only when a
+            7-digit balance would otherwise be cut on a 320px phone. */}
+        <p className="whitespace-nowrap text-[clamp(1rem,12cqi,1.5rem)] font-semibold tabular-nums">
           {formatCurrency(wallet.amount)}
         </p>
         {summary?.limit != null && summary.limit > 0 ? (
@@ -192,9 +293,7 @@ const WalletFace = ({
       {credit && (wallet.cutoff_day != null || wallet.due_day != null) ? (
         <p className="pointer-events-none flex items-center justify-between gap-2 text-xs opacity-70">
           <span>
-            {wallet.cutoff_day != null
-              ? `Corte día ${wallet.cutoff_day}`
-              : null}
+            {wallet.cutoff_day != null ? `Corte día ${wallet.cutoff_day}` : null}
           </span>
           <span className="text-right">
             {wallet.due_day != null ? `Vence día ${wallet.due_day}` : null}
@@ -205,7 +304,7 @@ const WalletFace = ({
       )}
     </div>
   );
-};
+});
 
 export const WalletCarouselPanel = ({
   wallets,
@@ -215,83 +314,145 @@ export const WalletCarouselPanel = ({
 }: WalletCarouselPanelProps) => {
   const { context } = useFinanceContext();
   const reduceMotion = useReducedMotion();
+
+  // The strip's drag order (saved per owner on tablet/mobile) orders cards
+  // inside each type. Read through useSyncExternalStore so SSR sees no order.
+  const stripOrderKey = walletStripOrderStorageKey(context.type, context.id);
+  const savedStripOrderRaw = useSyncExternalStore(
+    subscribeToStorage,
+    () => readStorage(stripOrderKey),
+    () => null,
+  );
+  const track = useMemo(
+    () =>
+      orderWalletsForCarousel(
+        applyWalletStripOrder(
+          defaultWalletStripOrder(wallets),
+          parseWalletStripOrder(savedStripOrderRaw),
+        ),
+      ),
+    [wallets, savedStripOrderRaw],
+  );
   const groups = useMemo(() => groupWalletsByCarouselType(wallets), [wallets]);
 
-  const [tab, setTab] = useState<WalletCarouselType>(() =>
-    firstCarouselTypeWithWallets(groups),
-  );
   const [index, setIndex] = useState(0);
   const [width, setWidth] = useState(0);
   const viewportRef = useRef<HTMLDivElement>(null);
+  // Where the last press on the active card started, to tell a tap from a swipe.
+  const pressRef = useRef<WalletCardPress | null>(null);
 
-  // Restore the remembered tab once per owner context.
-  useEffect(() => {
-    let stored: WalletCarouselType | null = null;
-    try {
-      stored = parseWalletCarouselTab(
-        window.localStorage.getItem(walletCarouselTabStorageKey(ownerKey)),
-      );
-    } catch {
-      stored = null;
-    }
-    setTab(stored ?? firstCarouselTypeWithWallets(groups));
-    setIndex(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on owner change
-  }, [ownerKey]);
-
-  const isMobile = useIsMobile();
-  const list = groups[tab];
-  const activeIndex = clampCarouselIndex(index, list.length);
+  const activeIndex = clampCarouselIndex(index, track.length);
+  const activeWallet: WalletListItem | undefined = track[activeIndex];
+  const activeType: WalletCarouselType = isWalletCarouselType(
+    activeWallet?.type,
+  )
+    ? activeWallet.type
+    : WALLET_CAROUSEL_TYPES[0];
+  const typeRange = carouselTypeRange(track, activeIndex);
 
   // The viewport only exists while there are wallets to show, so measure it
-  // whenever it (re)mounts. A mount-only effect left width at 0 and the cards
-  // stuck at the left edge.
-  const hasViewport = list.length > 0;
+  // whenever it (re)mounts.
+  const hasViewport = track.length > 0;
   useEffect(() => {
     const el = viewportRef.current;
     if (!hasViewport || !el) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setWidth(entry.contentRect.width);
+    // clientWidth includes the edge padding set on this same element;
+    // contentRect would shrink by it and feed back into the card size.
+    const observer = new ResizeObserver(() => {
+      setWidth(el.clientWidth);
     });
     observer.observe(el);
-    setWidth(el.getBoundingClientRect().width);
+    setWidth(el.clientWidth);
     return () => observer.disconnect();
   }, [hasViewport]);
 
-  const activeWallet: WalletListItem | undefined = list[activeIndex];
-
-  const selectTab = useCallback(
-    (next: WalletCarouselType) => {
-      setTab(next);
-      setIndex(0);
-      try {
-        window.localStorage.setItem(
-          walletCarouselTabStorageKey(ownerKey),
-          next,
-        );
-      } catch {
-        /* storage unavailable */
-      }
-    },
-    [ownerKey],
-  );
-
-  const move = useCallback(
-    (delta: number) =>
-      setIndex((current) => clampCarouselIndex(current + delta, list.length)),
-    [list.length],
-  );
-
   const cardWidth = Math.min(
     Math.round(width * CARD_WIDTH_RATIO),
-    CARD_MAX_WIDTH_PX,
+    width > 0 && width < 480 ? CARD_MAX_WIDTH_PX_MOBILE : CARD_MAX_WIDTH_PX,
   );
   const cardHeight = cardWidth
     ? Math.round(cardWidth / CARD_ASPECT_RATIO)
     : 180;
-  const trackX = width
-    ? (width - cardWidth) / 2 - activeIndex * (cardWidth + CARD_GAP_PX)
-    : 0;
+  // 0 until the viewport is measured (a bare gap is not a card step).
+  const step = cardWidth > 0 ? cardWidth + CARD_GAP_PX : 0;
+  // Side padding lets the first and last cards snap to the center.
+  const edgePadding = width ? Math.max(0, (width - cardWidth) / 2) : 0;
+
+  // Card a programmatic scroll is heading to, so quick repeated presses
+  // (arrows, ‹ ›) keep advancing before the smooth scroll settles.
+  const targetIndexRef = useRef<number | null>(null);
+
+  const scrollToIndex = useCallback(
+    (next: number, instant = false) => {
+      const el = viewportRef.current;
+      if (!el || step <= 0) return;
+      const target = clampCarouselIndex(next, track.length);
+      targetIndexRef.current = target;
+      el.scrollTo({
+        left: target * step,
+        behavior: instant || reduceMotion ? 'auto' : 'smooth',
+      });
+    },
+    [step, track.length, reduceMotion],
+  );
+
+  const handleScroll = () => {
+    const el = viewportRef.current;
+    if (!el || step <= 0) return;
+    const next = carouselIndexFromScroll(el.scrollLeft, step, track.length);
+    if (next === targetIndexRef.current) targetIndexRef.current = null;
+    if (next === index) return;
+    setIndex(next);
+    const wallet = track[next];
+    if (!wallet) return;
+    try {
+      window.localStorage.setItem(
+        walletCarouselActiveStorageKey(ownerKey),
+        String(wallet.id),
+      );
+    } catch {
+      /* storage unavailable */
+    }
+  };
+
+  // Restore the remembered wallet once per owner, as soon as the track is measured.
+  const restoredOwnerRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (restoredOwnerRef.current === ownerKey) return;
+    if (step <= 0 || track.length === 0) return;
+    restoredOwnerRef.current = ownerKey;
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem(
+        walletCarouselActiveStorageKey(ownerKey),
+      );
+    } catch {
+      stored = null;
+    }
+    // Scrolling fires handleScroll, which syncs the index.
+    scrollToIndex(resolveStoredCarouselIndex(track, stored), true);
+  }, [ownerKey, step, track, scrollToIndex]);
+
+  // Arrow keys on the focused card move the track: hand focus to the new
+  // active card so it never stays on a slide that is now aria-hidden.
+  useEffect(() => {
+    const el = viewportRef.current;
+    const focused = document.activeElement;
+    if (!el || !(focused instanceof HTMLElement)) return;
+    if (!el.contains(focused) || focused === el) return;
+    if (focused.dataset.slideIndex === String(activeIndex)) return;
+    el.querySelector<HTMLElement>(
+      `[data-slide-index="${activeIndex}"]`,
+    )?.focus({ preventScroll: true });
+  }, [activeIndex]);
+
+  const move = (delta: number) =>
+    scrollToIndex((targetIndexRef.current ?? activeIndex) + delta);
+
+  const selectType = (type: WalletCarouselType) => {
+    const first = firstCarouselIndexOfType(track, type);
+    if (first >= 0) scrollToIndex(first);
+  };
 
   // ---- dialogs: pinned to the wallet that was shown when the action fired ----
   const [dialog, setDialog] = useState<ActiveDialog>(null);
@@ -300,7 +461,6 @@ export const WalletCarouselPanel = ({
   const [incomeError, setIncomeError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
 
   const dialogWallet = useMemo(
     () => wallets.find((w) => w.id === dialogWalletId) ?? null,
@@ -318,7 +478,6 @@ export const WalletCarouselPanel = ({
     setExpenseError(null);
     setIncomeError(null);
     setPaymentError(null);
-    setCreateError(null);
   };
 
   const fundingWalletOptions = useMemo<PaymentMethodOption[]>(
@@ -394,68 +553,11 @@ export const WalletCarouselPanel = ({
       closeDialog();
       await onRefresh();
     } catch (err) {
-      setPaymentError(
-        err instanceof Error ? err.message : 'Error al registrar el pago',
-      );
+      setPaymentError(cardChargeErrorMessage(err, 'Error al registrar el pago'));
     } finally {
       setPaymentSubmitting(false);
     }
   };
-
-  const handleCreateWallet = async (data: WalletFormValues) => {
-    try {
-      setCreateError(null);
-      const payload = {
-        name: data.name,
-        amount: data.amount || 0,
-        credit_limit: data.credit_limit ?? null,
-        temporary_credit_limit: data.temporary_credit_limit ?? null,
-        type: data.type,
-        provider_icon_key: data.provider_icon_key ?? null,
-        active: data.active || true,
-        include_in_liquidity: data.include_in_liquidity ?? true,
-        cutoff_day: data.cutoff_day || null,
-        due_day: data.due_day || null,
-        minimum_payment: data.minimum_payment ?? null,
-        apr_annual: data.apr_annual ?? null,
-        cat_annual: data.cat_annual ?? null,
-        goal_amount: data.goal_amount ?? null,
-        goal_due_date: data.goal_due_date ?? null,
-        assignee_user_id: data.assignee_user_id ?? null,
-      };
-      const created = isCreditCarouselType(data.type)
-        ? await createCreditCard(payload, context)
-        : await createWallet(payload, context);
-      toast.success(
-        isCreditCarouselType(data.type) ? 'Tarjeta creada' : 'Billetera creada',
-      );
-      closeDialog();
-      const nextTab = (WALLET_CAROUSEL_TYPES as readonly string[]).includes(
-        data.type,
-      )
-        ? (data.type as WalletCarouselType)
-        : tab;
-      selectTab(nextTab);
-      await onRefresh();
-      // Jump to the new card once the refreshed list arrives.
-      const createdId = (created as { id?: number } | undefined)?.id;
-      if (createdId != null) setPendingFocusId(createdId);
-      else setIndex(Number.MAX_SAFE_INTEGER);
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Error al crear');
-      throw err;
-    }
-  };
-
-  const [pendingFocusId, setPendingFocusId] = useState<number | null>(null);
-  useEffect(() => {
-    if (pendingFocusId == null) return;
-    const found = list.findIndex((w) => w.id === pendingFocusId);
-    if (found >= 0) {
-      setIndex(found);
-      setPendingFocusId(null);
-    }
-  }, [list, pendingFocusId]);
 
   const plan = activeWallet
     ? getWalletCarouselActionPlan(activeWallet.type)
@@ -463,11 +565,19 @@ export const WalletCarouselPanel = ({
   const dialogPlan = dialogWallet
     ? getWalletCarouselActionPlan(dialogWallet.type)
     : null;
-  const dialogSummary = dialogWallet
-    ? getWalletCreditSummary(dialogWallet)
-    : null;
+  const dialogSummary = dialogWallet ? getWalletCreditSummary(dialogWallet) : null;
 
-  if (isMobile) return null;
+  const availableFunding = track.reduce(
+    (total, wallet) =>
+      wallet.type === 'CASH' || wallet.type === 'DEBIT_CARD'
+        ? total + Number(wallet.amount)
+        : total,
+    0,
+  );
+  const ownerQuery = buildOwnerQuery(context).toString();
+  const walletsHref = ownerQuery ? `/wallets?${ownerQuery}` : '/wallets';
+  const typeLabel = WALLET_CAROUSEL_TAB_LABELS[activeType];
+  const typeCount = typeRange.end - typeRange.start;
 
   return (
     <aside
@@ -481,27 +591,34 @@ export const WalletCarouselPanel = ({
       <SectionHeader
         icon={Wallet}
         title="Billeteras"
-        subtitle="Saldos y tarjetas por tipo"
+        subtitle={`${track.length} ${track.length === 1 ? 'billetera' : 'billeteras'} · ${formatCurrency(availableFunding)} disponibles`}
         actions={
-          <RippleButton
-            type="button"
-            rippleColor="rgba(255,255,255,0.6)"
-            className="h-9 shrink-0 flex-row gap-1.5 whitespace-nowrap rounded-lg border-0 bg-primary px-3 text-sm font-medium text-primary-foreground shadow-[0_0_10px_-2px_var(--primary)] hover:bg-primary/90 dark:ring-1 dark:ring-primary/35"
-            onClick={() => {
-              setDialogWalletId(null);
-              setDialog('create');
-            }}
-          >
-            <span className="flex items-center gap-1.5">
-              <Plus className="h-4 w-4 shrink-0" aria-hidden />
-              <span>Agregar billetera</span>
-            </span>
-          </RippleButton>
+          activeWallet ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  asChild
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-11 text-muted-foreground hover:text-foreground sm:size-8"
+                >
+                  <Link
+                    href={`/wallets/${activeWallet.id}`}
+                    aria-label={`Ver detalle de ${activeWallet.name}`}
+                  >
+                    <ReceiptText className="h-4 w-4" aria-hidden />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Ver detalle</TooltipContent>
+            </Tooltip>
+          ) : null
         }
       />
       <SegmentedControl
-        value={tab}
-        onValueChange={(value) => selectTab(value as WalletCarouselType)}
+        value={activeType}
+        onValueChange={(value) => selectType(value as WalletCarouselType)}
         ariaLabel="Tipo de billetera"
         options={WALLET_CAROUSEL_TYPES.map((type) => ({
           value: type,
@@ -509,6 +626,7 @@ export const WalletCarouselPanel = ({
             groups[type].length === 1 ? 'billetera' : 'billeteras'
           }`,
           label: <span>{WALLET_CAROUSEL_TAB_LABELS[type]}</span>,
+          disabled: groups[type].length === 0,
         }))}
         listClassName="w-full"
         stretch
@@ -518,89 +636,112 @@ export const WalletCarouselPanel = ({
         activeLabelClassName={GLASS_TAB_ACTIVE_LABEL_CLASS}
       />
 
-      {list.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 text-center"
-          style={{ height: cardHeight }}
-        >
-          <p className="text-sm text-muted-foreground">
-            {`Sin billeteras de tipo ${WALLET_CAROUSEL_TAB_LABELS[tab].toLowerCase()}`}
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setDialogWalletId(null);
-              setDialog('create');
-            }}
-          >
-            Agregar billetera
-          </Button>
-        </div>
+      {track.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          message="Sin billeteras"
+          description="Crea la primera para ver saldos aquí."
+          className="py-8"
+          action={{ label: 'Ir a Billeteras', href: walletsHref, variant: 'outline' }}
+        />
       ) : (
         <div className="space-y-2">
+          {/* Native horizontal scroll: trackpad swipes, shift+wheel and touch snap to one card. */}
           <div
             ref={viewportRef}
-            className="relative overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="relative flex snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-hide rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            style={{
+              gap: CARD_GAP_PX,
+              height: cardHeight,
+              paddingInline: edgePadding,
+            }}
             role="group"
             aria-roledescription="carrusel"
-            aria-label={`Billeteras de ${WALLET_CAROUSEL_TAB_LABELS[tab]}`}
+            aria-label={`Billeteras de ${typeLabel}`}
             tabIndex={0}
+            onScroll={handleScroll}
+            onWheel={() => {
+              targetIndexRef.current = null;
+            }}
+            onPointerDown={() => {
+              targetIndexRef.current = null;
+            }}
             onKeyDown={(event) => {
-              if (event.key === 'ArrowLeft') move(-1);
-              if (event.key === 'ArrowRight') move(1);
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                move(-1);
+              }
+              if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                move(1);
+              }
             }}
           >
-            <motion.div
-              className={cn(
-                'flex touch-pan-y',
-                list.length > 1 && 'cursor-grab active:cursor-grabbing',
-              )}
-              style={{ gap: CARD_GAP_PX, height: cardHeight }}
-              drag={list.length > 1 ? 'x' : false}
-              dragConstraints={{ left: trackX, right: trackX }}
-              dragElastic={0.2}
-              animate={{ x: trackX }}
-              transition={
-                reduceMotion
-                  ? { duration: 0 }
-                  : { type: 'spring', stiffness: 260, damping: 30 }
-              }
-              onDragEnd={(_, info) =>
-                move(
-                  resolveCarouselSwipe({
-                    offsetX: info.offset.x,
-                    velocityX: info.velocity.x,
-                  }),
-                )
-              }
-            >
-              {list.map((wallet, i) => {
-                const active = i === activeIndex;
-                return (
-                  <motion.div
-                    key={wallet.id}
-                    className="h-full shrink-0"
-                    style={{ width: cardWidth || '62%' }}
-                    animate={{
-                      scale: active || reduceMotion ? 1 : 0.9,
-                      opacity: active ? 1 : 0.55,
-                    }}
-                    transition={reduceMotion ? { duration: 0 } : undefined}
-                    aria-hidden={!active}
-                    onClick={() => !active && setIndex(i)}
-                  >
-                    <WalletFace wallet={wallet} isActive={active} />
-                  </motion.div>
-                );
-              })}
-            </motion.div>
+            {track.map((wallet, i) => {
+              const active = i === activeIndex;
+              return (
+                <motion.div
+                  key={wallet.id}
+                  data-slide-index={i}
+                  // Own compositor layer per card: scrolling moves layers
+                  // instead of repainting the track.
+                  className="group/slide h-full shrink-0 cursor-pointer snap-center snap-always rounded-2xl outline-none will-change-transform"
+                  style={{ width: cardWidth || '62%' }}
+                  animate={{
+                    scale: active || reduceMotion ? 1 : 0.9,
+                    opacity: active ? 1 : 0.55,
+                  }}
+                  transition={reduceMotion ? { duration: 0 } : undefined}
+                  aria-hidden={!active}
+                  // The active card is the Ajustar saldo control (same dialog
+                  // as the Ajustar pill); a side card only scrolls into view.
+                  role={active ? 'button' : undefined}
+                  tabIndex={active ? 0 : undefined}
+                  aria-label={active ? `Ajustar saldo de ${wallet.name}` : undefined}
+                  onPointerDown={(event) => {
+                    pressRef.current = active
+                      ? {
+                          x: event.clientX,
+                          y: event.clientY,
+                          scrollLeft: viewportRef.current?.scrollLeft ?? 0,
+                        }
+                      : null;
+                  }}
+                  onPointerCancel={() => {
+                    // The browser took the gesture over (a pan): never a tap.
+                    pressRef.current = null;
+                  }}
+                  onClick={(event) => {
+                    if (!active) {
+                      scrollToIndex(i);
+                      return;
+                    }
+                    const press = pressRef.current;
+                    pressRef.current = null;
+                    const tap = isWalletCardTap(press, {
+                      x: event.clientX,
+                      y: event.clientY,
+                      scrollLeft: viewportRef.current?.scrollLeft ?? 0,
+                    });
+                    if (tap && plan) openAction(plan.topUp);
+                  }}
+                  onKeyDown={(event) => {
+                    if (!active || event.repeat) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      if (plan) openAction(plan.topUp);
+                    }
+                  }}
+                >
+                  <WalletFace wallet={wallet} isActive={active} />
+                </motion.div>
+              );
+            })}
           </div>
 
           <p className="sr-only" aria-live="polite">
             {activeWallet
-              ? `${activeWallet.name}, ${activeIndex + 1} de ${list.length}`
+              ? `${activeWallet.name}, ${activeIndex - typeRange.start + 1} de ${typeCount} en ${typeLabel}`
               : null}
           </p>
           <div className="flex items-center justify-center gap-2">
@@ -609,38 +750,49 @@ export const WalletCarouselPanel = ({
               aria-label="Billetera anterior"
               className={cn(
                 'hidden rounded-full p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 sm:inline-flex',
-                list.length <= 1 && 'invisible',
+                track.length <= 1 && 'invisible',
               )}
               disabled={activeIndex === 0}
               onClick={() => move(-1)}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="flex items-center gap-1.5">
-              {list.map((wallet, i) => (
-                <button
-                  key={wallet.id}
-                  type="button"
-                  aria-label={`Ver ${wallet.name}`}
-                  aria-current={i === activeIndex}
-                  onClick={() => setIndex(i)}
-                  className={cn(
-                    'relative h-1.5 rounded-full transition-all after:absolute after:-inset-x-1 after:-inset-y-2 after:content-[""]',
-                    i === activeIndex
-                      ? 'w-4 bg-foreground'
-                      : 'w-1.5 bg-muted-foreground/40',
-                  )}
-                />
-              ))}
+            {/* One dot per wallet of the active type. */}
+            {/* One dot per wallet of the active type: 6px drawing inside a
+                44px button on phones (28px wide from sm, as before). */}
+            <div className="flex flex-wrap items-center justify-center">
+              {track.slice(typeRange.start, typeRange.end).map((wallet, j) => {
+                const i = typeRange.start + j;
+                return (
+                  <button
+                    key={wallet.id}
+                    type="button"
+                    aria-label={`Ver ${wallet.name}`}
+                    aria-current={i === activeIndex}
+                    onClick={() => scrollToIndex(i)}
+                    className="flex h-11 min-w-11 items-center justify-center sm:h-5 sm:min-w-0 sm:px-0.5"
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'block h-1.5 rounded-full transition-all',
+                        i === activeIndex
+                          ? 'w-4 bg-foreground'
+                          : 'w-1.5 bg-muted-foreground/40',
+                      )}
+                    />
+                  </button>
+                );
+              })}
             </div>
             <button
               type="button"
               aria-label="Billetera siguiente"
               className={cn(
                 'hidden rounded-full p-1 text-muted-foreground hover:text-foreground disabled:opacity-30 sm:inline-flex',
-                list.length <= 1 && 'invisible',
+                track.length <= 1 && 'invisible',
               )}
-              disabled={activeIndex === list.length - 1}
+              disabled={activeIndex === track.length - 1}
               onClick={() => move(1)}
             >
               <ChevronRight className="h-4 w-4" />
@@ -650,12 +802,12 @@ export const WalletCarouselPanel = ({
       )}
 
       {activeWallet && plan ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="flex-1 gap-1 px-2 cursor-pointer"
+            className={ACTION_PILL_CLASS}
             onClick={() => openAction(plan.topUp)}
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -665,7 +817,7 @@ export const WalletCarouselPanel = ({
             type="button"
             variant="outline"
             size="sm"
-            className="flex-1 gap-1 px-2 cursor-pointer"
+            className={ACTION_PILL_CLASS}
             onClick={() => openAction(plan.addExpense)}
           >
             <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -675,25 +827,11 @@ export const WalletCarouselPanel = ({
             type="button"
             variant="outline"
             size="sm"
-            className="flex-1 gap-1 px-2 cursor-pointer"
+            className={ACTION_PILL_CLASS}
             onClick={() => openAction(plan.request)}
           >
             <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden />
             {plan.requestLabel}
-          </Button>
-          <Button
-            asChild
-            type="button"
-            variant="outline"
-            size="icon"
-            className="shrink-0"
-          >
-            <Link
-              href={`/wallets/${activeWallet.id}`}
-              aria-label={`Historial de ${activeWallet.name}`}
-            >
-              <History className="h-4 w-4" aria-hidden />
-            </Link>
           </Button>
         </div>
       ) : null}
@@ -720,10 +858,7 @@ export const WalletCarouselPanel = ({
               open={dialog === 'expense' || dialog === 'income'}
               onOpenChange={(open) => !open && closeDialog()}
               defaultTab={dialog === 'income' ? 'income' : 'expense'}
-              expenseDefaults={{
-                paymentMethodId: dialogWallet.id,
-                isPaid: true,
-              }}
+              expenseDefaults={{ paymentMethodId: dialogWallet.id, isPaid: true }}
               incomeDefaults={{ walletId: dialogWallet.id }}
               onSaveExpense={handleCreateExpense}
               onSaveIncome={handleCreateIncome}
@@ -749,6 +884,7 @@ export const WalletCarouselPanel = ({
                 onOpenChange={(open) => !open && closeDialog()}
                 fundingWalletOptions={fundingWalletOptions}
                 prefillAmount={null}
+                recordedDebt={Number(dialogWallet.amount)}
                 submitting={paymentSubmitting}
                 error={paymentError}
                 onConfirm={handleCardPayment}
@@ -758,17 +894,21 @@ export const WalletCarouselPanel = ({
         </>
       ) : null}
 
-      <WalletForm
-        open={dialog === 'create'}
-        onOpenChange={(open) => !open && closeDialog()}
-        onSave={handleCreateWallet}
-        mode="create"
-        allowedTypes={[...WALLET_CAROUSEL_TYPES]}
-        defaultValues={{ type: tab }}
-        error={createError && dialog === 'create' ? createError : null}
-      />
     </aside>
   );
+};
+
+const subscribeToStorage = (onChange: () => void) => {
+  window.addEventListener('storage', onChange);
+  return () => window.removeEventListener('storage', onChange);
+};
+
+const readStorage = (key: string): string | null => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
 };
 
 export default WalletCarouselPanel;

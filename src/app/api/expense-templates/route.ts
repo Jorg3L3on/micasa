@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import type { Prisma } from '@/generated/prisma/client';
-import prisma from '@/lib/prisma';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
+import {
+  createExpenseTemplateForOwner,
+  deleteExpenseTemplateForOwner,
+  listExpenseTemplatesForOwner,
+  setExpenseTemplateActiveForOwner,
+  updateExpenseTemplateForOwner,
+} from '@/lib/finance/expense-template.service';
 import {
   createExpenseTemplateSchema,
+  setExpenseTemplateActiveSchema,
   updateExpenseTemplateSchema,
 } from '@/schemas/expense-template.schema';
 import { deriveLegacyDueDayForTemplate } from '@/lib/finance/expense-template-due';
@@ -14,83 +20,88 @@ import { deriveLegacyDueDayForTemplate } from '@/lib/finance/expense-template-du
  * gastos de tarjeta (import PDF / compra registrada), no como plantillas recurrentes por quincena.
  */
 
-const prismaDueFieldsFromPayload = (validated: {
-  dueDayFirst?: number | null | undefined;
-  dueDaySecond?: number | null | undefined;
-}) => {
-  const first = validated.dueDayFirst ?? null;
-  const second = validated.dueDaySecond ?? null;
+type UpdatedTemplate = Awaited<ReturnType<typeof updateExpenseTemplateForOwner>>;
+
+/** Response body of PUT and PATCH: the list item plus `expenseIds`. */
+const updatedTemplateBody = (template: UpdatedTemplate) => {
+  const totalAmount = template.expenses.reduce(
+    (sum, exp) => sum + Number(exp.amount),
+    0,
+  );
+
   return {
-    due_day_first_fortnight: first,
-    due_day_second_fortnight: second,
-    due_day: first ?? second ?? null,
+    id: template.id,
+    name: template.name,
+    category: template.category?.name ?? null,
+    categoryIcon: template.category?.icon ?? null,
+    categoryId: template.category_id ?? null,
+    suggestedAmount: template.suggested_amount
+      ? Number(template.suggested_amount)
+      : null,
+    paymentMethod: template.wallet?.name || null,
+    paymentMethodId: template.wallet?.id || null,
+    paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
+    paymentMethodType: template.wallet?.type ?? null,
+    paymentMethodCutoffDay: template.wallet?.cutoff_day ?? null,
+    active: template.active,
+    totalEstimatedAmount:
+      totalAmount ||
+      (template.suggested_amount ? Number(template.suggested_amount) : 0),
+    expenseIds: template.expenses.map((e) => e.id),
+    dueDayFirst: template.due_day_first_fortnight,
+    dueDaySecond: template.due_day_second_fortnight,
+    dueDay: deriveLegacyDueDayForTemplate(template),
+    cutoffDay: template.cutoff_day,
+    isRecurring: template.is_recurring,
+    appliesFirstFortnight: template.applies_first_fortnight,
+    appliesSecondFortnight: template.applies_second_fortnight,
+    isSubscription: template.is_subscription,
   };
 };
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const templates = await prisma.expenseTemplate.findMany({
-      where: ownerFilter,
-      include: {
-        category: {
-          select: {
-            name: true,
-            icon: true,
-          },
-        },
-        wallet: {
-          select: {
-            id: true,
-            name: true,
-            provider_icon_key: true,
-          },
-        },
-        expenses: {
-          select: {
-            id: true,
-            amount: true,
-          },
-        },
-      },
-      orderBy: [{ active: 'desc' }, { name: 'asc' }],
-    });
+      const templates = await listExpenseTemplatesForOwner(ownerFilter);
 
-    const formatted = templates.map((template) => {
-      // Calculate total from suggested_amount or sum of related transactional expenses
-      const totalAmount = template.suggested_amount
-        ? Number(template.suggested_amount)
-        : template.expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
-
-      return {
-        id: template.id,
-        name: template.name,
-        category: template.category?.name ?? null,
-        categoryIcon: template.category?.icon ?? null,
-        suggestedAmount: template.suggested_amount
+      const formatted = templates.map((template) => {
+        // Calculate total from suggested_amount or sum of related transactional expenses
+        const totalAmount = template.suggested_amount
           ? Number(template.suggested_amount)
-          : null,
-        paymentMethod: template.wallet?.name || null,
-        paymentMethodId: template.wallet?.id || null,
-        paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
-        active: template.active,
-        totalEstimatedAmount: totalAmount,
-        expenseIds: [], // Will be populated from form selections in UI
-        dueDayFirst: template.due_day_first_fortnight,
-        dueDaySecond: template.due_day_second_fortnight,
-        dueDay: deriveLegacyDueDayForTemplate(template),
-        cutoffDay: template.cutoff_day,
-        isRecurring: template.is_recurring,
-        appliesFirstFortnight: template.applies_first_fortnight,
-        appliesSecondFortnight: template.applies_second_fortnight,
-        isSubscription: template.is_subscription,
-      };
-    });
+          : template.expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
 
-    return NextResponse.json(formatted, { status: 200 });
+        return {
+          id: template.id,
+          name: template.name,
+          category: template.category?.name ?? null,
+          categoryIcon: template.category?.icon ?? null,
+          categoryId: template.category_id ?? null,
+          suggestedAmount: template.suggested_amount
+            ? Number(template.suggested_amount)
+            : null,
+          paymentMethod: template.wallet?.name || null,
+          paymentMethodId: template.wallet?.id || null,
+          paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
+          paymentMethodType: template.wallet?.type ?? null,
+          paymentMethodCutoffDay: template.wallet?.cutoff_day ?? null,
+          active: template.active,
+          totalEstimatedAmount: totalAmount,
+          expenseIds: [], // Will be populated from form selections in UI
+          dueDayFirst: template.due_day_first_fortnight,
+          dueDaySecond: template.due_day_second_fortnight,
+          dueDay: deriveLegacyDueDayForTemplate(template),
+          cutoffDay: template.cutoff_day,
+          isRecurring: template.is_recurring,
+          appliesFirstFortnight: template.applies_first_fortnight,
+          appliesSecondFortnight: template.applies_second_fortnight,
+          isSubscription: template.is_subscription,
+        };
+      });
+
+      return NextResponse.json(formatted, { status: 200 });
+    });
   } catch (error) {
     console.error('Error fetching expense templates:', error);
     return NextResponse.json(
@@ -102,78 +113,41 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const body = await request.json();
+      const validatedData = createExpenseTemplateSchema.parse(body);
 
-    const body = await request.json();
-    const validatedData = createExpenseTemplateSchema.parse(body);
+      const template = await createExpenseTemplateForOwner(context, validatedData);
 
-    const dueFields = prismaDueFieldsFromPayload(validatedData);
-
-    const template = await prisma.expenseTemplate.create({
-      data: {
-        name: validatedData.name,
-        category_id: validatedData.categoryId,
-        suggested_amount: validatedData.suggestedAmount
-          ? validatedData.suggestedAmount.toString()
-          : null,
-        wallet_id: validatedData.paymentMethodId ?? undefined,
-        active: validatedData.active ?? true,
-        ...dueFields,
-        cutoff_day: validatedData.cutoffDay ?? null,
-        is_recurring: validatedData.isRecurring,
-        applies_first_fortnight: validatedData.appliesFirstFortnight,
-        applies_second_fortnight: validatedData.appliesSecondFortnight,
-        is_subscription: validatedData.isSubscription,
-        user_id: ownerType === 'user' ? ownerId : null,
-        house_id: ownerType === 'house' ? ownerId : null,
-      },
-      include: {
-        category: {
-          select: {
-            name: true,
-            icon: true,
-          },
+      return NextResponse.json(
+        {
+          id: template.id,
+          name: template.name,
+          category: template.category?.name ?? null,
+          categoryIcon: template.category?.icon ?? null,
+          defaultAmount: template.suggested_amount
+            ? Number(template.suggested_amount)
+            : null,
+          paymentMethod: template.wallet?.name || null,
+          paymentMethodId: template.wallet?.id || null,
+          paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
+          active: template.active,
+          totalEstimatedAmount: template.suggested_amount
+            ? Number(template.suggested_amount)
+            : 0,
+          expenseIds: [],
+          dueDayFirst: template.due_day_first_fortnight,
+          dueDaySecond: template.due_day_second_fortnight,
+          dueDay: deriveLegacyDueDayForTemplate(template),
+          cutoffDay: template.cutoff_day,
+          isRecurring: template.is_recurring,
+          appliesFirstFortnight: template.applies_first_fortnight,
+          appliesSecondFortnight: template.applies_second_fortnight,
+          isSubscription: template.is_subscription,
         },
-        wallet: {
-          select: {
-            id: true,
-            name: true,
-            provider_icon_key: true,
-          },
-        },
-      },
+        { status: 201 },
+      );
     });
-
-    return NextResponse.json(
-      {
-        id: template.id,
-        name: template.name,
-        category: template.category?.name ?? null,
-        categoryIcon: template.category?.icon ?? null,
-        defaultAmount: template.suggested_amount
-          ? Number(template.suggested_amount)
-          : null,
-        paymentMethod: template.wallet?.name || null,
-        paymentMethodId: template.wallet?.id || null,
-        paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
-        active: template.active,
-        totalEstimatedAmount: template.suggested_amount
-          ? Number(template.suggested_amount)
-          : 0,
-        expenseIds: [],
-        dueDayFirst: template.due_day_first_fortnight,
-        dueDaySecond: template.due_day_second_fortnight,
-        dueDay: deriveLegacyDueDayForTemplate(template),
-        cutoffDay: template.cutoff_day,
-        isRecurring: template.is_recurring,
-        appliesFirstFortnight: template.applies_first_fortnight,
-        appliesSecondFortnight: template.applies_second_fortnight,
-        isSubscription: template.is_subscription,
-      },
-      { status: 201 },
-    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -204,115 +178,30 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    if (!id || isNaN(Number(id))) {
-      return NextResponse.json(
-        { error: 'Valid id parameter is required' },
-        { status: 400 },
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
+
+      const body = await request.json();
+      const validatedData = updateExpenseTemplateSchema.parse(body);
+
+      const template = await updateExpenseTemplateForOwner(
+        Number(id),
+        ownerFilter,
+        validatedData,
       );
-    }
 
-    const body = await request.json();
-    const validatedData = updateExpenseTemplateSchema.parse(body);
-
-    const updateData: Prisma.ExpenseTemplateUncheckedUpdateInput = {};
-    if (validatedData.name !== undefined) {
-      updateData.name = validatedData.name;
-    }
-    if (validatedData.categoryId !== undefined) {
-      updateData.category_id = validatedData.categoryId;
-    }
-    if (validatedData.suggestedAmount !== undefined) {
-      updateData.suggested_amount = validatedData.suggestedAmount.toString();
-    }
-    if (validatedData.active !== undefined) {
-      updateData.active = validatedData.active;
-    }
-    if (validatedData.paymentMethodId !== undefined) {
-      updateData.wallet_id = validatedData.paymentMethodId ?? null;
-    }
-
-    Object.assign(updateData, prismaDueFieldsFromPayload(validatedData));
-    updateData.cutoff_day = validatedData.cutoffDay ?? null;
-    if (validatedData.isRecurring !== undefined) {
-      updateData.is_recurring = validatedData.isRecurring;
-    }
-    if (validatedData.appliesFirstFortnight !== undefined) {
-      updateData.applies_first_fortnight = validatedData.appliesFirstFortnight;
-    }
-    if (validatedData.appliesSecondFortnight !== undefined) {
-      updateData.applies_second_fortnight =
-        validatedData.appliesSecondFortnight;
-    }
-    if (validatedData.isSubscription !== undefined) {
-      updateData.is_subscription = validatedData.isSubscription;
-    }
-
-    const template = await prisma.expenseTemplate.update({
-      where: { id: Number(id), ...ownerFilter },
-      data: updateData,
-      include: {
-        category: {
-          select: {
-            name: true,
-            icon: true,
-          },
-        },
-        wallet: {
-          select: {
-            id: true,
-            name: true,
-            provider_icon_key: true,
-          },
-        },
-        expenses: {
-          select: {
-            id: true,
-            amount: true,
-          },
-        },
-      },
+      return NextResponse.json(updatedTemplateBody(template), { status: 200 });
     });
-
-    const totalAmount = template.expenses.reduce(
-      (sum, exp) => sum + Number(exp.amount),
-      0,
-    );
-
-    return NextResponse.json(
-      {
-        id: template.id,
-        name: template.name,
-        category: template.category?.name ?? null,
-        categoryIcon: template.category?.icon ?? null,
-        suggestedAmount: template.suggested_amount
-          ? Number(template.suggested_amount)
-          : null,
-        paymentMethod: template.wallet?.name || null,
-        paymentMethodId: template.wallet?.id || null,
-        paymentMethodProviderIconKey: template.wallet?.provider_icon_key ?? null,
-        active: template.active,
-        totalEstimatedAmount:
-          totalAmount ||
-          (template.suggested_amount ? Number(template.suggested_amount) : 0),
-        expenseIds: template.expenses.map((e) => e.id),
-        dueDayFirst: template.due_day_first_fortnight,
-        dueDaySecond: template.due_day_second_fortnight,
-        dueDay: deriveLegacyDueDayForTemplate(template),
-        cutoffDay: template.cutoff_day,
-        isRecurring: template.is_recurring,
-        appliesFirstFortnight: template.applies_first_fortnight,
-        appliesSecondFortnight: template.applies_second_fortnight,
-        isSubscription: template.is_subscription,
-      },
-      { status: 200 },
-    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -341,53 +230,87 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+/** Activo toggle: changes `active` only (body `{ active }`). */
+export async function PATCH(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
 
-    if (!id || isNaN(Number(id))) {
+      const body = await request.json();
+      const { active } = setExpenseTemplateActiveSchema.parse(body);
+
+      const template = await setExpenseTemplateActiveForOwner(
+        Number(id),
+        context.ownerFilter,
+        active,
+      );
+
+      return NextResponse.json(updatedTemplateBody(template), { status: 200 });
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Valid id parameter is required' },
+        { error: 'Validation error', details: error.issues },
         { status: 400 },
       );
     }
 
-    const templateId = Number(id);
-    const existing = await prisma.expenseTemplate.findFirst({
-      where: { id: templateId, ...ownerFilter },
-    });
-    if (!existing) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'P2025'
+    ) {
       return NextResponse.json(
         { error: 'Expense template not found' },
         { status: 404 },
       );
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const detachedExpenses = await tx.expense.updateMany({
-        where: { expense_template_id: templateId },
-        data: { expense_template_id: null },
-      });
-
-      await tx.expenseTemplate.delete({
-        where: { id: templateId },
-      });
-
-      return detachedExpenses;
-    });
-
+    console.error('Error updating expense template active flag:', error);
     return NextResponse.json(
-      {
-        message: 'Expense template deleted successfully',
-        detachedExpenseCount: result.count,
-      },
-      { status: 200 },
+      { error: 'Failed to update expense template' },
+      { status: 500 },
     );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
+
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get('id');
+
+      if (!id || isNaN(Number(id))) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
+
+      const { detachedExpenseCount } = await deleteExpenseTemplateForOwner(
+        Number(id),
+        ownerFilter,
+      );
+
+      return NextResponse.json(
+        {
+          message: 'Expense template deleted successfully',
+          detachedExpenseCount,
+        },
+        { status: 200 },
+      );
+    });
   } catch (error) {
     if (
       error &&

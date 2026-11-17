@@ -11,7 +11,7 @@
  */
 export const TOOLBAR_GLASS_GROUP =
   [
-    'flex h-10 shrink-0 items-center overflow-hidden rounded-full px-0.5',
+    'flex h-12 shrink-0 items-center overflow-hidden rounded-full px-0.5 sm:h-10',
     'border border-black/[0.08] bg-white/80',
     'shadow-panel',
     'backdrop-blur-xl backdrop-saturate-150',
@@ -22,7 +22,8 @@ export const TOOLBAR_GLASS_GROUP =
 /** Icon slot inside TOOLBAR_GLASS_GROUP — no second glass disc. */
 export const TOOLBAR_GLASS_GROUP_ITEM =
   [
-    'relative size-9 shrink-0 rounded-full border-0 bg-transparent shadow-none',
+    // 44px touch target on phones; 36px from sm.
+    'relative size-11 shrink-0 rounded-full border-0 bg-transparent shadow-none sm:size-9',
     'text-foreground/90 hover:bg-black/[0.06] hover:text-foreground',
     'active:bg-black/[0.1] active:opacity-90',
     'dark:hover:bg-white/[0.12] dark:active:bg-white/[0.16]',
@@ -47,6 +48,24 @@ export const TOOLBAR_GLASS_ICON =
     'dark:shadow-panel',
     'dark:hover:bg-white/[0.16] dark:hover:border-white/28',
     "[&_svg:not([class*='size-'])]:size-5",
+    'motion-reduce:transition-none motion-reduce:active:scale-100',
+  ].join(' ');
+
+/** Text + icon capsule (context switcher) — same glass as TOOLBAR_GLASS_ICON. */
+export const TOOLBAR_GLASS_PILL =
+  [
+    'inline-flex h-10 min-w-0 shrink items-center gap-2 rounded-full pr-3 pl-3.5',
+    'border border-black/[0.08] bg-white/80 text-foreground/90',
+    'shadow-panel',
+    'backdrop-blur-xl backdrop-saturate-150',
+    'transition-[background-color,border-color,transform,opacity,color] duration-200 ease-out',
+    'hover:bg-white hover:text-foreground',
+    'active:scale-[0.98] active:opacity-90',
+    'outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+    'dark:border-white/20 dark:bg-white/[0.10] dark:text-foreground/95',
+    'dark:shadow-panel',
+    'dark:hover:bg-white/[0.16] dark:hover:border-white/28',
+    'data-[state=open]:bg-white dark:data-[state=open]:bg-white/[0.16]',
     'motion-reduce:transition-none motion-reduce:active:scale-100',
   ].join(' ');
 

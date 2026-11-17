@@ -867,4 +867,112 @@ describe('getLiquidityProjection', () => {
     expect(obligation?.next_due_payment).not.toBe(400);
     expect(obligation?.next_due_payment).not.toBe(8000);
   });
+
+  const plannedOverDebtCard = () => {
+    setupWalletMock([fundingRow], [{ ...visaRow, amount: '150' }]);
+    queryRaw
+      .mockResolvedValueOnce([
+        {
+          wallet_id: 7,
+          amount: '150',
+          eff: new Date(Date.UTC(2026, 1, 5)),
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    findManyStatementImport.mockResolvedValue([]);
+    findManyExpense.mockResolvedValue([]);
+  };
+
+  const planAboveDebt = (plannedAmount: number) => ({
+    credit_card_wallet_id: 7,
+    planned_amount: plannedAmount,
+    declared_zero: false,
+    scope: 'this_cycle',
+    cycle_count: null,
+    valid_until: null,
+    anchor_statement_end: null,
+    updated_at: new Date(Date.UTC(2026, 1, 1)),
+    created_at: new Date(Date.UTC(2026, 1, 1)),
+    fortnight: { year: 2026, month: 2, period: 'SECOND' as const },
+  });
+
+  it('counts a planned overpayment once, on the statement due date', async () => {
+    plannedOverDebtCard();
+    findManyCreditCardPaymentPlan.mockResolvedValue([planAboveDebt(1_000)]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: new Date(Date.UTC(2026, 8, 1)),
+      includeUnpaidExpenses: false,
+    });
+
+    const cardLines = result.milestones.flatMap((milestone) =>
+      milestone.obligations
+        .filter(
+          (item) =>
+            item.source === 'credit_card_statement' && item.wallet_id === 7,
+        )
+        .map((item) => ({ due: milestone.due_date, item })),
+    );
+
+    expect(cardLines).toHaveLength(1);
+    expect(cardLines[0]?.due).toBe('2026-02-20');
+    expect(cardLines[0]?.item.statement_due_date).toBe('2026-02-20');
+    expect(cardLines[0]?.item.next_due_payment).toBe(1_000);
+    expect(cardLines[0]?.item.breakdown).toEqual([
+      {
+        key: 'bank_charges_estimate',
+        label: 'Cargos del banco (estimado)',
+        amount: 850,
+      },
+    ]);
+    expect(cardLines[0]?.item.over_recorded_message).toBe(
+      'El estado de cuenta pide más que lo registrado: +$850.00',
+    );
+    expect(
+      cardLines.reduce((sum, line) => sum + line.item.next_due_payment, 0),
+    ).toBe(1_000);
+  });
+
+  it('keeps a plan equal to recorded debt as that cash line', async () => {
+    plannedOverDebtCard();
+    findManyCreditCardPaymentPlan.mockResolvedValue([planAboveDebt(150)]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: new Date(Date.UTC(2026, 8, 1)),
+      includeUnpaidExpenses: false,
+    });
+    const lines = result.milestones.flatMap((milestone) =>
+      milestone.obligations.filter(
+        (item) => item.source === 'credit_card_statement' && item.wallet_id === 7,
+      ),
+    );
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.next_due_payment).toBe(150);
+    expect(lines[0]?.breakdown).toBeUndefined();
+    expect(lines[0]?.over_recorded_message).toBeUndefined();
+  });
+
+  it('keeps a plan below recorded debt as that cash line', async () => {
+    plannedOverDebtCard();
+    findManyCreditCardPaymentPlan.mockResolvedValue([planAboveDebt(100)]);
+
+    const result = await getLiquidityProjection({
+      ownerFilter: userOwner,
+      until: new Date(Date.UTC(2026, 8, 1)),
+      includeUnpaidExpenses: false,
+    });
+    const lines = result.milestones.flatMap((milestone) =>
+      milestone.obligations.filter(
+        (item) => item.source === 'credit_card_statement' && item.wallet_id === 7,
+      ),
+    );
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.next_due_payment).toBe(100);
+    expect(lines[0]?.breakdown).toBeUndefined();
+    expect(lines[0]?.over_recorded_message).toBeUndefined();
+  });
 });

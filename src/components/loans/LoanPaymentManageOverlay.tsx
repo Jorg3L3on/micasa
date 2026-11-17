@@ -400,17 +400,25 @@ export const LoanPaymentManageOverlay = ({
     }
   };
 
+  // Overdue installments of one contract (detail "Registrar pago") read as cuotas.
+  const sameContract = new Set(items.map((item) => item.loanId)).size === 1;
   const title = !primary
     ? 'Gestionar préstamo'
-    : isGroup
+    : isGroup && !sameContract
       ? isPayrollDeduction
         ? `Nómina · ${primary.lender}`
         : `Pagar a ${primary.lender}`
       : primary.loanName;
+  const lastDue = items[items.length - 1]?.dueDate ?? primary?.dueDate ?? '';
+  const groupCountLabel = sameContract
+    ? `${items.length} cuotas · ${formatDate(primary?.dueDate ?? '')} – ${formatDate(lastDue)}`
+    : `${items.length} contratos · ${formatDate(primary?.dueDate ?? '')}`;
   const description = !primary
     ? 'Opciones de este pago de préstamo'
     : isGroup
-      ? `${items.length} contratos · vence ${formatDate(primary.dueDate)}`
+      ? sameContract
+        ? groupCountLabel
+        : `${items.length} contratos · vence ${formatDate(primary.dueDate)}`
       : `${primary.lender} · vence ${formatDate(primary.dueDate)}`;
 
   return (
@@ -433,7 +441,7 @@ export const LoanPaymentManageOverlay = ({
               </span>
               {' · '}
               {isGroup
-                ? `${items.length} contratos · ${formatDate(primary.dueDate)}`
+                ? groupCountLabel
                 : `${primary.lender} · ${formatDate(primary.dueDate)}`}
               {!isGroup && primary.paymentSource === 'PAYROLL_DEDUCTION'
                 ? ` · Se descuenta del ingreso${primary.incomeTemplateName ? ` · ${primary.incomeTemplateName}` : ''}`

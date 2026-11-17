@@ -1,10 +1,10 @@
 import { SkeletonExit } from '@/components/view-transition/SuspenseReveal';
-import { CollectionCardsSkeleton } from '@/components/loading/page-skeletons';
+import { LoansListSkeleton } from '@/components/loading/page-skeletons';
 
 export default function Loading() {
   return (
     <SkeletonExit>
-      <CollectionCardsSkeleton />
+      <LoansListSkeleton />
     </SkeletonExit>
   );
 }

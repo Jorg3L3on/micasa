@@ -1,5 +1,6 @@
 'use client';
 
+import { useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FilterChip } from '@/components/filter-chip';
@@ -19,6 +20,34 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
   const { context } = useFinanceContext();
   const isHouseContext = context.type === 'house';
   const items = filterSettingsNavItems(SETTINGS_NAV_ITEMS, isHouseContext);
+  const chipRowRef = useRef<HTMLDivElement>(null);
+  const hasScrolledRef = useRef(false);
+
+  // Phones: keep the active chip in view, centred when the row allows it.
+  // Jump on first paint; glide on later route changes unless reduced motion.
+  useLayoutEffect(() => {
+    const row = chipRowRef.current;
+    const chip = row?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!row || !chip) return;
+
+    const rowRect = row.getBoundingClientRect();
+    const chipRect = chip.getBoundingClientRect();
+    const maxLeft = row.scrollWidth - row.clientWidth;
+    const target =
+      row.scrollLeft +
+      (chipRect.left - rowRect.left) -
+      (rowRect.width - chipRect.width) / 2;
+    const left = Math.max(0, Math.min(maxLeft, Math.round(target)));
+
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    const animate = hasScrolledRef.current && !reduceMotion;
+    hasScrolledRef.current = true;
+
+    if (Math.abs(row.scrollLeft - left) < 1) return;
+    row.scrollTo({ left, behavior: animate ? 'smooth' : 'auto' });
+  }, [pathname, isHouseContext]);
 
   return (
     <div className="space-y-5">
@@ -27,6 +56,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-linear-to-r from-background to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-linear-to-l from-background to-transparent" />
         <div
+          ref={chipRowRef}
           className="flex gap-2 overflow-x-auto scrollbar-hide px-1 py-0.5"
           role="navigation"
           aria-label="Secciones de configuración"

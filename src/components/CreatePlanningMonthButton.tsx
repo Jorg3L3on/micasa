@@ -14,7 +14,7 @@ type CreatePlanningMonthButtonProps = {
   month: number;
   monthLabel: string;
   canCreate: boolean;
-  variant?: 'compact' | 'hero';
+  variant?: 'compact' | 'hero' | 'plain';
 };
 
 export default function CreatePlanningMonthButton({
@@ -58,6 +58,22 @@ export default function CreatePlanningMonthButton({
   };
 
   if (!canCreate) return null;
+
+  if (variant === 'plain') {
+    return (
+      <Button
+        type="button"
+        variant="default"
+        onClick={handleCreate}
+        disabled={submitting}
+        aria-busy={submitting}
+        aria-label={`Crear planeación para ${monthLabel}`}
+      >
+        {submitting ? null : <CalendarPlus className="h-4 w-4" aria-hidden />}
+        {submitting ? 'Creando…' : `Crear ${monthLabel}`}
+      </Button>
+    );
+  }
 
   return (
     <Button

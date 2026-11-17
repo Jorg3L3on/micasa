@@ -1,6 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import type { AdminContext } from '@/lib/server/require-admin';
+import { recordAuthEvent } from '@/lib/server/audit/auth-events';
 
 export const ADMIN_AUDIT_PASSWORD_OVERRIDE = 'admin.password_override';
 
@@ -38,6 +39,8 @@ export const setTemporaryPasswordForUser = async (input: {
   admin: AdminContext;
   targetUserId: number;
   temporaryPassword: string;
+  /** For IP and device on the auth event. */
+  request?: Request;
 }) => {
   const target = await prisma.user.findUnique({
     where: { id: input.targetUserId },
@@ -64,6 +67,14 @@ export const setTemporaryPasswordForUser = async (input: {
       // Never store plaintext password
       password_length: input.temporaryPassword.trim().length,
     },
+  });
+  await recordAuthEvent('PASSWORD_OVERRIDDEN', {
+    userId: target.id,
+    email: target.email,
+    actorUserId: input.admin.userId,
+    source: 'ADMIN',
+    sessionId: input.admin.sessionId ?? null,
+    request: input.request,
   });
 
   return { ok: true as const, targetEmail: target.email };

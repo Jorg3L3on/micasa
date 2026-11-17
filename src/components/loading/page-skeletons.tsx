@@ -1,4 +1,33 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
+import { cn } from '@/lib/utils';
+
+/**
+ * Silhouette of a planner card: glass shell, icon pill, two header lines and
+ * a body. Every Panel financiero loading state uses it so nothing jumps when
+ * the real card lands.
+ */
+export const PanelCardSkeleton = ({
+  bodyClassName = 'h-24',
+  className,
+}: {
+  bodyClassName?: string;
+  className?: string;
+}) => (
+  <div
+    className={cn(MONTHLY_LIQUID_PANEL_CLASS, 'space-y-4 p-3 sm:p-4', className)}
+    aria-hidden
+  >
+    <div className="flex items-center gap-2.5">
+      <Skeleton className="size-8 shrink-0 rounded-xl" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-3 w-32 rounded-full" />
+        <Skeleton className="h-2.5 w-48 rounded-full" />
+      </div>
+    </div>
+    <Skeleton className={cn('w-full rounded-xl', bodyClassName)} />
+  </div>
+);
 
 const Row = ({ className }: { className?: string }) => (
   <Skeleton className={className ?? 'h-12 w-full rounded-xl'} />
@@ -8,9 +37,20 @@ const Row = ({ className }: { className?: string }) => (
 export const PlannerPageSkeleton = () => (
   <div className="space-y-5" aria-busy="true" aria-label="Cargando panel">
     <Skeleton className="h-16 w-full rounded-2xl" />
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Skeleton className="h-72 rounded-2xl" />
-      <Skeleton className="h-72 rounded-2xl" />
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] xl:items-start">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <PanelCardSkeleton bodyClassName="h-8" />
+          <PanelCardSkeleton bodyClassName="h-8" />
+        </div>
+        <PanelCardSkeleton bodyClassName="h-28" />
+        <PanelCardSkeleton bodyClassName="h-64" />
+      </div>
+      <div className="flex flex-col gap-5">
+        <PanelCardSkeleton bodyClassName="h-56" />
+        <PanelCardSkeleton bodyClassName="h-40" />
+        <PanelCardSkeleton bodyClassName="h-36" />
+      </div>
     </div>
   </div>
 );
@@ -27,7 +67,7 @@ export const CollectionCardsSkeleton = () => (
   </div>
 );
 
-/** Collection table (operaciones, plantillas). */
+/** Collection table (operaciones). */
 export const CollectionTableSkeleton = () => (
   <div className="space-y-4" aria-busy="true" aria-label="Cargando tabla">
     <Skeleton className="h-10 w-64 rounded-full" />
@@ -60,10 +100,69 @@ export const SettingsPageSkeleton = () => (
   </div>
 );
 
+/**
+ * Gastos / Ingresos programados: summary card (cells from md, two columns
+ * below), the quincena control and rows shaped like `ScheduledRow`.
+ */
+export const ScheduledListSkeleton = ({ label }: { label: string }) => (
+  <div className="flex flex-col gap-4 md:gap-5" aria-busy="true" aria-label={label}>
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
+      <div className="grid grid-cols-2 divide-x divide-border/60 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className={cn('space-y-2 px-3.5 py-3 md:px-5 md:py-4', index > 1 && 'hidden md:block')}
+          >
+            <Skeleton className="h-2.5 w-20 rounded-full" />
+            <Skeleton className="h-6 w-28 rounded-md" />
+            <Skeleton className="h-2.5 w-24 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+    <Skeleton className="h-11 w-full rounded-full md:h-10 md:w-80" />
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
+      {[
+        ['62%', '44%'],
+        ['48%', '56%'],
+        ['70%', '38%'],
+        ['54%', '50%'],
+        ['40%', '46%'],
+      ].map(([name, line], index) => (
+        <div
+          key={index}
+          className="flex min-h-16 items-center gap-3 border-t border-border/60 px-3.5 first:border-t-0 md:min-h-[60px] md:px-5"
+        >
+          <Skeleton className="size-10 shrink-0 rounded-xl md:size-9" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-3 rounded-full" style={{ width: name }} />
+            <Skeleton className="h-2.5 rounded-full" style={{ width: line }} />
+          </div>
+          <Skeleton className="h-3 w-16 shrink-0 rounded-full" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 /** Create / edit form. */
 export const FormPageSkeleton = () => (
   <div className="space-y-4" aria-busy="true" aria-label="Cargando formulario">
     <Skeleton className="h-64 w-full rounded-2xl" />
     <Skeleton className="h-11 w-full rounded-xl" />
+  </div>
+);
+
+/** Préstamos: summary strip (Avance tile from md) plus two lender cards. */
+export const LoansListSkeleton = () => (
+  <div className="space-y-3" aria-busy="true" aria-label="Cargando préstamos">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <Skeleton className="col-span-2 h-[5.5rem] rounded-2xl md:col-span-1" />
+      <Skeleton className="h-[5.5rem] rounded-2xl" />
+      <Skeleton className="h-[5.5rem] rounded-2xl" />
+      <Skeleton className="hidden h-[5.5rem] rounded-2xl md:block" />
+    </div>
+    <PanelCardSkeleton bodyClassName="h-40" />
+    <PanelCardSkeleton bodyClassName="h-28" />
   </div>
 );

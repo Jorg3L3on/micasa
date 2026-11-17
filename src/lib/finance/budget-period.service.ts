@@ -24,8 +24,25 @@ import {
   calendarWeeksOverlappingRange,
   readWallClockYmd,
 } from '@/lib/finance/budget-period-windows';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export { computeBudgetPeriodWindowsForFortnight as computeBudgetWindows } from '@/lib/finance/budget-period-windows';
+
+/**
+ * True when a stored range already covers `window`'s civil days. Postgres
+ * `timestamp` round-trips turn UTC-noon into MX-midnight, so exact timestamps
+ * never match and an exact comparison rewrote the same days on every load.
+ */
+function storedRangeMatches(
+  stored: { start_date: Date | null; end_date: Date | null },
+  window: DateRange,
+): boolean {
+  if (!stored.start_date || !stored.end_date) return false;
+  return periodMatchesCalendarWindow(
+    { start_date: stored.start_date, end_date: stored.end_date },
+    window,
+  );
+}
 
 /** Coalesce concurrent ensureBudgetPeriodsForMonth calls in the same process. */
 const ensureBudgetPeriodsInflight = new Map<string, Promise<void>>();
@@ -336,7 +353,7 @@ async function reconcileBiweeklyCalendarAlignment(
 
   const budgets = await prisma.budget.findMany({
     where: { ...ownerFilter, active: true, frequency: 'BIWEEKLY' },
-    select: { id: true },
+    select: { id: true, start_date: true, end_date: true },
   });
   if (budgets.length === 0) return;
 
@@ -364,21 +381,9 @@ async function reconcileBiweeklyCalendarAlignment(
 
       if (matching.length === 0) continue;
 
+      // The keeper already covers the window's civil days (see storedRangeMatches).
       const [keeper, ...duplicates] = matching;
       keepIds.add(keeper.id);
-
-      if (
-        keeper.start_date.getTime() !== window.start_date.getTime() ||
-        keeper.end_date.getTime() !== window.end_date.getTime()
-      ) {
-        await prisma.budgetPeriod.update({
-          where: { id: keeper.id },
-          data: {
-            start_date: window.start_date,
-            end_date: window.end_date,
-          },
-        });
-      }
 
       for (const duplicate of duplicates) {
         toDelete.push(duplicate.id);
@@ -409,13 +414,15 @@ async function reconcileBiweeklyCalendarAlignment(
         month,
         current.period,
       );
-      await prisma.budget.update({
-        where: { id: budget.id },
-        data: {
-          start_date: bounds.start_date,
-          end_date: bounds.end_date,
-        },
-      });
+      if (!storedRangeMatches(budget, bounds)) {
+        await prisma.budget.update({
+          where: { id: budget.id },
+          data: {
+            start_date: bounds.start_date,
+            end_date: bounds.end_date,
+          },
+        });
+      }
     }
   }
 }
@@ -436,7 +443,7 @@ async function reconcileWeeklyCalendarAlignment(
 
   const budgets = await prisma.budget.findMany({
     where: { ...ownerFilter, active: true, frequency: 'WEEKLY' },
-    select: { id: true },
+    select: { id: true, start_date: true, end_date: true },
   });
   if (budgets.length === 0) return;
 
@@ -486,7 +493,7 @@ async function reconcileWeeklyCalendarAlignment(
     const [ty, tm] = today.split('-').map(Number);
     if (ty === year && tm === month) {
       const [week] = calendarWeeksOverlappingRange(today, today);
-      if (week) {
+      if (week && !storedRangeMatches(budget, week)) {
         await prisma.budget.update({
           where: { id: budget.id },
           data: {
@@ -535,12 +542,7 @@ async function reconcileFixedRangeCalendarAlignment(
 
     for (const period of periods) {
       const canonical = canonicalize(period);
-      if (
-        period.start_date.getTime() === canonical.start_date.getTime() &&
-        period.end_date.getTime() === canonical.end_date.getTime()
-      ) {
-        continue;
-      }
+      if (storedRangeMatches(period, canonical)) continue;
       await prisma.budgetPeriod.update({
         where: { id: period.id },
         data: {
@@ -1074,7 +1076,7 @@ export async function listBudgetPeriodExpensesByAllocation(
   });
 
   if (!period) {
-    throw Object.assign(new Error('Período de presupuesto no encontrado'), { code: 'P2025' });
+    throw new DomainError('P2025', 'Período de presupuesto no encontrado');
   }
 
   const allocations =

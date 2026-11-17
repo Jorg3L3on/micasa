@@ -5,6 +5,7 @@ import {
   type CardPeriodObligation,
   type CardPeriodObligationBasis,
   type CardPeriodObligationConfidence,
+  type CardObligationBreakdownRow,
   type CardPeriodObligationGap,
   type DueItemObligationSource,
   type ResolveCardPeriodObligationInput,
@@ -69,6 +70,7 @@ export const getCardPeriodObligation = (
     scheduledAmount: input.scheduledAmount,
     plannedOverride,
     explicitZero,
+    hasStatementImport: input.hasStatementImport,
     paymentsNotInPayoff: input.paymentsNotInPayoff,
     paymentsApplied: input.paymentsApplied,
   });
@@ -87,6 +89,10 @@ export type CardObligationSurfaceSnapshot = {
   plannerStatus: PlannerCardPaymentStatusUi;
   /** Missing never paints ALCANZA. */
   entersAlcanza: boolean;
+  /** Slice of `amount` above recorded debt. Empty when the plan is at or below it. */
+  breakdown: CardObligationBreakdownRow[];
+  /** Sentence for that slice when the cycle has no statement import. */
+  overRecordedMessage: string | null;
 };
 
 const plannerStatusFor = (
@@ -118,6 +124,8 @@ export const snapshotFromObligation = (
     countsAsPending: missing || known,
     plannerStatus: plannerStatusFor(obligation, paymentsApplied),
     entersAlcanza: !missing,
+    breakdown: missing ? [] : (obligation.breakdown ?? []),
+    overRecordedMessage: missing ? null : (obligation.overRecordedMessage ?? null),
   };
 };
 

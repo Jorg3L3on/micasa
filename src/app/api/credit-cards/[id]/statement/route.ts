@@ -1,7 +1,7 @@
 import { parseCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   creditCardStatementQuerySchema,
 } from '@/schemas/credit-card.schema';
@@ -12,31 +12,30 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const { id } = await params;
+      const creditCardId = Number(id);
 
-    const { id } = await params;
-    const creditCardId = Number(id);
+      if (!id || Number.isNaN(creditCardId)) {
+        return NextResponse.json(
+          { error: 'Se requiere un id válido' },
+          { status: 400 },
+        );
+      }
 
-    if (!id || Number.isNaN(creditCardId)) {
-      return NextResponse.json(
-        { error: 'Se requiere un id válido' },
-        { status: 400 },
+      const { searchParams } = new URL(request.url);
+      const query = creditCardStatementQuerySchema.parse({
+        asOf: searchParams.get('asOf') ?? undefined,
+      });
+
+      const statement = await getCreditCardStatementByOwner(
+        creditCardId,
+        context.ownerFilter,
+        query.asOf ? parseCalendarDate(query.asOf) : undefined,
       );
-    }
 
-    const { searchParams } = new URL(request.url);
-    const query = creditCardStatementQuerySchema.parse({
-      asOf: searchParams.get('asOf') ?? undefined,
+      return NextResponse.json(statement, { status: 200 });
     });
-
-    const statement = await getCreditCardStatementByOwner(
-      creditCardId,
-      context.ownerFilter,
-      query.asOf ? parseCalendarDate(query.asOf) : undefined,
-    );
-
-    return NextResponse.json(statement, { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

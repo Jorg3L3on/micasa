@@ -1,33 +1,20 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { CategoryKind } from '@/generated/prisma/client';
-import prisma from '@/lib/prisma';
-import { validateCategoryIconInput } from '@/lib/category-icons';
 import {
-  seedDefaultExpenseCategoriesForOwner,
-  seedDefaultIncomeCategoriesForOwner,
-} from '@/lib/finance/category-seed.service';
-import {
-  activateCategory,
-  assertCategoryDeletable,
-  assertValidParentForCreate,
-  categoryOwnerWhere,
-  CategoryServiceError,
-  deactivateCategoryTree,
-  findDuplicateCategoryName,
+  createCategoryForOwner,
+  listCategoriesForOwner,
+  updateCategoryForOwner,
 } from '@/lib/finance/category.service';
-import {
-  confirmSchema,
-  ownerIdSchema,
-  ownerTypeSchema,
-  runAgentTool,
-  type McpToolContext,
-} from '@/lib/mcp/tool-helpers';
+import { defineOwnerTool } from '@/lib/mcp/define-tool';
+import { pagination } from '@/lib/mcp/schemas';
+import { out, paginate } from '@/lib/mcp/shapes';
 
 const categoryKindFilterSchema = z
   .enum(['expense', 'income', 'all'])
   .optional()
-  .default('all');
+  .default('all')
+  .describe('expense, income o all (default).');
 
 const categoryKindInputSchema = z
   .enum(['EXPENSE', 'INCOME'])
@@ -55,264 +42,81 @@ const serializeCategory = (category: {
 });
 
 export function registerCategoryTools(server: McpServer) {
-  server.registerTool(
-    'list_categories',
-    {
-      title: 'Listar categorías',
-      description:
-        'Catálogo de categorías del contexto. Filtra por kind expense|income|all. Usa los nombres en add_expense / add_income.',
-      inputSchema: z.object({
-        ownerType: ownerTypeSchema,
-        ownerId: ownerIdSchema,
-        kind: categoryKindFilterSchema,
+  defineOwnerTool(server, {
+    name: 'list_categories',
+    title: 'Listar categorías',
+    description:
+      'Catálogo de categorías del contexto (crea las predeterminadas si faltan). Filtra por kind expense|income|all. Usa los nombres o ids en add_expense / add_income.',
+    scope: 'read',
+    input: { kind: categoryKindFilterSchema, ...pagination },
+    output: {
+      categories: out.list({
+        id: z.number(),
+        name: z.string(),
+        kind: z.string(),
+        parent_id: z.number().nullable(),
       }),
-      annotations: { readOnlyHint: true },
+      ...out.page,
     },
-    async (args, ctx) =>
-      runAgentTool('list_categories', ctx as McpToolContext, args, 'read', async (agent) => {
-        const ownerRef =
-          agent.ownerType === 'user'
-            ? { userId: agent.ownerId }
-            : { houseId: agent.ownerId };
-
-        await prisma.$transaction(async (tx) => {
-          if (args.kind === 'expense' || args.kind === 'all') {
-            await seedDefaultExpenseCategoriesForOwner(tx, ownerRef);
-          }
-          if (args.kind === 'income' || args.kind === 'all') {
-            await seedDefaultIncomeCategoriesForOwner(tx, ownerRef);
-          }
-        });
-
-        const kindFilter =
-          args.kind === 'all'
-            ? {}
-            : { kind: (args.kind === 'income' ? 'INCOME' : 'EXPENSE') as CategoryKind };
-
-        const categories = await prisma.category.findMany({
-          where: {
-            ...categoryOwnerWhere(agent.ownerType, agent.ownerId),
-            ...kindFilter,
-          },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            icon: true,
-            active: true,
-            sort_order: true,
-            parent_id: true,
-            kind: true,
-          },
-          orderBy: [{ parent_id: 'asc' }, { sort_order: 'asc' }, { name: 'asc' }],
-        });
-
-        return categories.map(serializeCategory);
-      }),
-  );
-
-  server.registerTool(
-    'create_category',
-    {
-      title: 'Crear categoría',
-      description:
-        'Alta de categoría de gasto (EXPENSE) o ingreso (INCOME). Opcional parent_id para subcategoría (un nivel).',
-      inputSchema: z.object({
-        ownerType: ownerTypeSchema,
-        ownerId: ownerIdSchema,
-        name: z.string().trim().min(1).max(80),
-        description: z.string().trim().max(200).optional(),
-        icon: z.string().optional(),
-        parent_id: z.number().int().positive().nullable().optional(),
-        kind: categoryKindInputSchema,
-      }),
-      annotations: { destructiveHint: false, idempotentHint: false },
+    run: async (agent, args) => {
+      const categories = await listCategoriesForOwner(agent.ownerType, agent.ownerId, args.kind);
+      return paginate('categories', categories.map(serializeCategory), args);
     },
-    async (args, ctx) =>
-      runAgentTool('create_category', ctx as McpToolContext, args, 'write', async (agent) => {
-        const kind = args.kind;
-        const iconResult = validateCategoryIconInput(args.icon, null);
-        if (!iconResult.ok) {
-          throw new Error(iconResult.message);
-        }
+  });
 
-        const parentId = args.parent_id ?? null;
-        await assertValidParentForCreate(
-          prisma,
-          agent.ownerType,
-          agent.ownerId,
-          parentId,
-          kind,
-        );
-
-        const duplicate = await findDuplicateCategoryName(
-          prisma,
-          agent.ownerType,
-          agent.ownerId,
-          args.name,
-          kind,
-        );
-        if (duplicate) {
-          throw new Error('Ya existe una categoría con este nombre');
-        }
-
-        const siblingCount = await prisma.category.count({
-          where: {
-            ...categoryOwnerWhere(agent.ownerType, agent.ownerId),
-            parent_id: parentId,
-            kind,
-          },
-        });
-
-        const category = await prisma.category.create({
-          data: {
-            name: args.name,
-            description: args.description ?? null,
-            icon: iconResult.value,
-            active: true,
-            sort_order: siblingCount,
-            parent_id: parentId,
-            kind,
-            ...(agent.ownerType === 'user'
-              ? { user_id: agent.ownerId, house_id: null }
-              : { user_id: null, house_id: agent.ownerId }),
-          },
-        });
-
-        return serializeCategory(category);
-      }),
-  );
-
-  server.registerTool(
-    'update_category',
-    {
-      title: 'Actualizar categoría',
-      description:
-        'Edita nombre, descripción, icono o active. Desactivar una raíz desactiva subcategorías.',
-      inputSchema: z.object({
-        ownerType: ownerTypeSchema,
-        ownerId: ownerIdSchema,
-        category_id: z.number().int().positive(),
-        name: z.string().trim().min(1).max(80).optional(),
-        description: z.string().trim().max(200).nullable().optional(),
-        icon: z.string().optional(),
-        active: z.boolean().optional(),
-      }),
-      annotations: { destructiveHint: false, idempotentHint: true },
+  defineOwnerTool(server, {
+    name: 'create_category',
+    title: 'Crear categoría',
+    description:
+      'Alta de categoría de gasto (EXPENSE) o ingreso (INCOME). Opcional parent_id para subcategoría (un nivel).',
+    scope: 'write',
+    annotations: { destructiveHint: false, idempotentHint: false },
+    input: {
+      name: z.string().trim().min(1).max(80).describe('Nombre.'),
+      description: z.string().trim().max(200).optional().describe('Descripción opcional.'),
+      icon: z.string().optional().describe('Clave de icono opcional.'),
+      parent_id: z.number().int().positive().nullable().optional().describe('Categoría padre (un solo nivel).'),
+      kind: categoryKindInputSchema.describe('EXPENSE (default) o INCOME.'),
     },
-    async (args, ctx) =>
-      runAgentTool('update_category', ctx as McpToolContext, args, 'write', async (agent) => {
-        const existing = await prisma.category.findFirst({
-          where: {
-            id: args.category_id,
-            ...categoryOwnerWhere(agent.ownerType, agent.ownerId),
-          },
-        });
-        if (!existing) {
-          throw new Error('Categoría no encontrada');
-        }
-
-        const iconResult = validateCategoryIconInput(args.icon, existing.icon);
-        if (!iconResult.ok) {
-          throw new Error(iconResult.message);
-        }
-
-        if (args.name && args.name !== existing.name) {
-          const duplicate = await findDuplicateCategoryName(
-            prisma,
-            agent.ownerType,
-            agent.ownerId,
-            args.name,
-            existing.kind,
-            args.category_id,
-          );
-          if (duplicate) {
-            throw new Error('Ya existe una categoría con este nombre');
-          }
-        }
-
-        if (args.active === false && existing.active) {
-          const category = await deactivateCategoryTree(
-            prisma,
-            args.category_id,
-            agent.ownerType,
-            agent.ownerId,
-          );
-          return serializeCategory(category);
-        }
-
-        if (args.active === true && !existing.active) {
-          const category = await activateCategory(
-            prisma,
-            args.category_id,
-            agent.ownerType,
-            agent.ownerId,
-          );
-          return serializeCategory(category);
-        }
-
-        const updateData: {
-          name?: string;
-          description?: string | null;
-          icon?: string | null;
-        } = {};
-        if (args.name) updateData.name = args.name;
-        if (args.description !== undefined) {
-          updateData.description = args.description;
-        }
-        if (args.icon !== undefined) updateData.icon = iconResult.value;
-
-        const category = await prisma.category.update({
-          where: { id: args.category_id },
-          data: updateData,
-        });
-
-        return serializeCategory(category);
-      }),
-  );
-
-  server.registerTool(
-    'delete_category',
-    {
-      title: 'Eliminar categoría',
-      description:
-        'Elimina una categoría sin dependencias (gastos, ingresos, plantillas, presupuestos). Requiere confirm: true.',
-      inputSchema: z.object({
-        ownerType: ownerTypeSchema,
-        ownerId: ownerIdSchema,
-        category_id: z.number().int().positive(),
-        confirm: confirmSchema,
-      }),
-      annotations: { destructiveHint: true, idempotentHint: true },
+    run: async (agent, args) => {
+      const category = await createCategoryForOwner(agent.ownerType, agent.ownerId, {
+        name: args.name,
+        description: args.description,
+        icon: args.icon,
+        parentId: args.parent_id,
+        kind: args.kind,
+      });
+      return serializeCategory(category);
     },
-    async (args, ctx) =>
-      runAgentTool('delete_category', ctx as McpToolContext, args, 'write', async (agent) => {
-        const existing = await prisma.category.findFirst({
-          where: {
-            id: args.category_id,
-            ...categoryOwnerWhere(agent.ownerType, agent.ownerId),
-          },
-        });
-        if (!existing) {
-          throw new Error('Categoría no encontrada');
-        }
+  });
 
-        try {
-          await assertCategoryDeletable(
-            prisma,
-            args.category_id,
-            agent.ownerType,
-            agent.ownerId,
-          );
-        } catch (error) {
-          if (error instanceof CategoryServiceError) {
-            throw new Error(error.message);
-          }
-          throw error;
-        }
-
-        await prisma.category.delete({ where: { id: existing.id } });
-        return { deleted: true, category_id: args.category_id };
-      }),
-  );
+  defineOwnerTool(server, {
+    name: 'update_category',
+    title: 'Actualizar categoría',
+    description:
+      'Edita nombre, descripción, icono o active. Desactivar una raíz desactiva sus subcategorías. Para borrarla usa delete con kind category.',
+    scope: 'write',
+    annotations: { destructiveHint: false, idempotentHint: true },
+    input: {
+      category_id: z.number().int().positive().describe('Categoría, de list_categories.'),
+      name: z.string().trim().min(1).max(80).optional().describe('Nuevo nombre.'),
+      description: z.string().trim().max(200).nullable().optional().describe('null la borra.'),
+      icon: z.string().optional().describe('Clave de icono.'),
+      active: z.boolean().optional().describe('false desactiva la categoría y sus subcategorías.'),
+    },
+    run: async (agent, args) => {
+      const category = await updateCategoryForOwner(
+        agent.ownerType,
+        agent.ownerId,
+        args.category_id,
+        {
+          name: args.name,
+          description: args.description,
+          icon: args.icon,
+          active: args.active,
+        },
+      );
+      return serializeCategory(category);
+    },
+  });
 }

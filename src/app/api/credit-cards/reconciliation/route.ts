@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   getCreditCardReconciliationReport,
   repairCreditCardReconciliationIssues,
@@ -24,31 +24,30 @@ const repairSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const walletIdParam = request.nextUrl.searchParams.get('walletId');
+      const walletId =
+        walletIdParam != null && walletIdParam !== ''
+          ? Number(walletIdParam)
+          : undefined;
 
-    const walletIdParam = request.nextUrl.searchParams.get('walletId');
-    const walletId =
-      walletIdParam != null && walletIdParam !== ''
-        ? Number(walletIdParam)
-        : undefined;
+      if (
+        walletIdParam != null &&
+        walletIdParam !== '' &&
+        (!Number.isFinite(walletId) || walletId! <= 0)
+      ) {
+        return NextResponse.json(
+          { error: 'walletId must be a positive integer' },
+          { status: 400 },
+        );
+      }
 
-    if (
-      walletIdParam != null &&
-      walletIdParam !== '' &&
-      (!Number.isFinite(walletId) || walletId! <= 0)
-    ) {
-      return NextResponse.json(
-        { error: 'walletId must be a positive integer' },
-        { status: 400 },
+      const report = await getCreditCardReconciliationReport(
+        context.ownerFilter,
+        walletId,
       );
-    }
-
-    const report = await getCreditCardReconciliationReport(
-      context.ownerFilter,
-      walletId,
-    );
-    return NextResponse.json(report, { status: 200 });
+      return NextResponse.json(report, { status: 200 });
+    });
   } catch (error) {
     console.error('credit card reconciliation GET', error);
     return NextResponse.json(
@@ -60,15 +59,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-
-    const body = repairSchema.parse(await request.json().catch(() => ({})));
-    const result = await repairCreditCardReconciliationIssues(
-      context.ownerFilter,
-      body,
-    );
-    return NextResponse.json(result, { status: 200 });
+    return await withOwnerContext(request, async (context) => {
+      const body = repairSchema.parse(await request.json().catch(() => ({})));
+      const result = await repairCreditCardReconciliationIssues(
+        context.ownerFilter,
+        body,
+      );
+      return NextResponse.json(result, { status: 200 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

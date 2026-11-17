@@ -1,7 +1,9 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { TransferType } from '@/generated/prisma/client';
-import { coerceToCalendarDayStart } from '@/lib/calendar-dates';
+import { coerceToCalendarDate, coerceToCalendarDayStart } from '@/lib/calendar-dates';
+import { DomainError } from '@/lib/finance/domain-error';
+import { isFundingWalletType } from '@/lib/finance/wallet-accounting';
 
 export type CreateUserToHouseTransferInput = {
   userId: number;
@@ -14,6 +16,30 @@ export type CreateUserToHouseTransferInput = {
   note?: string | null;
   date?: Date;
 };
+
+/**
+ * Both sides move cash: the user wallet is decremented and the house wallet
+ * incremented. Credit cards would read that as paying down debt and goal
+ * wallets sit outside liquidity, so only efectivo/débito may take part.
+ */
+async function assertTransferFundingWallet(
+  tx: Prisma.TransactionClient,
+  walletId: number,
+  side: 'user' | 'house',
+) {
+  const wallet = await tx.wallet.findUnique({
+    where: { id: walletId },
+    select: { type: true },
+  });
+  if (!wallet || !isFundingWalletType(wallet.type)) {
+    throw new DomainError(
+      'VALIDATION',
+      side === 'user'
+        ? 'La billetera personal debe ser de efectivo o débito'
+        : 'La billetera de la casa debe ser de efectivo o débito',
+    );
+  }
+}
 
 export async function createUserToHouseTransferInTx(
   tx: Prisma.TransactionClient,
@@ -30,6 +56,9 @@ export async function createUserToHouseTransferInTx(
     note,
     date = new Date(),
   } = input;
+
+  if (userWalletId) await assertTransferFundingWallet(tx, userWalletId, 'user');
+  if (houseWalletId) await assertTransferFundingWallet(tx, houseWalletId, 'house');
 
   const transfer = await tx.transfer.create({
     data: {
@@ -58,7 +87,7 @@ export async function createUserToHouseTransferInTx(
     data: {
       amount: amount.toString(),
       source: note ?? 'Transferencia desde usuario',
-      received_at: date,
+      received_at: coerceToCalendarDate(date),
       user_id: null,
       house_id: houseId,
       fortnight_id: houseFortnightId,

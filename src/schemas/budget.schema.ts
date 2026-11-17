@@ -103,7 +103,12 @@ export const updateBudgetAllocationsSchema = z.object({
   allocations: z.array(allocationSchema).min(1, 'Debes agregar al menos una asignación'),
 });
 
-export const updateBudgetSchema = step1Schema;
+/** Template fields; `allocations`, when sent, replace the stored ones in the same update. */
+export const updateBudgetSchema = step1Schema.and(
+  z.object({
+    allocations: z.array(allocationSchema).min(1, 'Debes agregar al menos una asignación').optional(),
+  }),
+);
 
 export const setBudgetActiveSchema = z.object({
   active: z.boolean(),

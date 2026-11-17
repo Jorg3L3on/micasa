@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { setBudgetActive } from '@/lib/finance/budget.service';
 import { setBudgetActiveSchema } from '@/schemas/budget.schema';
 
@@ -11,20 +11,20 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter } = context;
 
-    const { id: idParam } = await params;
-    const id = Number(idParam);
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
-    }
+      const { id: idParam } = await params;
+      const id = Number(idParam);
+      if (isNaN(id)) {
+        return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
+      }
 
-    const body = await request.json();
-    const { active, effective_date } = setBudgetActiveSchema.parse(body);
-    const budget = await setBudgetActive(id, ownerFilter, active, effective_date);
-    return NextResponse.json(budget, { status: 200 });
+      const body = await request.json();
+      const { active, effective_date } = setBudgetActiveSchema.parse(body);
+      const budget = await setBudgetActive(id, ownerFilter, active, effective_date);
+      return NextResponse.json(budget, { status: 200 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validation error', details: error.issues }, { status: 400 });

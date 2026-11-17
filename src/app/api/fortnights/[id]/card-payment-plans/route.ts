@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { formatStoredDateOnly } from '@/lib/calendar-dates';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   clearCreditCardPaymentPlan,
   upsertCreditCardPaymentPlan,
@@ -21,35 +21,33 @@ const parseFortnightId = async (params: RouteParams['params']) => {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const fortnightId = await parseFortnightId(params);
+      if (fortnightId == null) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
 
-    const fortnightId = await parseFortnightId(params);
-    if (fortnightId == null) {
-      return NextResponse.json(
-        { error: 'Valid id parameter is required' },
-        { status: 400 },
+      const body = await request.json();
+      const validated = cardPaymentPlanSchema.parse(body);
+
+      const plan = await upsertCreditCardPaymentPlan(
+        context.ownerFilter,
+        fortnightId,
+        validated.walletId,
+        validated.declareZero ? 0 : (validated.plannedAmount ?? 0),
+        {
+          declareZero: validated.declareZero === true,
+          scope: validated.scope ?? 'this_cycle',
+          cycleCount: validated.cycleCount,
+          validUntil: validated.validUntil,
+          overDebtReason: validated.over_debt_reason,
+        },
       );
-    }
 
-    const body = await request.json();
-    const validated = cardPaymentPlanSchema.parse(body);
-
-    const plan = await upsertCreditCardPaymentPlan(
-      context.ownerFilter,
-      fortnightId,
-      validated.walletId,
-      validated.declareZero ? 0 : (validated.plannedAmount ?? 0),
-      {
-        declareZero: validated.declareZero === true,
-        scope: validated.scope ?? 'this_cycle',
-        cycleCount: validated.cycleCount,
-        validUntil: validated.validUntil,
-      },
-    );
-
-    return NextResponse.json(
-      {
+      const payload = {
         walletId: plan.credit_card_wallet_id,
         fortnightId: plan.fortnight_id,
         plannedAmount: Number(plan.planned_amount),
@@ -59,9 +57,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         validUntil: plan.valid_until
           ? formatStoredDateOnly(plan.valid_until)
           : null,
-      },
-      { status: 200 },
-    );
+      };
+
+      if (plan.warning === 'OVER_DEBT') {
+        return NextResponse.json(
+          { ...payload, warning: plan.warning, excess: plan.excess },
+          { status: 200 },
+        );
+      }
+
+      return NextResponse.json(payload, { status: 200 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -74,11 +80,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (code === 'FORTNIGHT_NOT_FOUND' || code === 'WALLET_NOT_FOUND') {
       return NextResponse.json({ error: (error as Error).message }, { status: 404 });
     }
-    if (
-      code === 'AMOUNT_EXCEEDS_BALANCE' ||
-      code === 'AMOUNT_INVALID' ||
-      code === 'SCOPE_INVALID'
-    ) {
+    if (code === 'OVER_DEBT_REASON_REQUIRED') {
+      return NextResponse.json(
+        { error: (error as Error).message, code: 'OVER_DEBT_REASON_REQUIRED' },
+        { status: 400 },
+      );
+    }
+    if (code === 'AMOUNT_INVALID' || code === 'SCOPE_INVALID') {
       return NextResponse.json({ error: (error as Error).message }, { status: 400 });
     }
 
@@ -92,33 +100,32 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const fortnightId = await parseFortnightId(params);
+      if (fortnightId == null) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
 
-    const fortnightId = await parseFortnightId(params);
-    if (fortnightId == null) {
-      return NextResponse.json(
-        { error: 'Valid id parameter is required' },
-        { status: 400 },
+      const walletIdRaw = request.nextUrl.searchParams.get('walletId');
+      const walletId = walletIdRaw != null ? Number(walletIdRaw) : NaN;
+      if (!Number.isFinite(walletId) || walletId <= 0) {
+        return NextResponse.json(
+          { error: 'walletId query parameter is required' },
+          { status: 400 },
+        );
+      }
+
+      await clearCreditCardPaymentPlan(
+        context.ownerFilter,
+        fortnightId,
+        walletId,
       );
-    }
 
-    const walletIdRaw = request.nextUrl.searchParams.get('walletId');
-    const walletId = walletIdRaw != null ? Number(walletIdRaw) : NaN;
-    if (!Number.isFinite(walletId) || walletId <= 0) {
-      return NextResponse.json(
-        { error: 'walletId query parameter is required' },
-        { status: 400 },
-      );
-    }
-
-    await clearCreditCardPaymentPlan(
-      context.ownerFilter,
-      fortnightId,
-      walletId,
-    );
-
-    return NextResponse.json({ walletId, fortnightId }, { status: 200 });
+      return NextResponse.json({ walletId, fortnightId }, { status: 200 });
+    });
   } catch (error) {
     const code = (error as { code?: string }).code;
     if (code === 'FORTNIGHT_NOT_FOUND') {

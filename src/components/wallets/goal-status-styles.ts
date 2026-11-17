@@ -50,11 +50,9 @@ export const getGoalActiveCardStyle = (): CSSProperties => ({
   borderColor: activeRgba(0.45),
 });
 
-/** Vencida / Archivada border accents (fill comes from shell class). */
+/** Vencida / Archivada border tone (fill comes from shell class; no left accent). */
 export const getGoalOverdueCardStyle = (): CSSProperties => ({
   borderColor: overdueOklch(0.28),
-  borderLeftWidth: '3px',
-  borderLeftColor: overdueOklch(0.5),
 });
 
 export const goalCardShellClass = (visual: GoalVisualStyle): string => {
@@ -164,7 +162,6 @@ export const goalTipStripClass = (visual: GoalVisualStyle): string => {
     case 'muted':
       return [
         'border border-[oklch(37.3%_0.034_259.733_/_.25)] bg-[oklch(37.3%_0.034_259.733_/_.10)]',
-        'border-l-[3px] border-l-[oklch(37.3%_0.034_259.733)]',
         'text-foreground',
         'dark:border-[oklch(37.3%_0.034_259.733_/_.35)] dark:bg-[oklch(37.3%_0.034_259.733_/_.18)]',
       ].join(' ');

@@ -15,6 +15,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import type { FinanceContextType } from '@/types/finance-context';
+import { writeOwnerHintCookie } from '@/lib/owner-hint';
 
 const STORAGE_KEY = 'finance_context';
 
@@ -35,6 +36,8 @@ function persist(context: FinanceContextType, userId: number): void {
     STORAGE_KEY,
     JSON.stringify({ context, userId } satisfies StoredFinance),
   );
+  // Lets the proxy put the owner in the home redirect, so the server renders it first.
+  writeOwnerHintCookie(userId, context);
 }
 
 function readPersisted(userId: number): FinanceContextType | null {
@@ -69,6 +72,12 @@ const FinanceContext: Context<FinanceContextValue | null> = (() => {
 })();
 
 const DEFAULT_CONTEXT: FinanceContextType = { type: 'user', id: 0 };
+
+/** Keep the same object when the owner did not change, so effects keyed on it do not refire. */
+const sameOwnerOr =
+  (next: FinanceContextType) =>
+  (prev: FinanceContextType): FinanceContextType =>
+    prev.type === next.type && prev.id === next.id ? prev : next;
 
 /**
  * Inner component that uses useSearchParams. Must be inside Suspense so static
@@ -110,7 +119,7 @@ function FinanceProviderSync({
           type: ownerType,
           id: ownerId,
         };
-        setContext(urlContext);
+        setContext(sameOwnerOr(urlContext));
         persist(urlContext, userId);
         hasSyncedUrlRef.current = true;
         return;
@@ -122,13 +131,20 @@ function FinanceProviderSync({
       type: 'user',
       id: userId,
     };
-    setContext(nextContext);
+    setContext(sameOwnerOr(nextContext));
     persist(nextContext, userId);
     const params = new URLSearchParams(searchParams.toString());
     params.set('ownerType', nextContext.type);
     params.set('ownerId', String(nextContext.id));
     const query = params.toString();
-    router.replace(`${pathname}${query ? `?${query}` : ''}`);
+    const href = `${pathname}${query ? `?${query}` : ''}`;
+    // Without owner params the server rendered the user context: when that is
+    // the owner, only the URL needs the params (no second server render).
+    if (nextContext.type === 'user') {
+      window.history.replaceState(null, '', href);
+    } else {
+      router.replace(href);
+    }
     hasSyncedUrlRef.current = true;
   }, [session?.user?.id, searchParams, pathname, router, setContext, currentUserIdRef, hasSyncedUrlRef]);
 
@@ -142,14 +158,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const setUserContext = useCallback((userId: number) => {
     const next: FinanceContextType = { type: 'user', id: userId };
-    setContext(next);
+    setContext(sameOwnerOr(next));
     currentUserIdRef.current = userId;
     persist(next, userId);
   }, []);
 
   const setHouseContext = useCallback((houseId: number) => {
     const next: FinanceContextType = { type: 'house', id: houseId };
-    setContext(next);
+    setContext(sameOwnerOr(next));
     const uid = currentUserIdRef.current;
     if (uid != null) persist(next, uid);
   }, []);

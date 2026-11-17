@@ -1,7 +1,7 @@
 import { formatCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import prisma from '@/lib/prisma';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
@@ -41,70 +41,70 @@ function todayStr(): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter, ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter, ownerType, ownerId } = context;
 
-    const body = await request.json();
-    const data = bodySchema.parse(body);
-    const date = data.date ?? todayStr();
+      const body = await request.json();
+      const data = bodySchema.parse(body);
+      const date = data.date ?? todayStr();
 
-    const source = await prisma.expense.findFirst({
-      where: { id: data.id, ...ownerFilter },
-      select: {
-        description: true,
-        amount: true,
-        category_id: true,
-        wallet_id: true,
-      },
-    });
-    if (!source || source.category_id == null || source.wallet_id == null) {
-      return NextResponse.json(
-        { error: 'Expense not found' },
-        { status: 404 },
-      );
-    }
+      const source = await prisma.expense.findFirst({
+        where: { id: data.id, ...ownerFilter },
+        select: {
+          description: true,
+          amount: true,
+          category_id: true,
+          wallet_id: true,
+        },
+      });
+      if (!source || source.category_id == null || source.wallet_id == null) {
+        return NextResponse.json(
+          { error: 'Expense not found' },
+          { status: 404 },
+        );
+      }
 
-    const { year, month, period } = getCalendarFortnightRefForYmd(date);
+      const { year, month, period } = getCalendarFortnightRefForYmd(date);
 
-    const fortnight = await resolveOrCreateFortnight({
-      ownerType,
-      ownerId,
-      year,
-      month,
-      period,
-    });
+      const fortnight = await resolveOrCreateFortnight({
+        ownerType,
+        ownerId,
+        year,
+        month,
+        period,
+      });
 
-    const created = await createExpense({
-      fortnightId: fortnight.id,
-      categoryId: source.category_id,
-      description: source.description,
-      amount: decimalToNumber(source.amount),
-      isPaid: true,
-      paymentDate: date,
-      expenseTemplateId: null,
-      walletId: source.wallet_id,
-    });
-
-    return NextResponse.json(
-      {
-        id: created.id,
-        description: created.description,
-        amount: decimalToNumber(created.amount),
-        date: toDateStr(created.payment_date),
-        category: created.category ?? null,
-        categoryIcon: created.categoryIcon ?? null,
-        paymentMethod: created.paymentMethod ?? null,
-        walletType: null,
-        isPaid: true,
-        isRecurring: false,
-        creditInstallmentCurrent: null,
-        creditInstallmentTotal: null,
+      const created = await createExpense({
+        fortnightId: fortnight.id,
         categoryId: source.category_id,
+        description: source.description,
+        amount: decimalToNumber(source.amount),
+        isPaid: true,
+        paymentDate: date,
+        expenseTemplateId: null,
         walletId: source.wallet_id,
-      },
-      { status: 201 },
-    );
+      });
+
+      return NextResponse.json(
+        {
+          id: created.id,
+          description: created.description,
+          amount: decimalToNumber(created.amount),
+          date: toDateStr(created.payment_date),
+          category: created.category ?? null,
+          categoryIcon: created.categoryIcon ?? null,
+          paymentMethod: created.paymentMethod ?? null,
+          walletType: null,
+          isPaid: true,
+          isRecurring: false,
+          creditInstallmentCurrent: null,
+          creditInstallmentTotal: null,
+          categoryId: source.category_id,
+          walletId: source.wallet_id,
+        },
+        { status: 201 },
+      );
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

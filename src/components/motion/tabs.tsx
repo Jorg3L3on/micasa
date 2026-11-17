@@ -101,13 +101,21 @@ export const TabsList = ({
   children,
   className,
   wrapperClassName,
+  overflowControls = 'arrows',
   'aria-label': ariaLabel,
 }: {
   children: ReactNode;
   className?: string;
   wrapperClassName?: string;
+  /**
+   * `arrows`: chevron buttons over both edges when the list overflows.
+   * `fade`: edge fades only (swipe, keyboard and focus still scroll), for
+   * narrow lists where a chevron would sit on a label.
+   */
+  overflowControls?: 'arrows' | 'fade';
   'aria-label'?: string;
 }) => {
+  const showArrows = overflowControls === 'arrows';
   const { variant, value, setValue } = useTabs();
   const reduce = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -157,8 +165,9 @@ export const TabsList = ({
         0,
         Math.min(max, rtl ? max + viewport.scrollLeft : viewport.scrollLeft),
       );
-      const left = frameBox.left + (fromLeft > 1 ? 36 : 0);
-      const right = frameBox.right - (fromLeft < max - 1 ? 36 : 0);
+      const inset = showArrows ? 36 : 40;
+      const left = frameBox.left + (fromLeft > 1 ? inset : 0);
+      const right = frameBox.right - (fromLeft < max - 1 ? inset : 0);
       const delta =
         item.left < left
           ? item.left - left
@@ -172,7 +181,7 @@ export const TabsList = ({
         });
       }
     },
-    [reduce],
+    [reduce, showArrows],
   );
 
   useLayoutEffect(() => {
@@ -325,7 +334,7 @@ export const TabsList = ({
         wrapperClassName,
       )}
     >
-      {edges.overflow ? (
+      {edges.overflow && showArrows ? (
         <button
           type="button"
           aria-label="Desplazar pestañas a la izquierda"
@@ -383,7 +392,7 @@ export const TabsList = ({
           className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 rounded-r-[inherit] backdrop-blur-[2px] [mask-image:linear-gradient(to_left,black,transparent)]"
         />
       ) : null}
-      {edges.overflow ? (
+      {edges.overflow && showArrows ? (
         <button
           type="button"
           aria-label="Desplazar pestañas a la derecha"
@@ -408,6 +417,7 @@ export const TabsTrigger = ({
   stretch = false,
   'aria-label': ariaLabel,
   title,
+  disabled = false,
 }: {
   value: string;
   children: ReactNode;
@@ -419,6 +429,7 @@ export const TabsTrigger = ({
   stretch?: boolean;
   'aria-label'?: string;
   title?: string;
+  disabled?: boolean;
 }) => {
   const { value: current, setValue, layoutId, variant } = useTabs();
   const active = current === value;
@@ -436,12 +447,14 @@ export const TabsTrigger = ({
         title={title}
         tabIndex={active ? 0 : -1}
         data-tabs-value={value}
+        disabled={disabled}
         onClick={() => setValue(value)}
         className={cn(
           'relative isolate -mb-px inline-flex min-h-[44px] shrink-0 items-center whitespace-nowrap px-3 pb-2.5 pt-1 text-sm font-medium transition-colors',
           active
             ? 'text-foreground'
             : 'text-muted-foreground hover:text-foreground',
+          'disabled:pointer-events-none disabled:opacity-40',
           className,
         )}
       >
@@ -449,6 +462,8 @@ export const TabsTrigger = ({
         {active ? (
           <motion.span
             layoutId={layoutId}
+            // Only a tab change slides it. If the bar moves on the page, it moves with it.
+            layoutDependency={current}
             layout
             className={cn(
               'absolute bottom-0 left-0 right-0 h-px bg-primary',
@@ -468,6 +483,8 @@ export const TabsTrigger = ({
         <motion.span
           data-tabs-indicator=""
           layoutId={layoutId}
+          // Only a tab change slides it. If the bar moves on the page, it moves with it.
+          layoutDependency={current}
           layout
           style={{ borderRadius: variant === 'pill' ? 9999 : 8 }}
           className={cn(
@@ -485,11 +502,12 @@ export const TabsTrigger = ({
         title={title}
         tabIndex={active ? 0 : -1}
         data-tabs-value={value}
+        disabled={disabled}
         data-state={active ? 'active' : 'inactive'}
         onClick={() => setValue(value)}
         className={cn(
           'group relative z-10 inline-flex items-center justify-center whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium outline-none',
-          'text-muted-foreground hover:text-foreground',
+          'text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40',
           'focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           radius,
           stretch && 'w-full',

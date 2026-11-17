@@ -5,6 +5,7 @@ import { ViewTransition } from 'react';
 import { DirectionalTransition } from '@/components/view-transition/DirectionalTransition';
 import { WalletCardVtPlaceholder } from '@/components/wallets/WalletCardVtPlaceholder';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WalletDetailBodySkeleton } from '@/components/wallets/DetailBodySkeletons';
 import { walletCardViewTransitionName } from '@/lib/ui/wallet-card-view-transition';
 
 /**
@@ -28,20 +29,10 @@ export default function WalletDetailLoading() {
               <WalletCardVtPlaceholder walletId={walletId} variant="funding" />
             </ViewTransition>
           ) : (
-            <Skeleton className="mx-auto h-[12rem] w-full max-w-md rounded-face sm:h-[13.5rem]" />
+            <Skeleton className="mx-auto aspect-[1.586] w-full max-w-md rounded-face lg:max-w-lg" />
           )}
         </div>
-        <div className="space-y-3 px-1 py-7 sm:py-9">
-          <Skeleton className="h-12 w-full rounded-full" />
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-[4.5rem] rounded-2xl" />
-            ))}
-          </div>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm">
-          <Skeleton className="h-48 w-full rounded-xl" />
-        </div>
+        <WalletDetailBodySkeleton />
       </div>
     </DirectionalTransition>
   );

@@ -5,7 +5,7 @@ import {
   updateLoanForOwner,
 } from '@/lib/finance/loan.service';
 import { reportApiError } from '@/lib/observability/report-error';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { updateLoanSchema } from '@/schemas/loan.schema';
 
 export async function PATCH(
@@ -17,27 +17,27 @@ export async function PATCH(
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
-    const { id } = await params;
-    const loanId = Number(id);
-    if (!Number.isInteger(loanId) || loanId <= 0) {
-      return NextResponse.json(
-        { error: 'El id del préstamo es inválido' },
-        { status: 400 },
-      );
-    }
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
+      const { id } = await params;
+      const loanId = Number(id);
+      if (!Number.isInteger(loanId) || loanId <= 0) {
+        return NextResponse.json(
+          { error: 'El id del préstamo es inválido' },
+          { status: 400 },
+        );
+      }
 
-    const body = await request.json();
-    const input = updateLoanSchema.parse(body);
-    const loan = await updateLoanForOwner(loanId, context.ownerFilter, input);
+      const body = await request.json();
+      const input = updateLoanSchema.parse(body);
+      const loan = await updateLoanForOwner(loanId, context.ownerFilter, input);
 
-    return NextResponse.json(loan, { status: 200 });
+      return NextResponse.json(loan, { status: 200 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -65,31 +65,31 @@ export async function DELETE(
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
-    const { id } = await params;
-    const loanId = Number(id);
-    if (!Number.isInteger(loanId) || loanId <= 0) {
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
+      const { id } = await params;
+      const loanId = Number(id);
+      if (!Number.isInteger(loanId) || loanId <= 0) {
+        return NextResponse.json(
+          { error: 'El id del préstamo es inválido' },
+          { status: 400 },
+        );
+      }
+
+      const result = await deleteLoanForOwner(loanId, context.ownerFilter);
+
       return NextResponse.json(
-        { error: 'El id del préstamo es inválido' },
-        { status: 400 },
+        {
+          message: 'Préstamo eliminado correctamente',
+          ...result,
+        },
+        { status: 200 },
       );
-    }
-
-    const result = await deleteLoanForOwner(loanId, context.ownerFilter);
-
-    return NextResponse.json(
-      {
-        message: 'Préstamo eliminado correctamente',
-        ...result,
-      },
-      { status: 200 },
-    );
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Error al eliminar el préstamo';

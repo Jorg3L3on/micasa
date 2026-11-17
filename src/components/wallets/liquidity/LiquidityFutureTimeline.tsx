@@ -370,10 +370,11 @@ export const LiquidityFutureTimeline = ({
                     event.title.replace(/^Terminas de pagar\s+/i, ''),
                   )
                   .join(', ');
+        const monthDebt = monthDebtPaymentsTotal(month.debt_items ?? []);
         return {
           label: formatShortMonthLabel(month.month_key),
           monthKey: month.month_key,
-          monthDebt: monthDebtPaymentsTotal(month.debt_items ?? []),
+          monthDebt,
           outstandingDebt: month.outstanding_debt_total ?? 0,
           income: month.expected_income_total,
           monthlyRemaining: month.monthly_remaining,

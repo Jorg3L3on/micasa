@@ -75,7 +75,10 @@ describe('POST /api/oauth/consent contexts', () => {
     const response = await POST(
       new NextRequest('https://micasa.example/api/oauth/consent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://micasa.example',
+        },
         body: JSON.stringify({
           ...CONSENT_FIELDS,
           context_owner_type: undefined,
@@ -92,7 +95,10 @@ describe('POST /api/oauth/consent contexts', () => {
     const response = await POST(
       new NextRequest('https://micasa.example/api/oauth/consent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://micasa.example',
+        },
         body: JSON.stringify(CONSENT_FIELDS),
       }),
     );
@@ -122,7 +128,10 @@ describe('POST /api/oauth/consent contexts', () => {
     const response = await POST(
       new NextRequest('https://micasa.example/api/oauth/consent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Origin: 'https://micasa.example',
+        },
         body,
       }),
     );

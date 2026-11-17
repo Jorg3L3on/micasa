@@ -1,6 +1,5 @@
 'use client';
 
-import { ErrorBanner } from '@/components/error-banner';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +14,13 @@ import {
   OVERLAY_GROUPED_CARD_CLASS,
   OVERLAY_PRIMARY_BUTTON_CLASS,
   OVERLAY_ROW_INPUT_CLASS,
+  OverlayErrorBanner,
 } from '@/components/overlay/overlay-form';
+import { OverDebtReasonFields } from '@/components/credit-cards/over-debt-reason-field';
+import {
+  cardDebtExcess,
+  type CardBankChargeReasonValue,
+} from '@/components/credit-cards/over-debt-reason';
 
 export type CreditCardExternalPaymentSubmitPayload = {
   mode: 'external';
@@ -23,6 +28,7 @@ export type CreditCardExternalPaymentSubmitPayload = {
   paid_at: string;
   note: string | null;
   adjusts_debt: boolean;
+  bank_charge?: { reason: CardBankChargeReasonValue };
 };
 
 export type CreditCardExternalPaymentDialogProps = {
@@ -30,6 +36,10 @@ export type CreditCardExternalPaymentDialogProps = {
   onOpenChange: (open: boolean) => void;
   /** Period obligation amount. Null leaves the field empty (missing corte). */
   prefillAmount: number | null;
+  /** Recorded card debt. An amount above it asks for a bank charge reason. */
+  recordedDebt: number;
+  /** Reason saved on the payment plan, when one applies to this card. */
+  initialBankChargeReason?: CardBankChargeReasonValue | null;
   submitting: boolean;
   error: string | null;
   onConfirm: (data: CreditCardExternalPaymentSubmitPayload) => Promise<void>;
@@ -39,6 +49,8 @@ export const CreditCardExternalPaymentDialog = ({
   open,
   onOpenChange,
   prefillAmount,
+  recordedDebt,
+  initialBankChargeReason = null,
   submitting,
   error,
   onConfirm,
@@ -47,7 +59,11 @@ export const CreditCardExternalPaymentDialog = ({
   const [paidAt, setPaidAt] = useState(todayCalendarDate());
   const [note, setNote] = useState('');
   const [adjustsDebt, setAdjustsDebt] = useState(true);
+  const [bankChargeReason, setBankChargeReason] =
+    useState<CardBankChargeReasonValue | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const excess = adjustsDebt ? cardDebtExcess(amount, recordedDebt) : 0;
+  const reasonMissing = excess > 0 && bankChargeReason == null;
 
   useEffect(() => {
     if (!open) return;
@@ -56,8 +72,9 @@ export const CreditCardExternalPaymentDialog = ({
     setPaidAt(todayCalendarDate());
     setNote('');
     setAdjustsDebt(true);
+    setBankChargeReason(initialBankChargeReason);
     setLocalError(null);
-  }, [open, prefillAmount]);
+  }, [open, prefillAmount, initialBankChargeReason]);
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -68,12 +85,17 @@ export const CreditCardExternalPaymentDialog = ({
       return;
     }
 
+    if (excess > 0 && bankChargeReason == null) return;
+
     await onConfirm({
       mode: 'external',
       amount,
       paid_at: paidAt,
       note: note.trim() || null,
       adjusts_debt: adjustsDebt,
+      ...(excess > 0 && bankChargeReason
+        ? { bank_charge: { reason: bankChargeReason } }
+        : {}),
     });
   };
 
@@ -87,6 +109,7 @@ export const CreditCardExternalPaymentDialog = ({
       description="Marca el pago como realizado sin descontar una billetera de efectivo o débito."
       busy={submitting}
     >
+      {({ handleSelectOpenChange }) => (
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -96,7 +119,7 @@ export const CreditCardExternalPaymentDialog = ({
         aria-busy={submitting}
       >
         {displayError ? (
-          <ErrorBanner>{displayError}</ErrorBanner>
+          <OverlayErrorBanner>{displayError}</OverlayErrorBanner>
         ) : null}
 
         {prefillAmount != null && prefillAmount > 0 ? (
@@ -136,6 +159,13 @@ export const CreditCardExternalPaymentDialog = ({
           </GroupedRow>
         </div>
 
+        <OverDebtReasonFields
+          excess={excess}
+          reason={bankChargeReason}
+          onReasonChange={setBankChargeReason}
+          onSelectOpenChange={handleSelectOpenChange}
+        />
+
         <ToggleField
           layout="row"
           className="px-3"
@@ -148,13 +178,14 @@ export const CreditCardExternalPaymentDialog = ({
 
         <Button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || reasonMissing}
           aria-busy={submitting}
           className={OVERLAY_PRIMARY_BUTTON_CLASS}
         >
           {submitting ? 'Guardando…' : 'Ya pagado'}
         </Button>
       </form>
+      )}
     </ResponsiveOverlay>
   );
 };

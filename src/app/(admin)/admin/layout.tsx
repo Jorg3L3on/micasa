@@ -51,6 +51,18 @@ export default async function AdminLayout({
             Admin
           </Link>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <Link
+              href="/admin"
+              className="rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60 hover:text-foreground"
+            >
+              Usuarios
+            </Link>
+            <Link
+              href="/admin/audit"
+              className="rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60 hover:text-foreground"
+            >
+              Auditoría
+            </Link>
             <span className="hidden sm:inline truncate max-w-[200px]">
               {admin.email}
             </span>

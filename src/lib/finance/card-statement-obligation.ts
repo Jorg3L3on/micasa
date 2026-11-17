@@ -3,7 +3,12 @@ import {
   parseCalendarDate,
   todayCalendarDate,
 } from '@/lib/calendar-dates';
-import { minimumPaymentForPeriod } from '@/lib/finance/card-period-obligation';
+import {
+  minimumPaymentForPeriod,
+  statementOverRecordedMessage,
+} from '@/lib/finance/card-period-obligation';
+
+export { statementOverRecordedMessage };
 
 /** How the remaining statement due amount was derived. */
 export type CardObligationAmountSource =
@@ -364,11 +369,17 @@ export const deriveObligationAmountSource = (input: {
     allowOutstandingBalanceFallback: input.allowOutstandingBalanceFallback,
   }).source;
 
+/**
+ * Unpaid planned amount. Not capped at `remainingStatementDue` or at recorded
+ * debt: a plan above the debt is the amount the surfaces must keep.
+ */
 export const getRemainingPlannedAmount = (input: {
   plannedGrossAmount: number | null;
   paymentsAppliedToStatement: number;
+  /** Statement remainder. Does not limit the planned amount. */
   remainingStatementDue: number;
 }): number | null => {
+  void input.remainingStatementDue;
   if (input.plannedGrossAmount == null) {
     return null;
   }

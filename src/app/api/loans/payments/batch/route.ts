@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { batchUpdateLoanPaymentsForOwner } from '@/lib/finance/loan.service';
 import { reportApiError } from '@/lib/observability/report-error';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import { batchUpdateLoanPaymentsSchema } from '@/schemas/loan.schema';
 
 export async function POST(request: NextRequest) {
@@ -11,24 +11,24 @@ export async function POST(request: NextRequest) {
     | { userId: number; ownerType: 'user' | 'house'; ownerId: number }
     | undefined;
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    owner = {
-      userId: context.userId,
-      ownerType: context.ownerType,
-      ownerId: context.ownerId,
-    };
-    const body = await request.json();
-    const input = batchUpdateLoanPaymentsSchema.parse(body);
-    const payments = await batchUpdateLoanPaymentsForOwner(context.ownerFilter, {
-      paymentIds: input.paymentIds,
-      action: input.action,
-      paidAt: input.paidAt,
-      sourceWalletId: input.sourceWalletId ?? undefined,
-      note: input.note,
-    });
+    return await withOwnerContext(request, async (context) => {
+      owner = {
+        userId: context.userId,
+        ownerType: context.ownerType,
+        ownerId: context.ownerId,
+      };
+      const body = await request.json();
+      const input = batchUpdateLoanPaymentsSchema.parse(body);
+      const payments = await batchUpdateLoanPaymentsForOwner(context.ownerFilter, {
+        paymentIds: input.paymentIds,
+        action: input.action,
+        paidAt: input.paidAt,
+        sourceWalletId: input.sourceWalletId ?? undefined,
+        note: input.note,
+      });
 
-    return NextResponse.json({ payments }, { status: 200 });
+      return NextResponse.json({ payments }, { status: 200 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

@@ -9,7 +9,6 @@ type LiquidityVisualMetricProps = {
   hint: string;
   amount: number;
   icon: ReactNode;
-  borderClass: string;
   amountClassName?: string;
   statusLabel?: string;
   statusTone?: 'emerald' | 'amber' | 'destructive' | 'sky' | 'violet';

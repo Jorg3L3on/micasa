@@ -380,6 +380,71 @@ export function resolveInitialWindow(
   return forward ?? backward;
 }
 
+/** What the Panel financiero is showing; the calendar opens on it. */
+export type PanelCalendarAnchor = {
+  year: number;
+  month: number;
+  period: CalendarFortnightPeriod;
+  todayYmd: string;
+};
+
+/**
+ * Week of the Panel month to open on: today's week when today is in that
+ * month; otherwise the first Monday–Sunday week with most of its days (4+)
+ * in the month, so a month starting on a weekend does not open on the
+ * previous month.
+ */
+export function panelMonthWeek(
+  year: number,
+  month: number,
+  todayYmd: string,
+): CalendarWindowBounds {
+  const viewed = monthBounds(year, month);
+  if (todayYmd >= viewed.startYmd && todayYmd <= viewed.endYmd) {
+    return weekBoundsContaining(todayYmd);
+  }
+  const first = weekBoundsContaining(viewed.startYmd);
+  const daysInMonth = daysBetween(viewed.startYmd, first.endYmd) + 1;
+  if (daysInMonth >= 4) return first;
+  const startYmd = addCalendarDays(first.startYmd, 7);
+  return { startYmd, endYmd: addCalendarDays(startYmd, 6) };
+}
+
+/**
+ * Window for `mode` taken from the Panel's month (and quincena for the
+ * fortnight view), ignoring which months exist.
+ */
+export function panelAnchoredWindow(
+  mode: CalendarViewMode,
+  anchor: PanelCalendarAnchor,
+): CalendarWindowBounds {
+  if (mode === 'month') return monthBounds(anchor.year, anchor.month);
+  if (mode === 'fortnight') {
+    return getFortnightYmdBounds(anchor.year, anchor.month, anchor.period);
+  }
+  return panelMonthWeek(anchor.year, anchor.month, anchor.todayYmd);
+}
+
+/**
+ * Panel-anchored window when every month it touches exists; otherwise the
+ * nearest valid window to it. Null when no valid window exists.
+ */
+export function resolvePanelWindow(
+  mode: CalendarViewMode,
+  anchor: PanelCalendarAnchor,
+  createdMonths: CalendarYearMonth[],
+): CalendarWindowBounds | null {
+  if (createdMonths.length === 0) return null;
+  const candidate = panelAnchoredWindow(mode, anchor);
+  if (
+    isWindowFullyCreated(candidate.startYmd, candidate.endYmd, createdMonths)
+  ) {
+    return candidate;
+  }
+  // endYmd always sits in the candidate's own week / quincena / month.
+  return resolveInitialWindow(mode, candidate.endYmd, createdMonths);
+}
+
 /** Fortnight ref for a window start (for titles). */
 export function fortnightRefForWindow(
   bounds: CalendarWindowBounds,

@@ -4,6 +4,7 @@ import {
   buildBudgetSpendExpenseWhere,
   computeEffectiveAllocated,
   computePeriodSpendByAllocations,
+  computePeriodSpendsByAllocations,
   daysInclusiveWallClock,
   getOverlapRatio,
   getPeriodOverlap,
@@ -216,3 +217,97 @@ describe('computePeriodSpendByAllocations', () => {
     expect(groupBy.mock.calls[0][0].where.wallet_id).toEqual({ in: [1] });
   });
 });
+
+describe('computePeriodSpendsByAllocations', () => {
+  const first = {
+    start_date: startOfCalendarDay('2026-05-31'),
+    end_date: endOfCalendarDay('2026-06-14'),
+  };
+  const second = {
+    start_date: startOfCalendarDay('2026-06-15'),
+    end_date: endOfCalendarDay('2026-06-29'),
+  };
+  // Grouped by wallet, category and payment date over both windows.
+  const rows = [
+    { wallet_id: 1, category_id: 10, payment_date: startOfCalendarDay('2026-06-02'), _sum: { amount: 50 } },
+    { wallet_id: 1, category_id: 11, payment_date: startOfCalendarDay('2026-06-03'), _sum: { amount: 70 } },
+    { wallet_id: 1, category_id: 10, payment_date: startOfCalendarDay('2026-06-20'), _sum: { amount: 30 } },
+    { wallet_id: 2, category_id: 10, payment_date: startOfCalendarDay('2026-06-21'), _sum: { amount: 25 } },
+    { wallet_id: 2, category_id: 20, payment_date: startOfCalendarDay('2026-06-05'), _sum: { amount: 999 } },
+  ];
+
+  it('splits one grouped query per window and matches the per-period results', async () => {
+    const groupBy = vi.fn().mockResolvedValue(rows);
+    const findMany = vi.fn().mockResolvedValue([{ id: 11, parent_id: 10 }]);
+    const db = { expense: { groupBy }, category: { findMany } } as unknown as Parameters<
+      typeof computePeriodSpendsByAllocations
+    >[0];
+
+    const parent = [{ wallet_id: 1, category_id: 10, amount: 500 }];
+    const anyWallet = [{ wallet_id: null, category_id: 10, amount: 300 }];
+    const results = await computePeriodSpendsByAllocations(
+      db,
+      [
+        { allocations: parent, window: first },
+        { allocations: [], window: first },
+        { allocations: parent, window: second },
+        { allocations: anyWallet, window: second },
+      ],
+      ownerFilter,
+    );
+
+    expect(results).toEqual([
+      { total_spent: 120, by_allocation: [{ spent_amount: 120 }] },
+      { total_spent: 0, by_allocation: [] },
+      { total_spent: 30, by_allocation: [{ spent_amount: 30 }] },
+      { total_spent: 55, by_allocation: [{ spent_amount: 55 }] },
+    ]);
+    expect(groupBy).toHaveBeenCalledTimes(1);
+    expect(findMany).toHaveBeenCalledTimes(1);
+    expect(groupBy.mock.calls[0][0]).toMatchObject({
+      by: ['wallet_id', 'category_id', 'payment_date'],
+      where: {
+        user_id: 1,
+        is_paid: true,
+        category_id: { in: [10, 11] },
+        payment_date: { gte: first.start_date, lte: second.end_date },
+      },
+    });
+    expect(groupBy.mock.calls[0][0].where.wallet_id).toBeUndefined();
+
+    // Same answers as the per-period function on that window's rows.
+    const perPeriod = async (allocations: typeof parent | typeof anyWallet, window: typeof first) => {
+      const inWindow = rows
+        .filter((r) => r.payment_date >= window.start_date && r.payment_date <= window.end_date)
+        .reduce<Map<string, { wallet_id: number; category_id: number; _sum: { amount: number } }>>((map, r) => {
+          const key = `${r.wallet_id}|${r.category_id}`;
+          const prev = map.get(key);
+          map.set(key, { wallet_id: r.wallet_id, category_id: r.category_id, _sum: { amount: (prev?._sum.amount ?? 0) + r._sum.amount } });
+          return map;
+        }, new Map());
+      const single = {
+        expense: { groupBy: vi.fn().mockResolvedValue([...inWindow.values()]) },
+        category: { findMany: vi.fn().mockResolvedValue([{ id: 11, parent_id: 10 }]) },
+      } as unknown as Parameters<typeof computePeriodSpendByAllocations>[0];
+      return computePeriodSpendByAllocations(single, allocations, window, ownerFilter);
+    };
+    expect(results[0]).toEqual(await perPeriod(parent, first));
+    expect(results[2]).toEqual(await perPeriod(parent, second));
+    expect(results[3]).toEqual(await perPeriod(anyWallet, second));
+  });
+
+  it('does not query when no request has allocations', async () => {
+    const groupBy = vi.fn();
+    const db = { expense: { groupBy } } as unknown as Parameters<
+      typeof computePeriodSpendsByAllocations
+    >[0];
+    const results = await computePeriodSpendsByAllocations(
+      db,
+      [{ allocations: [], window: first }],
+      ownerFilter,
+    );
+    expect(results).toEqual([{ total_spent: 0, by_allocation: [] }]);
+    expect(groupBy).not.toHaveBeenCalled();
+  });
+});
+

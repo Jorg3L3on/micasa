@@ -16,10 +16,20 @@ export const buildProtectedResourceMetadata = (request?: Request) => {
   };
 };
 
+/**
+ * Exactly what the token endpoint accepts: `none` (PKCE) and
+ * `client_secret_post` (confidential DCR clients, also with PKCE).
+ * private_key_jwt is not offered: ChatGPT then uses none + PKCE (JOR-90) and
+ * a client_assertion, if sent, is ignored (MIC-I5).
+ */
 export const OAUTH_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED = [
   'none',
   'client_secret_post',
 ] as const;
+
+/** Public connector docs (the app has no /docs route). */
+export const MCP_SERVICE_DOCUMENTATION_URL =
+  'https://github.com/Jorg3L3on/micasa/blob/main/docs/mcp-connector.md';
 
 export const buildAuthorizationServerMetadata = (request?: Request) => {
   const issuer = getOAuthIssuer(request);
@@ -37,12 +47,6 @@ export const buildAuthorizationServerMetadata = (request?: Request) => {
     ],
     scopes_supported: MCP_OAUTH_SCOPES,
     client_id_metadata_document_supported: true,
-    service_documentation: `${issuer}/docs/mcp-connector`,
+    service_documentation: MCP_SERVICE_DOCUMENTATION_URL,
   };
-};
-
-export const buildWwwAuthenticateChallenge = (request?: Request): string => {
-  const issuer = getOAuthIssuer(request);
-  const resourceMetadataUrl = `${issuer}/.well-known/oauth-protected-resource`;
-  return `Bearer realm="mcp", resource_metadata="${resourceMetadataUrl}", scope="read"`;
 };

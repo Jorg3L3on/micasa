@@ -6,11 +6,11 @@ Encode the UI in **tokens, recipes, and live screenshots of this codebase**. Do 
 
 | Surface | Route | Code |
 | --- | --- | --- |
-| Marketing landing | `/` | `src/components/landing/*`. Same Geist + Manrope and light/dark theme as the app. |
+| Marketing landing | `/` | `src/components/landing/*`. Same Geist + Manrope as the app; dark only. |
 | Login and signup | `/login`, `/register` | `src/components/auth/*` (`AuthStage`, `auth-form-kit`) |
 | Panel financiero | `/monthly/{year}/{month}` | `src/components/monthly/*`, `src/app/(app)/monthly/` |
 
-Runtime tokens live in `src/app/globals.css` (`.dark` for the app, `.landing-root` for marketing). Default theme is **dark** (`ThemeProvider` `defaultTheme="dark"`). **Light mode is a supported secondary theme** (toggle / `d` hotkey); new work must look correct in **both**, with dark still the primary product look.
+Runtime tokens live in `src/app/globals.css` (`.dark` for the app; the landing's own rules are in `src/components/landing/landing.css`). Default theme is **dark** (`ThemeProvider` `defaultTheme="dark"`). **Light mode is a supported secondary theme** (toggle / `d` hotkey); new work must look correct in **both**, with dark still the primary product look.
 
 Agent entry points:
 
@@ -44,7 +44,7 @@ Navy canvas, glass cards, **electric-blue primaries**, **blue → magenta** acce
 | Success / paid | emerald (`#34d399`, `emerald-400`) | `--chart-3` |
 | Danger | destructive token | `--destructive` |
 
-Brand mark (`MicasaMark`): display the optimized `public/brand/mark-160.png` through `next/image`. Do not redraw it. Icon scripts still read the source `public/brand/mark.png` and plate it on navy `#060914`. Route progress (`NextTopLoader`): `#3a37fc`.
+Brand mark (`MicasaMark`): a rounded roof over an "M", filled with a diagonal gradient `#2563EB → #8B3FD9`. Display the exported `public/brand/mark.svg` (gradient on transparent). The plated versions are `public/brand/icon-rounded.svg` and `icon-square.svg` (white mark on the gradient). Do not redraw them: to change the artwork, re-export it and run `npm run import:brand-assets <export-dir>`, which also refreshes the favicons and PWA icons. `BrandLoader`'s comet trail follows the mark gradient. Route progress (`NextTopLoader`): `#3a37fc`.
 
 Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/images/orion-tokens.svg).
 
@@ -54,15 +54,18 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 
 ### Marketing landing (`/`)
 
-The landing follows the signed-in theme. `ThemeProvider` (`attribute="class"`, `defaultTheme="dark"`, `enableSystem`) wraps the root layout, and the landing uses the same `--background`, `--card`, `--foreground`, type scale, `Button`, and `<Money>` as the app. Light is a working theme here, not a dark-only exception.
+The landing is **dark only**. Its root carries `dark` and `mc-root`, so it shows the Orion dark tokens whatever theme the visitor uses in the app; there is no light landing and no theme toggle on it. Its rules live in `src/components/landing/landing.css` (classes prefixed `mc-`), and its example figures and copy in `src/components/landing/landing-data.ts`. `/privacy` and `/terms` keep `marketing-legal-shell` and follow the app theme.
 
-- **Fonts:** Geist for body, Manrope for `h1`–`h3`. No Nunito and no landing-only font variables.
-- **Type scale:** `text-display`, `text-title`, `text-section`, `text-body`, `text-caption`, `eyebrow`. Nothing smaller than caption.
-- **Canvas:** `bg-background`. `LandingAtmosphere` orbs use `color-mix` of `--primary`, `--chart-2`, and `--chart-4`. Loops run only under `prefers-reduced-motion: no-preference`. No pointer spotlight, parallax, or magnetic controls.
-- **Hero:** `.landing-hero-wash` is a marketing-only wash built from those tokens and `--shadow-panel`. One primary `Button` (`Crear cuenta`); the second action is `ghost`.
-- **Product:** real screenshots in `public/landing/` (`next/image`, webp), desktop and mobile, light and dark. Both themes are in the first HTML; `.dark` on `<html>` shows one and hides the other, so the shot does not swap after paint. There is no pricing section — the product has no paid plans; copy may say it is free to use. Statement import is the card action Más → Estado de cuenta (dialog Importar estado de cuenta): the user uploads a PDF. Agents are one optional caption pointing at Configuración → Conexiones (`/settings/connections`), not a headline.
-- **Quincena block:** normal document flow below `md` and whenever reduced motion is on. From `md` up, with motion allowed, the pair sits in a 140vh sticky stage.
-- **Money** on the landing uses `<Money>` / `formatCurrency` (sans, tabular). Status chips use `src/lib/status-tone.ts`.
+- **Tokens:** canvas `#060914`, card `#0d1327`, text `#f7f8ff`, secondary text `#c9cee0` / `#aab1c9`, primary `#3a37fc` with the violet ring `#911efe`. Story colours: first quincena `#8f9bff`, second quincena `#e08cff`, paycheck `#34d399`, payments `#ffc45c`, storm charges `#ff8fb0`.
+- **Fonts:** Manrope 800 for headlines, Geist for body, Geist Mono for eyebrows, day numbers and amounts. No landing-only typeface.
+- **Header:** floating glass pill, sticky 12px from the top: mark + MiCasa, section links (hidden under 900px), Iniciar sesión (hidden under 520px), Crear cuenta. The brand mark is `public/brand/mark.svg`, never redrawn.
+- **Hero:** a WebGL particle story in six scenes (El caos, El mes, El corte, El cobro, Los pagos, MiCasa) with a 2D label canvas on top. The headline, sublines and buttons are server-rendered HTML and paint first; the engine (`hero-engine.ts`, raw WebGL 1, no library) loads in its own chunk afterwards. From `md` up with motion allowed the hero pins and the scroll drives the scenes; below `md` it autoplays on a timer with a pause button. The camera follows the pointer and particles near it push away and brighten: pointer reaction is part of this page.
+- **Fallbacks:** with `prefers-reduced-motion` nothing moves by itself: the hero rests on scene 3 (El mes se parte en dos), reveals, the word band and transitions are off. Without WebGL, or after a lost context, the hero shows the still `public/landing/hero-still-{desktop,mobile}.webp`. Both keep every section usable.
+- **Calls to action:** pills. The primary one uses the app's primary fill and violet ring; the second is a ghost pill. One primary per view.
+- **Product:** no screenshots. The sections are small playable pieces built from the example figures (panel with two quincenas, Simular compra, Proyección, Billeteras, four tiles). There is no pricing, testimonial or statistics section — the product has no paid plans; copy may say it is free. Statement import is described as uploading the card's PDF; the landing never says it connects to a bank.
+- **Motion below the hero:** sections rise in and the statement lights up with CSS scroll timelines where the browser has them; elsewhere the final state shows. Cards lift on hover.
+- **Money** on the landing is whole pesos from `formatPesos` in `landing-data.ts` (peso sign, thousands separators, no cents), tabular figures. Every figure and name on the page is an invented example.
+- **Accessibility:** canvases are decorative; the story is also in the page as text. Any motion that starts by itself has a pause control. Touch targets are at least 44px; focus uses the violet ring.
 
 ### Logged-in app (and login)
 
@@ -81,15 +84,25 @@ dark:border-white/[0.12] dark:backdrop-blur-2xl dark:backdrop-saturate-120
 
 Dark glass is even translucent navy (`#090e1d` at ~52%) with a luminous hairline and a floating blue-black shadow so atmosphere shows through. Do **not** put a grid overlay or corner sheen on these cards. Summary metrics sit on the panel without nested cards.
 
-**Wallet strip exception (Panel financiero only):** `WalletBalanceStrip` has no panel of its own; each card face carries a Magic UI `AnimatedGridPattern` (`src/components/ui/animated-grid-pattern.tsx`) with brand-tinted squares. Cards use provider tone `aura` (deep face + brand bloom), a brand-colored `ShineBorder` (`src/components/ui/shine-border.tsx`), and a blurred brand halo from `getWalletAuraColors()`. Keep this treatment scoped to the strip; glass panels stay grid-free.
+**Panel financiero card kit:** every card on the planner is the same `MONTHLY_LIQUID_PANEL_CLASS` glass shell at `p-3 sm:p-4` with a `SectionHeader` (glass icon pill, `text-section` title, `text-caption` subtitle, actions slot). Rows and tiles inside a card use `PANEL_INSET_CLASS` (faint glass inset, `rounded-xl`) or a `border-t` hairline — never `METRIC_STRIP_CLASS`, `bg-card/40` or a glass card per row. Lists (Gastos / Tarjetas / Préstamos) live in one "Gastos de la quincena" card with the tabs under the header and the sort menu in the header actions; paid expenses fold behind "Mostrar N pagados". Empty and error states use `EmptyState` inside the card; loading uses `PanelCardSkeleton` (the card silhouette). Money sizes: hero `text-2xl font-semibold`, stat `text-lg font-bold`, row `text-sm font-semibold`. Bars: `h-2` totals, `h-1.5` sub-bars (the commitment meter keeps `h-3.5`, the chrome track `h-1.5`). The aside (Billeteras, Presupuesto, Calendario) is not hidden below `xl`: it flows after the main column, so each card renders once in the same order on every width. The period chrome bar, the header toolbar, the mobile dock, the tab pill, the row check button, the wallet · date line and the due badge are unchanged by the kit.
 
-**Aura language (Panel financiero / planner):** the rest of the planner echoes the strip at lower intensity through one shared kit — `AuraSurface` (`src/components/aura/aura-surface.tsx`) and `src/lib/ui/aura-palette.ts` (`AURA_TONE_HEX`, `getAuraWalletColor`, `getAuraBloomImage`, `getAuraBarStyle`). Do not hand-roll blooms or glows.
+**Billeteras and detail faces:** `WalletFlowFace` (Billeteras) and the detail heroes (`WalletVisualHero`, `CreditCardVisualHero`) share `WalletFaceArt`: a soft highlight over a 22px `AnimatedGridPattern` of white lines and a few fading squares. Reduced motion keeps the lines and drops the squares. Do not hand-roll a second face background.
 
-- **Animated** (`animated`): only the Resumen hero tiles (Balance actual / Liquidez actual) — emerald when healthy, destructive when negative.
-- **Static** `AuraSurface`: remainder strip (emerald / amber / destructive) and budget allocation tiles (wallet brand, violet fallback).
-- **Gastos / Tarjetas / Préstamos rows:** one shell (`MONTHLY_PANEL_SHELL_CLASS`) plus `AuraRowBloom`, no left accent bar and no tinted gradient fills. Hue comes from `getDueRowTone` in `aura-palette.ts`: pagado emerald, vencido destructive, vence en ≤7 días or falta dato amber, más adelante blue, sin cargo / cancelado neutral. Open rows get a stronger wash, paid rows dim. Wallet label is a neutral chip; the provider icon carries wallet identity.
+**Wallet face exception (Panel financiero):** `WalletFace` in `WalletCarouselPanel` keeps its own richer treatment: each face carries a Magic UI `AnimatedGridPattern` / `InteractiveGridPattern` with brand-tinted squares, provider tone `aura` (deep face + brand bloom), a brand-colored `ShineBorder` (`src/components/ui/shine-border.tsx`), and a blurred brand halo from `getWalletAuraColors()`. Glass panels stay grid-free.
+
+**Billeteras (cover flow, below `md`):** below `md` the list page is two sections (Efectivo y débito, Tarjetas de crédito), each a cover flow in the style of Arc's Cover flow (`src/lib/ui/wallet-cover-flow.ts`, `WalletCoverFlow`): the front face is flat and centered, neighbors turn toward the center and recede, the face art drifts inside its frame, and a soft shadow grounds the front card (no reflection); the selected card is remembered per session and restored when coming back from a detail. Drag or throw lands on the card the momentum reaches (a flick moves at least one card, the ends rubber-band); sideways trackpad scroll, arrow keys, Home/End and a click on a side card also move it. Cards size with `clamp(300px, 90cqw, 600px)`; side cards stay nearly opaque. Below `md` the two sections merge into one flow of every wallet (the type shows under the name, so there is no type switcher). Reduced motion jumps between cards with short fades and no turn or drift; the caption rises in from the direction of travel, and the metrics under the flow roll like Arc's metric card (`RollingNumber` digits turn to the new value, `RollingText` copy slides in from the travel side; reduced motion jumps the digits and fades the copy). Under it sit one row of three quick actions and an Últimos movimientos card (three rows with a round category-icon tile and a +/→ badge, name, category · date, signed amount; "Ver todos" at the top right of the card header; legend "Sin movimientos recientes" when empty). The list has no "x de y billeteras" footer. The quick actions are one row of three, each a short label with an icon above it: cash and debit get Movimiento (gasto or ingreso), Transferir and Ajustar saldo; credit and store cards get Compra, Pagar and Ajustar saldo. The list has no ⋯ menu: Editar and Eliminar live on the wallet and card detail pages. There is no dots slider and no metrics row: credit and store faces carry the same structure as the detail hero (name, `Corte x · Pago y`, Deuda total, Disponible, Límite, Utilización bar), where Disponible is the limit minus the balance minus what linked or card-paid loans still owe. Every card face and detail hero uses a 1.586:1 ratio, sized with container units. There are no hover, long-press or swipe-to-delete interactions. From `md` up a glass summary strip (Liquidez total, Deuda en tarjetas, Crédito disponible) tops the page. Faces stay solid; the summary and attention panels use the planner shell with no grid overlay.
+
+**Billeteras attention (below `md`):** a wallet that needs attention shows its reason as a small pill on the top edge of its face, as on web: `text-status-pending` when due soon, `text-status-overdue` when negative or over limit. The flow shows one card at a time, so when a flagged wallet is not the front card, one quiet line under the flow ("1 billetera más requiere atención") jumps to the next one. There is no attention card.
+
+**Billeteras (card gallery, `md` and up):** the web page is only a grid of wallet faces (`WalletFlowFace`, 2 columns, 3 from `lg`, 4 from `xl`, `gap-6`, cash and debit first, then cards). There are no tabs, totals, captions under the faces, movements panel, action pills or create tile: the face already shows the name, type and amount, the header create button adds a wallet, and a face is a link to the wallet or card detail page (it prefetches on hover and focus). The grid has `p-1.5` so the focus ring (`ring-2 ring-primary` with an offset) of the outer cards never clips. A wallet that needs attention (due soon, over limit, negative) shows its reason as a small `text-status-pending` pill on the top edge of its face. Plan: `docs/plans/wallets-master-detail-web-plan.md`, revision 3. Faces stay solid; there is no summary strip or attention block on web.
+
+**Aura language (Panel financiero / planner):** the planner echoes the faces at lower intensity through one shared kit — `AuraSurface` (`src/components/aura/aura-surface.tsx`) and `src/lib/ui/aura-palette.ts` (`AURA_TONE_HEX`, `getAuraWalletColor`, `getAuraBloomImage`, `getAuraBarStyle`). Do not hand-roll blooms or glows.
+
+- **Hero tiles** (Balance actual / Liquidez actual): the glass shell with `getAuraBloomImage` only (no grid, no shine) — emerald when healthy, destructive when negative — plus a health badge from `sm` up.
+- **Static** `AuraSurface`: Liquidez month metrics outside the planner.
+- **Gastos / Tarjetas / Préstamos rows:** inside the lists card, separated by hairlines, no bloom. Hue comes from `getDueRowTone` in `aura-palette.ts` for the due badge (Gastos) and the colored date (Tarjetas): pagado emerald, vencido destructive, vence en ≤7 días or falta dato amber, más adelante blue, sin cargo / cancelado neutral. Paid rows dim. The provider icon carries wallet identity.
 - **Bars:** budget fills use `getAuraBarStyle`; the quincena progress is electric blue → violet with a glow (tracks are not `overflow-hidden` so the glow shows).
-- **Tabs:** planner tab groups use `AURA_TAB_INDICATOR_CLASS` (glass pill + `.liquid-glass-pill-aura` halo).
+- **Tabs:** planner tab groups use `AURA_TAB_INDICATOR_CLASS` (glass pill + `.liquid-glass-pill-aura` halo). The wallet and card detail tabs use `DETAIL_TAB_BAR_PROPS` instead: a neutral frosted track (`.liquid-tabbar`) with a glossy `--primary` active pill (`.liquid-tabbar-pill`) in both themes, tabs sharing the width.
 
 Sticky header: `bg-background/85 backdrop-blur-xl` and in dark `dark:bg-[#060914]/55` plus saturate so atmosphere shows through the chrome.
 
@@ -105,7 +118,7 @@ Every logged-in route is one of four archetypes:
 
 | Archetype | Purpose | Routes | Surface |
 | --- | --- | --- | --- |
-| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Proyección / Deudas / Plan), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
+| **Planner** | Plan a period; period controls live in the page | Panel financiero (`/monthly/…`), Análisis (Proyección / Deudas / Simular compra), quincena (`/fortnight/…`, deep links only) | Glass via `MONTHLY_PANEL_SHELL_CLASS` |
 | **Collection** | Scan and filter many records, one create action | Billeteras, Metas, Préstamos, Operaciones, Presupuestos | Calm cards / tables; glass only via the planner shell. Operaciones below `md` is a row list, not a table |
 | **Detail** | One object, back to its collection | Billetera, estado de cuenta (tarjeta), meta | Same as collection; card faces stay solid |
 | **Settings** | Quiet catalogs and account | Configuración (cuenta, categorías, plantillas, usuarios, conexiones) | Calm `bg-card` cards — **never** glass |
@@ -143,13 +156,16 @@ Apply **only**:
 | Motion tabs | In-page choice of two or three views (quincena toggle, Presupuestos vs Plantillas, budget status views) |
 | Pull to refresh (mobile only) | Planner, Billeteras, Metas, Préstamos, Operaciones, Análisis, and Presupuestos. The rest of Configuración (cuenta, categorías, plantillas, usuarios, conexiones) does not pull to refresh |
 | Shared-element morph | Billeteras and tarjetas only. Do not add one for metas or préstamos |
+| Animated face grid | `WalletFaceArt` on Billeteras and detail faces only |
+| Tab content reveal | `RevealGroup` / `RevealItem` in the wallet and card detail tabs: items rise 8px and fade in, stagger capped so the whole reveal stays within 320ms. Resumen charts replay when the tab opens |
+| Rolling metric figures | `MetricCard` (`src/components/arc/metric-card`) in the wallet detail period totals only |
 | Swipe to delete | Below `md` only, then `ConfirmDeleteDialog` (see **Viewport delete**). Billeteras, metas, préstamos, plantillas, categorías, expense rows |
 
 Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy summary accordion, the animated summary badge, and the commitment meter (`CommitmentMeter`: segment fill reveal and the legend ↔ segment highlight).
 
 ### Out of scope
 
-Login and signup (one shared auth stage), admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing uses the shared `Button` and the same light and dark tokens as the app.
+Login and signup (one shared auth stage), admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing is dark only and has its own pill buttons (see Marketing landing).
 
 ---
 
@@ -161,7 +177,7 @@ Keep chrome **sparse**. One dominant labeled control per block; rare actions in 
 2. **Content row** — wide data (wallet chips, KPI strips) full width **below** chrome, not squeezed beside nav icons.
 3. **Primary work** — the repeated action (add expense, pay, etc.) sits next to the data it changes.
 
-Tertiary view controls: `Button variant="ghost"` at `h-8`–`h-9`. Stronger secondary: `outline` + `rounded-xl`. Default buttons, including landing CTAs, use the shared `Button` radius (`rounded-xl`) unless the control is a pill toggle (quincena).
+Tertiary view controls: `Button variant="ghost"` at `h-8`–`h-9`. Stronger secondary: `outline` + `rounded-xl`. Default buttons use the shared `Button` radius (`rounded-xl`) unless the control is a pill toggle (quincena). Landing CTAs are pills.
 
 Icon-only: always `aria-label` + usually `Tooltip` in Spanish.
 
@@ -209,15 +225,12 @@ Utilities: `.motion-fade-in` (`--motion-base`) and `.motion-slide-up` (`--motion
 
 Fix these when touching light parity (do not leave new hardcoded dark-only chrome):
 
-- Settings income/expense template inputs: use `TEMPLATE_FIELD_SHELL_CLASS` (theme-aware); avoid raw `border-white/15 bg-black/35`
 - Glass / monthly shells: light uses `--shadow-card`; dark keeps Orion glass under `dark:`
-- Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`), on the landing and in the app
-- Landing follows the same light and dark theme as the app (`ThemeProvider` on the root layout)
+- Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`)
+- The landing is dark only; it does not follow the theme toggle
 - Card faces that are always “dark plastic” (e.g. wallet list card art) may stay dark by design
 
 ---
-
-**Wallet card faces** (Billeteras list, mobile deck, long-press enlarged card and the Panel financiero carousel) are the exception to "no grid overlay": they share `WalletCardDecor` (`src/components/wallets/WalletCardDecor.tsx`: corner glows, `InteractiveGridPattern`, shine border). On mobile a tap opens the wallet and a long press opens `WalletCardPreview` (enlarged face with Abrir detalle, Transferir, Editar, Eliminar; closes on outside tap or swipe down). Billeteras mobile has no swipe-to-delete.
 
 ## Overlays (Dialog / Sheet)
 
@@ -269,6 +282,7 @@ Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these 
    - label + control → `FormGroupedRow` (react-hook-form) or `GroupedRow` (`htmlFor` when the control has an `id`)
    - amount → `FormAmountRow` / `AmountRow` (MXN chip + big mono amount; label sits **above** the amount)
    - date → `DateStepper` (required) or `OptionalDateStepper` (nullable, e.g. Fecha límite)
+   - hero amount (Agregar movimiento) → `FormAmountHero`: white panel (`bg-white`, `border-primary/30`, `shadow-sm`) above the grouped card, MXN pinned left and a centered (on the panel, not beside the prefix) `text-4xl` (`md:text-5xl`) bold mono figure; the 0 placeholder disappears on focus
 4. **Extra sections** — `OverlaySectionLabel` + a second grouped card (e.g. "Datos de crédito", "Comisión").
 5. **Hint** — `OverlayHint` **below** the card it explains. Never inside the card.
 6. **Warnings** — amber notice (`InsufficientWalletExpenseNotice` style) when a value needs attention before saving.
@@ -286,6 +300,7 @@ Wrap the body in `flex flex-col gap-3` (a `<form>` when it submits). Only these 
 | Grouped card | `rounded-xl border border-border/60 bg-card divide-y divide-border/60` | `OVERLAY_GROUPED_CARD_CLASS` |
 | Row | `px-3 py-1.5`, `min-h-11`, `gap-3` | `GroupedRow` / `FormGroupedRow` |
 | Row label | `w-[5rem] text-sm font-medium` | `OVERLAY_GROUPED_LABEL_CLASS` |
+| Row label, wide ("1ª quincena") | `w-[6rem]`, same type | `GroupedRow` or `FormGroupedRow` with `labelWidth="wide"` / `OVERLAY_GROUPED_LABEL_WIDE_CLASS` |
 | Select trigger in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_TRIGGER_CLASS` |
 | Text input in a row | `h-11`, borderless, transparent | `OVERLAY_ROW_INPUT_CLASS` |
 | Number input in a row | same + `font-mono tabular-nums` | `OVERLAY_ROW_NUMBER_INPUT_CLASS` |
@@ -317,7 +332,7 @@ Every confirm (delete, archive, "registrar sin descontar", "transferir de todos 
 
 **Exceptions**
 
-- Login, admin: out of scope. The marketing landing is in scope for light and dark.
+- Login, admin: out of scope. The marketing landing is dark only.
 - Existing Dialog-only forms: migrate onto `ResponsiveOverlay` + the kit (one flow per change is fine)
 - Do not extract a mega form wrapper that owns fields/validation; the kit stays presentational
 
@@ -353,7 +368,9 @@ Agent rule: `.cursor/rules/responsive-overlays.mdc`. Skill: `/responsive-overlay
   - **Steppers** (`formatStepperDate`) always include the year. The control is an input, so the saved day stays unambiguous.
   - Statement parsers keep a month map because they read bank files. Préstamos uses these helpers.
 - Currency inputs use the same sans + `tabular-nums` face so `0.00` has no gap around the decimal.
-- Metric / KPI strips: `METRIC_STRIP_CLASS` + `border-l-[3px] border-l-*-500/50`. **No** tinted panel fills (`bg-*-500/5`). Enforced by `npm run validate:metric-strips`.
+- **No colored left accents** (Jorge, 2026-11-15, Plania decision 41117366). No `border-l-[3px]` / `border-l-*` status or brand stripe on any card, tile, strip or row, no inline `borderLeftColor`, and no inset left shadow that draws one. Status goes on the value color, a `STATUS_BADGE` chip or a soft tint (`src/lib/status-tone.ts`). A neutral hairline (`border-l border-border/60`) for a nested list is fine. Enforced by `npm run validate:metric-strips`.
+- Metric / KPI strips: `METRIC_STRIP_CLASS` (even calm border, `bg-card`). **No** tinted panel fills (`bg-*-500/5`). Enforced by the same validator.
+  - Gastos programados and Ingresos programados (`src/components/scheduled/ScheduledSummary.tsx`) use one calm `bg-card` card split by hairlines, with a dot before 1ª / 2ª quincena (`bg-primary` / `bg-chart-4`, the same colours as the row chips) and a thin 1ª-vs-2ª bar under Al mes.
 - Semantic status (both themes, `globals.css`): **success** (pagado), **pending**, **overdue** (vencido), **income**, **expense**, **info**. Each token has text (`text-status-*`), soft fill (`bg-status-*-soft`), and border (`border-status-*-border`). Use `STATUS_*_CLASS` in `src/lib/status-tone.ts`. Do not use raw Tailwind palette classes (emerald, rose, amber, violet, blue…) for these states.
 - Brand badges (`WalletProviderIcon`, catalog in `src/lib/wallet-provider-icons.ts`) are a valid exception to that palette. The mark keeps the issuer hue so a billetera stays recognizable. That color is not income, expense, or paid. The short label or fallback glyph must stay at least 4.5:1 against the badge fill in both themes. Do not reuse those classes for status.
   - An expense row uses **expense** for the icon, the amount, and the type badge. A due or paid chip may use **overdue**, **pending**, or **success** — that is the time status, not a second type color.
@@ -372,7 +389,7 @@ Pages own **content only**. Do not re-wrap `(app)/layout.tsx` (sidebar, `AppAtmo
 ## Filters
 
 - `FilterChip` (`src/components/filter-chip.tsx`) is a single on/off filter: Billeteras, Metas, Operaciones, and the Configuración mobile nav. It sets `aria-pressed` (or `aria-current="page"` when it is a link), can show a count, and uses a 44px target on mobile (`min-h-11`, `sm:min-h-9`) with a visible focus ring.
-- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Plan horizon and strategy, Presupuestos, and Análisis (Proyección / Deudas / Plan).
+- `SegmentedControl` (`src/components/segmented-control.tsx`) chooses one of two or three views. It is the motion tabs (`variant="pill"`) so reduced motion already zeros the indicator. Use it for quincena, Presupuestos, and Análisis (Proyección / Deudas / Simular compra).
 
 ## Surfaces
 
@@ -390,7 +407,7 @@ Three surfaces. Radius does not change with the theme.
 
 **Onboarding** sits outside the `(app)` layout, so it draws `AppAtmosphere` itself and uses the planner glass shell, the type scale, and one progress bar. Four steps (Billeteras, Ingresos, Gastos, Todo listo), each with one `h1` (the question) and one description line; the header names the next step. The card is capped to the viewport and its body scrolls, so header and footer never clip. Each draft is an `OnboardingItemCard`: the overlay kit's grouped card (`GroupedRow`, `AmountRow`) with a header and the viewport delete rule. Defaults are pre-filled (Efectivo, Cuenta de débito, Sueldo), so the minimum path is one amount. Gastos is optional. Create copy starts with **Agregar**.
 
-Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card with a status left border, not a gradient fill. `--shadow-glow` is only the planner progress knob.
+Do not use `dark:rounded-*`, `rounded-[...]`, or `shadow-[...]`. A table inside a card passes `embedded` to `DataTable` so the card owns the border. Buttons use `rounded-xl` on the page and in overlays. KPI tiles are a calm card (`KPI_METRIC_CARD_SHELL_CLASS`) with the status on the label and value color: no left accent, no gradient fill. `--shadow-glow` is only the planner progress knob.
 
 ## Empty, error, and loading
 
@@ -417,7 +434,7 @@ Use these names in the UI, in `PageTitle`, and in the browser tab. The document 
 | Ellipsis | **…** | `...` |
 | Analysis section | **Análisis** | Liquidez y análisis, as a nav item |
 
-**Análisis** is the section (nav, document title, header). Its three views are the tabs **Proyección**, **Deudas**, and **Plan**. The tab list is named Análisis.
+**Análisis** is the section (nav, document title, header). Its three views are the tabs **Proyección**, **Deudas**, and **Simular compra**. The tab list is named Análisis. Simular compra (MIC-I17) took the place of Plan: a purchase described as contado, meses sin intereses or con intereses, with a verdict (Buena idea / Con cuidado / Mala idea por ahora, always with its reason and "Qué pasaría, no asesoría financiera"), quincena-by-quincena bars until payoff (by month past 2 years, by year past 10) and the payment calendar. Nothing is stored; Proyección and Deudas never show the simulation.
 
 Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` in Spanish (`Comida`, not `Food`). Existing rows already stored as `Food` are not migrated in code.
 
@@ -427,7 +444,7 @@ Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` i
 
 - Reuse CSS variables and the shared glass / CTA classes.
 - Put **electric blue** on the primary action (app and landing); keep `--primary` for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy — in dark that is `#f7f8ff`, same as body text.
-- Match Panel financiero before inventing a new card language. Landing product shots are captures of that UI.
+- Match Panel financiero before inventing a new card language.
 - Capture README screenshots from **this** app (see below).
 
 **Don’t**
@@ -440,6 +457,60 @@ Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` i
 
 ---
 
+## Page design rules (Panel as reference)
+
+Jorge's rules for every new or redesigned app page, decided in the Simular compra review (MIC-I17, Nov 2026). They are also kept in Plania (project doc "UI design · how MiCasa pages look"). Panel financiero is the reference: when a page and Panel disagree, the page changes. Where an older rule above says otherwise, this section wins.
+
+### Page frame
+
+- The app header owns the title, the context switcher and the one primary action. No second title inside the page.
+- Planner-style pages use Panel's grid: `MONTHLY_PANEL_CONTENT_GRID_CLASS` (one column, then **main 2/3 + aside 1/3 from `xl`**), `MONTHLY_PANEL_MAIN_COLUMN_CLASS` and `MONTHLY_PANEL_SIDEBAR_COLUMN_CLASS` (`src/components/monthly/MonthlyPanelLayout.tsx`).
+- **Results go in the main column; inputs and controls go in the aside**, sticky from `xl` (`xl:sticky xl:top-24`). On phones the input comes first and the results after (`xl:order-*`).
+- Every grid has an explicit single column below its breakpoint (`grid-cols-1` or Panel's grid) and its children get `min-w-0`. **Nothing scrolls sideways at 375 px**: `document.documentElement.scrollWidth` equals `clientWidth`.
+
+### Tabs
+
+- **Whole-view tabs** (Análisis: Proyección · Deudas · Simular compra): `SegmentedControl` in a glass frame (`MONTHLY_LIQUID_PANEL_CLASS`, `p-1 sm:p-1.5`), `stretch`, `AURA_TAB_INDICATOR_CLASS`, `GLASS_TAB_ACTIVE_LABEL_CLASS`, icon + label. Labels fit at 375 px; when they don't, phones get a short label (`sm:hidden` / `hidden sm:inline`), e.g. "Simular". A choice that changes the whole form right under these tabs (e.g. "¿Cómo lo pagas?") may use the same framed style.
+- **Choices inside a card** (Panel's Gastos / Tarjetas / Préstamos): `SegmentedControl` on `GLASS_TAB_TRACK_CLASS` with `AURA_TAB_INDICATOR_CLASS` and `overflowControls="fade"`, stretched with 4 options or fewer (or 1–3 character labels), sized to content otherwise. Simular compra wraps it as `InCardTabs` (`src/components/wallets/liquidity/purchase/InCardTabs.tsx`); move it to a shared folder when a second page needs it.
+- No groups of blue-filled chips for a single choice. A `bg-primary` fill is only the primary button and the active nav icon.
+
+### Cards and tiles
+
+- Every card is `MONTHLY_LIQUID_PANEL_CLASS` at `p-3 sm:p-4` and starts with `SectionHeader` (icon pill, title, one-line subtitle, actions slot for a chip, toggle or menu). No card without a header.
+- Inside a card, rows and tiles use `PANEL_INSET_CLASS` or a hairline. No glass card inside a glass card, no `bg-card` boxes on glass, no tinted washes. The only wash is Panel's aura bloom (`getAuraBloomImage(AURA_TONE_HEX.*)`) on hero tiles and a verdict-type card, in the status tone.
+- **Never a colored left accent** (a `border-l-[3px]` stripe or an inset left shadow) on a card, tile or row. Status goes on the value's color, a chip or a soft tint.
+- **Hero metrics** use Panel's `AccountMetric` (`src/components/monthly/FortnightSummaryHero.tsx`) with `glassSurface`: icon pill, uppercase eyebrow, status chip, amount, caption. A figure that is not money ("1 de 29", a date) goes in `display`. Grid `grid-cols-1 min-[360px]:grid-cols-2`, four tiles at most.
+- **Status chips** are Panel's soft chip: `Badge variant="outline"` + `STATUS_SOFT_CLASS[tone]`, `h-5 rounded-full border-transparent px-2 text-caption font-semibold`, short words ("Holgado", "En rojo", "Buena idea").
+
+### Picking a wallet
+
+- One `Select`: `WalletProviderIcon` + name in the trigger; the menu grouped **Tarjetas** / **Efectivo y débito**, each item with its line (cards: disponible · corte · pago; debit: saldo); the chosen wallet's line repeats under the trigger. Never a list of every wallet as radio rows (`WalletSelect` in Simular compra).
+
+### Forms
+
+- Use the overlay kit rows outside overlays too: `OVERLAY_GROUPED_CARD_CLASS` + `GroupedRow`, `AmountRow`, `DateStepper`; hints below the card, `OverlayWarning` for warnings, `ErrorBanner` for errors.
+- One primary `Button` (`h-11 rounded-xl`); controls at least 44 px tall.
+- Results recalculate on change (about 400 ms debounce) on desktop; on phones a primary button folds the form into a summary card with "Editar".
+
+### Lists and charts
+
+- Fold long lists with a full-width outline "Ver N más" / "Ver menos": about 8 lines in a detail, 12 rows in a table, 4 cards in a list. Put what the user changed first, then by size.
+- Selected row: soft primary tint. Row in the red: soft overdue tint. Tables become row cards on phones.
+- Charts take colors from `chart-theme.ts` and status tokens and axis money from `formatAxisMoney`; labels never overlap (thin them on phones); estimates are labeled with text ("Estimado"); a bar that opens detail is a real `button` with `aria-label`.
+- Dates show the year when they are in a past month or more than 11 months away ("2ª de abril de 2026").
+
+### States and data notices
+
+- First load: skeletons with the card silhouettes. Recalculation: the last result stays dimmed with a "Calculando…" chip. Empty: `EmptyState` inside the card. Error: `ErrorBanner` with "Reintentar", the previous result dimmed under it.
+- Data the page leaves out or assumes gets a one-line notice, with one action when there is a clear one ("Completar datos").
+
+### Check before a PR
+
+- Look at the page at **1440 and 375 px** in dark theme next to Panel, with sandbox data when the dev server is up: header, card shells, chips, tabs, no sideways scroll, no clipped text, long names truncated with `title`.
+- `npm run ci` green; screenshots in the PR for a new page.
+
+---
+
 ## Applying this to remaining app pages
 
 When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
@@ -447,7 +518,7 @@ When restyling Billeteras, Gastos, Tarjetas, Préstamos, etc.:
 1. Pick the archetype (planner, collection, detail, settings) and keep domain structure (tables vs cards) from `.claude/skills/dashboard-ui/SKILL.md`.
 2. Planner-grade panels use `MONTHLY_PANEL_SHELL_CLASS`; settings stay calm cards; card faces stay solid.
 3. Register the one primary action in the app header; overflow for rare actions.
-4. Metric strips stay calm + left border.
+4. Metric strips stay calm: no colored left accent, no tinted fill.
 5. Verify in **dark and light** at desktop and a narrow viewport.
 
 ---

@@ -1,7 +1,7 @@
 import { formatCalendarDate, todayCalendarDate } from '@/lib/calendar-dates';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import prisma from '@/lib/prisma';
 import { getCalendarFortnightRefForYmd } from '@/lib/fortnight-calendar';
 import { resolveOrCreateFortnight } from '@/lib/fortnights';
@@ -52,116 +52,116 @@ function toDateStr(value: Date | string | null | undefined): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
-    const { ownerFilter, ownerType, ownerId } = context;
+    return await withOwnerContext(request, async (context) => {
+      const { ownerFilter, ownerType, ownerId } = context;
 
-    const body = await request.json();
-    const data = bodySchema.parse(body);
+      const body = await request.json();
+      const data = bodySchema.parse(body);
 
-    const category = await prisma.category.findFirst({
-      where: { id: data.categoryId, kind: 'EXPENSE', ...ownerFilter },
-    });
-    if (!category) {
-      return NextResponse.json(
-        { error: 'Category not found' },
-        { status: 404 },
-      );
-    }
-
-    const walletId =
-      data.paymentMethodId != null && data.paymentMethodId > 0
-        ? data.paymentMethodId
-        : null;
-
-    if (walletId != null) {
-      const wallet = await prisma.wallet.findFirst({
-        where: { id: walletId, ...ownerFilter },
-        select: { id: true },
+      const category = await prisma.category.findFirst({
+        where: { id: data.categoryId, kind: 'EXPENSE', ...ownerFilter },
       });
-      if (!wallet) {
+      if (!category) {
         return NextResponse.json(
-          { error: 'Wallet not found' },
+          { error: 'Category not found' },
           { status: 404 },
         );
       }
-    }
 
-    const { year, month, period } = getCalendarFortnightRefForYmd(data.date);
+      const walletId =
+        data.paymentMethodId != null && data.paymentMethodId > 0
+          ? data.paymentMethodId
+          : null;
 
-    const fortnight = await resolveOrCreateFortnight({
-      ownerType,
-      ownerId,
-      year,
-      month,
-      period,
-    });
+      if (walletId != null) {
+        const wallet = await prisma.wallet.findFirst({
+          where: { id: walletId, ...ownerFilter },
+          select: { id: true },
+        });
+        if (!wallet) {
+          return NextResponse.json(
+            { error: 'Wallet not found' },
+            { status: 404 },
+          );
+        }
+      }
 
-    const created = await createExpense({
-      fortnightId: fortnight.id,
-      categoryId: data.categoryId,
-      description: data.name,
-      amount: data.amount,
-      isPaid: data.isPaid,
-      paymentDate: data.date,
-      expenseTemplateId: data.expenseTemplateId ?? null,
-      walletId,
-      applyWalletDelta: data.applyWalletDelta,
-    });
+      const { year, month, period } = getCalendarFortnightRefForYmd(data.date);
 
-    if (data.isRecurring && data.applyToBothFortnights) {
-      const otherPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
-      const otherFortnight = await resolveOrCreateFortnight({
+      const fortnight = await resolveOrCreateFortnight({
         ownerType,
         ownerId,
         year,
         month,
-        period: otherPeriod,
+        period,
       });
-      try {
-        await createExpense({
-          fortnightId: otherFortnight.id,
-          categoryId: data.categoryId,
-          description: data.name,
-          amount: data.amount,
-          isPaid: false,
-          paymentDate: null,
-          expenseTemplateId: data.expenseTemplateId ?? null,
-          walletId,
-        });
-      } catch (err) {
-        logFinanceEvent(
-          'warn',
-          'finance.api.client_error',
-          {
-            route: 'POST /api/expenses',
-            error: err instanceof Error ? err.message : String(err),
-            context: 'applyToBothFortnights',
-          },
-          request,
-        );
-      }
-    }
 
-    return NextResponse.json(
-      {
-        id: created.id,
-        description: created.description,
-        amount: decimalToNumber(created.amount),
-        date: toDateStr(created.payment_date),
-        category: created.category ?? null,
-        categoryIcon: created.categoryIcon ?? null,
-        paymentMethod: created.paymentMethod ?? null,
-        walletType: null,
-        isPaid: data.isPaid,
-        isRecurring: data.expenseTemplateId != null,
-        creditInstallmentCurrent: null,
-        creditInstallmentTotal: null,
+      const created = await createExpense({
+        fortnightId: fortnight.id,
         categoryId: data.categoryId,
+        description: data.name,
+        amount: data.amount,
+        isPaid: data.isPaid,
+        paymentDate: data.date,
+        expenseTemplateId: data.expenseTemplateId ?? null,
         walletId,
-      },
-      { status: 201 },
-    );
+        applyWalletDelta: data.applyWalletDelta,
+      });
+
+      if (data.isRecurring && data.applyToBothFortnights) {
+        const otherPeriod = period === 'FIRST' ? 'SECOND' : 'FIRST';
+        const otherFortnight = await resolveOrCreateFortnight({
+          ownerType,
+          ownerId,
+          year,
+          month,
+          period: otherPeriod,
+        });
+        try {
+          await createExpense({
+            fortnightId: otherFortnight.id,
+            categoryId: data.categoryId,
+            description: data.name,
+            amount: data.amount,
+            isPaid: false,
+            paymentDate: null,
+            expenseTemplateId: data.expenseTemplateId ?? null,
+            walletId,
+          });
+        } catch (err) {
+          logFinanceEvent(
+            'warn',
+            'finance.api.client_error',
+            {
+              route: 'POST /api/expenses',
+              error: err instanceof Error ? err.message : String(err),
+              context: 'applyToBothFortnights',
+            },
+            request,
+          );
+        }
+      }
+
+      return NextResponse.json(
+        {
+          id: created.id,
+          description: created.description,
+          amount: decimalToNumber(created.amount),
+          date: toDateStr(created.payment_date),
+          category: created.category ?? null,
+          categoryIcon: created.categoryIcon ?? null,
+          paymentMethod: created.paymentMethod ?? null,
+          walletType: null,
+          isPaid: data.isPaid,
+          isRecurring: data.expenseTemplateId != null,
+          creditInstallmentCurrent: null,
+          creditInstallmentTotal: null,
+          categoryId: data.categoryId,
+          walletId,
+        },
+        { status: 201 },
+      );
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

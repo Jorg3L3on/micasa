@@ -142,3 +142,17 @@ export const getWalletProviderOption = (key?: string | null) => {
   if (!key) return null;
   return WALLET_PROVIDER_ICON_MAP.get(key as WalletProviderIconKey) ?? null;
 };
+
+export type WalletProviderLogoOption = WalletProviderIconOption & {
+  logoPath: string;
+};
+
+/** Catalog provider that ships a logo asset; null for unknown keys and text-only badges. */
+export const getWalletProviderLogoOption = (
+  key?: string | null,
+): WalletProviderLogoOption | null => {
+  const provider = getWalletProviderOption(key);
+  return provider?.logoPath
+    ? { ...provider, logoPath: provider.logoPath }
+    : null;
+};

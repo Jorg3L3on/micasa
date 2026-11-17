@@ -8,8 +8,10 @@ import {
 import { formatLoanDueYmd } from '@/lib/finance/loan-schedule';
 import { toStoredPaymentPlanWrite } from '@/lib/finance/card-payment-plan-scope';
 import {
+  describePlannedOverDebt,
   exposedAnnualRate,
   exposedMinimumDue,
+  type CardObligationBreakdownRow,
 } from '@/lib/finance/card-period-obligation';
 import { getCardPeriodObligation } from '@/lib/finance/card-period-surfaces';
 import prisma from '@/lib/prisma';
@@ -53,6 +55,7 @@ import {
   monthScheduledDebtTotal,
   toUtcDateOnlyString,
 } from '@/lib/finance/liquidity-projection';
+import { DomainError } from '@/lib/finance/domain-error';
 
 export type LiquidityObligationSource =
   | 'credit_card_statement'
@@ -90,6 +93,15 @@ export type LiquidityObligationItem = {
   payments_applied_to_fortnight?: number;
   remaining_planner_amount?: number;
   planner_status?: PlannerCardPaymentStatusUi;
+  /** Slice of `next_due_payment` above recorded debt. Absent at or below the debt. */
+  breakdown?: CardObligationBreakdownRow[];
+  /** Set with the breakdown when this cycle has no statement import. */
+  over_recorded_message?: string | null;
+};
+
+type CardCycleCashContext = {
+  outstandingBalance: number;
+  hasStatementImport: boolean;
 };
 
 export type LiquidityMilestone = {
@@ -587,12 +599,14 @@ const planKey = (fortnightId: number, walletId: number): string =>
 
 /**
  * A card whose fortnight plan is already paid should not re-enter the cash plan
- * as the full statement remainder. Statement `next_due_payment` stays intact.
+ * as the full statement remainder. A higher fortnight plan replaces
+ * `next_due_payment` on the same due date so the extra is one cash line.
  */
 const annotateFortnightCardPlans = async (
   byDueDate: Map<string, LiquidityObligationItem[]>,
   ownerFilter: OwnerFilter,
   asOfStr: string,
+  cardCycleContext: Map<string, CardCycleCashContext>,
 ) => {
   const cards: LiquidityObligationItem[] = [];
   for (const items of byDueDate.values()) {
@@ -680,6 +694,25 @@ const annotateFortnightCardPlans = async (
     item.planned_fortnight_payment = planned;
     item.payments_applied_to_fortnight = paid;
     item.remaining_planner_amount = remaining;
+    if (remaining > item.next_due_payment) {
+      const context = cardCycleContext.get(
+        `${item.wallet_id}:${item.statement_due_date}`,
+      );
+      const detail = describePlannedOverDebt({
+        planned,
+        outstandingBalance: context?.outstandingBalance ?? 0,
+        paymentsApplied: paid,
+        hasStatementImport: context?.hasStatementImport === true,
+      });
+      item.next_due_payment = remaining;
+      if (detail.breakdown.length > 0) {
+        item.breakdown = detail.breakdown;
+        item.over_recorded_message = detail.overRecordedMessage;
+      } else {
+        delete item.breakdown;
+        delete item.over_recorded_message;
+      }
+    }
     item.planner_status = derivePlannerStatus({
       remainingPlannerAmount: remaining,
       paymentsAppliedToFortnight: paid,
@@ -700,6 +733,57 @@ const mergeAllMilestones = (
   }
 };
 
+/** Milestones and running totals for the obligations. */
+const buildMilestones = (
+  byDueDate: Map<string, LiquidityObligationItem[]>,
+  fundingTotal: number,
+  cumulativeIncomeByMonth: Map<string, number>,
+  asOfStr: string,
+) => {
+  const sortedDates = [...byDueDate.keys()].sort(compareUtcDateOnly);
+  let cumulative = 0;
+  const milestones: LiquidityMilestone[] = [];
+  let firstShortfall: string | null = null;
+  let firstProjectedShortfall: string | null = null;
+  let minProjectedHeadroom: number | null = null;
+
+  for (const dueDate of sortedDates) {
+    const obligations = byDueDate.get(dueDate) ?? [];
+    const totalDue = obligations.reduce((s, o) => s + o.next_due_payment, 0);
+    cumulative += totalDue;
+    const headroom = fundingTotal - cumulative;
+    const dueMonthKey = toMonthKeyUtc(dueDate);
+    const projectedHeadroom =
+      fundingTotal + (cumulativeIncomeByMonth.get(dueMonthKey) ?? 0) - cumulative;
+    if (firstShortfall === null && headroom < 0) {
+      firstShortfall = dueDate;
+    }
+    if (firstProjectedShortfall === null && projectedHeadroom < 0) {
+      firstProjectedShortfall = dueDate;
+    }
+    if (minProjectedHeadroom === null || projectedHeadroom < minProjectedHeadroom) {
+      minProjectedHeadroom = projectedHeadroom;
+    }
+    milestones.push({
+      due_date: dueDate,
+      is_past_due: compareUtcDateOnly(dueDate, asOfStr) < 0,
+      obligations,
+      total_due: totalDue,
+      cumulative_due_through_date: cumulative,
+      funding_total: fundingTotal,
+      liquidity_headroom: headroom,
+    });
+  }
+
+  return {
+    milestones,
+    cumulative,
+    firstShortfall,
+    firstProjectedShortfall,
+    minProjectedHeadroom,
+  };
+};
+
 /**
  * Proyección de liquidez: efectivo/débito vs pagos a estado y, opcionalmente,
  * gastos impagos y huecos de plantillas por quincena.
@@ -715,19 +799,11 @@ export const getLiquidityProjection = async (
   const toMonthKey = untilStr.slice(0, 7);
 
   if (compareMonthKeys(fromMonthKey, toMonthKey) > 0) {
-    const error = new Error(
-      'El rango del gráfico es inválido: el mes inicial no puede ser posterior al final.',
-    );
-    (error as { code?: string }).code = 'INVALID_HORIZON';
-    throw error;
+    throw new DomainError('INVALID_HORIZON', 'El rango del gráfico es inválido: el mes inicial no puede ser posterior al final.');
   }
 
   if (compareUtcDateOnly(untilStr, asOfStr) < 0) {
-    const error = new Error(
-      'La fecha "until" no puede ser anterior a "asOf" (comparación UTC).',
-    );
-    (error as { code?: string }).code = 'INVALID_HORIZON';
-    throw error;
+    throw new DomainError('INVALID_HORIZON', 'La fecha "until" no puede ser anterior a "asOf" (comparación UTC).');
   }
 
   const omitZero = input.omitZeroObligations ?? true;
@@ -903,6 +979,7 @@ export const getLiquidityProjection = async (
   );
 
   const byDueDate = new Map<string, LiquidityObligationItem[]>();
+  const cardCycleContext = new Map<string, CardCycleCashContext>();
   let unresolvedCardObligationCount = 0;
   const unresolvedCardObligations: Array<{
     wallet_id: number;
@@ -1015,6 +1092,7 @@ export const getLiquidityProjection = async (
           cutoffDay: meta.cutoff_day,
           dueDay: meta.due_day,
           paymentsApplied: row.payments_applied_to_statement,
+          hasStatementImport: source === 'import',
         });
 
         if (periodObligation.confidence === 'missing') {
@@ -1040,6 +1118,21 @@ export const getLiquidityProjection = async (
 
         if (omitZero && nextDue === 0) continue;
 
+        const overDebt =
+          periodObligation.breakdown != null &&
+          periodObligation.breakdown.length > 0
+            ? {
+                breakdown: periodObligation.breakdown,
+                over_recorded_message:
+                  periodObligation.overRecordedMessage ?? null,
+              }
+            : {};
+
+        cardCycleContext.set(`${id}:${dueStr}`, {
+          outstandingBalance: cardOutstandingById.get(id) ?? 0,
+          hasStatementImport: source === 'import',
+        });
+
         chunk.push({
           source: 'credit_card_statement',
           wallet_id: id,
@@ -1059,6 +1152,7 @@ export const getLiquidityProjection = async (
           cat_annual: exposedAnnualRate(meta.cat_annual),
           ...(row.is_estimate ? { is_estimate: true } : {}),
           ...(stressAdj > 0 ? { stress_adjustment: stressAdj } : {}),
+          ...overDebt,
         });
       }
 
@@ -1076,7 +1170,12 @@ export const getLiquidityProjection = async (
     }
   }
 
-  await annotateFortnightCardPlans(byDueDate, input.ownerFilter, asOfStr);
+  await annotateFortnightCardPlans(
+    byDueDate,
+    input.ownerFilter,
+    asOfStr,
+    cardCycleContext,
+  );
 
   if (includeUnpaid) {
     const unpaidMap = await collectUnpaidFundingObligations(
@@ -1111,7 +1210,6 @@ export const getLiquidityProjection = async (
     mergeAllMilestones(byDueDate, tplMap);
   }
 
-  const sortedDates = [...byDueDate.keys()].sort(compareUtcDateOnly);
   const monthKeys = buildMonthKeyRange(fromMonthKey, toMonthKey);
   const timeline = await collectLiquidityProjectionTimeline(
     input.ownerFilter,
@@ -1131,35 +1229,12 @@ export const getLiquidityProjection = async (
   }
   const expectedIncomeTotal = cumulativeIncome;
 
-  let cumulative = 0;
-  const milestones: LiquidityMilestone[] = [];
-  let firstShortfall: string | null = null;
-  let firstProjectedShortfall: string | null = null;
-
-  for (const dueDate of sortedDates) {
-    const obligations = byDueDate.get(dueDate) ?? [];
-    const totalDue = obligations.reduce((s, o) => s + o.next_due_payment, 0);
-    cumulative += totalDue;
-    const headroom = fundingTotal - cumulative;
-    const dueMonthKey = toMonthKeyUtc(dueDate);
-    const projectedHeadroom =
-      fundingTotal + (cumulativeIncomeByMonth.get(dueMonthKey) ?? 0) - cumulative;
-    if (firstShortfall === null && headroom < 0) {
-      firstShortfall = dueDate;
-    }
-    if (firstProjectedShortfall === null && projectedHeadroom < 0) {
-      firstProjectedShortfall = dueDate;
-    }
-    milestones.push({
-      due_date: dueDate,
-      is_past_due: compareUtcDateOnly(dueDate, asOfStr) < 0,
-      obligations,
-      total_due: totalDue,
-      cumulative_due_through_date: cumulative,
-      funding_total: fundingTotal,
-      liquidity_headroom: headroom,
-    });
-  }
+  const { milestones, cumulative, firstShortfall, firstProjectedShortfall } = buildMilestones(
+    byDueDate,
+    fundingTotal,
+    cumulativeIncomeByMonth,
+    asOfStr,
+  );
 
   const summary: LiquidityProjectionSummary = {
     total_obligations_due_on_or_before_until: cumulative,
@@ -1289,7 +1364,10 @@ export const getLiquidityProjection = async (
   }
 
   const utilizationCards: LiquidityCardUtilizationItem[] = creditCardsForUtilization.map((card) => {
-    const usedAmount = Math.max(Number(card.amount ?? 0), 0);
+    const usedAmount = Math.max(
+      Number(card.amount ?? 0),
+      0,
+    );
     const effectiveCap = getEffectiveCreditLimit({
       credit_limit: card.credit_limit,
       temporary_credit_limit: card.temporary_credit_limit,

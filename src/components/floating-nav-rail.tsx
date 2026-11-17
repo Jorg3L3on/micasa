@@ -12,7 +12,6 @@ import {
   navPillIconClass,
   useNavOwnerQuery,
 } from '@/components/nav-pill';
-import { TeamSwitcher, TeamSwitcherShell } from '@/components/team-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useClientMounted } from '@/hooks/use-client-mounted';
@@ -27,9 +26,7 @@ const RAIL_GROUP_CLASS = cn(
 
 const RailFallback = () => (
   <>
-    <div className={cn(RAIL_GROUP_CLASS, 'self-start')} aria-hidden>
-      <span className="size-10 animate-pulse rounded-full bg-muted" />
-    </div>
+    <div aria-hidden />
     <div className={cn(RAIL_GROUP_CLASS, 'self-center')} aria-hidden>
       {NAV_DESTINATIONS.map((destination) => (
         <span
@@ -45,21 +42,15 @@ const RailFallback = () => (
   </>
 );
 
-/** Three groups pinned top, middle and bottom of the rail (grid rows in FloatingNavRail). */
+/** Nav group centered and theme/alerts pinned to the bottom (grid rows in FloatingNavRail). */
 const FloatingNavRailInner = () => {
   const pathname = usePathname();
   const ownerQuery = useNavOwnerQuery();
 
   return (
     <>
-      <div className={cn(RAIL_GROUP_CLASS, 'self-start')}>
-        <Suspense fallback={<TeamSwitcherShell variant="rail" />}>
-          <TeamSwitcher
-            variant="rail"
-            accountHref={hrefWithOwnerQuery('/settings/account', ownerQuery)}
-          />
-        </Suspense>
-      </div>
+      {/* Empty first row keeps the nav group centered (house switcher lives in the header). */}
+      <div aria-hidden />
 
       <div className={cn(RAIL_GROUP_CLASS, 'self-center')}>
         {NAV_DESTINATIONS.map((destination) => (
@@ -83,7 +74,7 @@ const FloatingNavRailInner = () => {
 };
 
 /**
- * Desktop icon rail: three floating pills (top, middle, bottom) on the canvas.
+ * Desktop icon rail: two floating pills (middle, bottom) on the canvas.
  * Hidden below `md`. Unmounts after hydration on phones so chrome isn't doubled.
  */
 export const FloatingNavRail = () => {

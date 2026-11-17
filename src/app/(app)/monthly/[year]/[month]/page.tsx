@@ -2,13 +2,21 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { ErrorBanner } from '@/components/error-banner';
 import { SectionHeader } from '@/components/section-header';
+import { Badge } from '@/components/ui/badge';
+import { STATUS_SOFT_CLASS } from '@/lib/status-tone';
+import { CalendarPlus } from 'lucide-react';
 import { getMonthlyPanelShellData } from '@/features/monthly/server/monthly.service';
 import { MonthlyPanelContentSuspense } from '@/features/monthly/server/MonthlyPanelContentSection';
 import { fortnightCalendarKey } from '@/features/monthly/server/monthly.queries';
 import { getOwnerContextFromPageSearchParams } from '@/lib/server/get-owner-context';
+import { withPageActor } from '@/lib/server/with-owner-context';
 import MonthlyHeader from '@/components/MonthlyHeader';
 import CreateNextMonthButton from '@/components/CreateNextMonthButton';
-import { MonthlyPanelLayout } from '@/components/monthly/MonthlyPanelLayout';
+import {
+  MonthlyOwnerGate,
+  MonthlyOwnerSwitchFallback,
+  MonthlyPanelLayout,
+} from '@/components/monthly/MonthlyPanelLayout';
 import { MonthlyChromeHeader } from '@/components/monthly/MonthlyChromeHeader';
 import { MonthlyPanelPreferencesProvider } from '@/components/monthly/MonthlyPanelPreferences';
 import { MonthlyNavNextLink } from '@/components/monthly/MonthlyNavNextLink';
@@ -26,6 +34,7 @@ import { cn } from '@/lib/utils';
 import {
   MONTHLY_CHROME_PADDING_CLASS,
   MONTHLY_PANEL_SHELL_CLASS,
+  MONTHLY_LIQUID_PANEL_CLASS,
 } from '@/components/monthly/monthly-panel-shell';
 
 export async function generateMetadata({
@@ -91,16 +100,18 @@ export default async function MonthlyPage({
 
   let shell;
   try {
-    shell = await getMonthlyPanelShellData({
-      ownerFilter: ownerContext.ownerFilter,
-      year,
-      month,
-      prevYear,
-      prevMonthStr,
-      nextYear,
-      nextMonthStr,
-      isCurrentMonth,
-    });
+    shell = await withPageActor(ownerContext, '/monthly', () =>
+      getMonthlyPanelShellData({
+        ownerFilter: ownerContext.ownerFilter,
+        year,
+        month,
+        prevYear,
+        prevMonthStr,
+        nextYear,
+        nextMonthStr,
+        isCurrentMonth,
+      }),
+    );
   } catch (error) {
     console.error('Error loading monthly financial panel:', error);
     return (
@@ -147,6 +158,11 @@ export default async function MonthlyPage({
   const monthIsMissing = firstFortnightInfo === null || secondFortnightInfo === null;
 
   const ownerKey = `${ownerContext.ownerType}-${ownerContext.ownerId}`;
+  // Without ?ownerType=&ownerId= the server rendered the personal default; the
+  // client replaces the URL with the persisted owner, so treat it as pending.
+  const ownerInUrl = Boolean(
+    resolvedSearchParams.ownerType && resolvedSearchParams.ownerId,
+  );
   const suggestedPeriod = getSuggestedFortnightPeriodForMonth(year, month);
 
   const prevControl = (
@@ -175,73 +191,123 @@ export default async function MonthlyPage({
     ) : null;
 
   if (monthIsMissing) {
-    return (
-      <div className="space-y-5">
-        <MonthlyPanelPreferencesProvider
-          ownerKey={ownerKey}
-          year={year}
-          month={month}
-          suggestedPeriod={suggestedPeriod}
+    // While the owner is pending this month may exist for the real owner, so the
+    // fallback keeps the full chrome (progress + toggle) and drops Crear mes.
+    const missingMonthChrome = (ownerPending: boolean) => (
+      <MonthlyPanelPreferencesProvider
+        ownerKey={ownerKey}
+        year={year}
+        month={month}
+        suggestedPeriod={suggestedPeriod}
+      >
+        <div
+          className={cn(
+            '@container',
+            MONTHLY_PANEL_SHELL_CLASS,
+            MONTHLY_CHROME_PADDING_CLASS,
+          )}
         >
-          <div
-            className={cn(
-              '@container',
-              MONTHLY_PANEL_SHELL_CLASS,
-              MONTHLY_CHROME_PADDING_CLASS,
-            )}
-          >
-            <MonthlyChromeHeader
-              year={year}
-              month={month}
-              monthName={monthName}
-              isCurrentMonth={isCurrentMonth}
-              currentMonthHref={currentMonthHref}
-              todayYmd={todayYmd}
-              ownerQuery={ownerQuery}
-              firstLabel={firstLabel}
-              secondLabel={secondLabel}
-              prevControl={prevControl}
-              nextNavControl={nextNavControl}
-              createNextControl={createNextControl}
-              showFortnightToggle={false}
-            />
-          </div>
-        </MonthlyPanelPreferencesProvider>
-
-        <div className={cn(MONTHLY_PANEL_SHELL_CLASS, 'p-5')}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <SectionHeader
-                title={`Falta crear la planeación de ${viewedMonthLabel}`}
-              />
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                Este mes no tiene las dos quincenas necesarias. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta para evitar datos incompletos.
-              </p>
-            </div>
-            <CreatePlanningMonthButton
-              year={year}
-              month={month}
-              monthLabel={viewedMonthLabel}
-              canCreate
-              variant="hero"
-            />
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="rounded-lg border border-border/60 px-2 py-1">
-              1a quincena: {firstFortnightInfo ? 'creada' : 'pendiente'}
-            </span>
-            <span className="rounded-lg border border-border/60 px-2 py-1">
-              2a quincena: {secondFortnightInfo ? 'creada' : 'pendiente'}
-            </span>
-          </div>
+          <MonthlyChromeHeader
+            year={year}
+            month={month}
+            monthName={monthName}
+            isCurrentMonth={isCurrentMonth}
+            currentMonthHref={currentMonthHref}
+            todayYmd={todayYmd}
+            ownerQuery={ownerQuery}
+            firstLabel={firstLabel}
+            secondLabel={secondLabel}
+            prevControl={prevControl}
+            nextNavControl={nextNavControl}
+            createNextControl={ownerPending ? null : createNextControl}
+            showFortnightToggle={ownerPending}
+          />
         </div>
-      </div>
+      </MonthlyPanelPreferencesProvider>
+    );
+
+    return (
+      <MonthlyOwnerGate
+        ownerKey={ownerKey}
+        ownerInUrl={ownerInUrl}
+        fallback={
+          <div className="space-y-5">
+            {missingMonthChrome(true)}
+            <MonthlyOwnerSwitchFallback />
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          {missingMonthChrome(false)}
+
+          <section
+            className={cn(
+              MONTHLY_LIQUID_PANEL_CLASS,
+              'space-y-3 p-3 sm:space-y-4 sm:p-4',
+            )}
+            aria-label={`Planeación de ${viewedMonthLabel}`}
+          >
+            <SectionHeader
+              icon={CalendarPlus}
+              title={viewedMonthLabel}
+              subtitle="Aún no tiene planeación"
+              actions={
+                <Badge
+                  variant="outline"
+                  className="h-5 rounded-full border-border/60 px-2 text-caption font-semibold text-muted-foreground"
+                >
+                  Sin planear
+                </Badge>
+              }
+            />
+            <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60">
+                <CalendarPlus className="h-6 w-6 text-muted-foreground/60" aria-hidden />
+              </span>
+              <p className="text-sm font-medium text-foreground">
+                Falta crear la planeación de {viewedMonthLabel}
+              </p>
+              <p className="max-w-sm text-body text-muted-foreground">
+                Se generan las dos quincenas con tus gastos e ingresos programados. Crea el mes antes de capturar gastos, ingresos o pagos de tarjeta.
+              </p>
+              <CreatePlanningMonthButton
+                year={year}
+                month={month}
+                monthLabel={viewedMonthLabel}
+                canCreate
+                variant="plain"
+              />
+              <div className="mt-1 flex flex-wrap justify-center gap-1.5">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'h-5 rounded-full border-transparent px-2 text-caption font-medium',
+                    firstFortnightInfo ? STATUS_SOFT_CLASS.success : 'bg-muted/60 text-muted-foreground',
+                  )}
+                >
+                  1ª quincena · {firstFortnightInfo ? 'creada' : 'pendiente'}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'h-5 rounded-full border-transparent px-2 text-caption font-medium',
+                    secondFortnightInfo ? STATUS_SOFT_CLASS.success : 'bg-muted/60 text-muted-foreground',
+                  )}
+                >
+                  2ª quincena · {secondFortnightInfo ? 'creada' : 'pendiente'}
+                </Badge>
+              </div>
+            </div>
+          </section>
+        </div>
+      </MonthlyOwnerGate>
     );
   }
 
   return (
     <MonthlyPanelLayout
       ownerKey={ownerKey}
+      ownerInUrl={ownerInUrl}
       year={year}
       month={month}
       monthName={monthName}
@@ -258,6 +324,7 @@ export default async function MonthlyPage({
     >
       <MonthlyPanelContentSuspense
         ownerFilter={ownerContext.ownerFilter}
+        pageOwner={ownerContext}
         ownerKey={ownerKey}
         year={year}
         month={month}

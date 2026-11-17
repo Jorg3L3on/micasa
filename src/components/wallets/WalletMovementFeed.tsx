@@ -7,10 +7,11 @@ import {
   ArrowDownLeft,
   ArrowUp,
   ArrowUpRight,
-  Inbox,
 } from 'lucide-react';
 import { CategoryLabel } from '@/components/categories/CategoryLabel';
-import { SectionHeader } from '@/components/section-header';
+import EmptyState from '@/components/EmptyState';
+import { FilterChip } from '@/components/filter-chip';
+import { RevealGroup, RevealItem } from '@/components/motion/reveal';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,11 +21,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-  creditCardSegmentedFilterButtonClass,
-  creditCardSegmentedTabChromeClass,
-} from '@/components/credit-cards/credit-card-segmented-tabs';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { Money } from '@/components/money';
+import { STATUS_SOFT_CLASS } from '@/lib/status-tone';
+import { cn, formatDate } from '@/lib/utils';
 import type { WalletMovement } from '@/types/wallet-movements';
 
 type KindFilter = 'all' | 'income' | 'expense';
@@ -139,84 +138,106 @@ export const WalletMovementsFeed = ({
   const isEmpty = movements.length === 0;
 
   return (
-    <div role="region" aria-label="Movimientos" className="space-y-4">
-      <SectionHeader
-        title="Movimientos"
-        actions={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1 px-2 text-xs text-muted-foreground"
-              aria-label="Ordenar movimientos"
-            >
-              Ordenar · {SORT_LABELS[field]}
-              {dir === 'desc' ? (
-                <ArrowDown className="h-3 w-3" data-icon="inline-start" />
-              ) : (
-                <ArrowUp className="h-3 w-3" data-icon="inline-start" />
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuRadioGroup
-              value={field}
-              onValueChange={(value) => handleSortClick(value as SortField)}
-            >
-              {(Object.keys(SORT_LABELS) as SortField[]).map((key) => (
-                <DropdownMenuRadioItem key={key} value={key} className="text-xs">
-                  {SORT_LABELS[key]}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        }
-      />
-
-      <div className={creditCardSegmentedTabChromeClass}>
-        <div className="grid w-full grid-cols-3 gap-1" role="tablist" aria-label="Filtrar movimientos">
-          {filterOptions.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={kindFilter === value}
-              onClick={() => setKindFilter(value)}
-              className={creditCardSegmentedFilterButtonClass(kindFilter === value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
+    <div
+      role="region"
+      aria-label="Movimientos"
+      className="flex flex-col gap-4 lg:h-full"
+    >
       {!isEmpty ? (
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por descripción o categoría…"
-          className="h-9 border-border/50 bg-muted/20 text-sm"
-          aria-label="Filtrar movimientos"
-        />
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por descripción o categoría…"
+            className="h-9 min-w-0 border-border/50 bg-muted/20 text-sm md:flex-1"
+            aria-label="Buscar movimientos"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className="flex items-center gap-1.5"
+              role="group"
+              aria-label="Filtrar por tipo"
+            >
+              {filterOptions.map(({ value, label }) => (
+                <FilterChip
+                  key={value}
+                  selected={kindFilter === value}
+                  onClick={() => setKindFilter(value)}
+                  className={cn(
+                    'px-2.5 sm:px-3',
+                    // Neutral on purpose: the blue pill belongs to the page tabs above.
+                    kindFilter === value &&
+                      'border-foreground/25 bg-muted text-foreground',
+                  )}
+                >
+                  {label}
+                </FilterChip>
+              ))}
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto h-9 gap-1 px-2 text-xs text-muted-foreground"
+                  aria-label="Ordenar movimientos"
+                >
+                  <span className="max-sm:hidden">Ordenar · </span>
+                  {SORT_LABELS[field]}
+                  {dir === 'desc' ? (
+                    <ArrowDown className="h-3 w-3" data-icon="inline-start" />
+                  ) : (
+                    <ArrowUp className="h-3 w-3" data-icon="inline-start" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuRadioGroup
+                  value={field}
+                  onValueChange={(value) => handleSortClick(value as SortField)}
+                >
+                  {(Object.keys(SORT_LABELS) as SortField[]).map((key) => (
+                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
+                      {SORT_LABELS[key]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
       ) : null}
 
       {isEmpty ? (
-        <WalletFeedEmpty
-          canRegister={canRegister}
-          onAddTransaction={onAddTransaction}
-          addTransactionLabel={addTransactionLabel}
+        <EmptyState
+          message="Sin movimientos en este periodo"
+          description="Registra un ingreso o un gasto para verlos aquí."
+          className="lg:flex-1"
+          hangAction
+          action={
+            canRegister && onAddTransaction
+              ? { label: addTransactionLabel, onClick: onAddTransaction }
+              : undefined
+          }
         />
       ) : filtered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          Ningún movimiento coincide con el filtro.
-        </p>
+        <EmptyState
+          message="Ningún movimiento coincide con el filtro"
+          className="lg:flex-1"
+        />
       ) : (
-        <div className="space-y-5">
-          {grouped.map(([date, rows]) => (
-            <section key={date} aria-label={`Movimientos del ${formatDate(date)}`}>
+        <div
+          tabIndex={0}
+          role="group"
+          aria-label="Lista de movimientos"
+          className="outline-none focus-visible:ring-2 focus-visible:ring-primary/45 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1"
+        >
+          {/* Keyed on the filter and sort, not the search, so typing does not replay it. */}
+          <RevealGroup key={`${kindFilter}-${field}-${dir}`} className="space-y-5">
+          {grouped.map(([date, rows], groupIndex) => (
+            <RevealItem key={date} index={groupIndex}>
+            <section aria-label={`Movimientos del ${formatDate(date)}`}>
               <p className="mb-2 eyebrow text-muted-foreground">
                 {formatDate(date)}
               </p>
@@ -239,9 +260,7 @@ export const WalletMovementsFeed = ({
                       <span
                         className={cn(
                           'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                          isIn
-                            ? 'bg-status-income/12 text-status-income'
-                            : 'bg-status-expense/12 text-status-expense',
+                          STATUS_SOFT_CLASS[isIn ? 'income' : 'expense'],
                         )}
                         aria-hidden
                       >
@@ -252,7 +271,9 @@ export const WalletMovementsFeed = ({
                         )}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{m.description}</p>
+                        <p className="truncate text-sm font-medium" title={m.description}>
+                          {m.description}
+                        </p>
                         <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                           {m.category ? (
                             <>
@@ -281,50 +302,22 @@ export const WalletMovementsFeed = ({
                           </Link>
                         ) : null}
                       </div>
-                      <span
-                        className={cn(
-                          'shrink-0 font-sans text-sm font-bold tabular-nums',
-                          isIn && 'text-status-income',
-                        )}
-                      >
-                        {isIn ? '+' : '−'} {formatCurrency(m.amount)}
-                      </span>
+                      <Money
+                        value={isIn ? m.amount : -m.amount}
+                        size="row"
+                        className="font-bold"
+                      />
                     </li>
                   );
                 })
                 )}
               </ul>
             </section>
+            </RevealItem>
           ))}
+          </RevealGroup>
         </div>
       )}
     </div>
   );
 };
-
-const WalletFeedEmpty = ({
-  canRegister,
-  onAddTransaction,
-  addTransactionLabel,
-}: {
-  canRegister: boolean;
-  onAddTransaction?: () => void;
-  addTransactionLabel: string;
-}) => (
-  <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/60 px-4 py-10 text-center">
-    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/40">
-      <Inbox className="h-5 w-5 text-muted-foreground" aria-hidden data-icon="inline-start" />
-    </span>
-    <div>
-      <p className="text-sm font-medium">Sin movimientos en este periodo</p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Registra un ingreso o un gasto para verlos aquí.
-      </p>
-    </div>
-    {canRegister && onAddTransaction ? (
-      <Button type="button" size="sm" onClick={onAddTransaction}>
-        {addTransactionLabel}
-      </Button>
-    ) : null}
-  </div>
-);

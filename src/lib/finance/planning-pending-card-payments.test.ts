@@ -10,6 +10,7 @@ const card = (
   overrides: Partial<DuePaymentItem> & Pick<DuePaymentItem, 'walletId' | 'walletName'>,
 ): DuePaymentItem => ({
   walletType: 'CREDIT_CARD',
+  providerIconKey: null,
   dueDay: 29,
   cutoff_day: 14,
   nextDuePayment: 2100,

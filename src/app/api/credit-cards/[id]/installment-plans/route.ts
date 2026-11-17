@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOwnerContext } from '@/lib/server/get-owner-context';
+import { withOwnerContext } from '@/lib/server/with-owner-context';
 import {
   createInstallmentPlan,
   listInstallmentPlansForCard,
@@ -20,23 +20,22 @@ const parseWalletId = async (params: RouteParams['params']) => {
 
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
-    const context = await getOwnerContext(_request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(_request, async (context) => {
+      const walletId = await parseWalletId(params);
+      if (walletId == null) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
 
-    const walletId = await parseWalletId(params);
-    if (walletId == null) {
-      return NextResponse.json(
-        { error: 'Valid id parameter is required' },
-        { status: 400 },
+      const items = await listInstallmentPlansForCard(
+        walletId,
+        context.ownerFilter,
+        { activeOnly: true },
       );
-    }
-
-    const items = await listInstallmentPlansForCard(
-      walletId,
-      context.ownerFilter,
-      { activeOnly: true },
-    );
-    return NextResponse.json({ items }, { status: 200 });
+      return NextResponse.json({ items }, { status: 200 });
+    });
   } catch (error) {
     console.error('Error listing installment plans:', error);
     return NextResponse.json(
@@ -48,26 +47,25 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const context = await getOwnerContext(request);
-    if ('error' in context) return context.error;
+    return await withOwnerContext(request, async (context) => {
+      const walletId = await parseWalletId(params);
+      if (walletId == null) {
+        return NextResponse.json(
+          { error: 'Valid id parameter is required' },
+          { status: 400 },
+        );
+      }
 
-    const walletId = await parseWalletId(params);
-    if (walletId == null) {
-      return NextResponse.json(
-        { error: 'Valid id parameter is required' },
-        { status: 400 },
+      const body = await request.json();
+      const validated = createCreditCardInstallmentPlanSchema.parse(body);
+      const item = await createInstallmentPlan(
+        walletId,
+        context.ownerFilter,
+        validated,
       );
-    }
 
-    const body = await request.json();
-    const validated = createCreditCardInstallmentPlanSchema.parse(body);
-    const item = await createInstallmentPlan(
-      walletId,
-      context.ownerFilter,
-      validated,
-    );
-
-    return NextResponse.json(item, { status: 201 });
+      return NextResponse.json(item, { status: 201 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

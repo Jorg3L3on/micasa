@@ -11,7 +11,10 @@ export type RateLimitPolicyId =
   | 'mutation:statement-import'
   | 'mutation:receipt-upload'
   | 'mutation:api-key-create'
-  | 'mcp:tool';
+  | 'mcp:tool'
+  | 'oauth:token'
+  | 'oauth:register'
+  | 'oauth:cimd-resolve';
 
 type RateLimitScope = 'ip' | 'user';
 
@@ -29,6 +32,11 @@ export const RATE_LIMIT_POLICIES: Record<RateLimitPolicyId, RateLimitPolicy> = {
   'mutation:api-key-create': { max: 10, windowMs: 60 * 60 * 1000, scope: 'user' },
   // MCP tool calls per agent (identity = api key id, passed as userId).
   'mcp:tool': { max: 120, windowMs: 60 * 1000, scope: 'user' },
+  // Public OAuth endpoints: every hit can write a row, so cap per IP.
+  'oauth:token': { max: 30, windowMs: 60 * 1000, scope: 'ip' },
+  'oauth:register': { max: 10, windowMs: 60 * 60 * 1000, scope: 'ip' },
+  // New CIMD client_id URLs fetched and stored per IP (known clients are free).
+  'oauth:cimd-resolve': { max: 20, windowMs: 60 * 60 * 1000, scope: 'ip' },
 };
 
 const RATE_LIMIT_ERROR = 'Demasiadas solicitudes. Inténtalo más tarde.';
@@ -37,7 +45,7 @@ type MemoryEntry = { count: number; resetAt: number };
 
 const memoryStore = new Map<string, MemoryEntry>();
 
-const useUpstash = (): boolean =>
+const isUpstashConfigured = (): boolean =>
   Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
 export const getClientIp = (request: Request): string => {
@@ -150,7 +158,7 @@ export const checkRateLimit = async (
   }
 
   const key = buildRateLimitKey(policyId, identity);
-  const { count, retryAfterMs } = useUpstash()
+  const { count, retryAfterMs } = isUpstashConfigured()
     ? await incrementUpstash(key, policy.windowMs)
     : incrementMemory(key, policy.windowMs);
 

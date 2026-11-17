@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   NAV_DESTINATIONS,
-  getMobileDockItems,
+  getDockDestinations,
   getNavDestination,
   getOverflowDestinations,
 } from '@/components/nav-destinations';
@@ -22,7 +22,7 @@ describe('NAV_DESTINATIONS', () => {
     for (const item of NAV_DESTINATIONS) {
       expect(item.getHref().startsWith('/fortnight')).toBe(false);
     }
-    for (const item of getMobileDockItems()) {
+    for (const item of getOverflowDestinations()) {
       expect(item.getHref().startsWith('/fortnight')).toBe(false);
     }
   });
@@ -49,48 +49,37 @@ describe('NAV_DESTINATIONS', () => {
 });
 
 describe('mobile dock', () => {
-  it('keeps the six primaries in the pill', () => {
-    expect(getMobileDockItems().map((item) => item.title)).toEqual([
-      'Panel financiero',
-      'Billeteras',
-      'Tarjetas',
+  it('puts Panel, Billeteras and Análisis around the + button', () => {
+    expect(
+      getDockDestinations().map((item) => item.dockTitle ?? item.title),
+    ).toEqual(['Panel', 'Billeteras', 'Análisis']);
+  });
+
+  it('has no Tarjetas or Presupuestos dock tab', () => {
+    const ids = getDockDestinations().map((item) => item.id);
+    expect(ids).not.toContain('credit-cards');
+    expect(ids).not.toContain('budgets');
+  });
+
+  it('keeps Billeteras highlighted on a credit card', () => {
+    const wallets = getDockDestinations().find((item) => item.id === 'wallets');
+    expect(wallets?.isActive('/credit-cards/3')).toBe(true);
+  });
+
+  it('sends Préstamos, Operaciones and Presupuestos to the Más sheet', () => {
+    expect(getOverflowDestinations().map((item) => item.title)).toEqual([
       'Préstamos',
+      'Operaciones',
       'Presupuestos',
     ]);
   });
 
-  it('sends Análisis and Operaciones to the overflow sheet', () => {
-    expect(getOverflowDestinations().map((item) => item.title)).toEqual([
-      'Análisis',
-      'Operaciones',
-    ]);
-  });
-
-  it('maps Tarjetas and Presupuestos onto existing pages', () => {
-    const dock = Object.fromEntries(
-      getMobileDockItems().map((item) => [item.id, item]),
+  it('links Presupuestos to its settings page and highlights it only there', () => {
+    const budgets = getOverflowDestinations().find(
+      (item) => item.id === 'budgets',
     );
-    expect(dock['credit-cards'].getHref()).toBe('/wallets');
-    expect(dock.budgets.getHref()).toBe('/settings/budgets');
-  });
-
-  it('highlights Tarjetas on a card without clearing the desktop Billeteras rule', () => {
-    const dock = Object.fromEntries(
-      getMobileDockItems().map((item) => [item.id, item]),
-    );
-    expect(getNavDestination('wallets').isActive('/credit-cards/3')).toBe(true);
-    expect(dock.wallets.isActive('/credit-cards/3')).toBe(false);
-    expect(dock['credit-cards'].isActive('/credit-cards/3')).toBe(true);
-    expect(dock.wallets.isActive('/wallets')).toBe(true);
-    expect(dock['credit-cards'].isActive('/wallets')).toBe(false);
-  });
-
-  it('highlights Presupuestos only on its own page', () => {
-    const dock = Object.fromEntries(
-      getMobileDockItems().map((item) => [item.id, item]),
-    );
-    expect(dock.budgets.isActive('/settings/budgets')).toBe(true);
-    expect(dock.budgets.isActive('/settings/categories')).toBe(false);
-    expect(dock.budgets.isActive('/wallets')).toBe(false);
+    expect(budgets?.getHref()).toBe('/settings/budgets');
+    expect(budgets?.isActive('/settings/budgets')).toBe(true);
+    expect(budgets?.isActive('/settings/categories')).toBe(false);
   });
 });

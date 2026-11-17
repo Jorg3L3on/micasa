@@ -1,5 +1,6 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { PaymentMethodType } from '@/generated/prisma/client';
+import { DomainError } from '@/lib/finance/domain-error';
 
 type WalletTypeLike = {
   type: PaymentMethodType;
@@ -91,20 +92,12 @@ export const assertPaidChargeAllowedForWallet = (
   if (isCreditWalletType(wallet.type)) {
     const limit = getEffectiveCreditLimit(wallet);
     if (limit != null && balance + chargeAmount > limit) {
-      const error = new Error(
-        'El gasto supera el crédito disponible',
-      ) as Error & { code?: string };
-      error.code = 'CREDIT_LIMIT_EXCEEDED';
-      throw error;
+      throw new DomainError('CREDIT_LIMIT_EXCEEDED', 'El gasto supera el crédito disponible');
     }
     return;
   }
   if (isSpendableCashWalletType(wallet.type) && balance < chargeAmount) {
-    const error = new Error(
-      'Saldo insuficiente en la billetera',
-    ) as Error & { code?: string };
-    error.code = 'INSUFFICIENT_WALLET_BALANCE';
-    throw error;
+    throw new DomainError('INSUFFICIENT_WALLET_BALANCE', 'Saldo insuficiente en la billetera');
   }
 };
 
@@ -154,9 +147,7 @@ export const ensureCreditWalletType = (wallet: WalletTypeLike) => {
     return;
   }
 
-  const error = new Error('Wallet is not a credit card');
-  (error as { code?: string }).code = 'INVALID_CREDIT_CARD';
-  throw error;
+  throw new DomainError('INVALID_CREDIT_CARD', 'Wallet is not a credit card');
 };
 
 export const ensureFundingWalletType = (wallet: WalletTypeLike) => {
@@ -164,7 +155,5 @@ export const ensureFundingWalletType = (wallet: WalletTypeLike) => {
     return;
   }
 
-  const error = new Error('Wallet cannot be used as a payment source');
-  (error as { code?: string }).code = 'INVALID_PAYMENT_SOURCE_WALLET';
-  throw error;
+  throw new DomainError('INVALID_PAYMENT_SOURCE_WALLET', 'Wallet cannot be used as a payment source');
 };

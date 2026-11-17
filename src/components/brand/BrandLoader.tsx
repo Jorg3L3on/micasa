@@ -1,13 +1,13 @@
 import { cn } from '@/lib/utils';
 
-/** Head → tail along the mark gradient (#3a37fc → #8A2BE2). */
+/** Head → tail along the mark gradient (#2563EB → #8B3FD9). */
 const COMET_TRAIL_COLORS = [
-  '#3a37fc',
-  '#4935f7',
-  '#5833f1',
-  '#6831ec',
-  '#782fe7',
-  '#8a2be2',
+  '#2563eb',
+  '#395ce7',
+  '#4e55e4',
+  '#624de0',
+  '#7746dd',
+  '#8b3fd9',
 ] as const;
 
 type BrandLoaderProps = {
@@ -18,7 +18,7 @@ type BrandLoaderProps = {
 };
 
 /**
- * MiCasa loader: the "M" mark inside an orbiting comet (beUI Comet geometry).
+ * MiCasa loader: the roof + "M" mark inside an orbiting comet (beUI Comet geometry).
  * Pure CSS animation so it runs from server-streamed HTML before hydration.
  */
 export function BrandLoader({
@@ -45,12 +45,12 @@ export function BrandLoader({
       />
       <span
         aria-hidden
-        className="brand-loader-breathe absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[28%] border border-white/[0.08] bg-white/[0.04] shadow-[0_0_32px_-6px_rgba(58,55,252,0.55)] backdrop-blur-xl"
+        className="brand-loader-breathe absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[28%] border border-white/[0.08] bg-white/[0.04] shadow-[0_0_32px_-6px_rgba(37,99,235,0.55)] backdrop-blur-xl"
         style={{ width: tile, height: tile }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- must render before hydration without the image optimizer */}
         <img
-          src="/brand/mark-160.png"
+          src="/brand/mark.svg"
           alt=""
           width={mark}
           height={mark}
