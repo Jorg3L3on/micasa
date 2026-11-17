@@ -382,6 +382,11 @@ function buildBudgetScope(
       ? effective.reduce((sum, amount) => sum + amount, 0)
       : agg.templateTotal;
     const spent = agg.rows.reduce((sum, row) => sum + row.spent, 0);
+    // Spend in a category paused for this quincena is outside the budget: it
+    // stays in Pagado but does not count as "usado" of what is left.
+    const spentInBudget = adjustment
+      ? agg.rows.reduce((sum, row, i) => sum + ((effective[i] ?? 0) > 0 ? row.spent : 0), 0)
+      : spent;
     const reserve =
       agg.rows.length > 0
         ? remainingReserve(
@@ -390,7 +395,7 @@ function buildBudgetScope(
         : Math.max(0, total);
 
     totalBudget += total;
-    totalSpent += spent;
+    totalSpent += spentInBudget;
     available += reserve;
     sourceTotals.set(agg.frequency, (sourceTotals.get(agg.frequency) ?? 0) + total);
 

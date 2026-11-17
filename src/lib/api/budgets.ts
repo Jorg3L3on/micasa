@@ -101,3 +101,42 @@ export async function updateBudgetAllocations(
     body: JSON.stringify({ allocations }),
   }, context);
 }
+
+export type BudgetQuincenaRef = { year: number; month: number; period: 'FIRST' | 'SECOND' };
+
+/** One-quincena adjustment (MIC-I19): $0 pauses; any other total is split by the template. */
+export async function setBudgetQuincenaAdjustment(
+  budgetId: number,
+  ref: BudgetQuincenaRef,
+  total: number,
+  context?: FinanceContextType,
+) {
+  return clientFetchFromApi(
+    `/api/budgets/${budgetId}/adjustments`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(
+        total <= 0 ? { ...ref, kind: 'PAUSE' } : { ...ref, kind: 'AMOUNTS', total },
+      ),
+    },
+    context,
+  );
+}
+
+/** Back to the template for that quincena. */
+export async function clearBudgetQuincenaAdjustment(
+  budgetId: number,
+  ref: BudgetQuincenaRef,
+  context?: FinanceContextType,
+) {
+  const query = new URLSearchParams({
+    year: String(ref.year),
+    month: String(ref.month),
+    period: ref.period,
+  });
+  return clientFetchFromApi(
+    `/api/budgets/${budgetId}/adjustments?${query.toString()}`,
+    { method: 'DELETE' },
+    context,
+  );
+}

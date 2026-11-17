@@ -92,6 +92,8 @@ type SummaryBlockProps = {
   planningBudgetRemaining?: number;
   /** Budget section inside Ver desglose; hidden from xl, where the card shows. */
   budgetDesglose?: ReactNode;
+  /** A one-quincena budget adjustment applies to this quincena (MIC-I19). */
+  budgetAdjusted?: boolean;
   /** Saldos activos Efectivo + Débito (API resumen) — Balance actual. */
   fundingWalletBalanceTotal?: number;
   /** Saldos efectivo/débito menos pendiente, nómina y resto de presupuesto — Liquidez actual. */
@@ -122,6 +124,7 @@ export default function SummaryBlock({
   planningPayrollLoanDeduction = null,
   planningBudgetRemaining = 0,
   budgetDesglose = null,
+  budgetAdjusted = false,
   fundingWalletBalanceTotal = 0,
   fundingNetVsPendingExpense = 0,
   fundingWalletBreakdown = [],
@@ -608,10 +611,15 @@ export default function SummaryBlock({
                       <Money value={-payrollLoanDeduction} size="row" />
                     </div>
                   ) : null}
-                  {displayBudgetFundingRow > 0 ? (
+                  {displayBudgetFundingRow > 0 || (budgetAdjusted && fundingLiquidityApplies) ? (
                     <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="text-muted-foreground">
                         Menos del presupuesto de la quincena
+                        {budgetAdjusted ? (
+                          <span className="ml-1.5 text-caption font-medium text-status-info">
+                            ajustado
+                          </span>
+                        ) : null}
                       </span>
                       <Money value={-displayBudgetFundingRow} size="row" />
                     </div>

@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { PiggyBank, SlidersHorizontal } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { PiggyBank, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import { SectionHeader } from '@/components/section-header';
 import { Button } from '@/components/ui/button';
@@ -27,6 +29,17 @@ import type {
   MonthlyBudgetAllocationRow,
   MonthlyBudgetScope,
 } from '@/types/monthly-budget-panel';
+import {
+  BudgetAdjustButton,
+  canAdjustQuincena,
+  type BudgetAdjustTarget,
+} from '@/components/monthly/BudgetAdjustButton';
+import { clearBudgetQuincenaAdjustment } from '@/lib/api/budgets';
+import { useFinanceContext } from '@/context/finance-context';
+
+/** True when a one-quincena adjustment (MIC-I19) changes this quincena. */
+export const scopeIsAdjusted = (scope: MonthlyBudgetScope): boolean =>
+  (scope.budgets ?? []).some((b) => b.adjustment != null);
 
 type FortnightBudgetBreakdownProps = {
   scope: MonthlyBudgetScope;
@@ -35,6 +48,8 @@ type FortnightBudgetBreakdownProps = {
   periodLabel: string;
   /** Keeps heading ids unique when the sidebar and the desglose both render. */
   idPrefix: string;
+  /** Quincena shown and the refresh to run after an adjustment (MIC-I19). */
+  adjust?: BudgetAdjustTarget | null;
 };
 
 /**
@@ -47,9 +62,34 @@ export const FortnightBudgetBreakdown = ({
   ownerQuery,
   periodLabel,
   idPrefix,
+  adjust = null,
 }: FortnightBudgetBreakdownProps) => {
   const allocationsHeadingId = `${idPrefix}-budget-allocations-heading`;
   const { allocations } = scope;
+  const { context } = useFinanceContext();
+  const [restoring, setRestoring] = useState(false);
+  const adjustedBudgets = (scope.budgets ?? []).filter((b) => b.adjustment != null);
+  const canRestore =
+    adjust != null && adjustedBudgets.length > 0 && canAdjustQuincena(adjust.quincena);
+  const templateTotal = adjustedBudgets.reduce((sum, b) => sum + b.templateTotal, 0);
+
+  const restoreTemplate = async () => {
+    if (!adjust) return;
+    setRestoring(true);
+    try {
+      await Promise.all(
+        adjustedBudgets.map((b) =>
+          clearBudgetQuincenaAdjustment(b.budgetId, adjust.quincena, context),
+        ),
+      );
+      await adjust.onSaved();
+      toast.success('Plantilla restaurada para esta quincena');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo restaurar la plantilla');
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   return (
     <>
@@ -83,15 +123,41 @@ export const FortnightBudgetBreakdown = ({
         />
       )}
 
-      <Button variant="outline" size="sm" className="h-11 w-full gap-2 sm:h-8" asChild>
-        <Link
-          href={`/settings/budgets${ownerQuery}`}
-          aria-label="Ver reporte completo de presupuesto de la quincena"
+      {canRestore ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-11 w-full gap-2 sm:h-8"
+          onClick={() => void restoreTemplate()}
+          disabled={restoring}
         >
-          <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
-          Ver reporte completo
-        </Link>
-      </Button>
+          <RotateCcw className="h-4 w-4 shrink-0" aria-hidden />
+          {restoring
+            ? 'Restaurando…'
+            : adjustedBudgets.length === 1
+              ? `Restaurar plantilla (${formatCurrency(templateTotal)})`
+              : 'Restaurar plantilla'}
+        </Button>
+      ) : null}
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <BudgetAdjustButton
+          scope={scope}
+          target={adjust}
+          ownerQuery={ownerQuery}
+          className="w-full sm:flex-1"
+        />
+        <Button variant="outline" size="sm" className="h-11 w-full gap-2 sm:h-8 sm:flex-1" asChild>
+          <Link
+            href={`/settings/budgets${ownerQuery}`}
+            aria-label="Ver reporte completo de presupuesto de la quincena"
+          >
+            <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
+            Ver reporte completo
+          </Link>
+        </Button>
+      </div>
     </>
   );
 };
@@ -100,6 +166,7 @@ type FortnightBudgetDesgloseSectionProps = {
   scope: MonthlyBudgetScope;
   ownerQuery: string;
   periodLabel: string;
+  adjust?: BudgetAdjustTarget | null;
 };
 
 /** Budget block inside Ver desglose, for widths where the card is hidden. */
@@ -107,6 +174,7 @@ export const FortnightBudgetDesgloseSection = ({
   scope,
   ownerQuery,
   periodLabel,
+  adjust = null,
 }: FortnightBudgetDesgloseSectionProps) => {
   const headingId = 'desglose-budget-heading';
   const usedPercent = getBudgetUsedPercent(scope);
@@ -135,18 +203,9 @@ export const FortnightBudgetDesgloseSection = ({
         id={headingId}
         icon={PiggyBank}
         title="Presupuesto de la quincena"
+        subtitle={scopeIsAdjusted(scope) ? 'Ajustado solo esta quincena' : undefined}
         actions={
-          scope.totalBudget > 0 ? (
-            <Badge
-              variant="outline"
-              className={cn(
-                'h-5 rounded-full border-transparent px-2 text-caption font-semibold',
-                STATUS_SOFT_CLASS[getBudgetUsedTone(usedPercent)],
-              )}
-            >
-              {usedPercent}% usado
-            </Badge>
-          ) : null
+          <BudgetHeaderActions scope={scope} usedPercent={usedPercent} />
         }
       />
       <FortnightBudgetBreakdown
@@ -154,21 +213,64 @@ export const FortnightBudgetDesgloseSection = ({
         ownerQuery={ownerQuery}
         periodLabel={periodLabel}
         idPrefix="desglose"
+        adjust={adjust}
       />
     </section>
   );
 };
+
+/** Usage badge for the budget header (card and desglose). */
+export function BudgetHeaderActions({
+  scope,
+  usedPercent,
+}: {
+  scope: MonthlyBudgetScope;
+  usedPercent: number;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      {scope.totalBudget > 0 ? (
+        <Badge
+          variant="outline"
+          className={cn(
+            'h-5 rounded-full border-transparent px-2 text-caption font-semibold',
+            STATUS_SOFT_CLASS[getBudgetUsedTone(usedPercent)],
+          )}
+        >
+          {usedPercent}% usado
+        </Badge>
+      ) : null}
+    </div>
+  );
+}
 
 function BudgetAllocationRow({
   allocation,
 }: {
   allocation: MonthlyBudgetAllocationRow;
 }) {
-  const overspent = allocation.remaining < 0;
-  const barPercent = Math.min(100, Math.max(0, allocation.percentUsed));
-  const remainingLabel = overspent
-    ? `${formatCurrency(Math.abs(allocation.remaining))} excedido`
-    : `${formatCurrency(allocation.remaining)} restante`;
+  const adjusted =
+    Math.round(allocation.templateBudgeted * 100) !== Math.round(allocation.budgeted * 100);
+  const paused = adjusted && allocation.budgeted <= 0;
+  const overspent = !paused && allocation.remaining < 0;
+  const outsideBudget = paused && allocation.spent > 0;
+  const barPercent = paused
+    ? 0
+    : Math.min(100, Math.max(0, allocation.percentUsed));
+  const remainingLabel = outsideBudget
+    ? `${formatCurrency(allocation.spent)} fuera de presupuesto`
+    : paused
+      ? 'Pausado esta quincena'
+      : overspent
+        ? `${formatCurrency(Math.abs(allocation.remaining))} excedido`
+        : `${formatCurrency(allocation.remaining)} restante`;
+  const remainingTone = outsideBudget
+    ? 'pending'
+    : paused
+      ? 'info'
+      : overspent
+        ? 'expense'
+        : 'success';
   const brandColor = getAuraWalletColor(
     allocation.walletProviderIconKey,
     undefined,
@@ -231,17 +333,30 @@ function BudgetAllocationRow({
           style={{ width: `${barPercent}%`, ...getAuraBarStyle(barColor) }}
         />
       </div>
-      <div className="flex items-center justify-between gap-2 text-caption text-muted-foreground">
+      {adjusted ? (
+        <p className="text-caption text-muted-foreground">
+          Plantilla{' '}
+          <s className="tabular-nums">{formatCurrency(allocation.templateBudgeted)}</s>
+          {' → '}
+          <span className="tabular-nums text-foreground">
+            {formatCurrency(allocation.budgeted)}
+          </span>{' '}
+          esta quincena
+        </p>
+      ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-caption text-muted-foreground">
         <span>
-          {allocation.budgeted > 0
-            ? `${allocation.percentUsed}% de su presupuesto`
-            : 'Sin monto asignado'}
+          {paused
+            ? 'Pausado'
+            : allocation.budgeted > 0
+              ? `${allocation.percentUsed}% de su presupuesto`
+              : 'Sin monto asignado'}
         </span>
         <Badge
           variant="outline"
           className={cn(
             'h-5 rounded-full border-transparent px-2 text-caption font-semibold tabular-nums',
-            STATUS_SOFT_CLASS[overspent ? 'expense' : 'success'],
+            STATUS_SOFT_CLASS[remainingTone],
           )}
         >
           {remainingLabel}

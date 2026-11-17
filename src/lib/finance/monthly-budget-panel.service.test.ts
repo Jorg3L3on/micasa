@@ -470,6 +470,24 @@ describe('getMonthlyBudgetPanel · one-quincena adjustments (MIC-I19)', () => {
     expect(panel.second.budgets[0].adjustment).toBeNull();
   });
 
+  it('does not count spend in a paused category as used of the remaining budget', async () => {
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      periodFixture({ id: 1, budgetId: 10, start: '2026-05-31', end: '2026-06-14', total: 2600, frequency: 'BIWEEKLY', walletId: null }),
+      periodFixture({ id: 2, budgetId: 11, start: '2026-05-31', end: '2026-06-14', total: 800, frequency: 'BIWEEKLY', categoryId: 6, categoryName: 'Restaurantes', walletId: null }),
+    ]);
+    mocks.adjustmentFindMany.mockResolvedValue([
+      adjustmentRow({ budgetId: 10, period: 'FIRST', kind: 'PAUSE' }),
+    ]);
+    spendOnce(300, 0);
+
+    const panel = await getMonthlyBudgetPanel(ownerFilter, 2026, 6);
+
+    expect(panel.first.totalBudget).toBe(800);
+    expect(panel.first.spent).toBe(0);
+    expect(panel.first.available).toBe(800);
+    expect(panel.first.budgets.find((b) => b.budgetId === 10)).toMatchObject({ spent: 300, total: 0, remaining: 0 });
+  });
+
   it('keeps spend when the new amount is below it; nothing stays reserved', async () => {
     mocks.budgetPeriodFindMany.mockResolvedValue([
       periodFixture({ id: 1, budgetId: 10, start: '2026-05-31', end: '2026-06-14', total: 2600, frequency: 'BIWEEKLY', walletId: null }),

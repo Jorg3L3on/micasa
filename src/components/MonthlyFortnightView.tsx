@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FortnightColumn from '@/components/FortnightColumn';
-import { FortnightBudgetDesgloseSection } from '@/components/monthly/FortnightBudgetBreakdown';
+import {
+  FortnightBudgetDesgloseSection,
+  scopeIsAdjusted,
+} from '@/components/monthly/FortnightBudgetBreakdown';
 import { MonthlyBudgetSidebar } from '@/components/monthly/MonthlyBudgetSidebar';
 import { MonthlyPaymentsCalendar } from '@/components/monthly/MonthlyPaymentsCalendar';
 import { WalletCarouselPanel } from '@/components/monthly/WalletCarouselPanel';
@@ -365,6 +368,12 @@ export default function MonthlyFortnightView({
     handleWalletBalancesPersisted();
   }, [refreshPanelData, handleWalletBalancesPersisted]);
 
+  /** Viewed quincena for one-quincena budget adjustments (MIC-I19). */
+  const budgetAdjustTarget = useMemo(
+    () => ({ quincena: { year, month, period }, onSaved: refreshPanelAndFunding }),
+    [year, month, period, refreshPanelAndFunding],
+  );
+
   /** Goals live under Metas — panel strip is billeteras only. */
   const stripWallets = useMemo(
     () => panelWallets.filter((w) => !isGoalWalletType(w.type)),
@@ -448,6 +457,7 @@ export default function MonthlyFortnightView({
           panel={panelBudget}
           ownerQuery={budgetOwnerQuery}
           className="hidden xl:block"
+          adjust={budgetAdjustTarget}
         />
       ) : (
         <PanelCardSkeleton bodyClassName="h-40" className="hidden xl:block" />
@@ -468,6 +478,7 @@ export default function MonthlyFortnightView({
     <FortnightBudgetDesgloseSection
       scope={period === 'FIRST' ? panelBudget.first : panelBudget.second}
       ownerQuery={budgetOwnerQuery}
+      adjust={budgetAdjustTarget}
       periodLabel={
         period === 'FIRST' ? 'primera quincena' : 'segunda quincena'
       }
@@ -499,6 +510,11 @@ export default function MonthlyFortnightView({
               preferenceScope={preferenceScope}
               dualColumnLayout={false}
               budgetDesglose={budgetDesglose}
+              budgetAdjusted={
+                panelBudget
+                  ? scopeIsAdjusted(period === 'FIRST' ? panelBudget.first : panelBudget.second)
+                  : false
+              }
               onPanelRefresh={refreshPanelData}
             />
           ) : failedPeriod === period && loadingPeriod !== period ? (

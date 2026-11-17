@@ -124,7 +124,7 @@ describe('GET /api/wallets/purchase-simulation', () => {
     ]);
     const halved = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
     const line = halved.series[4].outflows.find((o: { name: string }) => o.name === 'Súper');
-    expect(line.amount).toBe(1450);
+    expect(line?.amount).toBe(1450);
   });
 
   it('handles short, 4-year and 30-year payoffs (24, 96 and about 720 quincenas)', async () => {
