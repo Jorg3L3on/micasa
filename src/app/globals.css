@@ -9,7 +9,7 @@
    Design system — see DESIGN.md
    Light: cool grey canvas, indigo accent (hotkey fallback)
    Dark (default): Orion navy canvas, electric blue primary
-   Marketing landing reuses these tokens (light and dark). .landing-root is atmosphere only.
+   The marketing landing is dark only; its rules live in src/components/landing/landing.css.
    ========================================================================== */
 
 :root {
@@ -481,9 +481,8 @@
 }
 
 /* ==========================================================================
-   Marketing landing — atmosphere only. Surfaces, type, and CTAs use app tokens.
-   Light and dark follow .dark / :root. Loops are off under reduced motion.
-   The fortnight stage is normal flow below md and when motion is reduced.
+   Marketing surfaces (landing and legal pages): smooth anchor scrolling.
+   The landing's own rules live in src/components/landing/landing.css.
    ========================================================================== */
 
 html:has(.landing-root) {
@@ -493,139 +492,6 @@ html:has(.landing-root) {
 @media (prefers-reduced-motion: reduce) {
   html:has(.landing-root) {
     scroll-behavior: auto;
-  }
-}
-
-/* Theme is the .dark class, so both captures stay in the first HTML. */
-.landing-shot-light,
-.landing-shot-dark {
-  position: absolute;
-  inset: 0;
-}
-
-.landing-shot-light {
-  display: block;
-}
-
-.dark .landing-shot-light {
-  display: none;
-}
-
-.landing-shot-dark {
-  display: none;
-}
-
-.dark .landing-shot-dark {
-  display: block;
-}
-
-.landing-hero-wash {
-  isolation: isolate;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
-  background:
-    radial-gradient(
-      120% 90% at 8% -10%,
-      color-mix(in oklch, var(--chart-4) 42%, transparent) 0%,
-      transparent 52%
-    ),
-    radial-gradient(
-      90% 80% at 92% 8%,
-      color-mix(in oklch, var(--chart-2) 32%, transparent) 0%,
-      transparent 48%
-    ),
-    radial-gradient(
-      70% 50% at 50% 110%,
-      color-mix(in oklch, var(--primary) 28%, transparent) 0%,
-      transparent 50%
-    ),
-    linear-gradient(165deg, var(--secondary) 0%, var(--card) 100%);
-  box-shadow: var(--shadow-panel);
-}
-
-.landing-orb {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(64px);
-}
-
-.landing-orb-a {
-  top: 2.5rem;
-  left: -6rem;
-  height: 28rem;
-  width: 28rem;
-  background: color-mix(in oklch, var(--primary) 28%, transparent);
-}
-
-.landing-orb-b {
-  top: 8rem;
-  right: -4rem;
-  height: 24rem;
-  width: 24rem;
-  background: color-mix(in oklch, var(--chart-2) 22%, transparent);
-}
-
-.landing-orb-c {
-  bottom: 0;
-  left: 30%;
-  height: 20rem;
-  width: 32rem;
-  background: color-mix(in oklch, var(--chart-4) 18%, transparent);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .landing-orb-a {
-    animation: landing-drift-a 18s var(--ease-out-soft) infinite;
-  }
-
-  .landing-orb-b {
-    animation: landing-drift-b 22s var(--ease-out-soft) infinite;
-  }
-
-  .landing-orb-c {
-    animation: landing-drift-c 16s var(--ease-out-soft) infinite;
-  }
-}
-
-@keyframes landing-drift-a {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(1.5rem, 1rem, 0);
-  }
-}
-
-@keyframes landing-drift-b {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(-1.25rem, -0.75rem, 0);
-  }
-}
-
-@keyframes landing-drift-c {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
-/* 140vh pin only on desktop when motion is allowed. Mobile stays in flow. */
-@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
-  .landing-fortnight-stage {
-    height: 140vh;
-  }
-
-  .landing-fortnight-sticky {
-    position: sticky;
-    top: 5rem;
   }
 }
 

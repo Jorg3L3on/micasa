@@ -6,11 +6,11 @@ Encode the UI in **tokens, recipes, and live screenshots of this codebase**. Do 
 
 | Surface | Route | Code |
 | --- | --- | --- |
-| Marketing landing | `/` | `src/components/landing/*`. Same Geist + Manrope and light/dark theme as the app. |
+| Marketing landing | `/` | `src/components/landing/*`. Same Geist + Manrope as the app; dark only. |
 | Login and signup | `/login`, `/register` | `src/components/auth/*` (`AuthStage`, `auth-form-kit`) |
 | Panel financiero | `/monthly/{year}/{month}` | `src/components/monthly/*`, `src/app/(app)/monthly/` |
 
-Runtime tokens live in `src/app/globals.css` (`.dark` for the app, `.landing-root` for marketing). Default theme is **dark** (`ThemeProvider` `defaultTheme="dark"`). **Light mode is a supported secondary theme** (toggle / `d` hotkey); new work must look correct in **both**, with dark still the primary product look.
+Runtime tokens live in `src/app/globals.css` (`.dark` for the app; the landing's own rules are in `src/components/landing/landing.css`). Default theme is **dark** (`ThemeProvider` `defaultTheme="dark"`). **Light mode is a supported secondary theme** (toggle / `d` hotkey); new work must look correct in **both**, with dark still the primary product look.
 
 Agent entry points:
 
@@ -54,15 +54,18 @@ Palette swatch (SVG, not a screenshot): [`docs/images/orion-tokens.svg`](docs/im
 
 ### Marketing landing (`/`)
 
-The landing follows the signed-in theme. `ThemeProvider` (`attribute="class"`, `defaultTheme="dark"`, `enableSystem`) wraps the root layout, and the landing uses the same `--background`, `--card`, `--foreground`, type scale, `Button`, and `<Money>` as the app. Light is a working theme here, not a dark-only exception.
+The landing is **dark only**. Its root carries `dark` and `mc-root`, so it shows the Orion dark tokens whatever theme the visitor uses in the app; there is no light landing and no theme toggle on it. Its rules live in `src/components/landing/landing.css` (classes prefixed `mc-`), and its example figures and copy in `src/components/landing/landing-data.ts`. `/privacy` and `/terms` keep `marketing-legal-shell` and follow the app theme.
 
-- **Fonts:** Geist for body, Manrope for `h1`–`h3`. No Nunito and no landing-only font variables.
-- **Type scale:** `text-display`, `text-title`, `text-section`, `text-body`, `text-caption`, `eyebrow`. Nothing smaller than caption.
-- **Canvas:** `bg-background`. `LandingAtmosphere` orbs use `color-mix` of `--primary`, `--chart-2`, and `--chart-4`. Loops run only under `prefers-reduced-motion: no-preference`. No pointer spotlight, parallax, or magnetic controls.
-- **Hero:** `.landing-hero-wash` is a marketing-only wash built from those tokens and `--shadow-panel`. One primary `Button` (`Crear cuenta`); the second action is `ghost`.
-- **Product:** real screenshots in `public/landing/` (`next/image`, webp), desktop and mobile, light and dark. Both themes are in the first HTML; `.dark` on `<html>` shows one and hides the other, so the shot does not swap after paint. There is no pricing section — the product has no paid plans; copy may say it is free to use. Statement import is the card action Más → Estado de cuenta (dialog Importar estado de cuenta): the user uploads a PDF. Agents are one optional caption pointing at Configuración → Conexiones (`/settings/connections`), not a headline.
-- **Quincena block:** normal document flow below `md` and whenever reduced motion is on. From `md` up, with motion allowed, the pair sits in a 140vh sticky stage.
-- **Money** on the landing uses `<Money>` / `formatCurrency` (sans, tabular). Status chips use `src/lib/status-tone.ts`.
+- **Tokens:** canvas `#060914`, card `#0d1327`, text `#f7f8ff`, secondary text `#c9cee0` / `#aab1c9`, primary `#3a37fc` with the violet ring `#911efe`. Story colours: first quincena `#8f9bff`, second quincena `#e08cff`, paycheck `#34d399`, payments `#ffc45c`, storm charges `#ff8fb0`.
+- **Fonts:** Manrope 800 for headlines, Geist for body, Geist Mono for eyebrows, day numbers and amounts. No landing-only typeface.
+- **Header:** floating glass pill, sticky 12px from the top: mark + MiCasa, section links (hidden under 900px), Iniciar sesión (hidden under 520px), Crear cuenta. The brand mark is `public/brand/mark.svg`, never redrawn.
+- **Hero:** a WebGL particle story in six scenes (El caos, El mes, El corte, El cobro, Los pagos, MiCasa) with a 2D label canvas on top. The headline, sublines and buttons are server-rendered HTML and paint first; the engine (`hero-engine.ts`, raw WebGL 1, no library) loads in its own chunk afterwards. From `md` up with motion allowed the hero pins and the scroll drives the scenes; below `md` it autoplays on a timer with a pause button. The camera follows the pointer and particles near it push away and brighten: pointer reaction is part of this page.
+- **Fallbacks:** with `prefers-reduced-motion` nothing moves by itself: the hero rests on scene 3 (El mes se parte en dos), reveals, the word band and transitions are off. Without WebGL, or after a lost context, the hero shows the still `public/landing/hero-still-{desktop,mobile}.webp`. Both keep every section usable.
+- **Calls to action:** pills. The primary one uses the app's primary fill and violet ring; the second is a ghost pill. One primary per view.
+- **Product:** no screenshots. The sections are small playable pieces built from the example figures (panel with two quincenas, Simular compra, Proyección, Billeteras, four tiles). There is no pricing, testimonial or statistics section — the product has no paid plans; copy may say it is free. Statement import is described as uploading the card's PDF; the landing never says it connects to a bank.
+- **Motion below the hero:** sections rise in and the statement lights up with CSS scroll timelines where the browser has them; elsewhere the final state shows. Cards lift on hover.
+- **Money** on the landing is whole pesos from `formatPesos` in `landing-data.ts` (peso sign, thousands separators, no cents), tabular figures. Every figure and name on the page is an invented example.
+- **Accessibility:** canvases are decorative; the story is also in the page as text. Any motion that starts by itself has a pause control. Touch targets are at least 44px; focus uses the violet ring.
 
 ### Logged-in app (and login)
 
@@ -162,7 +165,7 @@ Planner-only (do not copy elsewhere): the fortnight progress knob, the bouncy su
 
 ### Out of scope
 
-Login and signup (one shared auth stage), admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing uses the shared `Button` and the same light and dark tokens as the app.
+Login and signup (one shared auth stage), admin, the tasks route, and OAuth consent keep their own surfaces. The marketing landing is dark only and has its own pill buttons (see Marketing landing).
 
 ---
 
@@ -174,7 +177,7 @@ Keep chrome **sparse**. One dominant labeled control per block; rare actions in 
 2. **Content row** — wide data (wallet chips, KPI strips) full width **below** chrome, not squeezed beside nav icons.
 3. **Primary work** — the repeated action (add expense, pay, etc.) sits next to the data it changes.
 
-Tertiary view controls: `Button variant="ghost"` at `h-8`–`h-9`. Stronger secondary: `outline` + `rounded-xl`. Default buttons, including landing CTAs, use the shared `Button` radius (`rounded-xl`) unless the control is a pill toggle (quincena).
+Tertiary view controls: `Button variant="ghost"` at `h-8`–`h-9`. Stronger secondary: `outline` + `rounded-xl`. Default buttons use the shared `Button` radius (`rounded-xl`) unless the control is a pill toggle (quincena). Landing CTAs are pills.
 
 Icon-only: always `aria-label` + usually `Tooltip` in Spanish.
 
@@ -223,8 +226,8 @@ Utilities: `.motion-fade-in` (`--motion-base`) and `.motion-slide-up` (`--motion
 Fix these when touching light parity (do not leave new hardcoded dark-only chrome):
 
 - Glass / monthly shells: light uses `--shadow-card`; dark keeps Orion glass under `dark:`
-- Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`), on the landing and in the app
-- Landing follows the same light and dark theme as the app (`ThemeProvider` on the root layout)
+- Primary `Button`: `--primary` fill in both themes (electric blue in `.dark`)
+- The landing is dark only; it does not follow the theme toggle
 - Card faces that are always “dark plastic” (e.g. wallet list card art) may stay dark by design
 
 ---
@@ -329,7 +332,7 @@ Every confirm (delete, archive, "registrar sin descontar", "transferir de todos 
 
 **Exceptions**
 
-- Login, admin: out of scope. The marketing landing is in scope for light and dark.
+- Login, admin: out of scope. The marketing landing is dark only.
 - Existing Dialog-only forms: migrate onto `ResponsiveOverlay` + the kit (one flow per change is fine)
 - Do not extract a mega form wrapper that owns fields/validation; the kit stays presentational
 
@@ -441,7 +444,7 @@ Default expense categories for a new home come from `DEFAULT_CATEGORY_CATALOG` i
 
 - Reuse CSS variables and the shared glass / CTA classes.
 - Put **electric blue** on the primary action (app and landing); keep `--primary` for selection, icon-pill fills, and focus. Use `--primary-text` (`text-primary-text`) for dates, links, and amounts on navy — in dark that is `#f7f8ff`, same as body text.
-- Match Panel financiero before inventing a new card language. Landing product shots are captures of that UI.
+- Match Panel financiero before inventing a new card language.
 - Capture README screenshots from **this** app (see below).
 
 **Don’t**
