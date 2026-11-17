@@ -115,6 +115,35 @@ export const setBudgetActiveSchema = z.object({
   effective_date: z.string().optional().nullable(),
 });
 
+/** One quincena of a budget: its year, month and FIRST / SECOND half. */
+export const budgetQuincenaRefSchema = z.object({
+  year: z.coerce.number().int().min(2000).max(2100),
+  month: z.coerce.number().int().min(1).max(12),
+  period: z.enum(['FIRST', 'SECOND']),
+});
+
+/**
+ * One-quincena adjustment (MIC-I19). PAUSE sets the quincena to $0; AMOUNTS
+ * takes a total that is split across the categories in the template's
+ * proportions.
+ */
+export const budgetFortnightAdjustmentSchema = budgetQuincenaRefSchema
+  .extend({
+    kind: z.enum(['PAUSE', 'AMOUNTS']),
+    total: z.coerce
+      .number()
+      .min(0, 'El monto no puede ser negativo')
+      .max(99_999_999.99)
+      .optional(),
+    note: z.string().trim().max(120).optional().nullable(),
+  })
+  .refine((value) => value.kind === 'PAUSE' || value.total != null, {
+    message: 'Indica el monto para esta quincena',
+    path: ['total'],
+  });
+
+export type BudgetQuincenaRef = z.infer<typeof budgetQuincenaRefSchema>;
+export type BudgetFortnightAdjustmentInput = z.infer<typeof budgetFortnightAdjustmentSchema>;
 export type AllocationInput = z.infer<typeof allocationSchema>;
 export type AllocationInputRaw = z.input<typeof allocationSchema>;
 export type CreateBudgetInput = z.infer<typeof createBudgetSchema>;

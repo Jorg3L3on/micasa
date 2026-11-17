@@ -18,6 +18,7 @@ import { getCanonicalFortnightBounds } from '@/lib/finance/budget-period-windows
 import { allocationOverlapMessage } from '@/lib/finance/budget-allocation-overlap';
 import { ANY_WALLET_LABEL } from '@/schemas/budget.schema';
 import { DomainError } from '@/lib/finance/domain-error';
+import { deleteFutureAdjustments } from '@/lib/finance/budget-adjustment.service';
 
 async function resolveCurrentFortnight(ownerFilter: OwnerFilter) {
   return prisma.fortnight.findFirst({
@@ -391,6 +392,7 @@ export async function setBudgetActive(
       data: { active: false },
     });
     await deleteFuturePeriods(budgetId);
+    await deleteFutureAdjustments(budgetId);
     return updated;
   }
 
@@ -491,6 +493,7 @@ export async function deleteBudget(budgetId: number, ownerFilter: OwnerFilter) {
   });
   // Keep the covering-today period; cancel anything that starts after today.
   await deleteFuturePeriods(budgetId);
+  await deleteFutureAdjustments(budgetId);
 }
 
 /** An owned budget by id, or null. */

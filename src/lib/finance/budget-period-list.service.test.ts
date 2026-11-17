@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   fortnightCount: vi.fn(),
   expenseFindMany: vi.fn(),
   computePeriodSpendByAllocations: vi.fn(),
+  adjustmentFindMany: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -37,6 +38,7 @@ vi.mock('@/lib/prisma', () => ({
     },
     fortnight: { findMany: mocks.fortnightFindMany, count: mocks.fortnightCount },
     expense: { findMany: mocks.expenseFindMany },
+    budgetFortnightAdjustment: { findMany: mocks.adjustmentFindMany },
   },
 }));
 
@@ -71,6 +73,8 @@ describe('listActivePeriods', () => {
     mocks.fortnightCount.mockReset();
     mocks.computePeriodSpendByAllocations.mockReset();
     mocks.fortnightCount.mockResolvedValue(0);
+    mocks.adjustmentFindMany.mockReset();
+    mocks.adjustmentFindMany.mockResolvedValue([]);
     mocks.computePeriodSpendByAllocations.mockResolvedValue({
       total_spent: 120,
       by_allocation: [{ spent_amount: 120 }],
@@ -116,6 +120,43 @@ describe('listActivePeriods', () => {
       },
       ownerFilter,
     );
+  });
+
+  it('shows a one-quincena pause on the current BIWEEKLY period (MIC-I19)', async () => {
+    const asOf = startOfCalendarDay('2026-06-10');
+    mocks.budgetPeriodFindMany.mockResolvedValue([
+      {
+        id: 50,
+        start_date: startOfCalendarDay('2026-05-31'),
+        end_date: endOfCalendarDay('2026-06-14'),
+        budget: {
+          id: 10,
+          name: 'Despensa',
+          frequency: 'BIWEEKLY',
+          total_amount: 500,
+          active: true,
+          recurrent: true,
+          allocations: [allocationRow],
+        },
+      },
+    ]);
+    mocks.adjustmentFindMany.mockResolvedValue([
+      { budget_id: 10, year: 2026, month: 6, period: 'FIRST', kind: 'PAUSE', note: null, allocations: [] },
+    ]);
+
+    const rows = await listActivePeriods(ownerFilter, asOf);
+
+    expect(mocks.adjustmentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { ...ownerFilter, year: 2026, month: 6, period: 'FIRST' } }),
+    );
+    expect(rows[0]).toMatchObject({
+      allocated_amount: 0,
+      template_amount: 500,
+      adjustment: { kind: 'PAUSE', note: null },
+      spent_amount: 120,
+      remaining_amount: 0,
+    });
+    expect(rows[0].allocations[0].amount).toBe(0);
   });
 
   it('includes the covering-today period of a deactivated recurrent template', async () => {
