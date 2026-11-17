@@ -1,0 +1,722 @@
+/* ==========================================================================
+   Public landing (`/`): dark only. Colours are the Orion dark tokens written
+   out, so the page looks the same whatever theme the visitor uses in the app.
+   Contract: DESIGN.md → Marketing landing.
+   ========================================================================== */
+
+html:has(.mc-root) body {
+  background: #060914;
+}
+
+.mc-root {
+  --mc-bg: #060914;
+  --mc-card: #0d1327;
+  --mc-text: #f7f8ff;
+  --mc-text-2: #c9cee0;
+  --mc-text-3: #aab1c9;
+  --mc-primary: #3a37fc;
+  --mc-ring: #911efe;
+  --mc-first: #8f9bff;
+  --mc-second: #e08cff;
+  --mc-income: #34d399;
+  --mc-pay: #ffc45c;
+  --mc-display: var(--font-display), var(--font-geist-sans), system-ui, sans-serif;
+  --mc-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --mc-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  position: relative;
+  display: flow-root;
+  min-height: 100svh;
+  overflow-x: clip;
+  background: var(--mc-bg);
+  color: var(--mc-text);
+  font-family: var(--mc-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color-scheme: dark;
+}
+
+.mc-root :focus-visible {
+  outline: 2px solid var(--mc-ring);
+  outline-offset: 3px;
+}
+
+.mc-root button {
+  font-family: inherit;
+}
+
+.mc-skip {
+  position: absolute;
+  left: 12px;
+  top: -80px;
+  z-index: 30;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--mc-card);
+  color: var(--mc-text);
+  text-decoration: none;
+}
+
+.mc-skip:focus {
+  top: 12px;
+}
+
+.mc-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mc-eyebrow {
+  margin: 0;
+  font-family: var(--mc-mono);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mc-text-3);
+}
+
+@keyframes mc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mc-rise {
+  animation: mc-rise 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Primary pill. Same fill and violet ring as the app's primary Button. */
+.mc-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--mc-primary);
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(145, 30, 254, 0.6);
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.mc-cta:hover {
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(145, 30, 254, 0.9),
+    0 18px 50px rgba(58, 55, 252, 0.55);
+}
+
+.mc-cta-glow {
+  box-shadow:
+    0 0 0 1px rgba(145, 30, 254, 0.6),
+    0 12px 40px rgba(58, 55, 252, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   Floating header
+   -------------------------------------------------------------------------- */
+
+/* Zero-height sticky slot: the pill floats over the hero and takes no room. */
+.mc-header-slot {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flow-root;
+  height: 0;
+}
+
+.mc-header {
+  box-sizing: border-box;
+  width: calc(100% - 32px);
+  max-width: 1280px;
+  margin: calc(12px + env(safe-area-inset-top)) auto 0;
+  padding: 8px 10px 8px 20px;
+  border-radius: 28px;
+  background: rgba(6, 9, 20, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mc-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--mc-text);
+  text-decoration: none;
+}
+
+.mc-brand-mark {
+  width: 30px;
+  height: 30px;
+}
+
+.mc-brand-name {
+  font-family: var(--mc-display);
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.mc-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mc-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 16px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 14px;
+  color: var(--mc-text-2);
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.mc-nav a:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.mc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mc-login {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  text-decoration: none;
+  font-size: 14px;
+  color: var(--mc-text-2);
+}
+
+.mc-login:hover {
+  color: #ffffff;
+}
+
+.mc-header .mc-cta {
+  min-height: 44px;
+  padding: 0 20px;
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Hero
+   -------------------------------------------------------------------------- */
+
+.mc-hero-wrap {
+  position: relative;
+}
+
+.mc-hero {
+  position: relative;
+  height: clamp(760px, 100vh, 1000px);
+  /* clip, not hidden: a hidden box can still be scrolled by focus or find. */
+  overflow: hidden;
+  overflow: clip;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Scroll-driven story: from md up with motion allowed the hero pins inside a
+   tall wrapper and the scroll scrubs the six scenes. Phones stay in flow. */
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .mc-hero-wrap:not([data-still='true']) {
+    height: calc(max(600px, 100svh) + 520vh);
+  }
+
+  .mc-hero-wrap:not([data-still='true']) .mc-hero {
+    position: sticky;
+    top: min(0px, calc(100svh - 600px));
+    height: max(600px, 100svh);
+  }
+}
+
+@keyframes mc-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(40px, -30px, 0);
+  }
+}
+
+.mc-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: mc-drift 14s ease-in-out infinite alternate;
+}
+
+.mc-orb-a {
+  left: -12%;
+  top: 24%;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(closest-side, rgba(58, 55, 252, 0.26), rgba(58, 55, 252, 0));
+}
+
+.mc-orb-b {
+  right: -14%;
+  top: 30%;
+  width: 760px;
+  height: 760px;
+  background: radial-gradient(closest-side, rgba(145, 30, 254, 0.22), rgba(145, 30, 254, 0));
+  animation-delay: -6s;
+}
+
+.mc-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.mc-canvas {
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+
+.mc-hero[data-engine='on'] .mc-canvas {
+  opacity: 1;
+}
+
+.mc-lb,
+.mc-hero-shade {
+  pointer-events: none;
+}
+
+.mc-hero-shade {
+  background: linear-gradient(
+    180deg,
+    rgba(6, 9, 20, 0.86) 0%,
+    rgba(6, 9, 20, 0.6) 20%,
+    rgba(6, 9, 20, 0) 44%,
+    rgba(6, 9, 20, 0) 80%,
+    rgba(6, 9, 20, 0.7) 93%,
+    #060914 100%
+  );
+}
+
+/* Still of scene 3. A background, so it is only fetched when it is shown. */
+.mc-still {
+  display: none;
+  background: #060914 url('/landing/hero-still-desktop.webp') center / cover no-repeat;
+}
+
+.mc-hero[data-still='true'] .mc-still {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-hero:not([data-engine='on']) .mc-still {
+    display: block;
+  }
+}
+
+.mc-hero[data-still='true'] .mc-play,
+.mc-hero[data-still='true'] .mc-canvas {
+  display: none;
+}
+
+@media (max-width: 699px) {
+  .mc-still {
+    background-image: url('/landing/hero-still-mobile.webp');
+  }
+}
+
+.mc-hero-text {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 112px 24px 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.mc-h1 {
+  margin: 14px 0 0;
+  display: grid;
+  font-family: var(--mc-display);
+  font-weight: 800;
+  font-size: clamp(34px, 5.8vw, 86px);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+}
+
+.mc-head {
+  grid-area: 1 / 1;
+  display: block;
+}
+
+.mc-word {
+  display: inline-block;
+  color: var(--mc-text);
+  opacity: 0;
+  transform: translateY(0.55em);
+  filter: blur(14px);
+  transition:
+    opacity 600ms ease,
+    transform 900ms cubic-bezier(0.16, 0.84, 0.24, 1),
+    filter 700ms ease;
+}
+
+.mc-word-hi {
+  background-image: linear-gradient(100deg, #8f9bff 0%, #e08cff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mc-head[data-state='on'] .mc-word {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+  transition-delay: calc(280ms + var(--i) * 75ms);
+}
+
+.mc-head[data-state='leaving'] .mc-word {
+  transform: translateY(-0.45em);
+  transition-delay: calc(var(--i) * 20ms);
+}
+
+.mc-subs {
+  margin: 16px auto 0;
+  max-width: 780px;
+  display: grid;
+}
+
+.mc-sub {
+  grid-area: 1 / 1;
+  margin: 0;
+  font-size: clamp(15px, 1.4vw, 18px);
+  color: var(--mc-text-2);
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 500ms ease,
+    transform 700ms cubic-bezier(0.16, 0.84, 0.24, 1);
+}
+
+.mc-sub[data-on='true'] {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 520ms;
+}
+
+.mc-rail {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.mc-rail-actions {
+  display: flex;
+  gap: 10px;
+  animation-delay: 240ms;
+}
+
+.mc-rail-actions .mc-cta {
+  height: 56px;
+  padding: 0 28px;
+}
+
+.mc-ghost {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 56px;
+  padding: 0 24px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 500;
+  color: var(--mc-text);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(9, 14, 29, 0.5);
+  transition: border-color 200ms ease;
+}
+
+.mc-ghost:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.mc-scenes {
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 56px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: rgba(9, 14, 29, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.mc-play {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--mc-text);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.mc-scene-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+}
+
+.mc-scene-list .mc-scene {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.mc-scene {
+  position: relative;
+  height: 44px;
+  padding: 0 12px 4px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  background: transparent;
+  color: var(--mc-text-3);
+}
+
+.mc-scene[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--mc-text);
+}
+
+.mc-scene-n {
+  font-family: var(--mc-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  margin-right: 8px;
+}
+
+.mc-scene-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mc-scene-track {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mc-scene-fill {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #6f7bff, #d65cff);
+  transition-property: width;
+  transition-timing-function: linear;
+}
+
+/* Mid widths: six full labels do not fit, so only the current scene keeps its
+   label and the others show their number. Below 900px no label shows. */
+@media (min-width: 901px) and (max-width: 1359px) {
+  .mc-scene-list .mc-scene[aria-pressed='true'] {
+    flex: 0 0 auto;
+  }
+
+  .mc-scene:not([aria-pressed='true']) {
+    text-align: center;
+    padding: 0 4px 4px;
+  }
+
+  .mc-scene:not([aria-pressed='true']) .mc-scene-n {
+    margin-right: 0;
+  }
+
+  .mc-scene:not([aria-pressed='true']) .mc-scene-label {
+    display: none;
+  }
+}
+
+/* Scroll cue: wide screens only, while the story sits on its first scene. */
+.mc-scroll-cue {
+  position: absolute;
+  left: 50%;
+  bottom: 104px;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(9, 14, 29, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--mc-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mc-text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.mc-scroll-cue[data-on='true'] {
+  opacity: 1;
+}
+
+.mc-scroll-cue svg {
+  animation: mc-cue-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes mc-cue-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .mc-hero:not([data-still='true']) .mc-scroll-cue {
+    display: flex;
+  }
+}
+
+.mc-root[data-paused] .mc-scroll-cue svg {
+  animation-play-state: paused;
+}
+
+/* The pause button stops every motion that runs by itself. */
+.mc-root[data-paused] .mc-orb,
+.mc-root[data-paused] .mc-marq {
+  animation-play-state: paused;
+}
+
+@media (max-width: 900px) {
+  .mc-nav,
+  .mc-scene-label,
+  .mc-hide-sm {
+    display: none;
+  }
+
+  .mc-scene {
+    text-align: center;
+    padding: 0 4px 4px;
+  }
+
+  .mc-scene-n {
+    margin-right: 0;
+  }
+
+  .mc-scene-track {
+    left: 8px;
+    right: 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .mc-login {
+    display: none;
+  }
+
+  .mc-hero-text {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .mc-rail {
+    padding: 0 16px 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-rise,
+  .mc-orb {
+    animation: none;
+  }
+
+  /* Nothing plays by itself, so there is nothing to pause. */
+  .mc-play {
+    display: none;
+  }
+
+  .mc-word,
+  .mc-sub,
+  .mc-canvas,
+  .mc-scene-fill {
+    transition: none !important;
+  }
+}
