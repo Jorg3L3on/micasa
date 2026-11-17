@@ -523,9 +523,13 @@ html:has(.mc-root) body {
 .mc-scene-list {
   flex: 1;
   min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  display: flex;
   gap: 2px;
+}
+
+.mc-scene-list .mc-scene {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .mc-scene {
@@ -576,6 +580,83 @@ html:has(.mc-root) body {
   background: linear-gradient(90deg, #6f7bff, #d65cff);
   transition-property: width;
   transition-timing-function: linear;
+}
+
+/* Mid widths: six full labels do not fit, so only the current scene keeps its
+   label and the others show their number. Below 900px no label shows. */
+@media (min-width: 901px) and (max-width: 1359px) {
+  .mc-scene-list .mc-scene[aria-pressed='true'] {
+    flex: 0 0 auto;
+  }
+
+  .mc-scene:not([aria-pressed='true']) {
+    text-align: center;
+    padding: 0 4px 4px;
+  }
+
+  .mc-scene:not([aria-pressed='true']) .mc-scene-n {
+    margin-right: 0;
+  }
+
+  .mc-scene:not([aria-pressed='true']) .mc-scene-label {
+    display: none;
+  }
+}
+
+/* Scroll cue: wide screens only, while the story sits on its first scene. */
+.mc-scroll-cue {
+  position: absolute;
+  left: 50%;
+  bottom: 104px;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(9, 14, 29, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--mc-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mc-text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.mc-scroll-cue[data-on='true'] {
+  opacity: 1;
+}
+
+.mc-scroll-cue svg {
+  animation: mc-cue-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes mc-cue-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .mc-hero:not([data-still='true']) .mc-scroll-cue {
+    display: flex;
+  }
+}
+
+.mc-root[data-paused] .mc-scroll-cue svg {
+  animation-play-state: paused;
 }
 
 /* The pause button stops every motion that runs by itself. */

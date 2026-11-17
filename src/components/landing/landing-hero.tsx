@@ -74,6 +74,8 @@ export const LandingHero = () => {
   const [scene, setScene] = useState<SceneState>({ act: null, prev: -1 });
   const [playing, setPlaying] = useState(true);
   const [engineState, setEngineState] = useState<EngineState>('idle');
+  /** The story has not been scrolled yet; the scroll cue shows. */
+  const [atStart, setAtStart] = useState(true);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLElement>(null);
@@ -166,6 +168,7 @@ export const LandingHero = () => {
       const progress = progressFromFraction(pin.fraction);
       engineRef.current?.setScroll(progress);
       showSceneRef.current(sceneFromProgress(progress));
+      setAtStart(pin.fraction < 0.02);
     };
     const queue = () => {
       if (!raf) raf = requestAnimationFrame(read);
@@ -275,6 +278,24 @@ export const LandingHero = () => {
             ))}
           </div>
         </div>
+
+        <p
+          className="mc-scroll-cue"
+          data-on={scrollDriven && atStart && engineState === 'on'}
+          aria-hidden="true"
+        >
+          Baja para ver la historia
+          <svg viewBox="0 0 16 16" width="14" height="14">
+            <path
+              d="M3.5 6l4.5 4.5L12.5 6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </p>
 
         <div ref={railRef} className="mc-rail">
           <div className="mc-rail-actions mc-rise">
