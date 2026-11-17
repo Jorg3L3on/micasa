@@ -25,6 +25,11 @@ import {
   readWallClockYmd,
 } from '@/lib/finance/budget-period-windows';
 import { DomainError } from '@/lib/finance/domain-error';
+import {
+  applyFortnightAdjustment,
+  remainingReserve,
+  type FortnightAdjustmentInput,
+} from '@/lib/finance/budget-fortnight-effective';
 
 export { computeBudgetPeriodWindowsForFortnight as computeBudgetWindows } from '@/lib/finance/budget-period-windows';
 
@@ -728,9 +733,48 @@ export async function listActivePeriods(ownerFilter: OwnerFilter, asOf: Date) {
     orderBy: { start_date: 'asc' },
   });
 
-  return Promise.all(
-    periods.map((period) => mapBudgetPeriodItem(period, ownerFilter)),
+  const adjustments = await loadAdjustmentsForQuincena(
+    ownerFilter,
+    getCalendarFortnightRefForYmd(todayCalendarDate(asOf)),
   );
+  return Promise.all(
+    periods.map((period) =>
+      mapBudgetPeriodItem(
+        period,
+        ownerFilter,
+        period.budget.frequency === 'BIWEEKLY'
+          ? adjustments.get(period.budget.id) ?? null
+          : null,
+      ),
+    ),
+  );
+}
+
+/** One-quincena adjustments (MIC-I19) for a quincena, by budget id. */
+async function loadAdjustmentsForQuincena(
+  ownerFilter: OwnerFilter,
+  ref: { year: number; month: number; period: 'FIRST' | 'SECOND' },
+): Promise<Map<number, FortnightAdjustmentInput>> {
+  const out = new Map<number, FortnightAdjustmentInput>();
+  const model = (prisma as { budgetFortnightAdjustment?: { findMany?: unknown } })
+    .budgetFortnightAdjustment;
+  if (!model || typeof model.findMany !== 'function') return out;
+  const rows = await prisma.budgetFortnightAdjustment.findMany({
+    where: { ...ownerFilter, ...ref },
+    include: { allocations: true },
+  });
+  for (const row of rows) {
+    out.set(row.budget_id, {
+      kind: row.kind,
+      note: row.note,
+      allocations: row.allocations.map((a) => ({
+        wallet_id: a.wallet_id,
+        category_id: a.category_id,
+        amount: Number(a.amount),
+      })),
+    });
+  }
+  return out;
 }
 
 type BudgetPeriodWithBudget = {
@@ -772,6 +816,7 @@ type BudgetPeriodWithBudget = {
 async function mapBudgetPeriodItem(
   period: BudgetPeriodWithBudget,
   ownerFilter: OwnerFilter,
+  adjustment: FortnightAdjustmentInput | null = null,
 ) {
   const { budget } = period;
   const fallbackAllocations =
@@ -804,7 +849,15 @@ async function mapBudgetPeriodItem(
         )
       : { total_spent: 0, by_allocation: [] };
 
-  const allocatedAmount = Number(period.snapshot?.total_amount ?? budget.total_amount);
+  const templateAmount = Number(period.snapshot?.total_amount ?? budget.total_amount);
+  // A one-quincena adjustment (MIC-I19) replaces the amounts for this period only.
+  const effective = applyFortnightAdjustment(
+    allocationInputs.map((a) => ({ ...a, budgeted: a.amount })),
+    adjustment,
+  );
+  const allocatedAmount = adjustment
+    ? effective.reduce((sum, amount) => sum + amount, 0)
+    : templateAmount;
   return {
     period_id: period.id,
     budget_id: budget.id,
@@ -813,8 +866,17 @@ async function mapBudgetPeriodItem(
     start_date: period.start_date.toISOString(),
     end_date: period.end_date.toISOString(),
     allocated_amount: allocatedAmount,
+    template_amount: templateAmount,
+    adjustment: adjustment ? { kind: adjustment.kind, note: adjustment.note ?? null } : null,
     spent_amount: spend.total_spent,
-    remaining_amount: allocatedAmount - spend.total_spent,
+    remaining_amount: adjustment
+      ? remainingReserve(
+          effective.map((budgeted, index) => ({
+            budgeted,
+            spent: spend.by_allocation[index]?.spent_amount ?? 0,
+          })),
+        )
+      : allocatedAmount - spend.total_spent,
     active: budget.active,
     recurrent: budget.recurrent,
     allocations: snapshotAllocations.map((a, index) => ({
@@ -824,7 +886,7 @@ async function mapBudgetPeriodItem(
       category_id: a.category_id,
       category_name: a.category_name,
       category_icon: a.category_icon ?? null,
-      amount: Number(a.allocated_amount),
+      amount: effective[index] ?? Number(a.allocated_amount),
       spent_amount: spend.by_allocation[index]?.spent_amount ?? 0,
     })),
   };

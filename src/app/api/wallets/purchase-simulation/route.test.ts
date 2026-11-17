@@ -15,6 +15,7 @@ const { getOwnerContext, getLiquidityProjection, getReportSummary, listPlanningT
       expenseTemplate: model(),
       incomeTemplate: model(),
       budget: model(),
+      budgetFortnightAdjustment: model(),
       income: model(),
     },
   };
@@ -62,7 +63,7 @@ beforeEach(() => {
     { name: 'Sueldo', suggested_amount: 16500, applies_first_fortnight: true, applies_second_fortnight: true },
   ]);
   prismaMock.budget.findMany.mockResolvedValue([
-    { name: 'Súper', total_amount: 2900, frequency: 'BIWEEKLY', start_date: null, end_date: null, recurrent: true },
+    { id: 40, name: 'Súper', total_amount: 2900, frequency: 'BIWEEKLY', start_date: null, end_date: null, recurrent: true, allocations: [{ wallet_id: null, category_id: 5, amount: 2900 }] },
   ]);
   getLiquidityProjection.mockResolvedValue({
     funding_wallets: [{ id: 3, name: 'Débito prueba', type: 'DEBIT_CARD', balance: 45000 }],
@@ -105,6 +106,25 @@ describe('GET /api/wallets/purchase-simulation', () => {
     expect(later.outflows.map((o: { name: string }) => o.name)).toContain('Súper');
     expect(body.plan.count).toBe(12);
     expect(['green', 'amber', 'red']).toContain(body.verdict.level);
+  });
+
+  it('a paused quincena has no budget line; a halved one shows half (MIC-I19)', async () => {
+    const base = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
+    const target = base.series[4];
+    const ref = { year: Number(target.key.slice(0, 4)), month: Number(target.key.slice(5, 7)), period: target.key.endsWith('1') ? 'FIRST' : 'SECOND' };
+    prismaMock.budgetFortnightAdjustment.findMany.mockResolvedValue([
+      { budget_id: 40, ...ref, kind: 'PAUSE', allocations: [] },
+    ]);
+    const paused = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
+    expect(paused.series[4].outflows.map((o: { name: string }) => o.name)).not.toContain('Súper');
+    expect(paused.series[5].outflows.map((o: { name: string }) => o.name)).toContain('Súper');
+
+    prismaMock.budgetFortnightAdjustment.findMany.mockResolvedValue([
+      { budget_id: 40, ...ref, kind: 'AMOUNTS', allocations: [{ wallet_id: null, category_id: 5, amount: 1450 }] },
+    ]);
+    const halved = await post({ total: 6000, date: today, mode: 'msi', wallet_id: 7, months: 12 });
+    const line = halved.series[4].outflows.find((o: { name: string }) => o.name === 'Súper');
+    expect(line?.amount).toBe(1450);
   });
 
   it('handles short, 4-year and 30-year payoffs (24, 96 and about 720 quincenas)', async () => {

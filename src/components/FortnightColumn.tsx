@@ -162,6 +162,8 @@ type FortnightColumnProps = {
   dualColumnLayout?: boolean;
   /** Panel budget block for Ver desglose below xl (the card covers xl+). */
   budgetDesglose?: ReactNode;
+  /** A one-quincena budget adjustment applies to this quincena (MIC-I19). */
+  budgetAdjusted?: boolean;
   /** Payments calendar for < xl (sidebar hosts it at xl+). */
   /** Refetch panel data in place. Avoids router.refresh(), which remounts the page. */
   onPanelRefresh: () => Promise<void>;
@@ -183,6 +185,7 @@ export default function FortnightColumn({
   preferenceScope = 'default',
   dualColumnLayout = false,
   budgetDesglose = null,
+  budgetAdjusted = false,
   onPanelRefresh,
 }: FortnightColumnProps) {
   const { context } = useFinanceContext();
@@ -1033,6 +1036,7 @@ export default function FortnightColumn({
           }
           planningBudgetRemaining={summary.planningBudgetRemaining ?? 0}
           budgetDesglose={budgetDesglose}
+          budgetAdjusted={budgetAdjusted}
           fundingWalletBalanceTotal={
             summary.fundingWalletBalanceTotal ?? 0
           }

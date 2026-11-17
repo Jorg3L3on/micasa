@@ -216,6 +216,10 @@ export type BudgetPeriodItem = {
   start_date: string;
   end_date: string;
   allocated_amount: number;
+  /** Template amount; differs from allocated_amount when this quincena is adjusted. */
+  template_amount?: number;
+  /** One-quincena adjustment (MIC-I19), current BIWEEKLY period only. */
+  adjustment?: { kind: 'PAUSE' | 'AMOUNTS'; note: string | null } | null;
   spent_amount: number;
   remaining_amount: number;
   active: boolean;

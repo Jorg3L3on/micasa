@@ -33,8 +33,10 @@ import {
   setBudgetActive,
   updateBudgetAllocations,
   updateBudgetTemplate,
+  clearBudgetQuincenaAdjustment,
   type BudgetAllocationExpenseGroup,
 } from '@/lib/api/budgets';
+import { getCurrentCalendarFortnightRef } from '@/lib/fortnight-calendar';
 import {
   formatMonthHeading,
   formatWallClockDateRange,
@@ -232,6 +234,7 @@ function BudgetRow({
   onOpenAllocations,
   onOpenDeactivate,
   onOpenHistory,
+  onRestoreTemplate,
   context,
   expenseCache,
 }: {
@@ -242,6 +245,8 @@ function BudgetRow({
   onOpenAllocations: (budgetId: number) => void;
   onOpenDeactivate: (budgetId: number) => void;
   onOpenHistory: (budgetId: number, name: string) => void;
+  /** Removes this quincena's one-off adjustment (MIC-I19). */
+  onRestoreTemplate: (budgetId: number) => void;
   context: ReturnType<typeof useFinanceContext>['context'];
   expenseCache: ReturnType<typeof useExpenseGroupCache>;
 }) {
@@ -271,6 +276,17 @@ function BudgetRow({
                 <PiggyBank className="h-3 w-3" aria-hidden />
               </span>
               <span className="truncate text-sm font-semibold">{period.name}</span>
+              {period.adjustment ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'h-5 shrink-0 rounded-full border-transparent px-2 text-caption font-semibold',
+                    STATUS_SOFT_CLASS.info,
+                  )}
+                >
+                  Ajustado esta quincena
+                </Badge>
+              ) : null}
               {period.recurrent ? (
                 <Repeat2 className={cn('h-3.5 w-3.5 shrink-0', STATUS_TEXT_CLASS.expense)} aria-hidden />
               ) : null}
@@ -281,6 +297,11 @@ function BudgetRow({
               </p>
               <p className="shrink-0 font-sans tabular-nums text-muted-foreground">
                 {formatCurrency(period.spent_amount)} / {formatCurrency(period.allocated_amount)}
+                {period.adjustment && period.template_amount != null ? (
+                  <span className="ml-1 text-caption">
+                    · plantilla {formatCurrency(period.template_amount)}
+                  </span>
+                ) : null}
               </p>
             </div>
             <ProgressBar spent={period.spent_amount} total={period.allocated_amount} />
@@ -307,6 +328,11 @@ function BudgetRow({
                 <DropdownMenuItem onClick={() => onOpenHistory(period.budget_id, period.name)}>
                   Historial
                 </DropdownMenuItem>
+                {period.adjustment ? (
+                  <DropdownMenuItem onClick={() => onRestoreTemplate(period.budget_id)}>
+                    Restaurar plantilla esta quincena
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
@@ -525,6 +551,19 @@ export default function BudgetsPage() {
       setLoading(false);
     }
   }, [context, month, status, view]);
+
+  const restoreQuincenaTemplate = useCallback(
+    async (budgetId: number) => {
+      try {
+        await clearBudgetQuincenaAdjustment(budgetId, getCurrentCalendarFortnightRef(), context);
+        toast.success('Plantilla restaurada para esta quincena');
+        await loadData({ silent: true });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'No se pudo restaurar la plantilla');
+      }
+    },
+    [context, loadData],
+  );
 
   useEffect(() => {
     void loadData();
@@ -837,6 +876,7 @@ export default function BudgetsPage() {
                     onOpenAllocations={openTemplateAllocations}
                     onOpenDeactivate={openTemplateDeactivate}
                     onOpenHistory={(id, name) => setBudgetHistory({ id, name })}
+                    onRestoreTemplate={restoreQuincenaTemplate}
                     context={context}
                     expenseCache={expenseCache}
                   />

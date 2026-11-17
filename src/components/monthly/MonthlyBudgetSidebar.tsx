@@ -6,19 +6,20 @@ import { SectionHeader } from '@/components/section-header';
 import { cn } from '@/lib/utils';
 import { useMonthlyPanelPreferences } from '@/components/monthly/MonthlyPanelPreferences';
 import { MONTHLY_LIQUID_PANEL_CLASS } from '@/components/monthly/monthly-panel-shell';
-import { FortnightBudgetBreakdown } from '@/components/monthly/FortnightBudgetBreakdown';
 import {
-  getBudgetUsedPercent,
-  getBudgetUsedTone,
-} from '@/lib/ui/budget-usage';
-import { Badge } from '@/components/ui/badge';
-import { STATUS_SOFT_CLASS } from '@/lib/status-tone';
+  BudgetHeaderActions,
+  FortnightBudgetBreakdown,
+} from '@/components/monthly/FortnightBudgetBreakdown';
+import type { BudgetAdjustTarget } from '@/components/monthly/BudgetAdjustButton';
+import { getBudgetUsedPercent } from '@/lib/ui/budget-usage';
 import type { MonthlyBudgetPanelResult } from '@/types/monthly-budget-panel';
 
 type MonthlyBudgetSidebarProps = {
   panel: MonthlyBudgetPanelResult;
   ownerQuery: string;
   className?: string;
+  /** Viewed quincena and refresh after an adjustment (MIC-I19). */
+  adjust?: BudgetAdjustTarget | null;
 };
 
 const budgetPanelShellClass = cn(MONTHLY_LIQUID_PANEL_CLASS, 'p-3 sm:p-4');
@@ -27,6 +28,7 @@ export const MonthlyBudgetSidebar = ({
   panel,
   ownerQuery,
   className,
+  adjust = null,
 }: MonthlyBudgetSidebarProps) => {
   const { period } = useMonthlyPanelPreferences();
   const scope = period === 'FIRST' ? panel.first : panel.second;
@@ -35,7 +37,12 @@ export const MonthlyBudgetSidebar = ({
     period === 'FIRST' ? 'primera quincena' : 'segunda quincena';
   const headingId = 'monthly-budget-heading';
   const usedPercent = getBudgetUsedPercent(scope);
-  const overspentCount = allocations.filter((row) => row.remaining < 0).length;
+  const overspentCount = allocations.filter(
+    (row) => row.remaining < 0 && row.budgeted > 0,
+  ).length;
+  const adjustedCount = allocations.filter(
+    (row) => Math.round(row.templateBudgeted * 100) !== Math.round(row.budgeted * 100),
+  ).length;
 
   if (totalBudget <= 0 && allocations.length === 0) {
     return (
@@ -72,19 +79,9 @@ export const MonthlyBudgetSidebar = ({
         id={headingId}
         icon={PiggyBank}
         title="Presupuesto de la quincena"
-        subtitle={`${allocations.length} ${allocations.length === 1 ? 'categoría' : 'categorías'}${overspentCount > 0 ? ` · ${overspentCount} ${overspentCount === 1 ? 'excedida' : 'excedidas'}` : ''}`}
+        subtitle={`${allocations.length} ${allocations.length === 1 ? 'categoría' : 'categorías'}${adjustedCount > 0 ? ` · ${adjustedCount} ${adjustedCount === 1 ? 'ajustada' : 'ajustadas'}` : ''}${overspentCount > 0 ? ` · ${overspentCount} ${overspentCount === 1 ? 'excedida' : 'excedidas'}` : ''}`}
         actions={
-          totalBudget > 0 ? (
-            <Badge
-              variant="outline"
-              className={cn(
-                'h-5 rounded-full border-transparent px-2 text-caption font-semibold',
-                STATUS_SOFT_CLASS[getBudgetUsedTone(usedPercent)],
-              )}
-            >
-              {usedPercent}% usado
-            </Badge>
-          ) : null
+          <BudgetHeaderActions scope={scope} usedPercent={usedPercent} />
         }
       />
 
@@ -93,6 +90,7 @@ export const MonthlyBudgetSidebar = ({
         ownerQuery={ownerQuery}
         periodLabel={periodLabel}
         idPrefix="sidebar"
+        adjust={adjust}
       />
     </aside>
   );

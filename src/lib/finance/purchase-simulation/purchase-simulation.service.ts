@@ -15,6 +15,7 @@ import {
   type FlowKind,
 } from '@/lib/finance/purchase-simulation/series';
 import type { SimulationBaseline, SimulationWallet } from '@/lib/finance/purchase-simulation/simulate';
+import { applyFortnightAdjustment, type FortnightAdjustmentInput } from '@/lib/finance/budget-fortnight-effective';
 
 /**
  * GET /api/wallets/purchase-simulation (MIC-I17): the server half of Simular
@@ -154,9 +155,19 @@ export const loadSimulationBaseline = async (
     }),
     prisma.budget.findMany({
       where: { ...ownerFilter, active: true },
-      select: { name: true, total_amount: true, frequency: true, start_date: true, end_date: true, recurrent: true },
+      select: {
+        id: true,
+        name: true,
+        total_amount: true,
+        frequency: true,
+        start_date: true,
+        end_date: true,
+        recurrent: true,
+        allocations: { select: { wallet_id: true, category_id: true, amount: true } },
+      },
     }),
   ]);
+  const adjustments = await loadQuincenaAdjustments(ownerFilter);
 
   const createdKeys = new Set(
     fortnights.map((f) => quincenaKey({ year: f.year, month: f.month, period: f.period })),
@@ -208,14 +219,27 @@ export const loadSimulationBaseline = async (
       const days = overlapDays(from, endYmd, bStart, bEnd);
       if (days <= 0) continue;
       const total = num(b.total_amount);
-      let amount = 0;
-      if (b.frequency === 'DAILY') amount = total * days;
-      else if (b.frequency === 'WEEKLY') amount = (total * days) / 7;
-      else if (b.frequency === 'BIWEEKLY') {
-        amount = total * (days / overlapDays(startYmd, endYmd, startYmd, endYmd));
-      } else if (b.start_date && b.end_date) {
-        const span = overlapDays(bStart, formatCalendarDate(b.end_date), bStart, formatCalendarDate(b.end_date));
-        amount = span > 0 ? (total * days) / span : 0;
+      const share = (overlap: number) => {
+        if (b.frequency === 'DAILY') return total * overlap;
+        if (b.frequency === 'WEEKLY') return (total * overlap) / 7;
+        if (b.frequency === 'BIWEEKLY') return total * (overlap / overlapDays(startYmd, endYmd, startYmd, endYmd));
+        if (b.start_date && b.end_date) {
+          const span = overlapDays(bStart, formatCalendarDate(b.end_date), bStart, formatCalendarDate(b.end_date));
+          return span > 0 ? (total * overlap) / span : 0;
+        }
+        return 0;
+      };
+      let amount = share(days);
+      // One-quincena adjustment (MIC-I19): same resolver as Panel, prorated from today like the template.
+      const adjustment = adjustments.get(`${b.id}:${key}`);
+      if (adjustment) {
+        const full = share(overlapDays(startYmd, endYmd, bStart, bEnd));
+        const scale = total > 0 ? full / total : 0;
+        const adjusted = applyFortnightAdjustment(
+          b.allocations.map((a) => ({ wallet_id: a.wallet_id, category_id: a.category_id, budgeted: num(a.amount) * scale })),
+          adjustment,
+        ).reduce((sum, value) => sum + value, 0);
+        amount = full > 0 ? (adjusted * amount) / full : 0;
       }
       if (amount > 0) {
         baseline.push({ date: endYmd, amount: cents(amount), kind: 'budget', name: b.name, walletName: 'Presupuesto', estimated: !createdKeys.has(key) });
@@ -283,3 +307,30 @@ export const loadSimulationWallets = async (ownerFilter: OwnerFilter): Promise<S
       };
     });
 };
+
+/** One-quincena budget adjustments by `${budgetId}:${quincenaKey}`. */
+async function loadQuincenaAdjustments(
+  ownerFilter: OwnerFilter,
+): Promise<Map<string, FortnightAdjustmentInput>> {
+  const out = new Map<string, FortnightAdjustmentInput>();
+  const model = (prisma as { budgetFortnightAdjustment?: { findMany?: unknown } }).budgetFortnightAdjustment;
+  if (!model || typeof model.findMany !== 'function') return out;
+  const rows = await prisma.budgetFortnightAdjustment.findMany({
+    where: { ...ownerFilter },
+    select: {
+      budget_id: true,
+      year: true,
+      month: true,
+      period: true,
+      kind: true,
+      allocations: { select: { wallet_id: true, category_id: true, amount: true } },
+    },
+  });
+  for (const row of rows) {
+    out.set(`${row.budget_id}:${quincenaKey({ year: row.year, month: row.month, period: row.period })}`, {
+      kind: row.kind,
+      allocations: row.allocations.map((a) => ({ wallet_id: a.wallet_id, category_id: a.category_id, amount: Number(a.amount) })),
+    });
+  }
+  return out;
+}

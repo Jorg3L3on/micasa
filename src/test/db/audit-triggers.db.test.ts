@@ -211,6 +211,34 @@ const FIXTURES: Record<string, Fixture> = {
     owner: house,
     label: null,
   },
+  BudgetFortnightAdjustment: {
+    insert: (c, b) =>
+      insertReturningId(
+        c,
+        `INSERT INTO "BudgetFortnightAdjustment"(budget_id, year, month, period, kind, note, house_id) VALUES ($1, 2000, 1, 'FIRST', 'PAUSE', 'Sin despensa', $2)`,
+        [b.budgetHouse, b.houseId],
+      ),
+    update: ['kind', 'AMOUNTS'],
+    owner: house,
+    label: 'Sin despensa',
+  },
+  BudgetFortnightAdjustmentAllocation: {
+    insert: async (c, b) => {
+      const adjustmentId = await insertReturningId(
+        c,
+        `INSERT INTO "BudgetFortnightAdjustment"(budget_id, year, month, period, kind, house_id) VALUES ($1, 2000, 2, 'FIRST', 'AMOUNTS', $2)`,
+        [b.budgetHouse, b.houseId],
+      )
+      return insertReturningId(
+        c,
+        `INSERT INTO "BudgetFortnightAdjustmentAllocation"(adjustment_id, category_id, amount) VALUES ($1, $2, 1000)`,
+        [adjustmentId, b.categoryHouse],
+      )
+    },
+    update: ['amount', 900],
+    owner: house,
+    label: null,
+  },
   CreditCardPayment: {
     insert: (c, b) =>
       insertReturningId(

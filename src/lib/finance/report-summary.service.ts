@@ -316,11 +316,12 @@ export const getReportSummary = async (
       ));
   }
 
-  const balance =
-    totalIncome -
-    planningPayrollLoanDeductionTotal -
-    totalExpense -
-    planningBudgetRemaining;
+  const balance = planningBalance({
+    totalIncome,
+    payrollDeduction: planningPayrollLoanDeductionTotal,
+    totalExpense,
+    budgetRemaining: planningBudgetRemaining,
+  });
 
   const cardTotal = excludeCreditInstallment
     ? cardExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
@@ -466,11 +467,12 @@ export const getReportSummary = async (
     (s, w) => s + w.amount,
     0,
   );
-  const fundingNetVsPendingExpense =
-    fundingWalletBalanceTotal -
-    totalUnpaid -
-    planningPayrollLoanDeductionTotal -
-    planningBudgetRemaining;
+  const fundingNetVsPendingExpense = fundingLiquidity({
+    fundingWalletBalanceTotal,
+    totalUnpaid,
+    payrollDeduction: planningPayrollLoanDeductionTotal,
+    budgetRemaining: planningBudgetRemaining,
+  });
 
   return {
     totalIncome,
@@ -534,3 +536,33 @@ export const getReportSummary = async (
       : {}),
   };
 };
+
+/** Tras pagar lo planeado: ingreso − nómina − gastos − resto del presupuesto. */
+export function planningBalance(input: {
+  totalIncome: number;
+  payrollDeduction: number;
+  totalExpense: number;
+  budgetRemaining: number;
+}): number {
+  return (
+    input.totalIncome -
+    input.payrollDeduction -
+    input.totalExpense -
+    input.budgetRemaining
+  );
+}
+
+/** Liquidez actual: saldo de efectivo/débito − pendiente − nómina − resto del presupuesto. */
+export function fundingLiquidity(input: {
+  fundingWalletBalanceTotal: number;
+  totalUnpaid: number;
+  payrollDeduction: number;
+  budgetRemaining: number;
+}): number {
+  return (
+    input.fundingWalletBalanceTotal -
+    input.totalUnpaid -
+    input.payrollDeduction -
+    input.budgetRemaining
+  );
+}

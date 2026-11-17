@@ -46,6 +46,11 @@ export const ENTITY_LABELS: Readonly<Record<string, { singular: string; plural: 
   Budget: { singular: 'Presupuesto', plural: 'Presupuestos' },
   BudgetPeriod: { singular: 'Periodo de presupuesto', plural: 'Periodos de presupuesto' },
   BudgetAllocation: { singular: 'Asignación de presupuesto', plural: 'Asignaciones de presupuesto' },
+  BudgetFortnightAdjustment: { singular: 'Ajuste de quincena', plural: 'Ajustes de quincena' },
+  BudgetFortnightAdjustmentAllocation: {
+    singular: 'Monto ajustado por categoría',
+    plural: 'Montos ajustados por categoría',
+  },
   CreditCardPayment: { singular: 'Pago de tarjeta', plural: 'Pagos de tarjeta' },
   CreditCardPaymentPlan: { singular: 'Plan de pago de tarjeta', plural: 'Planes de pago de tarjeta' },
   CreditCardScheduledPayment: { singular: 'Pago programado', plural: 'Pagos programados' },
@@ -161,6 +166,16 @@ export const FIELD_LABELS: Readonly<Record<string, Readonly<Record<string, Field
   },
   BudgetAllocation: {
     budget_id: { label: 'Presupuesto', kind: 'ref' },
+  },
+  BudgetFortnightAdjustment: {
+    budget_id: { label: 'Presupuesto', kind: 'ref' },
+    year: { label: 'Año', kind: 'number' },
+    month: { label: 'Mes', kind: 'number' },
+    period: { label: 'Quincena', kind: 'enum' },
+    kind: { label: 'Tipo de ajuste', kind: 'enum' },
+  },
+  BudgetFortnightAdjustmentAllocation: {
+    adjustment_id: { label: 'Ajuste de quincena', kind: 'ref' },
   },
   CreditCardPayment: {
     adjusts_debt: { label: 'Ajusta la deuda', kind: 'boolean' },
