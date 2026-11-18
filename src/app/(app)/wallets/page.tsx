@@ -1299,6 +1299,7 @@ export default function WalletsPage() {
                       wallets={displayWallets}
                       ownerQueryString={ownerQueryString}
                       attention={attentionItems}
+                      onWalletDeleted={() => fetchWallets({ soft: true })}
                       {...flowActions}
                     />
                   ) : (

@@ -22,8 +22,12 @@ import type { WalletListItem } from '@/types/catalog';
 import { WalletCoverFlow } from '@/components/wallets/WalletCoverFlow';
 import {
   WalletFlowDetails,
+  walletQuickActions,
   type WalletFlowActions,
 } from '@/components/wallets/WalletFlowDetails';
+import { WalletCardPreview } from '@/components/wallets/WalletCardPreview';
+import { WalletFlowFace } from '@/components/wallets/WalletFlowFace';
+import { useWalletDelete } from '@/components/wallets/use-wallet-delete';
 
 type WalletFlowSectionProps = WalletFlowActions & {
   title: string;
@@ -33,6 +37,8 @@ type WalletFlowSectionProps = WalletFlowActions & {
   attention?: WalletAttentionItem[];
   /** Hide the section title row (the mobile flow shows a type switcher instead). */
   hideHeader?: boolean;
+  /** Reload after a delete from the long-press preview. */
+  onWalletDeleted: () => void | Promise<void>;
 };
 
 export const walletDetailHref = (
@@ -59,9 +65,12 @@ export const WalletFlowSection = ({
   ownerQueryString,
   attention = [],
   hideHeader = false,
+  onWalletDeleted,
   ...actions
 }: WalletFlowSectionProps) => {
   const router = useRouter();
+  const [previewWallet, setPreviewWallet] = useState<WalletListItem | null>(null);
+  const [deleteWallet, setDeleteTarget] = useState<WalletListItem | null>(null);
   // Coming back from a detail page: the opened card carries the shared name
   // from its first paint so the return morph has a target.
   const [vtId, setVtId] = useState<number | null>(() => {
@@ -77,6 +86,11 @@ export const WalletFlowSection = ({
     return () => window.clearTimeout(timer);
   }, []);
   const { context } = useFinanceContext();
+  const { requestDelete, dialog: deleteDialog } = useWalletDelete(
+    deleteWallet,
+    context,
+    onWalletDeleted,
+  );
   const [activeId, setActiveId] = useState<number | null>(() => {
     const stored = readStoredId(selectionKey(title));
     return stored != null && wallets.some((w) => w.id === stored)
@@ -126,6 +140,7 @@ export const WalletFlowSection = ({
         ariaLabel={title}
         viewTransitionId={vtId}
         attention={attention}
+        onLongPress={setPreviewWallet}
       />
       {/* The row keeps its height while the link is hidden, so swiping onto the
           only flagged wallet does not move the content below. */}
@@ -151,6 +166,24 @@ export const WalletFlowSection = ({
         detailHref={walletMovementsHref(active, ownerQueryString)}
         {...actions}
       />
+      {previewWallet ? (
+        <WalletCardPreview
+          open
+          onOpenChange={(open) => {
+            if (!open) setPreviewWallet(null);
+          }}
+          walletName={previewWallet.name}
+          onOpenDetail={() => openDetail(previewWallet)}
+          actions={walletQuickActions(previewWallet, actions)}
+          onDelete={() => {
+            setDeleteTarget(previewWallet);
+            requestDelete();
+          }}
+        >
+          <WalletFlowFace wallet={previewWallet} />
+        </WalletCardPreview>
+      ) : null}
+      {deleteDialog}
     </section>
   );
 };
