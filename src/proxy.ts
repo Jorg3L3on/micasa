@@ -130,6 +130,14 @@ const proxy = auth(async (req) => {
     return Response.redirect(new URL(getAppHomeHref(query), req.nextUrl));
   }
 
+  // The root loading screen reads the path to say "primeros pasos" here,
+  // since a new account has no panel yet.
+  if (pathname === '/onboarding') {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('x-micasa-pathname', pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
   return NextResponse.next();
 });
 

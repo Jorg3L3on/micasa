@@ -4,12 +4,28 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import { createClientId } from '@/lib/polyfills';
+import type { CategoryOption } from '@/types/catalog';
 import { todayCalendarDate } from '@/lib/calendar-dates';
+import {
+  clearOnboardingDraft,
+  getBrowserDraftStorage,
+  loadOnboardingDraft,
+  saveOnboardingDraft,
+} from '@/components/onboarding/onboarding-draft-storage';
+import {
+  navBack,
+  navGoTo,
+  navNext,
+  type OnboardingNavState,
+} from '@/components/onboarding/onboarding-navigation';
 
 export type WalletDraftType = 'CASH' | 'BANK' | 'CREDIT';
 
@@ -53,6 +69,10 @@ type OnboardingContextValue = {
   totalSteps: number;
   goNext: () => void;
   goBack: () => void;
+  /** Jump to a step; `returnHere` makes its Continuar come back to the current step. */
+  goToStep: (step: number, options?: { returnHere?: boolean }) => void;
+  /** Step that Continuar returns to after an Editar jump; `null` otherwise. */
+  returnStep: number | null;
   isFirstStep: boolean;
   isLastStep: boolean;
   isStepLoading: boolean;
@@ -69,9 +89,16 @@ type OnboardingContextValue = {
   setExpenseTemplates: React.Dispatch<
     React.SetStateAction<ExpenseTemplateDraft[]>
   >;
+  /** Categories for Gastos fijos; `null` until loaded once, then kept between steps. */
+  categories: CategoryOption[] | null;
+  setCategories: (categories: CategoryOption[]) => void;
   startDate: string;
   /** Wallet that new incomes and expenses default to (first debit wallet). */
   defaultWalletId: string;
+  /** False until the saved draft (if any) has been read on mount. */
+  isDraftReady: boolean;
+  /** Drop the saved draft and stop saving (call after onboarding completes). */
+  clearDraft: () => void;
 };
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -128,13 +155,75 @@ const createInitialDraft = (): InitialDraft => {
 };
 
 type OnboardingProviderProps = {
+  /** Session user id; scopes the saved draft so users on one browser never share it. */
+  userId: string;
   children: ReactNode;
 };
 
-export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
-  const [initial] = useState(createInitialDraft);
-  const [currentStep, setCurrentStep] = useState(0);
+const subscribeNothing = () => () => {};
+
+/**
+ * Renders defaults on the server and during hydration, then remounts the state
+ * once on the client so the saved draft is read in the initial state (no
+ * effect-driven overwrite, no hydration mismatch).
+ */
+export const OnboardingProvider = ({
+  userId,
+  children,
+}: OnboardingProviderProps) => {
+  const isClient = useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
+  return (
+    <OnboardingStateProvider
+      key={isClient ? `client:${userId}` : 'server'}
+      userId={userId}
+      isDraftReady={isClient}
+    >
+      {children}
+    </OnboardingStateProvider>
+  );
+};
+
+type StartingState = InitialDraft & {
+  step: number;
+  expenseTemplates: ExpenseTemplateDraft[];
+};
+
+const readStartingState = (
+  userId: string,
+  isDraftReady: boolean,
+): StartingState => {
+  const saved = isDraftReady
+    ? loadOnboardingDraft(getBrowserDraftStorage(), userId, ONBOARDING_TOTAL_STEPS)
+    : null;
+  if (saved) {
+    return {
+      step: saved.step,
+      wallets: saved.wallets,
+      incomeTemplates: saved.incomeTemplates,
+      expenseTemplates: saved.expenseTemplates,
+    };
+  }
+  return { step: 0, expenseTemplates: [], ...createInitialDraft() };
+};
+
+const OnboardingStateProvider = ({
+  userId,
+  isDraftReady,
+  children,
+}: OnboardingProviderProps & { isDraftReady: boolean }) => {
+  const [initial] = useState(() => readStartingState(userId, isDraftReady));
+  const [nav, setNav] = useState<OnboardingNavState>({
+    step: initial.step,
+    returnStep: null,
+  });
+  const currentStep = nav.step;
+  const returnStep = nav.returnStep;
   const [isStepLoading, setStepLoading] = useState(false);
+  const [categories, setCategories] = useState<CategoryOption[] | null>(null);
   const [canProceed, setCanProceed] = useState(true);
   const [wallets, setWallets] = useState<WalletDraft[]>(initial.wallets);
   const [incomeTemplates, setIncomeTemplates] = useState<IncomeTemplateDraft[]>(
@@ -142,8 +231,32 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
   );
   const [expenseTemplates, setExpenseTemplates] = useState<
     ExpenseTemplateDraft[]
-  >([]);
+  >(initial.expenseTemplates);
   const [startDate] = useState(currentMonthStart);
+  const draftClearedRef = useRef(false);
+
+  // Save on every change (client only), so a reload resumes here.
+  useEffect(() => {
+    if (!isDraftReady || draftClearedRef.current) return;
+    saveOnboardingDraft(getBrowserDraftStorage(), userId, {
+      step: currentStep,
+      wallets,
+      incomeTemplates,
+      expenseTemplates,
+    });
+  }, [
+    isDraftReady,
+    userId,
+    currentStep,
+    wallets,
+    incomeTemplates,
+    expenseTemplates,
+  ]);
+
+  const clearDraft = useCallback(() => {
+    draftClearedRef.current = true;
+    clearOnboardingDraft(getBrowserDraftStorage(), userId);
+  }, [userId]);
 
   const defaultWalletId =
     wallets.find((wallet) => wallet.type === 'BANK')?.id ??
@@ -152,12 +265,19 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
     '';
 
   const goNext = useCallback(() => {
-    setCurrentStep((prev) => Math.min(prev + 1, ONBOARDING_TOTAL_STEPS - 1));
+    setNav((prev) => navNext(prev, ONBOARDING_TOTAL_STEPS));
   }, []);
 
   const goBack = useCallback(() => {
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
+    setNav(navBack);
   }, []);
+
+  const goToStep = useCallback(
+    (step: number, options?: { returnHere?: boolean }) => {
+      setNav((prev) => navGoTo(prev, step, ONBOARDING_TOTAL_STEPS, options));
+    },
+    [],
+  );
 
   const value = useMemo<OnboardingContextValue>(
     () => ({
@@ -165,6 +285,8 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
       totalSteps: ONBOARDING_TOTAL_STEPS,
       goNext,
       goBack,
+      goToStep,
+      returnStep,
       isFirstStep: currentStep === 0,
       isLastStep: currentStep === ONBOARDING_TOTAL_STEPS - 1,
       isStepLoading,
@@ -177,20 +299,29 @@ export const OnboardingProvider = ({ children }: OnboardingProviderProps) => {
       setIncomeTemplates,
       expenseTemplates,
       setExpenseTemplates,
+      categories,
+      setCategories,
       startDate,
       defaultWalletId,
+      isDraftReady,
+      clearDraft,
     }),
     [
       currentStep,
       goNext,
       goBack,
+      goToStep,
+      returnStep,
       isStepLoading,
       canProceed,
       wallets,
       incomeTemplates,
       expenseTemplates,
+      categories,
       startDate,
       defaultWalletId,
+      isDraftReady,
+      clearDraft,
     ],
   );
 

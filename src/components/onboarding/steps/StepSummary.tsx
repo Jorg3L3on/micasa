@@ -1,47 +1,37 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Banknote, CalendarDays, CreditCard, Landmark, Receipt, TrendingUp } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
+import { Receipt, TrendingUp, Wallet, type LucideIcon } from 'lucide-react';
 import { Money } from '@/components/money';
+import { FortnightProgressTrack } from '@/components/monthly/MonthlyChromeHeader';
 import {
-  OVERLAY_GROUPED_CARD_CLASS,
-  OverlayHint,
-  OverlayListRow,
-  OverlaySectionLabel,
-} from '@/components/overlay/overlay-form';
+  MONTHLY_ICON_PILL_CLASS,
+  PANEL_INSET_CLASS,
+} from '@/components/monthly/monthly-panel-shell';
+import { useOnboarding } from '@/components/onboarding/OnboardingContext';
+import { ONBOARDING_STEP } from '@/components/onboarding/onboarding-navigation';
+import { QuincenaDiagram } from '@/components/onboarding/steps/QuincenaDiagram';
 import {
-  WALLET_TYPE_LABEL,
-  useOnboarding,
-  type WalletDraft,
-} from '@/components/onboarding/OnboardingContext';
-import {
-  frequencyFromFlags,
-  frequencyShortLabel,
-} from '@/components/onboarding/fortnight-frequency';
-import { WalletProviderIcon } from '@/components/wallets/WalletProviderIcon';
-import { formatDisplayDayMonth } from '@/lib/calendar-dates';
-import { formatFortnightOrdinalTitle } from '@/lib/fortnight-calendar';
-import { generateOnboardingFortnights } from '@/lib/finance/onboarding-fortnights';
+  summaryGroups,
+  summaryQuincenaTiles,
+  type SummaryGroupKey,
+} from '@/components/onboarding/steps/onboarding-summary';
+import { todayCalendarDate } from '@/lib/calendar-dates';
+import { cn, formatCurrency } from '@/lib/utils';
 
-const TYPE_ICONS = {
-  CASH: Banknote,
-  BANK: Landmark,
-  CREDIT: CreditCard,
-} as const;
-
-const walletIcon = (wallet: WalletDraft) => {
-  if (wallet.providerIconKey) {
-    return (
-      <WalletProviderIcon
-        providerIconKey={wallet.providerIconKey}
-        className="size-8 border-0"
-        showTooltipLabel={false}
-      />
-    );
-  }
-  const Icon = TYPE_ICONS[wallet.type];
-  return <Icon />;
+const GROUP_META: Record<
+  SummaryGroupKey,
+  { icon: LucideIcon; step: number; editLabel: string }
+> = {
+  wallets: { icon: Wallet, step: ONBOARDING_STEP.wallets, editLabel: 'Editar billeteras' },
+  incomes: { icon: TrendingUp, step: ONBOARDING_STEP.incomes, editLabel: 'Editar ingresos' },
+  expenses: { icon: Receipt, step: ONBOARDING_STEP.expenses, editLabel: 'Editar gastos fijos' },
 };
+
+const EYEBROW_CLASS =
+  'text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground';
+
+const ICON_PILL_CLASS = cn(MONTHLY_ICON_PILL_CLASS, 'size-9');
 
 export default function StepSummary() {
   const {
@@ -50,91 +40,97 @@ export default function StepSummary() {
     incomeTemplates,
     expenseTemplates,
     startDate,
+    goToStep,
   } = useOnboarding();
 
   useEffect(() => {
     setCanProceed(true);
   }, [setCanProceed]);
 
-  const walletName = (id: string) =>
-    wallets.find((wallet) => wallet.id === id)?.name ?? 'Billetera';
-  const fortnights = generateOnboardingFortnights(startDate);
+  const tiles = useMemo(
+    () =>
+      summaryQuincenaTiles(
+        { wallets, incomeTemplates, expenseTemplates },
+        startDate,
+        todayCalendarDate(),
+      ),
+    [wallets, incomeTemplates, expenseTemplates, startDate],
+  );
+  const groups = useMemo(
+    () => summaryGroups({ wallets, incomeTemplates, expenseTemplates }),
+    [wallets, incomeTemplates, expenseTemplates],
+  );
 
   return (
-    <div className="flex flex-col gap-3">
-      <OverlaySectionLabel>Billeteras</OverlaySectionLabel>
-      <div className={OVERLAY_GROUPED_CARD_CLASS}>
-        {wallets.map((wallet) => (
-          <OverlayListRow
-            key={wallet.id}
-            icon={walletIcon(wallet)}
-            title={wallet.name}
-            subtitle={
-              wallet.type === 'CREDIT'
-                ? `Corte día ${wallet.cutoffDay ?? '–'} · pago día ${wallet.dueDay ?? '–'}`
-                : WALLET_TYPE_LABEL[wallet.type]
-            }
-            trailing={
-              <Money
-                value={wallet.type === 'CREDIT' ? wallet.creditLimit : wallet.initialBalance}
-                tone="neutral"
-              />
-            }
-          />
-        ))}
-      </div>
-
-      <OverlaySectionLabel>Ingresos</OverlaySectionLabel>
-      <div className={OVERLAY_GROUPED_CARD_CLASS}>
-        {incomeTemplates.map((income) => (
-          <OverlayListRow
-            key={income.id}
-            icon={<TrendingUp />}
-            title={income.name}
-            subtitle={`${frequencyShortLabel(frequencyFromFlags(income))} · ${walletName(income.walletId)}`}
-            trailing={<Money value={income.amount} tone="positive" />}
-          />
-        ))}
-      </div>
-
-      <OverlaySectionLabel>Gastos fijos</OverlaySectionLabel>
-      {expenseTemplates.length > 0 ? (
-        <div className={OVERLAY_GROUPED_CARD_CLASS}>
-          {expenseTemplates.map((expense) => (
-            <OverlayListRow
-              key={expense.id}
-              icon={<Receipt />}
-              title={expense.name}
-              subtitle={`${frequencyShortLabel(frequencyFromFlags(expense))} · ${walletName(expense.walletId)}`}
-              trailing={<Money value={expense.amount} tone="neutral" />}
+    <div className="flex flex-col gap-[18px]">
+      <div className="flex flex-wrap gap-3">
+        {tiles.map((tile) => (
+          <section
+            key={tile.key}
+            aria-label={tile.ariaLabel}
+            className={cn(PANEL_INSET_CLASS, 'flex flex-[1_1_220px] flex-col gap-2 px-4 py-3.5')}
+          >
+            <p className={EYEBROW_CLASS}>{tile.title}</p>
+            <Money
+              value={tile.preview.free}
+              tone="neutral"
+              className="block font-[family-name:var(--font-display)] text-[28px] font-bold"
             />
-          ))}
-        </div>
-      ) : (
-        <OverlayHint>
-          Sin gastos por ahora. Los agregas desde tu panel cuando quieras.
-        </OverlayHint>
-      )}
-
-      <OverlaySectionLabel>Tus primeras quincenas</OverlaySectionLabel>
-      <div className={OVERLAY_GROUPED_CARD_CLASS}>
-        {fortnights.map((fortnight) => (
-          <OverlayListRow
-            key={`${fortnight.year}-${fortnight.month}-${fortnight.period}`}
-            icon={<CalendarDays />}
-            title={formatFortnightOrdinalTitle(
-              fortnight.period,
-              fortnight.month,
-              fortnight.year,
-            )}
-            subtitle={`${formatDisplayDayMonth(fortnight.startDate)} – ${formatDisplayDayMonth(fortnight.endDate)}`}
-          />
+            <FortnightProgressTrack
+              percent={tile.barPercent}
+              tone="complete"
+              label={`Gastos fijos de la ${tile.period === 'FIRST' ? '1ª' : '2ª'} quincena`}
+            />
+            <p className="text-xs leading-[1.45] text-muted-foreground tabular-nums">
+              Cobras {formatCurrency(tile.preview.income)} · Pagas{' '}
+              {formatCurrency(tile.preview.fixedCosts)}
+            </p>
+          </section>
         ))}
       </div>
-      <OverlayHint>
-        La 1ª quincena va del último día del mes anterior al 14, y la 2ª del 15
-        al penúltimo día del mes. Así cada quincena empieza el día que cobras.
-      </OverlayHint>
+
+      <ul className={cn(PANEL_INSET_CLASS, 'divide-y divide-border/50 overflow-hidden dark:divide-white/[0.08]')}>
+        {groups.map((group) => {
+          const meta = GROUP_META[group.key];
+          const Icon = meta.icon;
+          return (
+            <li
+              key={group.key}
+              className="flex min-h-[60px] items-center gap-3 py-2 pr-1.5 pl-3.5"
+            >
+              <span className={ICON_PILL_CLASS} aria-hidden>
+                <Icon className="size-[18px]" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">{group.title}</p>
+                <p className="truncate text-xs leading-[1.45] text-muted-foreground">
+                  {group.subtitle}
+                </p>
+              </div>
+              {group.total !== null ? (
+                <span className="shrink-0 text-right text-sm font-semibold tabular-nums text-foreground">
+                  {formatCurrency(group.total)}
+                  {group.totalSuffix ? (
+                    <span className="block text-xs font-normal text-muted-foreground min-[480px]:ml-1 min-[480px]:inline">
+                      {group.totalSuffix}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                aria-label={meta.editLabel}
+                onClick={() => goToStep(meta.step, { returnHere: true })}
+                className="min-h-11 shrink-0 rounded-md px-3 text-[13px] font-medium text-foreground underline underline-offset-[3px] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+              >
+                Editar
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <QuincenaDiagram className="min-[781px]:hidden" />
     </div>
   );
 }

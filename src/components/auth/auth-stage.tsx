@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { FortnightPulse } from '@/components/auth/fortnight-pulse';
 import { MicasaMark } from '@/components/brand/micasa-mark';
+import { MONTHLY_PANEL_SHELL_CLASS } from '@/components/monthly/monthly-panel-shell';
 import { cn } from '@/lib/utils';
 
 type AuthStageProps = {
@@ -11,8 +12,28 @@ type AuthStageProps = {
   eyebrow: string;
   /** Brand headline; defaults to the quincena tagline. */
   headline?: ReactNode;
+  /** Short line under the headline (from 781px). */
+  description?: ReactNode;
+  /** Aside body under the headline (from 781px); defaults to the fortnight pulse. */
+  aside?: ReactNode;
+  /**
+   * Below 781px: hide the aside and show the brand above the panel with this
+   * action on the right (e.g. a login link).
+   */
+  mobileHeader?: ReactNode;
   className?: string;
 };
+
+const AuthBrandLink = ({ compact = false }: { compact?: boolean }) => (
+  <Link
+    href="/"
+    className="inline-flex min-h-11 items-center gap-2.5 self-start font-semibold tracking-tight text-foreground"
+    aria-label="MiCasa inicio"
+  >
+    <MicasaMark className={compact ? 'size-7' : 'size-8'} />
+    <span className={compact ? 'text-[15px]' : 'text-base'}>MiCasa</span>
+  </Link>
+);
 
 const DefaultHeadline = () => (
   <>
@@ -25,7 +46,8 @@ const DefaultHeadline = () => (
 );
 
 /**
- * Dark aurora shell + two-column glass panel shared by login and signup.
+ * Dark aurora stage + two-column planner glass panel (`MONTHLY_PANEL_SHELL_CLASS`)
+ * shared by login and signup.
  * Always dark (`.dark` on the root) so tokens resolve to the Orion palette in
  * either app theme.
  */
@@ -33,12 +55,15 @@ export const AuthStage = ({
   children,
   eyebrow,
   headline = <DefaultHeadline />,
+  description,
+  aside,
+  mobileHeader,
   className,
 }: AuthStageProps) => {
   return (
     <div
       className={cn(
-        'dark relative flex min-h-svh items-center justify-center overflow-x-hidden bg-background px-5 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] text-foreground',
+        'dark relative flex min-h-svh items-center justify-center overflow-x-hidden bg-background px-4 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] text-foreground',
         className,
       )}
     >
@@ -58,45 +83,49 @@ export const AuthStage = ({
         <div className="absolute right-[6%] bottom-[8%] h-[46vw] w-[46vw] rounded-full bg-[radial-gradient(circle,#ee477a_0%,transparent_70%)] opacity-30" />
       </div>
 
-      <div className="relative z-[1] w-full max-w-[880px]">
-        <div className="relative grid overflow-hidden rounded-3xl border border-white/[0.09] bg-[rgba(20,20,27,0.55)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.02)_inset] backdrop-blur-[28px] backdrop-saturate-150 max-[780px]:mx-auto max-[780px]:max-w-[420px] max-[780px]:grid-cols-1 min-[781px]:grid-cols-2">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-3xl p-px"
-            style={{
-              background:
-                'linear-gradient(135deg, rgba(58,55,252,0.4), transparent 30%, transparent 70%, rgba(238,71,122,0.35))',
-              WebkitMask:
-                'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
-              WebkitMaskComposite: 'xor',
-              maskComposite: 'exclude',
-            }}
-          />
+      <div className="relative z-[1] flex w-full max-w-[920px] flex-col gap-4 max-[780px]:mx-auto max-[780px]:max-w-[420px]">
+        {mobileHeader ? (
+          <header className="flex min-h-11 items-center justify-between min-[781px]:hidden">
+            <AuthBrandLink compact />
+            {mobileHeader}
+          </header>
+        ) : null}
 
-          <aside className="relative flex flex-col border-b border-white/[0.09] bg-linear-to-b from-primary/[0.08] to-[#ee477a]/[0.06] px-6 pt-6 pb-5 max-[780px]:gap-3 min-[781px]:justify-between min-[781px]:border-r min-[781px]:border-b-0 min-[781px]:px-10 min-[781px]:py-12">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2.5 font-semibold tracking-tight text-foreground"
-              aria-label="MiCasa inicio"
-            >
-              <MicasaMark className="size-8" />
-              <span className="text-base">MiCasa</span>
-            </Link>
+        <div
+          className={cn(
+            MONTHLY_PANEL_SHELL_CLASS,
+            'grid overflow-hidden max-[780px]:grid-cols-1 min-[781px]:grid-cols-2',
+          )}
+        >
+          <aside
+            className={cn(
+              'relative flex flex-col border-b border-white/[0.08] bg-primary/[0.05] px-6 pt-6 pb-5 max-[780px]:gap-3 min-[781px]:border-r min-[781px]:border-b-0 min-[781px]:px-9 min-[781px]:pt-9 min-[781px]:pb-8',
+              mobileHeader && 'max-[780px]:hidden',
+            )}
+          >
+            <AuthBrandLink />
 
-            <div className="min-[781px]:mt-10">
-              <p className="eyebrow mb-3.5 tracking-[0.14em] text-muted-foreground/70 max-[780px]:hidden">
+            <div className="min-[781px]:mt-7">
+              <p className="eyebrow mb-2.5 tracking-[0.14em] text-muted-foreground/70 max-[780px]:hidden">
                 {eyebrow}
               </p>
-              <p className="max-w-[260px] text-xl leading-[1.25] font-semibold tracking-tight text-foreground max-[780px]:max-w-none min-[781px]:text-[26px]">
+              <p className="max-w-[280px] text-xl leading-[1.2] font-semibold tracking-tight text-foreground max-[780px]:max-w-none min-[781px]:text-[26px]">
                 {headline}
               </p>
+              {description ? (
+                <p className="mt-2.5 max-w-[280px] text-sm leading-[1.45] text-muted-foreground max-[780px]:hidden">
+                  {description}
+                </p>
+              ) : null}
             </div>
 
             {/* Phones: brand line only, so the form fits in the first screen. */}
-            <FortnightPulse className="max-[780px]:hidden min-[781px]:mt-10" />
+            <div className="flex flex-1 flex-col max-[780px]:hidden min-[781px]:mt-7">
+              {aside ?? <FortnightPulse className="mt-auto" />}
+            </div>
           </aside>
 
-          <div className="relative flex flex-col px-6 py-6 sm:px-11 sm:py-12">
+          <div className="relative flex min-w-0 flex-col px-[18px] py-5 sm:px-11 sm:pt-10 sm:pb-8">
             {children}
           </div>
         </div>

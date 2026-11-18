@@ -126,3 +126,21 @@ describe('proxy home redirect owner', () => {
     expect(query.get('ownerId')).toBe('3');
   });
 });
+
+describe('proxy pathname header', () => {
+  it('passes the path to the root loading screen on /onboarding', async () => {
+    const response = await invoke('http://localhost:3000/onboarding', {
+      auth: { user: { id: '42' } },
+    });
+    expect(response.headers.get('x-middleware-request-x-micasa-pathname')).toBe(
+      '/onboarding',
+    );
+  });
+
+  it('does not add it on app routes', async () => {
+    const response = await invoke('http://localhost:3000/wallets', {
+      auth: { user: { id: '42' } },
+    });
+    expect(response.headers.get('x-middleware-request-x-micasa-pathname')).toBeNull();
+  });
+});

@@ -65,6 +65,12 @@ describe('isPanelOwnerPending', () => {
     );
   });
 
+  it('is false when the URL named no owner and the client synced to the owner the server rendered', () => {
+    expect(isPanelOwnerPending({ type: 'user', id: 7 }, 'user-7', false)).toBe(
+      false,
+    );
+  });
+
   it('is false when the URL owner matches the client', () => {
     expect(isPanelOwnerPending({ type: 'house', id: 5 }, 'house-5', true)).toBe(
       false,
